@@ -17,6 +17,30 @@ import './syncLog.css';
 
 type TabType = 'sync' | 'tokens';
 
+// Gemini 2.5 Flash 가격 (2025-01 기준)
+const PRICE_PER_MILLION_INPUT = 1.25; // US$ 1.25 per 1M input tokens
+const PRICE_PER_MILLION_OUTPUT = 10.0; // US$ 10.00 per 1M output tokens
+
+/**
+ * 토큰 비용 계산 (USD)
+ */
+function calculateTokenCost(promptTokens: number, candidatesTokens: number): { inputCost: number; outputCost: number; totalCost: number } {
+  const inputCost = (promptTokens / 1_000_000) * PRICE_PER_MILLION_INPUT;
+  const outputCost = (candidatesTokens / 1_000_000) * PRICE_PER_MILLION_OUTPUT;
+  const totalCost = inputCost + outputCost;
+  return { inputCost, outputCost, totalCost };
+}
+
+/**
+ * 비용을 포맷팅 (USD)
+ */
+function formatCost(cost: number): string {
+  if (cost < 0.01) {
+    return `$${cost.toFixed(4)}`;
+  }
+  return `$${cost.toFixed(2)}`;
+}
+
 interface SyncLogModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -258,17 +282,29 @@ export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
                     <div className="stat-value">
                       {tokenUsage.reduce((sum, t) => sum + t.promptTokens, 0).toLocaleString()}
                     </div>
+                    <div className="stat-sublabel">
+                      {formatCost(calculateTokenCost(tokenUsage.reduce((sum, t) => sum + t.promptTokens, 0), 0).inputCost)}
+                    </div>
                   </div>
                   <div className="stat-card">
                     <div className="stat-label">총 출력 토큰</div>
                     <div className="stat-value">
                       {tokenUsage.reduce((sum, t) => sum + t.candidatesTokens, 0).toLocaleString()}
                     </div>
+                    <div className="stat-sublabel">
+                      {formatCost(calculateTokenCost(0, tokenUsage.reduce((sum, t) => sum + t.candidatesTokens, 0)).outputCost)}
+                    </div>
                   </div>
                   <div className="stat-card">
                     <div className="stat-label">총합</div>
                     <div className="stat-value primary">
                       {tokenUsage.reduce((sum, t) => sum + t.totalTokens, 0).toLocaleString()}
+                    </div>
+                    <div className="stat-sublabel">
+                      {formatCost(calculateTokenCost(
+                        tokenUsage.reduce((sum, t) => sum + t.promptTokens, 0),
+                        tokenUsage.reduce((sum, t) => sum + t.candidatesTokens, 0)
+                      ).totalCost)}
                     </div>
                   </div>
                 </div>
@@ -283,20 +319,25 @@ export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
                         <th>입력 토큰</th>
                         <th>출력 토큰</th>
                         <th>총 토큰</th>
+                        <th>예상 비용</th>
                       </tr>
                     </thead>
                     <tbody>
                       {tokenUsage
                         .sort((a, b) => b.date.localeCompare(a.date))
-                        .map((usage) => (
-                          <tr key={usage.date}>
-                            <td className="date-cell">{usage.date}</td>
-                            <td>{usage.messageCount}개</td>
-                            <td>{usage.promptTokens.toLocaleString()}</td>
-                            <td>{usage.candidatesTokens.toLocaleString()}</td>
-                            <td className="total-cell">{usage.totalTokens.toLocaleString()}</td>
-                          </tr>
-                        ))}
+                        .map((usage) => {
+                          const cost = calculateTokenCost(usage.promptTokens, usage.candidatesTokens);
+                          return (
+                            <tr key={usage.date}>
+                              <td className="date-cell">{usage.date}</td>
+                              <td>{usage.messageCount}개</td>
+                              <td>{usage.promptTokens.toLocaleString()}</td>
+                              <td>{usage.candidatesTokens.toLocaleString()}</td>
+                              <td className="total-cell">{usage.totalTokens.toLocaleString()}</td>
+                              <td className="cost-cell">{formatCost(cost.totalCost)}</td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>

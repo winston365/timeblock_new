@@ -5,7 +5,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { callGeminiAPI, generateWaifuPersona, type PersonaContext } from '@/shared/services/geminiApi';
-import { useWaifuState, useDailyData, useGameState } from '@/shared/hooks';
+import { useWaifuState, useDailyData, useGameState, useEnergyState } from '@/shared/hooks';
 import { loadSettings } from '@/data/repositories/settingsRepository';
 import {
   loadTodayChatHistory,
@@ -14,10 +14,36 @@ import {
   getRecentMessages,
   loadTodayTokenUsage
 } from '@/data/repositories/chatHistoryRepository';
-import type { GeminiChatMessage, DailyTokenUsage } from '@/shared/types/domain';
+import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
+import type { GeminiChatMessage, DailyTokenUsage, Task } from '@/shared/types/domain';
+import { TIME_BLOCKS } from '@/shared/types/domain';
 import './gemini.css';
 
 const MAX_HISTORY_MESSAGES = 20;
+
+// Gemini 2.5 Flash 가격 (2025-01 기준)
+const PRICE_PER_MILLION_INPUT = 1.25; // US$ 1.25 per 1M input tokens
+const PRICE_PER_MILLION_OUTPUT = 10.0; // US$ 10.00 per 1M output tokens
+
+/**
+ * 토큰 비용 계산 (USD)
+ */
+function calculateTokenCost(promptTokens: number, candidatesTokens: number): { inputCost: number; outputCost: number; totalCost: number } {
+  const inputCost = (promptTokens / 1_000_000) * PRICE_PER_MILLION_INPUT;
+  const outputCost = (candidatesTokens / 1_000_000) * PRICE_PER_MILLION_OUTPUT;
+  const totalCost = inputCost + outputCost;
+  return { inputCost, outputCost, totalCost };
+}
+
+/**
+ * 비용을 포맷팅 (USD)
+ */
+function formatCost(cost: number): string {
+  if (cost < 0.01) {
+    return `$${cost.toFixed(4)}`;
+  }
+  return `$${cost.toFixed(2)}`;
+}
 
 interface GeminiChatModalProps {
   isOpen: boolean;
@@ -28,6 +54,7 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
   const { waifuState } = useWaifuState();
   const { dailyData } = useDailyData();
   const { gameState } = useGameState();
+  const { currentEnergy, energyRecordedAt } = useEnergyState();
   const [messages, setMessages] = useState<GeminiChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -110,25 +137,108 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
         text: msg.text,
       }));
 
-      // 페르소나 컨텍스트 준비
+      // 페르소나 컨텍스트 준비 - 확장된 데이터 수집
       const tasks = dailyData?.tasks || [];
       const completedTasks = tasks.filter(t => t.completed);
-      const recentTasks = tasks.slice(-5).map(t => ({
-        text: t.text,
-        completed: t.completed,
-        resistance: t.resistance
-      }));
+      const inboxTasks = tasks.filter(t => !t.timeBlock && !t.completed);
+
+      // 현재 시간 정보
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const endOfDay = new Date(now);
+      endOfDay.setHours(23, 59, 59, 999);
+      const msLeftToday = endOfDay.getTime() - now.getTime();
+      const hoursLeftToday = Math.floor(msLeftToday / (1000 * 60 * 60));
+      const minutesLeftToday = Math.floor((msLeftToday % (1000 * 60 * 60)) / (1000 * 60));
+
+      // 현재 시간대 블록 찾기
+      const currentBlock = TIME_BLOCKS.find(block => currentHour >= block.start && currentHour < block.end);
+      const currentBlockId = currentBlock?.id ?? null;
+      const currentBlockLabel = currentBlock?.label ?? '블록 외 시간';
+      const currentBlockTasks = currentBlockId
+        ? tasks.filter(t => t.timeBlock === currentBlockId).map(t => ({ text: t.text, completed: t.completed }))
+        : [];
+
+      // 잠금 블록 수 계산
+      const lockedBlocksCount = Object.values(dailyData?.timeBlockStates || {}).filter(state => state.isLocked).length;
+      const totalBlocksCount = TIME_BLOCKS.length;
+
+      // 최근 5일 데이터 로드
+      const recentDays = await getRecentDailyData(5);
+
+      // 최근 5일 시간대별 패턴 분석
+      const recentBlockPatterns: Record<string, Array<{ date: string; completedCount: number; tasks: string[] }>> = {};
+      TIME_BLOCKS.forEach(block => {
+        recentBlockPatterns[block.id] = recentDays.map(day => {
+          const blockTasks = day.tasks.filter(t => t.timeBlock === block.id && t.completed);
+          return {
+            date: day.date,
+            completedCount: blockTasks.length,
+            tasks: blockTasks.map(t => t.text)
+          };
+        });
+      });
+
+      // 기분 계산 (호감도 기반)
+      const affection = waifuState?.affection ?? 50;
+      let mood = '중립적';
+      if (affection < 20) mood = '냉담함';
+      else if (affection < 40) mood = '약간 경계';
+      else if (affection < 60) mood = '따뜻함';
+      else if (affection < 80) mood = '다정함';
+      else mood = '매우 애정 어림';
 
       const personaContext: PersonaContext = {
-        affection: waifuState?.affection ?? 50,
+        // 기본 정보
+        affection,
         level: gameState?.level ?? 1,
-        xp: gameState?.totalXP ?? 0,
+        totalXP: gameState?.totalXP ?? 0,
         dailyXP: gameState?.dailyXP ?? 0,
+        availableXP: gameState?.availableXP ?? 0,
+
+        // 작업 정보
         tasksCompleted: completedTasks.length,
         totalTasks: tasks.length,
-        currentTime: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-        currentEnergy: 50, // TODO: Get from energy tracking
-        recentTasks
+        inboxTasks: inboxTasks.map(t => ({
+          text: t.text,
+          resistance: t.resistance,
+          baseDuration: t.baseDuration
+        })),
+        recentTasks: tasks.slice(-5).map(t => ({
+          text: t.text,
+          completed: t.completed,
+          resistance: t.resistance
+        })),
+
+        // 시간 정보
+        currentHour,
+        currentMinute,
+        hoursLeftToday,
+        minutesLeftToday,
+
+        // 타임블록 정보
+        currentBlockId,
+        currentBlockLabel,
+        currentBlockTasks,
+        lockedBlocksCount,
+        totalBlocksCount,
+
+        // 에너지 정보
+        currentEnergy: currentEnergy ?? 0,
+        energyRecordedAt: energyRecordedAt ?? null,
+
+        // XP 히스토리
+        xpHistory: gameState?.xpHistory ?? [],
+
+        // 타임블록 XP 히스토리
+        timeBlockXPHistory: gameState?.timeBlockXPHistory ?? [],
+
+        // 최근 5일 패턴
+        recentBlockPatterns,
+
+        // 기분
+        mood,
       };
 
       // 시스템 프롬프트 생성
@@ -289,7 +399,9 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
             <br />
             레벨: {gameState?.level ?? 1} | 오늘 XP: {gameState?.dailyXP ?? 0}
             <br />
-            📊 오늘 토큰 사용량: 입력 {todayTokenUsage?.promptTokens ?? 0} | 출력 {todayTokenUsage?.candidatesTokens ?? 0} | 총 {todayTokenUsage?.totalTokens ?? 0}
+            📊 오늘 토큰 사용량: 입력 {todayTokenUsage?.promptTokens.toLocaleString() ?? 0} | 출력 {todayTokenUsage?.candidatesTokens.toLocaleString() ?? 0} | 총 {todayTokenUsage?.totalTokens.toLocaleString() ?? 0}
+            <br />
+            💵 오늘 예상 비용: {todayTokenUsage ? formatCost(calculateTokenCost(todayTokenUsage.promptTokens, todayTokenUsage.candidatesTokens).totalCost) : '$0.0000'} (입력: {formatCost(calculateTokenCost(todayTokenUsage?.promptTokens ?? 0, 0).inputCost)} | 출력: {formatCost(calculateTokenCost(0, todayTokenUsage?.candidatesTokens ?? 0).outputCost)})
           </small>
         </div>
       </div>
