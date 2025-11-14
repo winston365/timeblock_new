@@ -518,3 +518,208 @@ select:disabled,
     animation: none;
   }
 }
+
+/* =========================
+   피드백 시스템 강화
+   ========================= */
+
+/* 인터랙션 타이밍 변수 */
+:root {
+  --duration-instant: 0.1s;   /* 토글, 체크박스 */
+  --duration-fast: 0.2s;      /* 호버, 포커스 */
+  --duration-base: 0.3s;      /* 모달, 드롭다운 */
+  --duration-slow: 0.5s;      /* 페이지 전환 */
+
+  --easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --easing-accelerate: cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* 인터랙티브 요소 공통 피드백 */
+button:not(:disabled),
+.clickable {
+  position: relative;
+  transition: all var(--duration-fast) var(--easing-standard);
+}
+
+button:not(:disabled):hover,
+.clickable:hover {
+  transform: translateY(-1px);
+}
+
+button:not(:disabled):active,
+.clickable:active {
+  transform: translateY(0);
+  transition-duration: var(--duration-instant);
+}
+
+/* 리플 효과 (Material Design 스타일) */
+button:not(:disabled)::after,
+.clickable::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.3) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  transition: opacity var(--duration-fast);
+}
+
+button:not(:disabled):active::after,
+.clickable:active::after {
+  opacity: 1;
+  transition-duration: 0s;
+}
+
+/* 움직임 감소 시 피드백 비활성화 */
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):hover,
+  .clickable:hover {
+    transform: none;
+  }
+
+  button:not(:disabled)::after,
+  .clickable::after {
+    display: none;
+  }
+}
+
+/* =========================
+   반응형 브레이크포인트
+   ========================= */
+
+:root {
+  --breakpoint-mobile: 640px;    /* 작은 스마트폰 */
+  --breakpoint-tablet: 768px;    /* 태블릿 세로 */
+  --breakpoint-laptop: 1024px;   /* 작은 노트북 */
+  --breakpoint-desktop: 1280px;  /* 데스크톱 */
+  --breakpoint-wide: 1536px;     /* 와이드 모니터 */
+}
+
+/* =========================
+   다크모드 색감 테마 시스템
+   ========================= */
+
+/*
+  테마 변경 방법:
+  <html data-theme="ocean"> 속성을 추가하면 해당 테마가 적용됩니다.
+  기본값(속성 없음): Indigo (현재 테마)
+*/
+
+/* 테마 1: Ocean (오션 블루) - 차분하고 집중력 향상 */
+[data-theme="ocean"] {
+  --color-primary: #0ea5e9;      /* Sky Blue */
+  --color-primary-dark: #0284c7; /* Deeper Sky Blue */
+  --color-secondary: #06b6d4;    /* Cyan */
+
+  --color-bg-base: #0c1220;      /* 깊은 네이비 */
+  --color-bg-surface: #1a2332;   /* 미드나잇 블루 */
+  --color-bg-elevated: #2d3e50;  /* 스틸 블루 */
+  --color-bg-interactive: #3d5266; /* 라이트 스틸 */
+
+  /* 그라데이션 */
+  --gradient-brand: linear-gradient(135deg, #0ea5e9, #06b6d4);
+}
+
+/* 테마 2: Forest (포레스트 그린) - 편안하고 자연스러운 */
+[data-theme="forest"] {
+  --color-primary: #10b981;      /* Emerald */
+  --color-primary-dark: #059669; /* Dark Emerald */
+  --color-secondary: #34d399;    /* Light Emerald */
+
+  --color-bg-base: #0a1410;      /* 다크 포레스트 */
+  --color-bg-surface: #1a2e23;   /* 딥 그린 */
+  --color-bg-elevated: #2d4a3e;  /* 모스 그린 */
+  --color-bg-interactive: #3d5f4e; /* 세이지 그린 */
+
+  --gradient-brand: linear-gradient(135deg, #10b981, #34d399);
+}
+
+/* 테마 3: Sunset (석양 오렌지) - 따뜻하고 활력적인 */
+[data-theme="sunset"] {
+  --color-primary: #f59e0b;      /* Amber */
+  --color-primary-dark: #d97706; /* Dark Amber */
+  --color-secondary: #fb923c;    /* Orange */
+
+  --color-bg-base: #1a0f0a;      /* 다크 초콜릿 */
+  --color-bg-surface: #2a1f1a;   /* 웜 브라운 */
+  --color-bg-elevated: #3d342d;  /* 카멜 */
+  --color-bg-interactive: #4d443d; /* 라이트 브라운 */
+
+  --gradient-brand: linear-gradient(135deg, #f59e0b, #fb923c);
+}
+
+/* 테마 4: Purple Dream (퍼플 드림) - 창의적이고 우아한 */
+[data-theme="purple"] {
+  --color-primary: #a855f7;      /* Purple */
+  --color-primary-dark: #9333ea; /* Dark Purple */
+  --color-secondary: #c084fc;    /* Light Purple */
+
+  --color-bg-base: #0f0a1a;      /* 딥 바이올렛 */
+  --color-bg-surface: #1f1a2e;   /* 다크 퍼플 */
+  --color-bg-elevated: #342d4a;  /* 미스틱 퍼플 */
+  --color-bg-interactive: #443d5a; /* 라벤더 그레이 */
+
+  --gradient-brand: linear-gradient(135deg, #a855f7, #c084fc);
+}
+
+/* 테마 5: Rose Gold (로즈 골드) - 세련되고 모던한 */
+[data-theme="rose"] {
+  --color-primary: #ec4899;      /* Pink */
+  --color-primary-dark: #db2777; /* Dark Pink */
+  --color-secondary: #f472b6;    /* Light Pink */
+
+  --color-bg-base: #1a0a14;      /* 다크 로즈 */
+  --color-bg-surface: #2a1a23;   /* 딥 마젠타 */
+  --color-bg-elevated: #3d2d3a;  /* 더스티 로즈 */
+  --color-bg-interactive: #4d3d4a; /* 모브 그레이 */
+
+  --gradient-brand: linear-gradient(135deg, #ec4899, #f472b6);
+}
+
+/* 테마 6: Midnight (미드나잇 블루) - 깊고 프로페셔널한 */
+[data-theme="midnight"] {
+  --color-primary: #3b82f6;      /* Blue */
+  --color-primary-dark: #2563eb; /* Dark Blue */
+  --color-secondary: #60a5fa;    /* Light Blue */
+
+  --color-bg-base: #030712;      /* 거의 블랙 */
+  --color-bg-surface: #111827;   /* 차콜 블루 */
+  --color-bg-elevated: #1f2937;  /* 슬레이트 그레이 */
+  --color-bg-interactive: #374151; /* 그레이 */
+
+  --gradient-brand: linear-gradient(135deg, #3b82f6, #60a5fa);
+}
+
+/* 테마 7: Cyberpunk (사이버펑크) - 네온과 미래적인 */
+[data-theme="cyberpunk"] {
+  --color-primary: #06ffa5;      /* Neon Green */
+  --color-primary-dark: #05d98b; /* Dark Neon */
+  --color-secondary: #ff006e;    /* Neon Pink */
+
+  --color-bg-base: #0a0a14;      /* 딥 블랙 블루 */
+  --color-bg-surface: #1a1a2e;   /* 다크 퍼플 블루 */
+  --color-bg-elevated: #2d2d4a;  /* 일렉트릭 블루 */
+  --color-bg-interactive: #3d3d5a; /* 네온 그레이 */
+
+  --gradient-brand: linear-gradient(135deg, #06ffa5, #ff006e);
+}
+
+/* 테마 8: Mocha (모카) - 부드럽고 눈에 편안한 */
+[data-theme="mocha"] {
+  --color-primary: #8b7355;      /* 모카 브라운 */
+  --color-primary-dark: #6b5644; /* 다크 모카 */
+  --color-secondary: #d4a574;    /* 카라멜 */
+
+  --color-bg-base: #1a1612;      /* 에스프레소 */
+  --color-bg-surface: #2a241f;   /* 다크 초콜릿 */
+  --color-bg-elevated: #3d352d;  /* 밀크 초콜릿 */
+  --color-bg-interactive: #4d453d; /* 라떼 */
+
+  --gradient-brand: linear-gradient(135deg, #8b7355, #d4a574);
+}

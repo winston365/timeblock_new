@@ -152,27 +152,32 @@
 
 .block-time-range {
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 1.125rem;  /* 0.875rem → 1.125rem (18px) */
   color: var(--color-text);
+  letter-spacing: 0.5px;
 }
 
 .block-time-range-large {
   font-weight: 700;
-  font-size: 1.5rem;
+  font-size: 1.75rem;  /* 1.5rem → 1.75rem (28px) */
   color: var(--color-text);
   letter-spacing: 0.5px;
 }
 
 .block-stats-inline {
   display: flex;
-  gap: var(--spacing-sm);
-  font-size: 0.75rem;
-  color: var(--color-text-tertiary);
+  gap: var(--spacing-md);  /* sm → md */
+  font-size: 0.9375rem;  /* 0.75rem → 0.9375rem (15px) */
+  color: var(--color-text-secondary);  /* tertiary → secondary (더 밝게) */
+  font-weight: 500;
 }
 
 .stat-compact {
   white-space: nowrap;
-  opacity: 0.8;
+  opacity: 1;  /* 0.8 → 1 (더 선명하게) */
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* 제안 1: 원형 시간표 크기 조정 (48px → 36px) */
