@@ -5,6 +5,9 @@
 import { useState, useEffect } from 'react';
 import { useGameState, useDailyData } from '@/shared/hooks';
 import { initializeDatabase } from '@/data/db/dexieClient';
+import { addTask } from '@/data/repositories';
+import { createTaskFromTemplate } from '@/data/repositories/templateRepository';
+import type { Template } from '@/shared/types/domain';
 
 // 임시로 컴포넌트를 직접 import (나중에 features에서 가져올 것)
 import TopToolbar from './components/TopToolbar';
@@ -34,6 +37,27 @@ export default function AppShell() {
 
     initDB();
   }, []);
+
+  // 템플릿에서 작업 생성 핸들러
+  const handleTaskCreateFromTemplate = async (template: Template) => {
+    try {
+      const task = createTaskFromTemplate(template);
+      await addTask(task);
+      alert(`"${template.name}" 템플릿에서 작업이 추가되었습니다!`);
+      // dailyData hook이 자동으로 리렌더링됨
+    } catch (error) {
+      console.error('Failed to create task from template:', error);
+      alert('작업 추가에 실패했습니다.');
+    }
+  };
+
+  // 상점 구매 성공 핸들러 (와이푸 메시지 표시용)
+  const handleShopPurchaseSuccess = (_message: string, waifuMessage?: string) => {
+    if (waifuMessage) {
+      // TODO: 와이푸에게 메시지를 전달하는 로직 추가
+      console.log('와이푸 메시지:', waifuMessage);
+    }
+  };
 
   if (!dbInitialized) {
     return (
@@ -86,6 +110,8 @@ export default function AppShell() {
         <RightPanel
           activeTab={rightPanelTab}
           onTabChange={setRightPanelTab}
+          onTaskCreateFromTemplate={handleTaskCreateFromTemplate}
+          onShopPurchaseSuccess={handleShopPurchaseSuccess}
         />
       </main>
     </div>

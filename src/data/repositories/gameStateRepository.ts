@@ -197,11 +197,35 @@ export async function initializeNewDay(): Promise<GameState> {
     // 새로운 일일 퀘스트 생성
     gameState.dailyQuests = generateDailyQuests();
 
+    // 자동 생성 템플릿에서 작업 생성
+    await generateTasksFromAutoTemplates();
+
     await saveGameState(gameState);
     return gameState;
   } catch (error) {
     console.error('Failed to initialize new day:', error);
     throw error;
+  }
+}
+
+/**
+ * 자동 생성 템플릿에서 작업 생성 (내부 헬퍼)
+ */
+async function generateTasksFromAutoTemplates(): Promise<void> {
+  try {
+    // templateRepository의 함수를 동적으로 import (순환 참조 방지)
+    const { generateTasksFromAutoTemplates: generateTasks } = await import('./templateRepository');
+    const tasks = await generateTasks();
+
+    // 생성된 작업들을 dailyData에 추가
+    if (tasks.length > 0) {
+      const { addTask } = await import('./dailyDataRepository');
+      for (const task of tasks) {
+        await addTask(task);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to generate tasks from auto-templates:', error);
   }
 }
 

@@ -5,13 +5,23 @@
 import { useGameState } from '@/shared/hooks';
 import XPBar from '@/shared/components/XPBar';
 import QuestsPanel from '@/features/gamification/QuestsPanel';
+import TemplatePanel from '@/features/template/TemplatePanel';
+import ShopPanel from '@/features/shop/ShopPanel';
+import type { Template } from '@/shared/types/domain';
 
 interface RightPanelProps {
   activeTab: 'template' | 'shop';
   onTabChange: (tab: 'template' | 'shop') => void;
+  onTaskCreateFromTemplate: (template: Template) => void;
+  onShopPurchaseSuccess?: (message: string, waifuMessage?: string) => void;
 }
 
-export default function RightPanel({ activeTab, onTabChange }: RightPanelProps) {
+export default function RightPanel({
+  activeTab,
+  onTabChange,
+  onTaskCreateFromTemplate,
+  onShopPurchaseSuccess
+}: RightPanelProps) {
   const { gameState } = useGameState();
 
   return (
@@ -54,25 +64,21 @@ export default function RightPanel({ activeTab, onTabChange }: RightPanelProps) 
       <div className="right-panel-content">
         {activeTab === 'template' && (
           <div
-            className="placeholder-section"
             role="tabpanel"
             id="right-panel-template"
             aria-labelledby="tab-template"
           >
-            <h3>📝 템플릿</h3>
-            <p>(추후 구현)</p>
+            <TemplatePanel onTaskCreate={onTaskCreateFromTemplate} />
           </div>
         )}
 
         {activeTab === 'shop' && (
           <div
-            className="placeholder-section"
             role="tabpanel"
             id="right-panel-shop"
             aria-labelledby="tab-shop"
           >
-            <h3>🛒 상점</h3>
-            <p>(추후 구현)</p>
+            <ShopPanel onPurchaseSuccess={onShopPurchaseSuccess} />
           </div>
         )}
       </div>
