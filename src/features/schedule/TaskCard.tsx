@@ -21,6 +21,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const [showResistancePicker, setShowResistancePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [showMemo, setShowMemo] = useState(false);
 
   // XP 계산
   const xp = calculateTaskXP(task);
@@ -81,7 +82,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
           {task.completed ? '✅' : '⬜'}
         </button>
 
-        <div className="task-details">
+        <div className="task-details" onClick={() => task.memo && setShowMemo(!showMemo)}>
           {/* 작업명과 아이콘을 같은 행에 배치 */}
           <div className="task-header-row">
             <div className="task-text">{task.text}</div>
@@ -126,16 +127,21 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
                   </div>
                 )}
               </div>
+
+              {/* XP 범위 */}
+              <span className="xp-badge">~{xp} XP</span>
+
+              {/* 메모 아이콘 */}
+              {task.memo && (
+                <span className="memo-indicator" title="메모 있음">📝</span>
+              )}
             </div>
           </div>
 
-          {/* XP 및 메모는 아래에 */}
-          <div className="task-footer">
-            <span className="xp-badge">~{xp} XP</span>
-            {task.memo && (
-              <div className="task-memo">📝 {task.memo}</div>
-            )}
-          </div>
+          {/* 메모는 아래에 (클릭 시 표시) */}
+          {task.memo && showMemo && (
+            <div className="task-memo" onClick={(e) => e.stopPropagation()}>📝 {task.memo}</div>
+          )}
         </div>
 
         <div className="task-actions">
