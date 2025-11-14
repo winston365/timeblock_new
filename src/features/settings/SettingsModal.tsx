@@ -22,7 +22,10 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'gemini' | 'firebase'>('gemini');
+  const [activeTab, setActiveTab] = useState<'gemini' | 'firebase' | 'appearance'>('gemini');
+  const [currentTheme, setCurrentTheme] = useState<string>(() => {
+    return localStorage.getItem('theme') || '';
+  });
 
   // 설정 로드
   useEffect(() => {
@@ -51,6 +54,18 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
       console.error('Failed to load settings:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 테마 변경
+  const handleThemeChange = (theme: string) => {
+    setCurrentTheme(theme);
+    if (theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.removeItem('theme');
     }
   };
 
@@ -98,6 +113,12 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
         {/* 탭 */}
         <div className="settings-tabs">
           <button
+            className={`settings-tab ${activeTab === 'appearance' ? 'active' : ''}`}
+            onClick={() => setActiveTab('appearance')}
+          >
+            🎨 테마
+          </button>
+          <button
             className={`settings-tab ${activeTab === 'gemini' ? 'active' : ''}`}
             onClick={() => setActiveTab('gemini')}
           >
@@ -117,6 +138,65 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
             <div className="settings-loading">로딩 중...</div>
           ) : (
             <>
+              {/* 테마 설정 */}
+              {activeTab === 'appearance' && (
+                <div className="settings-section">
+                  <h3>🎨 테마 설정</h3>
+                  <p className="section-description">
+                    다양한 색감 테마를 선택하여 나만의 작업 환경을 만들어보세요.
+                  </p>
+
+                  <div className="form-group">
+                    <label htmlFor="theme-select">테마 선택</label>
+                    <select
+                      id="theme-select"
+                      className="form-input"
+                      value={currentTheme}
+                      onChange={(e) => handleThemeChange(e.target.value)}
+                    >
+                      <option value="">Indigo (기본)</option>
+                      <option value="ocean">🌊 Ocean - 차분하고 집중력 향상</option>
+                      <option value="forest">🌲 Forest - 편안하고 자연스러운</option>
+                      <option value="sunset">🌅 Sunset - 따뜻하고 활력적인</option>
+                      <option value="purple">💜 Purple Dream - 창의적이고 우아한</option>
+                      <option value="rose">🌸 Rose Gold - 세련되고 모던한</option>
+                      <option value="midnight">🌃 Midnight - 깊고 프로페셔널한</option>
+                      <option value="cyberpunk">⚡ Cyberpunk - 네온과 미래적인</option>
+                      <option value="mocha">☕ Mocha - 부드럽고 눈에 편안한</option>
+                    </select>
+                  </div>
+
+                  <div className="theme-preview">
+                    <h4>미리보기</h4>
+                    <div className="preview-colors">
+                      <div className="preview-color-item">
+                        <div className="preview-color" style={{
+                          background: 'var(--color-primary)'
+                        }}></div>
+                        <span>Primary</span>
+                      </div>
+                      <div className="preview-color-item">
+                        <div className="preview-color" style={{
+                          background: 'var(--color-bg-surface)'
+                        }}></div>
+                        <span>Surface</span>
+                      </div>
+                      <div className="preview-color-item">
+                        <div className="preview-color" style={{
+                          background: 'var(--color-bg-elevated)'
+                        }}></div>
+                        <span>Elevated</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="info-box">
+                    <strong>💡 팁:</strong> 테마는 즉시 적용되며, 자동으로 저장됩니다.
+                    작업 환경에 맞는 테마를 선택하여 눈의 피로를 줄이고 집중력을 높여보세요!
+                  </div>
+                </div>
+              )}
+
               {/* Gemini 설정 */}
               {activeTab === 'gemini' && (
                 <div className="settings-section">

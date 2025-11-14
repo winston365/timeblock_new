@@ -5,6 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>타임블럭 플래너 - Daily Quest</title>
+
+    <!-- 테마 로드 (FOUC 방지) -->
+    <script>
+      (function() {
+        const theme = localStorage.getItem('theme');
+        if (theme) {
+          document.documentElement.setAttribute('data-theme', theme);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

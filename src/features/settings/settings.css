@@ -141,6 +141,51 @@
   color: var(--color-text);
 }
 
+/* 테마 미리보기 */
+.theme-preview {
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.theme-preview h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+.preview-colors {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+}
+
+.preview-color-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.preview-color {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  border: 2px solid var(--color-border);
+  transition: transform 0.2s;
+}
+
+.preview-color:hover {
+  transform: scale(1.1);
+}
+
+.preview-color-item span {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
 /* 설정 아이콘 버튼 (앱 전체에서 사용) */
 .settings-fab {
   position: fixed;
