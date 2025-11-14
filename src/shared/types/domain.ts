@@ -148,6 +148,21 @@ export interface GeminiChatMessage {
   tokenUsage?: TokenUsage;
 }
 
+export interface ChatHistory {
+  date: string; // YYYY-MM-DD
+  messages: GeminiChatMessage[];
+  updatedAt: number; // 타임스탬프 (밀리초)
+}
+
+export interface DailyTokenUsage {
+  date: string; // YYYY-MM-DD
+  promptTokens: number; // 입력 토큰 합계
+  candidatesTokens: number; // 출력 토큰 합계
+  totalTokens: number; // 전체 토큰 합계
+  messageCount: number; // 메시지 수
+  updatedAt: number; // 타임스탬프 (밀리초)
+}
+
 // ============================================================================
 // Settings 타입
 // ============================================================================

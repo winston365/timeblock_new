@@ -8,3 +8,4 @@ export * from './settingsRepository';
 export * from './waifuRepository';
 export * from './templateRepository';
 export * from './shopRepository';
+export * from './chatHistoryRepository';

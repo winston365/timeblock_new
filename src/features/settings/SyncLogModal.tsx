@@ -1,5 +1,5 @@
 /**
- * 동기화 로그 모달
+ * 전체 로그 모달 (동기화 로그 + Gemini 토큰 사용량)
  */
 
 import { useState, useEffect } from 'react';
@@ -11,7 +11,11 @@ import {
   type SyncType,
   type SyncAction,
 } from '@/shared/services/syncLogger';
+import { loadAllTokenUsage } from '@/data/repositories/chatHistoryRepository';
+import type { DailyTokenUsage } from '@/shared/types/domain';
 import './syncLog.css';
+
+type TabType = 'sync' | 'tokens';
 
 interface SyncLogModalProps {
   isOpen: boolean;
@@ -19,20 +23,34 @@ interface SyncLogModalProps {
 }
 
 export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
+  const [activeTab, setActiveTab] = useState<TabType>('sync');
   const [logs, setLogs] = useState<SyncLogEntry[]>([]);
+  const [tokenUsage, setTokenUsage] = useState<DailyTokenUsage[]>([]);
   const [filterType, setFilterType] = useState<SyncType | 'all'>('all');
   const [filterAction, setFilterAction] = useState<SyncAction | 'all'>('all');
 
-  // 로그 구독
+  // 로그 및 토큰 사용량 로드
   useEffect(() => {
     if (!isOpen) return;
 
-    // 초기 로그 로드
-    setLogs(getSyncLogs());
+    // 초기 로그 로드 (설정 관련 로그 제외)
+    const allLogs = getSyncLogs();
+    const filteredLogs = allLogs.filter(log =>
+      !log.message.toLowerCase().includes('settings') &&
+      !log.message.toLowerCase().includes('설정')
+    );
+    setLogs(filteredLogs);
+
+    // 토큰 사용량 로드
+    loadAllTokenUsage().then(setTokenUsage).catch(console.error);
 
     // 실시간 업데이트 구독
     const unsubscribe = subscribeSyncLogs((newLogs) => {
-      setLogs(newLogs);
+      const filtered = newLogs.filter(log =>
+        !log.message.toLowerCase().includes('settings') &&
+        !log.message.toLowerCase().includes('설정')
+      );
+      setLogs(filtered);
     });
 
     return unsubscribe;
@@ -91,16 +109,35 @@ export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
         {/* 헤더 */}
         <div className="modal-header">
           <div>
-            <h2>📊 동기화 로그</h2>
-            <p className="modal-subtitle">Dexie 및 Firebase 동기화 기록</p>
+            <h2>📊 전체 로그</h2>
+            <p className="modal-subtitle">동기화 로그 및 Gemini 토큰 사용량</p>
           </div>
           <button className="btn-close" onClick={onClose} aria-label="닫기">
             ✕
           </button>
         </div>
 
-        {/* 필터 */}
-        <div className="sync-log-filters">
+        {/* 탭 */}
+        <div className="log-tabs">
+          <button
+            className={`tab-btn ${activeTab === 'sync' ? 'active' : ''}`}
+            onClick={() => setActiveTab('sync')}
+          >
+            🔄 동기화 로그
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'tokens' ? 'active' : ''}`}
+            onClick={() => setActiveTab('tokens')}
+          >
+            🪙 Gemini 토큰
+          </button>
+        </div>
+
+        {/* 동기화 로그 탭 */}
+        {activeTab === 'sync' && (
+          <>
+            {/* 필터 */}
+            <div className="sync-log-filters">
           <div className="filter-group">
             <label>타입:</label>
             <select
@@ -185,6 +222,77 @@ export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
             </div>
           )}
         </div>
+          </>
+        )}
+
+        {/* Gemini 토큰 탭 */}
+        {activeTab === 'tokens' && (
+          <div className="token-usage-content">
+            {tokenUsage.length === 0 ? (
+              <div className="sync-log-empty">
+                토큰 사용 기록이 없습니다.
+              </div>
+            ) : (
+              <div className="token-usage-list">
+                {/* 통계 요약 */}
+                <div className="token-stats-summary">
+                  <div className="stat-card">
+                    <div className="stat-label">총 메시지</div>
+                    <div className="stat-value">
+                      {tokenUsage.reduce((sum, t) => sum + t.messageCount, 0)}개
+                    </div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">총 입력 토큰</div>
+                    <div className="stat-value">
+                      {tokenUsage.reduce((sum, t) => sum + t.promptTokens, 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">총 출력 토큰</div>
+                    <div className="stat-value">
+                      {tokenUsage.reduce((sum, t) => sum + t.candidatesTokens, 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">총합</div>
+                    <div className="stat-value primary">
+                      {tokenUsage.reduce((sum, t) => sum + t.totalTokens, 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 일별 목록 */}
+                <div className="token-usage-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>날짜</th>
+                        <th>메시지</th>
+                        <th>입력 토큰</th>
+                        <th>출력 토큰</th>
+                        <th>총 토큰</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tokenUsage
+                        .sort((a, b) => b.date.localeCompare(a.date))
+                        .map((usage) => (
+                          <tr key={usage.date}>
+                            <td className="date-cell">{usage.date}</td>
+                            <td>{usage.messageCount}개</td>
+                            <td>{usage.promptTokens.toLocaleString()}</td>
+                            <td>{usage.candidatesTokens.toLocaleString()}</td>
+                            <td className="total-cell">{usage.totalTokens.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 푸터 */}
         <div className="modal-actions">

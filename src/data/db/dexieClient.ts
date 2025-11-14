@@ -3,7 +3,17 @@
  */
 
 import Dexie, { type Table } from 'dexie';
-import type { DailyData, GameState, Template, ShopItem, WaifuState, EnergyLevel, Settings } from '@/shared/types/domain';
+import type {
+  DailyData,
+  GameState,
+  Template,
+  ShopItem,
+  WaifuState,
+  EnergyLevel,
+  Settings,
+  ChatHistory,
+  DailyTokenUsage
+} from '@/shared/types/domain';
 
 // ============================================================================
 // Database Schema
@@ -18,6 +28,8 @@ export class TimeBlockDB extends Dexie {
   waifuState!: Table<WaifuState & { key: string }, string>;
   energyLevels!: Table<EnergyLevel & { id: string; date: string }, string>;
   settings!: Table<Settings & { key: string }, string>;
+  chatHistory!: Table<ChatHistory, string>;
+  dailyTokenUsage!: Table<DailyTokenUsage, string>;
 
   constructor() {
     super('timeblock_db');
@@ -44,6 +56,21 @@ export class TimeBlockDB extends Dexie {
 
       // settings: 'current' 키 하나만 사용
       settings: 'key',
+    });
+
+    // 스키마 버전 2 - 채팅 히스토리 및 토큰 사용량 추가
+    this.version(2).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      energyLevels: 'id, date, timestamp, hour',
+      settings: 'key',
+      // chatHistory: date를 primary key로
+      chatHistory: 'date, updatedAt',
+      // dailyTokenUsage: date를 primary key로
+      dailyTokenUsage: 'date, updatedAt',
     });
   }
 }
