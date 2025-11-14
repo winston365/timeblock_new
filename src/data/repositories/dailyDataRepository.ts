@@ -8,6 +8,7 @@ import type { DailyData, Task, TimeBlockStates, TimeBlockState } from '@/shared/
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import { getLocalDate, saveToStorage, getFromStorage } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
+import { addSyncLog } from '@/shared/services/syncLogger';
 
 // ============================================================================
 // DailyData CRUD
@@ -22,6 +23,7 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
     const data = await db.dailyData.get(date);
 
     if (data) {
+      addSyncLog('dexie', 'load', `DailyData loaded for ${date}`, { taskCount: data.tasks.length });
       // IndexedDB에 데이터가 있으면 반환
       return {
         tasks: data.tasks,
@@ -40,9 +42,11 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
     }
 
     // 3. 데이터가 없으면 초기 상태 반환
+    addSyncLog('dexie', 'load', `No data found for ${date}, creating empty data`);
     return createEmptyDailyData();
   } catch (error) {
     console.error(`Failed to load daily data for ${date}:`, error);
+    addSyncLog('dexie', 'error', `Failed to load daily data for ${date}`, undefined, error as Error);
     return createEmptyDailyData();
   }
 }
@@ -73,9 +77,11 @@ export async function saveDailyData(
     // 2. localStorage에도 저장 (빠른 접근용)
     saveToStorage(`${STORAGE_KEYS.DAILY_PLANS}${date}`, data);
 
+    addSyncLog('dexie', 'save', `DailyData saved for ${date}`, { taskCount: tasks.length });
     console.log(`✅ Daily data saved for ${date}`);
   } catch (error) {
     console.error(`Failed to save daily data for ${date}:`, error);
+    addSyncLog('dexie', 'error', `Failed to save daily data for ${date}`, undefined, error as Error);
     throw error;
   }
 }

@@ -8,9 +8,10 @@ import { useEnergyState } from '@/shared/hooks';
 interface TopToolbarProps {
   gameState: GameState | null;
   onOpenGeminiChat?: () => void;
+  onOpenSyncLog?: () => void;
 }
 
-export default function TopToolbar({ gameState, onOpenGeminiChat }: TopToolbarProps) {
+export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSyncLog }: TopToolbarProps) {
   const { currentEnergy } = useEnergyState();
 
   return (
@@ -42,6 +43,9 @@ export default function TopToolbar({ gameState, onOpenGeminiChat }: TopToolbarPr
         </button>
         <button className="toolbar-btn" onClick={onOpenGeminiChat}>
           💬 AI 대화
+        </button>
+        <button className="toolbar-btn" onClick={onOpenSyncLog} title="동기화 로그">
+          📊 동기화 로그
         </button>
       </div>
     </header>

@@ -17,6 +17,7 @@ import {
 } from 'firebase/database';
 import type { DailyData, GameState, Settings } from '../types/domain';
 import { getLocalDate } from '../lib/utils';
+import { addSyncLog } from './syncLogger';
 
 let firebaseApp: FirebaseApp | null = null;
 let firebaseDatabase: Database | null = null;
@@ -55,10 +56,12 @@ export function initializeFirebase(config: Settings['firebaseConfig']): boolean 
     firebaseDatabase = getDatabase(firebaseApp);
     isInitialized = true;
 
+    addSyncLog('firebase', 'sync', 'Firebase initialized successfully');
     console.log('✅ Firebase initialized successfully');
     return true;
   } catch (error) {
     console.error('Failed to initialize Firebase:', error);
+    addSyncLog('firebase', 'error', 'Failed to initialize Firebase', undefined, error as Error);
     isInitialized = false;
     return false;
   }
@@ -174,9 +177,11 @@ export async function syncDailyDataToFirebase(
 
     // Firebase에 업로드
     await set(dataRef, localSyncData);
+    addSyncLog('firebase', 'sync', `DailyData synced to Firebase: ${date}`, { taskCount: dailyData.tasks.length });
     console.log(`✅ DailyData synced to Firebase: ${date}`);
   } catch (error) {
     console.error('Failed to sync DailyData to Firebase:', error);
+    addSyncLog('firebase', 'error', `Failed to sync DailyData for ${date}`, undefined, error as Error);
     throw error;
   }
 }
@@ -205,6 +210,7 @@ export function listenToDailyDataFromFirebase(
         return;
       }
 
+      addSyncLog('firebase', 'sync', `Received DailyData update from Firebase for ${date}`);
       console.log('📥 Received DailyData update from Firebase');
       onUpdate(syncData.data);
     }
@@ -248,9 +254,11 @@ export async function syncGameStateToFirebase(gameState: GameState): Promise<voi
 
     // Firebase에 업로드
     await set(dataRef, localSyncData);
+    addSyncLog('firebase', 'sync', 'GameState synced to Firebase', { level: gameState.level });
     console.log('✅ GameState synced to Firebase');
   } catch (error) {
     console.error('Failed to sync GameState to Firebase:', error);
+    addSyncLog('firebase', 'error', 'Failed to sync GameState', undefined, error as Error);
     throw error;
   }
 }
