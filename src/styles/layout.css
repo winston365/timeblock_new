@@ -38,6 +38,19 @@
   gap: var(--spacing-sm);
 }
 
+.toolbar-btn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-primary);
+  color: white;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.toolbar-btn:hover {
+  background: var(--color-primary-dark);
+}
+
 /* Main Layout */
 .main-layout {
   display: flex;
