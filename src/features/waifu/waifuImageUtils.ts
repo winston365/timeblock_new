@@ -38,14 +38,68 @@ export const AFFECTION_TIERS = {
  *   ...
  */
 
-// 각 호감도 구간별로 사용 가능한 이미지 개수 (확장 가능)
+// 각 호감도 구간별로 사용 가능한 이미지 파일 목록
+const IMAGE_FILES: Record<string, string[]> = {
+  hostile: [
+    'hyeeun_angry.png',
+    'hyeeun_annoyed.png',
+    'hyeeun_disgusted.png',
+    'hyeeun_serious.png',
+  ],
+  wary: [
+    'hyeeun_bored.png',
+    'hyeeun_depressed.png',
+    'hyeeun_disappointed.png',
+    'hyeeun_sad.png',
+    'hyeeun_sleepy.png',
+    'hyeeun_thinking.png',
+    'hyeeun_tired.png',
+  ],
+  indifferent: [
+    'hyeeun_confused.png',
+    'hyeeun_curious.png',
+    'hyeeun_nervous.png',
+    'hyeeun_neutral.png',
+    'hyeeun_reading.png',
+    'hyeeun_relieved.png',
+    'hyeeun_smiling.png',
+    'hyeeun_smirking.png',
+    'hyeeun_smoking.png',
+  ],
+  interested: [
+    // interested 폴더가 없으므로 indifferent의 긍정적인 이미지들 사용
+    'hyeeun_curious.png',
+    'hyeeun_smiling.png',
+    'hyeeun_smirking.png',
+    'hyeeun_relieved.png',
+  ],
+  affectionate: [
+    'hyeeun_admiring.png',
+    'hyeeun_blushing shyly.png',
+    'hyeeun_embarrassed.png',
+    'hyeeun_giggling.png',
+    'hyeeun_laughing.png',
+  ],
+  loving: [
+    'hyeeun_excited.png',
+    'hyeeun_happy tears.png',
+    'hyeeun_happy.png',
+    'hyeeun_hugging.png',
+    'hyeeun_joyful.png',
+    'hyeeun_kiss.png',
+    'hyeeun_princess carry.png',
+    'hyeeun_winking.png',
+  ],
+};
+
+// 각 호감도 구간별로 사용 가능한 이미지 개수
 const IMAGE_COUNTS: Record<string, number> = {
-  hostile: 3,      // hostile 폴더에 1.png, 2.png, 3.png
-  wary: 3,
-  indifferent: 3,
-  interested: 3,
-  affectionate: 3,
-  loving: 3,
+  hostile: IMAGE_FILES.hostile.length,
+  wary: IMAGE_FILES.wary.length,
+  indifferent: IMAGE_FILES.indifferent.length,
+  interested: IMAGE_FILES.interested.length,
+  affectionate: IMAGE_FILES.affectionate.length,
+  loving: IMAGE_FILES.loving.length,
 };
 
 /**
@@ -69,14 +123,29 @@ export function getAffectionTier(affection: number) {
 }
 
 /**
- * 호감도 구간 내에서 랜덤 이미지 번호를 생성합니다.
+ * 호감도 구간 내에서 랜덤 이미지 인덱스를 생성합니다.
  *
  * @param tierName - 호감도 구간 이름
- * @returns 랜덤 이미지 번호 (1부터 시작)
+ * @returns 랜덤 이미지 인덱스 (0부터 시작)
  */
 export function getRandomImageNumber(tierName: string): number {
   const count = IMAGE_COUNTS[tierName] || 1;
-  return Math.floor(Math.random() * count) + 1;
+  return Math.floor(Math.random() * count);
+}
+
+/**
+ * 호감도 구간과 인덱스로 이미지 파일명을 반환합니다.
+ *
+ * @param tierName - 호감도 구간 이름
+ * @param imageIndex - 이미지 인덱스 (0부터 시작)
+ * @returns 이미지 파일명
+ */
+export function getImageFileName(tierName: string, imageIndex: number): string {
+  const files = IMAGE_FILES[tierName];
+  if (!files || files.length === 0) {
+    return '1.png'; // fallback
+  }
+  return files[imageIndex % files.length];
 }
 
 /**
@@ -84,15 +153,19 @@ export function getRandomImageNumber(tierName: string): number {
  * 폴더 구조를 우선 확인하고, 없으면 단일 파일 확인
  *
  * @param affection - 호감도 (0-100)
- * @param imageNumber - 이미지 번호 (선택적, 기본값은 랜덤)
+ * @param imageIndex - 이미지 인덱스 (선택적, 기본값은 랜덤)
  * @returns 이미지 경로
  */
-export function getWaifuImagePath(affection: number, imageNumber?: number): string {
+export function getWaifuImagePath(affection: number, imageIndex?: number): string {
   const tier = getAffectionTier(affection);
-  const imgNum = imageNumber ?? getRandomImageNumber(tier.name);
+  const imgIndex = imageIndex ?? getRandomImageNumber(tier.name);
+  const fileName = getImageFileName(tier.name, imgIndex);
 
-  // 폴더 구조: /assets/waifu/poses/hostile/1.png
-  return `/assets/waifu/poses/${tier.name}/${imgNum}.png`;
+  // interested 폴더가 없으므로 indifferent 폴더의 이미지 사용
+  const folderName = tier.name === 'interested' ? 'indifferent' : tier.name;
+
+  // 폴더 구조: /assets/waifu/poses/hostile/hyeeun_angry.png
+  return `/assets/waifu/poses/${folderName}/${fileName}`;
 }
 
 /**

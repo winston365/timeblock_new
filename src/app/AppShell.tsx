@@ -15,11 +15,13 @@ import LeftSidebar from './components/LeftSidebar';
 import CenterContent from './components/CenterContent';
 import RightPanel from './components/RightPanel';
 import WaifuPanel from '@/features/waifu/WaifuPanel';
+import GeminiChatModal from '@/features/gemini/GeminiChatModal';
 
 export default function AppShell() {
   const [dbInitialized, setDbInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<'today' | 'stats' | 'energy' | 'completed' | 'inbox'>('today');
   const [rightPanelTab, setRightPanelTab] = useState<'template' | 'shop'>('template');
+  const [showGeminiChat, setShowGeminiChat] = useState(false);
 
   const { gameState } = useGameState();
   const { dailyData } = useDailyData();
@@ -81,7 +83,10 @@ export default function AppShell() {
       </a>
 
       {/* 상단 툴바 */}
-      <TopToolbar gameState={gameState} />
+      <TopToolbar
+        gameState={gameState}
+        onOpenGeminiChat={() => setShowGeminiChat(true)}
+      />
 
       {/* 메인 레이아웃 */}
       <main className="main-layout">
@@ -114,6 +119,12 @@ export default function AppShell() {
           onShopPurchaseSuccess={handleShopPurchaseSuccess}
         />
       </main>
+
+      {/* Gemini 챗봇 모달 */}
+      <GeminiChatModal
+        isOpen={showGeminiChat}
+        onClose={() => setShowGeminiChat(false)}
+      />
     </div>
   );
 }
