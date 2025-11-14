@@ -64,16 +64,16 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.time-block.current-block {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+/* 제안 1: 컴팩트한 접힌 상태 */
+.time-block.collapsed {
+  min-height: 60px;
 }
 
-.time-block:hover {
-  box-shadow: var(--shadow-md);
+.time-block.collapsed .block-header {
+  padding: var(--spacing-sm) var(--spacing-md);
 }
 
 .time-block.collapsed .block-content {
@@ -82,6 +82,17 @@
 
 .time-block.expanded .block-content {
   display: flex;
+  animation: expandContent 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 제안 2: 현재 블록 맥동 효과 */
+.time-block.current-block {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+.time-block:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .block-header {
@@ -100,35 +111,20 @@
   background: var(--color-bg);
 }
 
-.block-title {
+/* 제안 3: 정보 아키텍처 개선 */
+.block-primary-info {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
+  flex: 1;
+  min-width: 0;
 }
 
-/* 원형 시간표 */
-.time-circle {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
-}
-
-.time-remaining {
-  color: white;
-  font-weight: 700;
-  font-size: 0.875rem;
-}
-
-.block-time-info {
+.block-time-group {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .block-time-range {
@@ -137,38 +133,49 @@
   color: var(--color-text);
 }
 
-.block-duration-info {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
+.block-stats-inline {
+  display: flex;
+  gap: var(--spacing-xs);
+  font-size: 0.7rem;
+  color: var(--color-text-tertiary);
 }
 
-.block-meta {
+.stat-compact {
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+/* 제안 1: 원형 시간표 크기 조정 (48px → 36px) */
+.time-circle-compact {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-primary);
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+  /* 제안 2: 맥동 애니메이션 */
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.time-remaining {
+  color: white;
+  font-weight: 700;
   font-size: 0.75rem;
 }
 
-.block-xp {
-  color: var(--color-primary);
-  font-weight: 600;
+.block-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
 
-.block-count-badge {
-  background: var(--color-bg);
-  color: var(--color-text);
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 0.75rem;
-  border: 1px solid var(--color-border);
-}
-
-.lock-btn,
-.add-task-icon-btn {
+.action-btn-sm {
   background: transparent;
   border: none;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -176,14 +183,34 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
 }
 
-.lock-btn:hover,
-.add-task-icon-btn:hover {
+.action-btn-sm:hover {
   background: var(--color-bg);
   transform: scale(1.1);
+}
+
+/* 제안 2: 애니메이션 */
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 16px rgba(79, 70, 229, 0.6);
+  }
+}
+
+@keyframes expandContent {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 2000px;
+    opacity: 1;
+  }
 }
 
 .block-badge {
@@ -263,7 +290,8 @@
    ============================================================================ */
 
 .task-card {
-  background: #1a1a1a;
+  /* 제안 1: 배경 밝기 조정 (#1a1a1a → #242424) */
+  background: #242424;
   border: 1px solid #333;
   border-radius: 6px;
   padding: var(--spacing-md);
@@ -395,6 +423,20 @@
   flex-direction: column;
   min-width: 120px;
   overflow: hidden;
+  /* 제안 2: 부드러운 드롭다운 애니메이션 */
+  animation: slideDown 0.2s ease-out;
+  transform-origin: top;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .picker-dropdown button {
@@ -611,7 +653,7 @@
 }
 
 /* ============================================================================
-   Responsive
+   Responsive (제안 3: 모바일 최적화)
    ============================================================================ */
 
 @media (max-width: 768px) {
@@ -629,5 +671,57 @@
 
   .modal-content {
     max-width: 100%;
+  }
+
+  /* 모바일에서 원형 시간표 크기 조정 */
+  .time-circle-compact {
+    width: 32px;
+    height: 32px;
+    font-size: 0.7rem;
+  }
+
+  /* 모바일에서 통계 정보 래핑 */
+  .block-stats-inline {
+    flex-wrap: wrap;
+  }
+}
+
+/* ============================================================================
+   접근성 강화
+   ============================================================================ */
+
+/* 고대비 모드 지원 */
+@media (prefers-contrast: high) {
+  .task-card {
+    background: #000;
+    border: 2px solid #fff;
+  }
+
+  .time-circle-compact {
+    border: 2px solid currentColor;
+  }
+
+  .resistance-badge,
+  .duration-badge,
+  .xp-badge {
+    border: 1px solid currentColor;
+  }
+}
+
+/* 움직임 감소 모드 */
+@media (prefers-reduced-motion: reduce) {
+  .time-circle-compact {
+    animation: none;
+  }
+
+  .picker-dropdown,
+  .block-content {
+    animation: none;
+    transition: none;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }

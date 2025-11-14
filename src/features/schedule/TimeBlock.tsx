@@ -54,13 +54,37 @@ export default function TimeBlock({
     .filter(t => t.completed)
     .reduce((sum, task) => sum + task.adjustedDuration, 0);
 
-  // 현재 시간대의 남은 시간 계산 (시간 단위)
+  // 현재 시간대의 남은 시간 계산 (시간 + 분 단위)
   const getTimeRemaining = () => {
     if (!isCurrentBlock) return null;
+
     const now = new Date();
     const currentHour = now.getHours();
-    const remaining = block.end - currentHour;
-    return remaining > 0 ? remaining : 0;
+    const currentMinute = now.getMinutes();
+
+    // 블록 종료 시간을 분 단위로 계산
+    const blockEndMinutes = block.end * 60;
+    const currentMinutes = currentHour * 60 + currentMinute;
+
+    // 남은 시간 (분)
+    const remainingMinutes = blockEndMinutes - currentMinutes;
+
+    if (remainingMinutes <= 0) return { hours: 0, minutes: 0, text: '0m' };
+
+    const hours = Math.floor(remainingMinutes / 60);
+    const minutes = remainingMinutes % 60;
+
+    // 표시 텍스트 생성
+    let text = '';
+    if (hours > 0 && minutes > 0) {
+      text = `${hours}h${minutes}m`;
+    } else if (hours > 0) {
+      text = `${hours}h`;
+    } else {
+      text = `${minutes}m`;
+    }
+
+    return { hours, minutes, text };
   };
 
   const timeRemaining = getTimeRemaining();
@@ -76,27 +100,28 @@ export default function TimeBlock({
   return (
     <div className={`time-block ${isCurrentBlock ? 'current-block' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>
       <div className="block-header" onClick={() => setIsExpanded(!isExpanded)}>
-        <div className="block-title">
+        <div className="block-primary-info">
           {/* 원형 시간표 (현재 시간대 블록만) */}
-          {isCurrentBlock && timeRemaining !== null && (
-            <div className="time-circle">
-              <span className="time-remaining">{timeRemaining}h</span>
+          {isCurrentBlock && timeRemaining && (
+            <div className="time-circle-compact">
+              <span className="time-remaining">{timeRemaining.text}</span>
             </div>
           )}
 
-          <div className="block-time-info">
+          <div className="block-time-group">
             <span className="block-time-range">{block.start.toString().padStart(2, '0')}-{block.end.toString().padStart(2, '0')}</span>
-            <span className="block-duration-info">{completedDuration}/{totalDuration}분</span>
+            <div className="block-stats-inline">
+              <span className="stat-compact">📋 {tasks.length}</span>
+              <span className="stat-compact">⏱️ {completedDuration}/{totalDuration}m</span>
+              {maxXP > 0 && <span className="stat-compact">✨ ~{maxXP}XP</span>}
+            </div>
           </div>
         </div>
 
-        <div className="block-meta">
-          {/* Task 개수 배지 */}
-          <span className="block-count-badge">{tasks.length}개</span>
-
+        <div className="block-actions">
           {/* 잠금 아이콘 */}
           <button
-            className="lock-btn"
+            className="action-btn-sm"
             onClick={(e) => {
               e.stopPropagation();
               onToggleLock?.();
@@ -108,7 +133,7 @@ export default function TimeBlock({
 
           {/* 할일 추가 버튼 */}
           <button
-            className="add-task-icon-btn"
+            className="action-btn-sm"
             onClick={(e) => {
               e.stopPropagation();
               onAddTask();
