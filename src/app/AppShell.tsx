@@ -17,6 +17,8 @@ import RightPanel from './components/RightPanel';
 import WaifuPanel from '@/features/waifu/WaifuPanel';
 import GeminiChatModal from '@/features/gemini/GeminiChatModal';
 import BulkAddModal from '@/features/tasks/BulkAddModal';
+import SettingsModal from '@/features/settings/SettingsModal';
+import SyncLogModal from '@/features/settings/SyncLogModal';
 
 export default function AppShell() {
   const [dbInitialized, setDbInitialized] = useState(false);
@@ -24,6 +26,8 @@ export default function AppShell() {
   const [rightPanelTab, setRightPanelTab] = useState<'template' | 'shop'>('template');
   const [showGeminiChat, setShowGeminiChat] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showSyncLog, setShowSyncLog] = useState(false);
 
   const { gameState } = useGameState();
   const { dailyData } = useDailyData();
@@ -114,6 +118,7 @@ export default function AppShell() {
       <TopToolbar
         gameState={gameState}
         onOpenGeminiChat={() => setShowGeminiChat(true)}
+        onOpenSyncLog={() => setShowSyncLog(true)}
       />
 
       {/* 메인 레이아웃 */}
@@ -160,6 +165,28 @@ export default function AppShell() {
         onClose={() => setShowBulkAdd(false)}
         onAddTasks={handleBulkAddTasks}
       />
+
+      {/* 설정 모달 */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
+
+      {/* 동기화 로그 모달 */}
+      <SyncLogModal
+        isOpen={showSyncLog}
+        onClose={() => setShowSyncLog(false)}
+      />
+
+      {/* 설정 아이콘 (오른쪽 아래) */}
+      <button
+        className="settings-fab"
+        onClick={() => setShowSettings(true)}
+        title="설정"
+        aria-label="설정 열기"
+      >
+        ⚙️
+      </button>
     </div>
   );
 }
