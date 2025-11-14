@@ -725,3 +725,25 @@
     animation-duration: 0.01ms !important;
   }
 }
+
+/* ============================================================================
+   Drag and Drop Styles
+   ============================================================================ */
+
+/* 드래그 중인 작업 카드 */
+.task-card.dragging {
+  opacity: 0.5;
+  cursor: move;
+}
+
+/* 드롭 가능한 영역 (블록) */
+.time-block.drag-over {
+  border-color: var(--color-primary);
+  background: rgba(79, 70, 229, 0.05);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3);
+}
+
+/* 드래그 가능한 작업 카드 커서 */
+.task-card[draggable="true"] {
+  cursor: move;
+}

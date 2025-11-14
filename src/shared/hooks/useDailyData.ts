@@ -15,10 +15,13 @@ import {
   updateBlockState as updateBlockStateInRepo,
   toggleBlockLock as toggleBlockLockInRepo,
   addXP,
+  spendXP,
   updateQuestProgress,
   increaseAffectionFromTask,
+  loadGameState,
 } from '@/data/repositories';
 import { getLocalDate, calculateTaskXP } from '../lib/utils';
+import { isBlockPerfect, isBlockFailed, BLOCK_LOCK_COST, PERFECT_BLOCK_REWARD } from '../utils/gamification';
 
 export function useDailyData(date: string = getLocalDate()) {
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
@@ -157,11 +160,60 @@ export function useDailyData(date: string = getLocalDate()) {
     [date, loadData]
   );
 
-  // 블록 잠금 토글
+  // 블록 잠금 토글 (XP 관리 포함)
   const toggleBlockLock = useCallback(
     async (blockId: string) => {
       try {
-        await toggleBlockLockInRepo(blockId, date);
+        const currentData = await loadDailyData(date);
+        const blockState = currentData.timeBlockStates[blockId];
+        const blockTasks = currentData.tasks.filter((t) => t.timeBlock === blockId);
+
+        if (!blockState) {
+          throw new Error(`Block state not found: ${blockId}`);
+        }
+
+        // 잠금 -> 해제
+        if (blockState.isLocked) {
+          // 완벽 완료 체크
+          const isPerfect = isBlockPerfect(currentData.tasks, blockId);
+          const isFailed = isBlockFailed(currentData.tasks, blockId, true);
+
+          // 완벽 완료 시 보상
+          if (isPerfect) {
+            await addXP(PERFECT_BLOCK_REWARD, blockId);
+            await updateQuestProgress('perfect_blocks', 1);
+          }
+
+          // 블록 상태 업데이트
+          await updateBlockStateInRepo(
+            blockId,
+            { isLocked: false, isPerfect, isFailed },
+            date
+          );
+        }
+        // 해제 -> 잠금
+        else {
+          // XP 소비 가능 여부 확인
+          const gameState = await loadGameState();
+          if (gameState.availableXP < BLOCK_LOCK_COST) {
+            throw new Error(`블록 잠금에 필요한 XP가 부족합니다. (필요: ${BLOCK_LOCK_COST} XP)`);
+          }
+
+          // 블록에 작업이 없으면 잠금 불가
+          if (blockTasks.length === 0) {
+            throw new Error('작업이 없는 블록은 잠금할 수 없습니다.');
+          }
+
+          // XP 소비
+          await spendXP(BLOCK_LOCK_COST);
+
+          // 블록 잠금
+          await updateBlockStateInRepo(blockId, { isLocked: true }, date);
+
+          // 퀘스트 업데이트
+          await updateQuestProgress('lock_blocks', 1);
+        }
+
         await loadData();
       } catch (err) {
         setError(err as Error);

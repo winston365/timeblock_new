@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import type { Task, TimeBlockState } from '@/shared/types/domain';
+import type { Task, TimeBlockState, TimeBlockId } from '@/shared/types/domain';
 import { calculateTaskXP } from '@/shared/lib/utils';
 import TaskCard from './TaskCard';
 
@@ -23,6 +23,7 @@ interface TimeBlockProps {
   onDeleteTask: (taskId: string) => void;
   onToggleTask: (taskId: string) => void;
   onToggleLock?: () => void;
+  onDropTask?: (taskId: string, targetBlockId: TimeBlockId) => void;
 }
 
 export default function TimeBlock({
@@ -35,8 +36,10 @@ export default function TimeBlock({
   onDeleteTask,
   onToggleTask,
   onToggleLock,
+  onDropTask,
 }: TimeBlockProps) {
   const [isExpanded, setIsExpanded] = useState(isCurrentBlock);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // 블록 총 XP 계산 (현재 미사용)
   // const totalXP = tasks
@@ -97,8 +100,34 @@ export default function TimeBlock({
     }
   };
 
+  // 드래그 앤 드롭 핸들러
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const taskId = e.dataTransfer.getData('text/plain');
+    if (taskId && onDropTask) {
+      onDropTask(taskId, block.id as TimeBlockId);
+    }
+  };
+
   return (
-    <div className={`time-block ${isCurrentBlock ? 'current-block' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>
+    <div
+      className={`time-block ${isCurrentBlock ? 'current-block' : ''} ${isExpanded ? 'expanded' : 'collapsed'} ${isDragOver ? 'drag-over' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <div className="block-header" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="block-primary-info">
           {/* 원형 시간표 (현재 시간대 블록만) */}
