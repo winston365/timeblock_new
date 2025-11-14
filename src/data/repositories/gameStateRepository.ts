@@ -8,6 +8,8 @@ import type { GameState, Quest, Task } from '@/shared/types/domain';
 import { getLocalDate, saveToStorage, getFromStorage, getLevelFromXP } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
 import { generateQuestTarget, calculateQuestReward } from '@/shared/utils/gamification';
+import { syncGameStateToFirebase, isFirebaseInitialized } from '@/shared/services/firebaseService';
+import { addSyncLog } from '@/shared/services/syncLogger';
 
 // ============================================================================
 // GameState CRUD
@@ -78,9 +80,22 @@ export async function saveGameState(gameState: GameState): Promise<void> {
     // 2. localStorage에도 저장
     saveToStorage(STORAGE_KEYS.GAME_STATE, gameState);
 
-    console.log('✅ Game state saved');
+    addSyncLog('dexie', 'save', 'GameState saved', {
+      level: gameState.level,
+      xp: gameState.totalXP,
+      dailyXP: gameState.dailyXP
+    });
+    console.log(`✅ Game state saved (Level ${gameState.level}, XP ${gameState.totalXP})`);
+
+    // 3. Firebase에 동기화 (비동기, 실패해도 로컬은 성공)
+    if (isFirebaseInitialized()) {
+      syncGameStateToFirebase(gameState).catch(err => {
+        console.error('Firebase sync failed, but local save succeeded:', err);
+      });
+    }
   } catch (error) {
     console.error('Failed to save game state:', error);
+    addSyncLog('dexie', 'error', 'Failed to save game state', undefined, error as Error);
     throw error;
   }
 }

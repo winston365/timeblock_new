@@ -9,6 +9,7 @@ import { TIME_BLOCKS } from '@/shared/types/domain';
 import { getLocalDate, saveToStorage, getFromStorage } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
 import { addSyncLog } from '@/shared/services/syncLogger';
+import { syncDailyDataToFirebase, isFirebaseInitialized } from '@/shared/services/firebaseService';
 
 // ============================================================================
 // DailyData CRUD
@@ -77,8 +78,18 @@ export async function saveDailyData(
     // 2. localStorage에도 저장 (빠른 접근용)
     saveToStorage(`${STORAGE_KEYS.DAILY_PLANS}${date}`, data);
 
-    addSyncLog('dexie', 'save', `DailyData saved for ${date}`, { taskCount: tasks.length });
+    addSyncLog('dexie', 'save', `DailyData saved for ${date}`, {
+      taskCount: tasks.length,
+      completedTasks: tasks.filter(t => t.completed).length
+    });
     console.log(`✅ Daily data saved for ${date}`);
+
+    // 3. Firebase에 동기화 (비동기, 실패해도 로컬은 성공)
+    if (isFirebaseInitialized()) {
+      syncDailyDataToFirebase(date, data).catch(err => {
+        console.error('Firebase sync failed, but local save succeeded:', err);
+      });
+    }
   } catch (error) {
     console.error(`Failed to save daily data for ${date}:`, error);
     addSyncLog('dexie', 'error', `Failed to save daily data for ${date}`, undefined, error as Error);
