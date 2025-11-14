@@ -33,8 +33,8 @@ export async function callGeminiAPI(
   history: Array<{ role: 'user' | 'model'; text: string }> = [],
   apiKey?: string
 ): Promise<{ text: string; tokenUsage?: { promptTokens: number; candidatesTokens: number; totalTokens: number } }> {
-  // API 키 확인 (.env 파일 또는 설정에서 가져옴)
-  const key = apiKey || import.meta.env.VITE_GEMINI_API_KEY;
+  // API 키 확인 (설정에서 가져옴)
+  const key = apiKey;
   if (!key) {
     throw new Error('Gemini API 키가 설정되지 않았습니다. 우측 하단 ⚙️ 설정에서 Gemini API 키를 추가해주세요.');
   }

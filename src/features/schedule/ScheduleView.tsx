@@ -90,8 +90,6 @@ export default function ScheduleView() {
 
   // 작업 삭제
   const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('이 작업을 삭제하시겠습니까?')) return;
-
     try {
       await deleteTask(taskId);
     } catch (error) {

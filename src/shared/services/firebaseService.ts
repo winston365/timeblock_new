@@ -10,9 +10,7 @@ import {
   set,
   onValue,
   off,
-  serverTimestamp,
   Database,
-  update,
   get,
 } from 'firebase/database';
 import type { DailyData, GameState, Settings } from '../types/domain';
@@ -201,7 +199,7 @@ export function listenToDailyDataFromFirebase(
   const dataRef = ref(firebaseDatabase, `users/${userId}/dailyData/${date}`);
   const deviceId = getDeviceId();
 
-  const unsubscribe = onValue(dataRef, (snapshot) => {
+  onValue(dataRef, (snapshot) => {
     if (snapshot.exists()) {
       const syncData = snapshot.val() as SyncData<DailyData>;
 
@@ -277,7 +275,7 @@ export function listenToGameStateFromFirebase(
   const dataRef = ref(firebaseDatabase, `users/${userId}/gameState`);
   const deviceId = getDeviceId();
 
-  const unsubscribe = onValue(dataRef, (snapshot) => {
+  onValue(dataRef, (snapshot) => {
     if (snapshot.exists()) {
       const syncData = snapshot.val() as SyncData<GameState>;
 

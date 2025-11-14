@@ -336,26 +336,53 @@
 .task-details {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* 작업명과 아이콘을 같은 행에 배치 */
+.task-header-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
 }
 
 .task-text {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--color-text);
-  margin-bottom: var(--spacing-xs);
   word-break: break-word;
+  flex: 1;
+  min-width: 0;
 }
 
-.task-meta {
+/* 인라인 배지 컨테이너 */
+.task-inline-badges {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-xs);
+  gap: var(--spacing-xs);
   align-items: center;
+  flex-shrink: 0;
 }
 
 .task-meta-item {
   position: relative;
+}
+
+/* 작업 하단 정보 (XP, 메모) */
+.task-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* 구형 task-meta (하위 호환) */
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: center;
 }
 
 .resistance-badge,
@@ -408,7 +435,7 @@
   font-weight: 600;
 }
 
-/* Picker Dropdown */
+/* Picker Dropdown - 좌우로 배치 */
 .picker-dropdown {
   position: absolute;
   top: 100%;
@@ -420,10 +447,10 @@
   box-shadow: var(--shadow-lg);
   z-index: 100;
   display: flex;
-  flex-direction: column;
-  min-width: 120px;
+  flex-direction: row;
+  gap: 2px;
   overflow: hidden;
-  /* 제안 2: 부드러운 드롭다운 애니메이션 */
+  white-space: nowrap;
   animation: slideDown 0.2s ease-out;
   transform-origin: top;
 }
@@ -444,20 +471,28 @@
   background: transparent;
   border: none;
   color: var(--color-text);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   cursor: pointer;
-  text-align: left;
+  text-align: center;
   transition: background 0.2s;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .picker-dropdown button:hover {
   background: var(--color-bg-tertiary);
 }
 
+/* 시간 선택 피커는 좌우 스크롤 */
 .duration-picker {
-  max-height: 200px;
-  overflow-y: auto;
+  max-width: 400px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* 저항 선택 피커는 고정 너비 */
+.resistance-picker {
+  width: auto;
 }
 
 .task-memo {

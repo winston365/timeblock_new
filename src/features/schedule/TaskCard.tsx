@@ -82,56 +82,60 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
         </button>
 
         <div className="task-details">
-          <div className="task-text">{task.text}</div>
+          {/* 작업명과 아이콘을 같은 행에 배치 */}
+          <div className="task-header-row">
+            <div className="task-text">{task.text}</div>
 
-          <div className="task-meta">
-            {/* 심리적부담감 - 클릭 가능 */}
-            <div className="task-meta-item">
-              <button
-                className={`resistance-badge ${task.resistance} clickable`}
-                onClick={() => setShowResistancePicker(!showResistancePicker)}
-                title="클릭하여 변경"
-              >
-                {RESISTANCE_LABELS[task.resistance]}
-              </button>
+            <div className="task-inline-badges">
+              {/* 심리적부담감 - 클릭 가능 */}
+              <div className="task-meta-item">
+                <button
+                  className={`resistance-badge ${task.resistance} clickable`}
+                  onClick={() => setShowResistancePicker(!showResistancePicker)}
+                  title="클릭하여 변경"
+                >
+                  {RESISTANCE_LABELS[task.resistance]}
+                </button>
 
-              {showResistancePicker && (
-                <div className="picker-dropdown resistance-picker">
-                  <button onClick={() => handleResistanceChange('low')}>🟢 쉬움</button>
-                  <button onClick={() => handleResistanceChange('medium')}>🟡 보통</button>
-                  <button onClick={() => handleResistanceChange('high')}>🔴 어려움</button>
-                </div>
-              )}
+                {showResistancePicker && (
+                  <div className="picker-dropdown resistance-picker">
+                    <button onClick={() => handleResistanceChange('low')}>🟢 쉬움</button>
+                    <button onClick={() => handleResistanceChange('medium')}>🟡 보통</button>
+                    <button onClick={() => handleResistanceChange('high')}>🔴 어려움</button>
+                  </div>
+                )}
+              </div>
+
+              {/* 소요시간 - 클릭 가능 */}
+              <div className="task-meta-item">
+                <button
+                  className="duration-badge clickable"
+                  onClick={() => setShowDurationPicker(!showDurationPicker)}
+                  title="클릭하여 변경"
+                >
+                  ⏱️ {formatDuration(task.adjustedDuration)}
+                </button>
+
+                {showDurationPicker && (
+                  <div className="picker-dropdown duration-picker">
+                    {durationOptions.map(duration => (
+                      <button key={duration} onClick={() => handleDurationChange(duration)}>
+                        {duration}분
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-
-            {/* 소요시간 - 클릭 가능 */}
-            <div className="task-meta-item">
-              <button
-                className="duration-badge clickable"
-                onClick={() => setShowDurationPicker(!showDurationPicker)}
-                title="클릭하여 변경"
-              >
-                ⏱️ {formatDuration(task.adjustedDuration)}
-              </button>
-
-              {showDurationPicker && (
-                <div className="picker-dropdown duration-picker">
-                  {durationOptions.map(duration => (
-                    <button key={duration} onClick={() => handleDurationChange(duration)}>
-                      {duration}분
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* XP 범위 표시 */}
-            <span className="xp-badge">~{xp} XP</span>
           </div>
 
-          {task.memo && (
-            <div className="task-memo">📝 {task.memo}</div>
-          )}
+          {/* XP 및 메모는 아래에 */}
+          <div className="task-footer">
+            <span className="xp-badge">~{xp} XP</span>
+            {task.memo && (
+              <div className="task-memo">📝 {task.memo}</div>
+            )}
+          </div>
         </div>
 
         <div className="task-actions">

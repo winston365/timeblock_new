@@ -245,10 +245,10 @@ function generateDailyQuests(): Quest[] {
   const perfectBlocksTarget = generateQuestTarget('perfect_blocks');
 
   // 각 퀘스트의 보상 계산
-  const completeTasksReward = calculateQuestReward('complete_tasks', completeTasksTarget);
-  const earnXPReward = calculateQuestReward('earn_xp', earnXPTarget);
-  const lockBlocksReward = calculateQuestReward('lock_blocks', lockBlocksTarget);
-  const perfectBlocksReward = calculateQuestReward('perfect_blocks', perfectBlocksTarget);
+  const completeTasksReward = calculateQuestReward('complete_tasks');
+  const earnXPReward = calculateQuestReward('earn_xp');
+  const lockBlocksReward = calculateQuestReward('lock_blocks');
+  const perfectBlocksReward = calculateQuestReward('perfect_blocks');
 
   return [
     {

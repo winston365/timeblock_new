@@ -7,6 +7,11 @@ import { useGameState, useDailyData } from '@/shared/hooks';
 import { initializeDatabase } from '@/data/db/dexieClient';
 import { addTask } from '@/data/repositories';
 import { createTaskFromTemplate } from '@/data/repositories/templateRepository';
+import { loadSettings } from '@/data/repositories/settingsRepository';
+import {
+  initializeFirebase,
+  enableFirebaseSync
+} from '@/shared/services/firebaseService';
 import type { Template, Task } from '@/shared/types/domain';
 
 // 임시로 컴포넌트를 직접 import (나중에 features에서 가져올 것)
@@ -32,12 +37,36 @@ export default function AppShell() {
   const { gameState } = useGameState();
   const { dailyData } = useDailyData();
 
-  // DB 초기화
+  // DB 초기화 및 Firebase 설정
   useEffect(() => {
     const initDB = async () => {
       try {
         await initializeDatabase();
         setDbInitialized(true);
+
+        // Firebase 설정 확인 및 초기화
+        const settings = await loadSettings();
+        if (settings.firebaseConfig) {
+          const initialized = initializeFirebase(settings.firebaseConfig);
+          if (initialized) {
+            console.log('🔥 Firebase initialized from settings');
+
+            // 실시간 동기화 활성화
+            const unsubscribe = enableFirebaseSync(
+              async (date) => {
+                console.log('📥 Received DailyData from Firebase:', date);
+                // DailyData 업데이트는 hook에서 자동으로 처리됨
+              },
+              async () => {
+                console.log('📥 Received GameState from Firebase');
+                // GameState 업데이트는 hook에서 자동으로 처리됨
+              }
+            );
+
+            // 컴포넌트 언마운트 시 동기화 해제
+            return () => unsubscribe();
+          }
+        }
       } catch (error) {
         console.error('Failed to initialize database:', error);
       }
@@ -119,6 +148,7 @@ export default function AppShell() {
         gameState={gameState}
         onOpenGeminiChat={() => setShowGeminiChat(true)}
         onOpenSyncLog={() => setShowSyncLog(true)}
+        onOpenEnergyTab={() => setActiveTab('energy')}
       />
 
       {/* 메인 레이아웃 */}

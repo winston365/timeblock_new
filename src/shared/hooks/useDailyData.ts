@@ -13,7 +13,6 @@ import {
   deleteTask as deleteTaskFromRepo,
   toggleTaskCompletion as toggleTaskInRepo,
   updateBlockState as updateBlockStateInRepo,
-  toggleBlockLock as toggleBlockLockInRepo,
   addXP,
   spendXP,
   updateQuestProgress,

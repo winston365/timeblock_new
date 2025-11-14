@@ -9,9 +9,10 @@ interface TopToolbarProps {
   gameState: GameState | null;
   onOpenGeminiChat?: () => void;
   onOpenSyncLog?: () => void;
+  onOpenEnergyTab?: () => void;
 }
 
-export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSyncLog }: TopToolbarProps) {
+export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSyncLog, onOpenEnergyTab }: TopToolbarProps) {
   const { currentEnergy } = useEnergyState();
 
   return (
@@ -38,7 +39,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSyncLog 
       </div>
 
       <div className="toolbar-actions">
-        <button className="toolbar-btn" title="에너지 탭에서 입력하세요">
+        <button className="toolbar-btn" onClick={onOpenEnergyTab} title="에너지 탭으로 이동">
           ⚡ 에너지 입력
         </button>
         <button className="toolbar-btn" onClick={onOpenGeminiChat}>
