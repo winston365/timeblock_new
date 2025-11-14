@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { callGeminiAPI, generateWaifuPersona } from '@/shared/services/geminiApi';
 import { useWaifuState } from '@/shared/hooks';
+import { loadSettings } from '@/data/repositories/settingsRepository';
 import './gemini.css';
 
 interface ChatMessage {
@@ -25,8 +26,24 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // API 키 로드
+  useEffect(() => {
+    const loadApiKey = async () => {
+      try {
+        const settings = await loadSettings();
+        setApiKey(settings.geminiApiKey || '');
+      } catch (error) {
+        console.error('Failed to load API key:', error);
+      }
+    };
+    if (isOpen) {
+      loadApiKey();
+    }
+  }, [isOpen]);
 
   // 메시지 스크롤
   useEffect(() => {
@@ -66,8 +83,8 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
       const systemPrompt = generateWaifuPersona(waifuState?.affection ?? 50);
       const fullPrompt = messages.length === 0 ? `${systemPrompt}\n\n${userMessage.text}` : userMessage.text;
 
-      // API 호출
-      const { text } = await callGeminiAPI(fullPrompt, history);
+      // API 호출 (설정에서 로드한 API 키 사용)
+      const { text } = await callGeminiAPI(fullPrompt, history, apiKey);
 
       const modelMessage: ChatMessage = {
         id: `model-${Date.now()}`,
