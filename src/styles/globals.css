@@ -20,16 +20,10 @@ html {
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
 
-  /* 배경 색상 (다크모드) - 명도 대비 강화 */
-  --color-bg-base: #0a0e1a;        /* 기본 배경 - 더 어둡게 */
-  --color-bg-surface: #1a2030;     /* 카드/패널 - 중간 */
-  --color-bg-elevated: #2d3950;    /* 모달/드롭다운 - 더 밝게 */
-  --color-bg-interactive: #3d4960; /* 호버 상태 - 가장 밝게 */
-
-  /* 하위 호환성을 위한 기존 변수 (새 변수 참조) */
-  --color-bg: var(--color-bg-base);
-  --color-bg-secondary: var(--color-bg-surface);
-  --color-bg-tertiary: var(--color-bg-elevated);
+  /* 배경 색상 (다크모드) */
+  --color-bg: #0f172a;
+  --color-bg-secondary: #1e293b;
+  --color-bg-tertiary: #334155;
 
   /* 텍스트 색상 (다크모드) */
   --color-text: #f1f5f9;
@@ -270,10 +264,9 @@ select:focus-visible,
     --color-text-tertiary: #d1d5db;
 
     /* 배경 대비 강화 */
-    --color-bg-base: #000000;
-    --color-bg-surface: #0f172a;
-    --color-bg-elevated: #1e293b;
-    --color-bg-interactive: #334155;
+    --color-bg: #000000;
+    --color-bg-secondary: #0f172a;
+    --color-bg-tertiary: #1e293b;
 
     /* 경계선 강화 */
     --color-border: #64748b;
@@ -410,6 +403,7 @@ select:disabled,
   /* 개발 중 디버깅용 - 필요시 주석 해제 */
   /* border: 2px dashed var(--color-warning); */
 }
+<<<<<<< HEAD
 
 /* =========================
    통일된 모달 시스템
@@ -736,3 +730,5 @@ button:not(:disabled):active::after,
 
   --gradient-brand: linear-gradient(135deg, #8b7355, #d4a574);
 }
+=======
+>>>>>>> parent of e6dbb78 (design: 30년차 웹디자이너 분석 기반 UI/UX 개선)

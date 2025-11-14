@@ -1,9 +1,48 @@
-/* Gemini 챗봇 모달 스타일 - 공통 스타일은 globals.css 사용 */
+/* Gemini 챗봇 모달 스타일 */
 
-/* Gemini 모달 특화 스타일 */
-.gemini-chat-modal.modal-content {
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: var(--color-bg);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gemini-chat-modal {
   width: 700px;
   height: 600px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+}
+
+.modal-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
 }
 
 .modal-header-actions {
@@ -26,7 +65,19 @@
   background: var(--color-bg-tertiary);
 }
 
-/* btn-close는 globals.css에서 정의됨 */
+.btn-close {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.btn-close:hover {
+  color: var(--color-text);
+}
 
 /* 메시지 영역 */
 .chat-messages {
