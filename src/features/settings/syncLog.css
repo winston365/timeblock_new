@@ -178,6 +178,121 @@
   color: var(--color-danger);
 }
 
+/* 탭 스타일 */
+.log-tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  padding: 0 var(--spacing-lg);
+  border-bottom: 2px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.tab-btn {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: -2px;
+}
+
+.tab-btn:hover {
+  color: var(--color-text);
+  background: var(--color-bg-secondary);
+}
+
+.tab-btn.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* 토큰 사용량 스타일 */
+.token-usage-content {
+  flex: 1;
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+}
+
+.token-stats-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.stat-card {
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.stat-value.primary {
+  color: var(--color-primary);
+}
+
+.token-usage-table {
+  overflow-x: auto;
+}
+
+.token-usage-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.token-usage-table th {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  font-weight: 600;
+  text-align: left;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.token-usage-table td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.token-usage-table tbody tr:hover {
+  background: var(--color-bg-secondary);
+}
+
+.date-cell {
+  font-family: monospace;
+  font-weight: 500;
+}
+
+.total-cell {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
 /* 반응형 */
 @media (max-width: 768px) {
   .sync-log-modal {
@@ -194,5 +309,17 @@
 
   .filter-stats {
     margin-left: 0;
+  }
+
+  .token-stats-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .token-usage-table {
+    font-size: 0.75rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
   }
 }

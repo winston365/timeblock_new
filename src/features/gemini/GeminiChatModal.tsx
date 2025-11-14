@@ -1,19 +1,22 @@
 /**
  * GeminiChatModal - Gemini AI 챗봇 모달
+ * 20개 메시지 히스토리, 토큰 사용량 추적, Firebase 동기화
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { callGeminiAPI, generateWaifuPersona } from '@/shared/services/geminiApi';
-import { useWaifuState } from '@/shared/hooks';
+import { callGeminiAPI, generateWaifuPersona, type PersonaContext } from '@/shared/services/geminiApi';
+import { useWaifuState, useDailyData, useGameState } from '@/shared/hooks';
 import { loadSettings } from '@/data/repositories/settingsRepository';
+import {
+  loadTodayChatHistory,
+  saveChatHistory,
+  addTokenUsage,
+  getRecentMessages
+} from '@/data/repositories/chatHistoryRepository';
+import type { GeminiChatMessage } from '@/shared/types/domain';
 import './gemini.css';
 
-interface ChatMessage {
-  id: string;
-  role: 'user' | 'model';
-  text: string;
-  timestamp: number;
-}
+const MAX_HISTORY_MESSAGES = 20;
 
 interface GeminiChatModalProps {
   isOpen: boolean;
@@ -22,7 +25,9 @@ interface GeminiChatModalProps {
 
 export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProps) {
   const { waifuState } = useWaifuState();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const { dailyData } = useDailyData();
+  const { gameState } = useGameState();
+  const [messages, setMessages] = useState<GeminiChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,18 +35,23 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // API 키 로드
+  // API 키 및 채팅 히스토리 로드
   useEffect(() => {
-    const loadApiKey = async () => {
+    const loadData = async () => {
       try {
+        // API 키 로드
         const settings = await loadSettings();
         setApiKey(settings.geminiApiKey || '');
+
+        // 채팅 히스토리 로드
+        const history = await loadTodayChatHistory();
+        setMessages(history);
       } catch (error) {
-        console.error('Failed to load API key:', error);
+        console.error('Failed to load data:', error);
       }
     };
     if (isOpen) {
-      loadApiKey();
+      loadData();
     }
   }, [isOpen]);
 
@@ -60,40 +70,78 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
-    const userMessage: ChatMessage = {
+    const userMessage: GeminiChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       text: input.trim(),
       timestamp: Date.now(),
+      category: 'qa', // Default category
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    // 메시지를 상태와 Dexie에 저장
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput('');
     setLoading(true);
     setError(null);
 
     try {
-      // 히스토리 준비 (최근 10개만)
-      const history = messages.slice(-10).map((msg) => ({
+      // 히스토리 준비 (최근 20개만)
+      const recentHistory = await getRecentMessages(MAX_HISTORY_MESSAGES);
+      const history = recentHistory.map((msg) => ({
         role: msg.role,
         text: msg.text,
       }));
 
-      // 시스템 프롬프트 추가
-      const systemPrompt = generateWaifuPersona(waifuState?.affection ?? 50);
+      // 페르소나 컨텍스트 준비
+      const tasks = dailyData?.tasks || [];
+      const completedTasks = tasks.filter(t => t.completed);
+      const recentTasks = tasks.slice(-5).map(t => ({
+        text: t.text,
+        completed: t.completed,
+        resistance: t.resistance
+      }));
+
+      const personaContext: PersonaContext = {
+        affection: waifuState?.affection ?? 50,
+        level: gameState?.level ?? 1,
+        xp: gameState?.totalXP ?? 0,
+        dailyXP: gameState?.dailyXP ?? 0,
+        tasksCompleted: completedTasks.length,
+        totalTasks: tasks.length,
+        currentTime: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+        currentEnergy: 50, // TODO: Get from energy tracking
+        recentTasks
+      };
+
+      // 시스템 프롬프트 생성
+      const systemPrompt = generateWaifuPersona(personaContext);
       const fullPrompt = messages.length === 0 ? `${systemPrompt}\n\n${userMessage.text}` : userMessage.text;
 
-      // API 호출 (설정에서 로드한 API 키 사용)
-      const { text } = await callGeminiAPI(fullPrompt, history, apiKey);
+      // API 호출 (토큰 사용량 포함)
+      const { text, tokenUsage } = await callGeminiAPI(fullPrompt, history, apiKey);
 
-      const modelMessage: ChatMessage = {
+      const modelMessage: GeminiChatMessage = {
         id: `model-${Date.now()}`,
         role: 'model',
         text,
         timestamp: Date.now(),
+        category: 'qa',
+        tokenUsage,
       };
 
-      setMessages((prev) => [...prev, modelMessage]);
+      // 메시지 저장
+      const finalMessages = [...updatedMessages, modelMessage];
+      setMessages(finalMessages);
+      await saveChatHistory(finalMessages);
+
+      // 토큰 사용량 저장
+      if (tokenUsage) {
+        await addTokenUsage(
+          tokenUsage.promptTokens,
+          tokenUsage.candidatesTokens
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
       console.error('Gemini API 오류:', err);
@@ -109,9 +157,14 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
     }
   };
 
-  const clearChat = () => {
-    setMessages([]);
-    setError(null);
+  const clearChat = async () => {
+    try {
+      setMessages([]);
+      setError(null);
+      await saveChatHistory([]);
+    } catch (error) {
+      console.error('Failed to clear chat:', error);
+    }
   };
 
   if (!isOpen) return null;
@@ -211,9 +264,9 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
         {/* 안내 */}
         <div className="chat-footer">
           <small>
-            💡 Tip: Gemini API 키는 .env 파일의 VITE_GEMINI_API_KEY에 설정하세요.
+            💡 최근 {MAX_HISTORY_MESSAGES}개 메시지가 저장되며 대화 컨텍스트로 사용됩니다.
             <br />
-            현재 호감도: {waifuState?.affection ?? 50}%
+            현재 호감도: {waifuState?.affection ?? 50}% | 레벨: {gameState?.level ?? 1} | 오늘 XP: {gameState?.dailyXP ?? 0}
           </small>
         </div>
       </div>

@@ -13,7 +13,7 @@ import {
   Database,
   get,
 } from 'firebase/database';
-import type { DailyData, GameState, Settings } from '../types/domain';
+import type { DailyData, GameState, Settings, ChatHistory, DailyTokenUsage } from '../types/domain';
 import { getLocalDate } from '../lib/utils';
 import { addSyncLog } from './syncLogger';
 
@@ -479,4 +479,195 @@ export function enableFirebaseSync(
     unsubscribers.forEach((unsub) => unsub());
     console.log('Firebase sync disabled');
   };
+}
+
+// ============================================================================
+// Chat History & Token Usage Sync
+// ============================================================================
+
+/**
+ * ChatHistory를 Firebase에 동기화
+ */
+export async function syncChatHistoryToFirebase(
+  date: string,
+  chatHistory: ChatHistory
+): Promise<void> {
+  if (!isFirebaseInitialized() || !firebaseDatabase) {
+    console.warn('Firebase is not initialized, skipping chat history sync');
+    return;
+  }
+
+  try {
+    const userId = 'user';
+    const deviceId = getDeviceId();
+    const dataRef = ref(firebaseDatabase, `users/${userId}/chatHistory/${date}`);
+
+    // 중복 동기화 방지
+    const dataHash = getDataHash(chatHistory);
+    const hashKey = `chatHistory-${date}`;
+    if (lastSyncHash[hashKey] === dataHash) {
+      console.log(`[Sync Skip] ChatHistory for ${date} unchanged, skipping Firebase sync`);
+      return;
+    }
+
+    // 기존 데이터 확인
+    const snapshot = await get(dataRef);
+    const remoteData = snapshot.val() as SyncData<ChatHistory> | null;
+
+    const localSyncData: SyncData<ChatHistory> = {
+      data: chatHistory,
+      updatedAt: getServerTimestamp(),
+      deviceId,
+    };
+
+    // 충돌 확인 및 해결 (LWW 전략)
+    if (remoteData) {
+      const resolved = resolveConflictLWW(localSyncData, remoteData);
+
+      if (resolved.deviceId !== deviceId) {
+        console.log('[Sync Skip] Remote ChatHistory is newer, skipping upload');
+        addSyncLog('firebase', 'sync', `ChatHistory sync skipped (remote newer): ${date}`);
+        return;
+      }
+    }
+
+    // Firebase에 업로드
+    await set(dataRef, localSyncData);
+    lastSyncHash[hashKey] = dataHash;
+
+    addSyncLog('firebase', 'sync', `ChatHistory synced to Firebase: ${date}`, {
+      messageCount: chatHistory.messages.length
+    });
+    console.log(`✅ ChatHistory synced to Firebase: ${date} (${chatHistory.messages.length} messages)`);
+  } catch (error) {
+    console.error('Failed to sync ChatHistory to Firebase:', error);
+    addSyncLog('firebase', 'error', `Failed to sync ChatHistory for ${date}`, undefined, error as Error);
+  }
+}
+
+/**
+ * Firebase에서 ChatHistory 실시간 리스닝
+ */
+export function listenToChatHistoryFromFirebase(
+  date: string,
+  onUpdate: (chatHistory: ChatHistory) => void
+): () => void {
+  if (!isFirebaseInitialized() || !firebaseDatabase) {
+    throw new Error('Firebase is not initialized');
+  }
+
+  const userId = 'user';
+  const dataRef = ref(firebaseDatabase, `users/${userId}/chatHistory/${date}`);
+  const deviceId = getDeviceId();
+
+  onValue(dataRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const syncData = snapshot.val() as SyncData<ChatHistory>;
+
+      // 자신의 디바이스에서 업로드한 데이터는 무시
+      if (syncData.deviceId === deviceId) {
+        return;
+      }
+
+      addSyncLog('firebase', 'sync', `Received ChatHistory update from Firebase for ${date}`);
+      console.log('📥 Received ChatHistory update from Firebase');
+      onUpdate(syncData.data);
+    }
+  });
+
+  return () => off(dataRef);
+}
+
+/**
+ * DailyTokenUsage를 Firebase에 동기화
+ */
+export async function syncTokenUsageToFirebase(
+  date: string,
+  tokenUsage: DailyTokenUsage
+): Promise<void> {
+  if (!isFirebaseInitialized() || !firebaseDatabase) {
+    console.warn('Firebase is not initialized, skipping token usage sync');
+    return;
+  }
+
+  try {
+    const userId = 'user';
+    const deviceId = getDeviceId();
+    const dataRef = ref(firebaseDatabase, `users/${userId}/tokenUsage/${date}`);
+
+    // 중복 동기화 방지
+    const dataHash = getDataHash(tokenUsage);
+    const hashKey = `tokenUsage-${date}`;
+    if (lastSyncHash[hashKey] === dataHash) {
+      console.log(`[Sync Skip] TokenUsage for ${date} unchanged, skipping Firebase sync`);
+      return;
+    }
+
+    // 기존 데이터 확인
+    const snapshot = await get(dataRef);
+    const remoteData = snapshot.val() as SyncData<DailyTokenUsage> | null;
+
+    const localSyncData: SyncData<DailyTokenUsage> = {
+      data: tokenUsage,
+      updatedAt: getServerTimestamp(),
+      deviceId,
+    };
+
+    // 충돌 확인 및 해결 (LWW 전략)
+    if (remoteData) {
+      const resolved = resolveConflictLWW(localSyncData, remoteData);
+
+      if (resolved.deviceId !== deviceId) {
+        console.log('[Sync Skip] Remote TokenUsage is newer, skipping upload');
+        addSyncLog('firebase', 'sync', `TokenUsage sync skipped (remote newer): ${date}`);
+        return;
+      }
+    }
+
+    // Firebase에 업로드
+    await set(dataRef, localSyncData);
+    lastSyncHash[hashKey] = dataHash;
+
+    addSyncLog('firebase', 'sync', `TokenUsage synced to Firebase: ${date}`, {
+      totalTokens: tokenUsage.totalTokens,
+      messageCount: tokenUsage.messageCount
+    });
+    console.log(`✅ TokenUsage synced to Firebase: ${date} (Total: ${tokenUsage.totalTokens})`);
+  } catch (error) {
+    console.error('Failed to sync TokenUsage to Firebase:', error);
+    addSyncLog('firebase', 'error', `Failed to sync TokenUsage for ${date}`, undefined, error as Error);
+  }
+}
+
+/**
+ * Firebase에서 DailyTokenUsage 실시간 리스닝
+ */
+export function listenToTokenUsageFromFirebase(
+  date: string,
+  onUpdate: (tokenUsage: DailyTokenUsage) => void
+): () => void {
+  if (!isFirebaseInitialized() || !firebaseDatabase) {
+    throw new Error('Firebase is not initialized');
+  }
+
+  const userId = 'user';
+  const dataRef = ref(firebaseDatabase, `users/${userId}/tokenUsage/${date}`);
+  const deviceId = getDeviceId();
+
+  onValue(dataRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const syncData = snapshot.val() as SyncData<DailyTokenUsage>;
+
+      // 자신의 디바이스에서 업로드한 데이터는 무시
+      if (syncData.deviceId === deviceId) {
+        return;
+      }
+
+      addSyncLog('firebase', 'sync', `Received TokenUsage update from Firebase for ${date}`);
+      console.log('📥 Received TokenUsage update from Firebase');
+      onUpdate(syncData.data);
+    }
+  });
+
+  return () => off(dataRef);
 }

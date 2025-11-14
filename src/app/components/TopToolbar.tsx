@@ -45,8 +45,8 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSyncLog,
         <button className="toolbar-btn" onClick={onOpenGeminiChat}>
           💬 AI 대화
         </button>
-        <button className="toolbar-btn" onClick={onOpenSyncLog} title="동기화 로그">
-          📊 동기화 로그
+        <button className="toolbar-btn" onClick={onOpenSyncLog} title="전체 로그">
+          📊 전체 로그
         </button>
       </div>
     </header>
