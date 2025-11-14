@@ -3,7 +3,7 @@
  * XP 계산, 레벨업 체크, 보상 계산 등
  */
 
-import type { Task, Resistance, GameState } from '@/shared/types/domain';
+import type { Task, Resistance } from '@/shared/types/domain';
 
 /**
  * 저항도별 XP 배율

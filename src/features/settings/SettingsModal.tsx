@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { loadSettings, saveSettings } from '@/data/repositories/settingsRepository';
+import { initializeFirebase } from '@/shared/services/firebaseService';
 import type { Settings } from '@/shared/types/domain';
 import './settings.css';
 
@@ -47,6 +48,15 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
     try {
       setSaving(true);
       await saveSettings(settings);
+
+      // Firebase 설정이 있으면 재초기화
+      if (settings.firebaseConfig) {
+        const initialized = initializeFirebase(settings.firebaseConfig);
+        if (initialized) {
+          console.log('🔥 Firebase reinitialized with new settings');
+        }
+      }
+
       alert('설정이 저장되었습니다!');
       onSaved?.();
       onClose();

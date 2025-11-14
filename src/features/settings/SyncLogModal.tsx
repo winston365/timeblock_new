@@ -7,7 +7,6 @@ import {
   getSyncLogs,
   clearSyncLogs,
   subscribeSyncLogs,
-  filterSyncLogs,
   type SyncLogEntry,
   type SyncType,
   type SyncAction,
