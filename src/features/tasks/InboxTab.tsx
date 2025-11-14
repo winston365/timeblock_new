@@ -5,8 +5,7 @@
 
 import { useState } from 'react';
 import { useInboxTasks, useDailyData } from '@/shared/hooks';
-import type { Task, TimeBlockId } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
+import type { Task } from '@/shared/types/domain';
 import TaskCard from '@/features/schedule/TaskCard';
 import TaskModal from '@/features/schedule/TaskModal';
 import './tasks.css';
@@ -17,8 +16,6 @@ export default function InboxTab() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [taskToAssign, setTaskToAssign] = useState<Task | null>(null);
 
   const handleAddTask = () => {
     setEditingTask(null);
@@ -75,25 +72,6 @@ export default function InboxTab() {
     }
   };
 
-  // 블록에 배치
-  const handleAssignToBlock = (task: Task) => {
-    setTaskToAssign(task);
-    setAssignModalOpen(true);
-  };
-
-  const handleConfirmAssign = async (blockId: TimeBlockId) => {
-    if (!taskToAssign) return;
-
-    try {
-      await updateTask(taskToAssign.id, { timeBlock: blockId });
-      setAssignModalOpen(false);
-      setTaskToAssign(null);
-    } catch (error) {
-      console.error('Failed to assign task:', error);
-      alert('작업 배치에 실패했습니다.');
-    }
-  };
-
   if (loading) {
     return <div className="tab-loading">로딩 중...</div>;
   }
@@ -116,21 +94,13 @@ export default function InboxTab() {
         ) : (
           <div className="task-list-vertical">
             {inboxTasks.map(task => (
-              <div key={task.id} className="inbox-task-wrapper">
-                <TaskCard
-                  task={task}
-                  onEdit={() => handleEditTask(task)}
-                  onDelete={() => handleDeleteTask(task.id)}
-                  onToggle={() => handleToggleTask(task.id)}
-                />
-                <button
-                  className="assign-btn"
-                  onClick={() => handleAssignToBlock(task)}
-                  title="블록에 배치"
-                >
-                  📌 배치
-                </button>
-              </div>
+              <TaskCard
+                key={task.id}
+                task={task}
+                onEdit={() => handleEditTask(task)}
+                onDelete={() => handleDeleteTask(task.id)}
+                onToggle={() => handleToggleTask(task.id)}
+              />
             ))}
           </div>
         )}
@@ -146,31 +116,6 @@ export default function InboxTab() {
             setEditingTask(null);
           }}
         />
-      )}
-
-      {assignModalOpen && taskToAssign && (
-        <div className="modal-overlay" onClick={() => setAssignModalOpen(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>블록 선택</h3>
-              <button className="modal-close-btn" onClick={() => setAssignModalOpen(false)}>
-                ✕
-              </button>
-            </div>
-            <div className="block-select-list">
-              {TIME_BLOCKS.map(block => (
-                <button
-                  key={block.id}
-                  className="block-select-item"
-                  onClick={() => handleConfirmAssign(block.id as TimeBlockId)}
-                >
-                  <span className="block-time">{block.label}</span>
-                  <span>→</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
