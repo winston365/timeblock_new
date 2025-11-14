@@ -11,11 +11,12 @@ import TopToolbar from './components/TopToolbar';
 import LeftSidebar from './components/LeftSidebar';
 import CenterContent from './components/CenterContent';
 import RightPanel from './components/RightPanel';
+import WaifuPanel from '@/features/waifu/WaifuPanel';
 
 export default function AppShell() {
   const [dbInitialized, setDbInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<'today' | 'stats' | 'energy' | 'completed' | 'inbox'>('today');
-  const [rightPanelTab, setRightPanelTab] = useState<'waifu' | 'template' | 'shop'>('waifu');
+  const [rightPanelTab, setRightPanelTab] = useState<'template' | 'shop'>('template');
 
   const { gameState } = useGameState();
   const { dailyData } = useDailyData();
@@ -56,6 +57,11 @@ export default function AppShell() {
           activeTab={activeTab}
           dailyData={dailyData}
         />
+
+        {/* 독립된 와이푸 패널 */}
+        <aside className="waifu-panel-container">
+          <WaifuPanel />
+        </aside>
 
         <RightPanel
           activeTab={rightPanelTab}

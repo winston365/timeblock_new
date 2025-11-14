@@ -3,18 +3,52 @@
  * 작업 카드 컴포넌트
  */
 
-import type { Task } from '@/shared/types/domain';
+import { useState } from 'react';
+import type { Task, Resistance } from '@/shared/types/domain';
 import { RESISTANCE_LABELS } from '@/shared/types/domain';
-import { formatDuration } from '@/shared/lib/utils';
+import { formatDuration, calculateTaskXP } from '@/shared/lib/utils';
 
 interface TaskCardProps {
   task: Task;
   onEdit: () => void;
   onDelete: () => void;
   onToggle: () => void;
+  onUpdateTask?: (updates: Partial<Task>) => void;
 }
 
-export default function TaskCard({ task, onEdit, onDelete, onToggle }: TaskCardProps) {
+export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTask }: TaskCardProps) {
+  const [showResistancePicker, setShowResistancePicker] = useState(false);
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
+
+  // XP 계산
+  const xp = calculateTaskXP(task);
+
+  // 심리적부담감 변경
+  const handleResistanceChange = (resistance: Resistance) => {
+    if (onUpdateTask) {
+      const multiplier = resistance === 'low' ? 1.0 : resistance === 'medium' ? 1.3 : 1.6;
+      onUpdateTask({
+        resistance,
+        adjustedDuration: Math.round(task.baseDuration * multiplier),
+      });
+    }
+    setShowResistancePicker(false);
+  };
+
+  // 소요시간 변경
+  const handleDurationChange = (baseDuration: number) => {
+    if (onUpdateTask) {
+      const multiplier = task.resistance === 'low' ? 1.0 : task.resistance === 'medium' ? 1.3 : 1.6;
+      onUpdateTask({
+        baseDuration,
+        adjustedDuration: Math.round(baseDuration * multiplier),
+      });
+    }
+    setShowDurationPicker(false);
+  };
+
+  const durationOptions = [15, 30, 45, 60, 90, 120, 180];
+
   return (
     <div className={`task-card ${task.completed ? 'completed' : ''}`}>
       <div className="task-main">
@@ -30,12 +64,48 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle }: TaskCardP
           <div className="task-text">{task.text}</div>
 
           <div className="task-meta">
-            <span className={`resistance-badge ${task.resistance}`}>
-              {RESISTANCE_LABELS[task.resistance]}
-            </span>
-            <span className="duration-badge">
-              ⏱️ {formatDuration(task.adjustedDuration)}
-            </span>
+            {/* 심리적부담감 - 클릭 가능 */}
+            <div className="task-meta-item">
+              <button
+                className={`resistance-badge ${task.resistance} clickable`}
+                onClick={() => setShowResistancePicker(!showResistancePicker)}
+                title="클릭하여 변경"
+              >
+                {RESISTANCE_LABELS[task.resistance]}
+              </button>
+
+              {showResistancePicker && (
+                <div className="picker-dropdown resistance-picker">
+                  <button onClick={() => handleResistanceChange('low')}>🟢 쉬움</button>
+                  <button onClick={() => handleResistanceChange('medium')}>🟡 보통</button>
+                  <button onClick={() => handleResistanceChange('high')}>🔴 어려움</button>
+                </div>
+              )}
+            </div>
+
+            {/* 소요시간 - 클릭 가능 */}
+            <div className="task-meta-item">
+              <button
+                className="duration-badge clickable"
+                onClick={() => setShowDurationPicker(!showDurationPicker)}
+                title="클릭하여 변경"
+              >
+                ⏱️ {formatDuration(task.adjustedDuration)}
+              </button>
+
+              {showDurationPicker && (
+                <div className="picker-dropdown duration-picker">
+                  {durationOptions.map(duration => (
+                    <button key={duration} onClick={() => handleDurationChange(duration)}>
+                      {duration}분
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* XP 범위 표시 */}
+            <span className="xp-badge">~{xp} XP</span>
           </div>
 
           {task.memo && (

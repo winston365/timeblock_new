@@ -1,15 +1,14 @@
 /**
- * RightPanel - 오른쪽 패널 (게임화, 와이푸, 템플릿, 상점)
+ * RightPanel - 오른쪽 패널 (게임화, 템플릿, 상점)
  */
 
 import { useGameState } from '@/shared/hooks';
 import XPBar from '@/shared/components/XPBar';
 import QuestsPanel from '@/features/gamification/QuestsPanel';
-import WaifuPanel from '@/features/waifu/WaifuPanel';
 
 interface RightPanelProps {
-  activeTab: 'waifu' | 'template' | 'shop';
-  onTabChange: (tab: 'waifu' | 'template' | 'shop') => void;
+  activeTab: 'template' | 'shop';
+  onTabChange: (tab: 'template' | 'shop') => void;
 }
 
 export default function RightPanel({ activeTab, onTabChange }: RightPanelProps) {
@@ -24,13 +23,12 @@ export default function RightPanel({ activeTab, onTabChange }: RightPanelProps) 
         )}
       </div>
 
+      {/* 퀘스트 패널 (항상 표시) */}
+      <div style={{ padding: 'var(--spacing-md)', borderBottom: '1px solid var(--color-border)' }}>
+        <QuestsPanel />
+      </div>
+
       <div className="right-panel-tabs">
-        <button
-          className={`right-panel-tab ${activeTab === 'waifu' ? 'active' : ''}`}
-          onClick={() => onTabChange('waifu')}
-        >
-          🥰 와이푸
-        </button>
         <button
           className={`right-panel-tab ${activeTab === 'template' ? 'active' : ''}`}
           onClick={() => onTabChange('template')}
@@ -46,13 +44,6 @@ export default function RightPanel({ activeTab, onTabChange }: RightPanelProps) 
       </div>
 
       <div className="right-panel-content">
-        {activeTab === 'waifu' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', height: '100%' }}>
-            <QuestsPanel />
-            <WaifuPanel />
-          </div>
-        )}
-
         {activeTab === 'template' && (
           <div className="placeholder-section">
             <h3>📝 템플릿</h3>

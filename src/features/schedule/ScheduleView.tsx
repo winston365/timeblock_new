@@ -3,7 +3,7 @@
  * 메인 타임블럭 스케줄러 화면
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDailyData } from '@/shared/hooks';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
@@ -12,11 +12,30 @@ import TaskModal from './TaskModal';
 import './schedule.css';
 
 export default function ScheduleView() {
-  const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion } = useDailyData();
+  const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion, updateTimeBlockState } = useDailyData();
+  const [currentHour, setCurrentHour] = useState(new Date().getHours());
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<TimeBlockId>(null);
+
+  // 5분 단위로 현재 시간 업데이트
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentHour(new Date().getHours());
+    }, 5 * 60 * 1000); // 5분
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // 현재 시간대 블록 감지
+  const getCurrentBlockId = (): TimeBlockId => {
+    const hour = currentHour;
+    const block = TIME_BLOCKS.find(b => hour >= b.start && hour < b.end);
+    return block ? (block.id as TimeBlockId) : null;
+  };
+
+  const currentBlockId = getCurrentBlockId();
 
   // 작업 추가 모달 열기
   const handleAddTask = (blockId: TimeBlockId) => {
@@ -91,6 +110,27 @@ export default function ScheduleView() {
     }
   };
 
+  // 블록 잠금 토글
+  const handleToggleLock = async (blockId: string) => {
+    if (!dailyData) return;
+
+    try {
+      const currentState = dailyData.timeBlockStates[blockId] || {
+        isLocked: false,
+        isPerfect: false,
+        isFailed: false,
+      };
+
+      await updateTimeBlockState?.(blockId, {
+        ...currentState,
+        isLocked: !currentState.isLocked,
+      });
+    } catch (error) {
+      console.error('Failed to toggle lock:', error);
+      alert('블록 잠금 상태 변경에 실패했습니다.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="schedule-view">
@@ -121,6 +161,7 @@ export default function ScheduleView() {
         {TIME_BLOCKS.map(block => {
           const blockTasks = dailyData.tasks.filter(task => task.timeBlock === block.id);
           const blockState = dailyData.timeBlockStates[block.id];
+          const isCurrentBlock = block.id === currentBlockId;
 
           return (
             <TimeBlock
@@ -128,10 +169,12 @@ export default function ScheduleView() {
               block={block}
               tasks={blockTasks}
               state={blockState}
+              isCurrentBlock={isCurrentBlock}
               onAddTask={() => handleAddTask(block.id as TimeBlockId)}
               onEditTask={handleEditTask}
               onDeleteTask={handleDeleteTask}
               onToggleTask={handleToggleTask}
+              onToggleLock={() => handleToggleLock(block.id)}
             />
           );
         })}
