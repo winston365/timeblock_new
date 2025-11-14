@@ -10,7 +10,7 @@ interface TopToolbarProps {
 
 export default function TopToolbar({ gameState }: TopToolbarProps) {
   return (
-    <header className="top-toolbar">
+    <header className="top-toolbar" role="banner">
       <h1>⏰ 타임블럭 플래너</h1>
 
       <div className="toolbar-stats">

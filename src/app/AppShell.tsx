@@ -56,30 +56,24 @@ export default function AppShell() {
         메인 콘텐츠로 건너뛰기
       </a>
 
-      {/* 접근성: 상단 툴바는 banner 역할 */}
-      <header role="banner">
-        <TopToolbar gameState={gameState} />
-      </header>
+      {/* 상단 툴바 */}
+      <TopToolbar gameState={gameState} />
 
-      {/* 접근성: 메인 레이아웃은 main으로 명시 */}
-      <div className="main-layout" role="main">
-        {/* 접근성: 좌측 사이드바는 navigation */}
-        <nav aria-label="메인 네비게이션" role="navigation">
-          <LeftSidebar
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
-        </nav>
+      {/* 메인 레이아웃 */}
+      <main className="main-layout">
+        {/* 좌측 사이드바 */}
+        <LeftSidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
 
-        {/* 접근성: 중앙 콘텐츠 영역 */}
-        <main id="main-content" aria-label="타임블록 스케줄러">
-          <CenterContent
-            activeTab={activeTab}
-            dailyData={dailyData}
-          />
-        </main>
+        {/* 중앙 콘텐츠 */}
+        <CenterContent
+          activeTab={activeTab}
+          dailyData={dailyData}
+        />
 
-        {/* 접근성: 와이푸 패널은 complementary */}
+        {/* 와이푸 패널 */}
         <aside
           className="waifu-panel-container"
           aria-label="와이푸 패널"
@@ -88,17 +82,12 @@ export default function AppShell() {
           <WaifuPanel />
         </aside>
 
-        {/* 접근성: 우측 패널도 complementary */}
-        <aside
-          aria-label="퀘스트 및 템플릿 패널"
-          role="complementary"
-        >
-          <RightPanel
-            activeTab={rightPanelTab}
-            onTabChange={setRightPanelTab}
-          />
-        </aside>
-      </div>
+        {/* 우측 패널 */}
+        <RightPanel
+          activeTab={rightPanelTab}
+          onTabChange={setRightPanelTab}
+        />
+      </main>
     </div>
   );
 }
