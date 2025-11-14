@@ -51,22 +51,16 @@
   background: var(--color-primary-dark);
 }
 
-/* Main Layout - 황금비율 적용 */
+/* Main Layout - Flex 기반 (Grid 롤백) */
 .main-layout {
-  display: grid;
-  grid-template-columns:
-    380px          /* 좌측 사이드바 (24%) - 가로 메뉴로 인해 증가 */
-    1fr            /* 중앙 콘텐츠 (메인) */
-    240px          /* 와이푸 패널 (15%) */
-    280px;         /* 우측 패널 (17.5%) */
+  display: flex;
   flex: 1;
   overflow: hidden;
-  gap: 0;
 }
 
-/* Left Sidebar */
+/* Left Sidebar - 원래 크기로 복원 (480px) */
 .left-sidebar {
-  width: 100%;
+  width: 480px;
   background: var(--color-bg-secondary);
   border-right: 1px solid var(--color-border);
   display: flex;
@@ -74,40 +68,26 @@
   flex-shrink: 0;
 }
 
+/* Sidebar Tabs - 세로 배치로 복원 */
 .sidebar-tabs {
   display: flex;
-  flex-direction: row;  /* column → row (가로 배치) */
+  flex-direction: column;
   gap: var(--spacing-xs);
   padding: var(--spacing-md);
   border-bottom: 1px solid var(--color-border);
-  overflow-x: auto;  /* 가로 스크롤 허용 */
-  overflow-y: hidden;
-}
-
-/* 가로 스크롤바 숨김 */
-.sidebar-tabs::-webkit-scrollbar {
-  height: 4px;
-}
-
-.sidebar-tabs::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 2px;
 }
 
 .sidebar-tab {
-  padding: var(--spacing-xs) var(--spacing-sm);  /* 패딩 축소 */
+  padding: var(--spacing-sm) var(--spacing-md);
   border-radius: 6px;
   background: transparent;
   color: var(--color-text-secondary);
   font-weight: 500;
-  font-size: 0.8125rem;  /* 13px - 폰트 크기 축소 */
   transition: all 0.2s;
-  text-align: center;  /* left → center */
+  text-align: left;
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);  /* 간격 축소 */
-  white-space: nowrap;  /* 텍스트 줄바꿈 방지 */
-  flex-shrink: 0;  /* 탭 축소 방지 */
+  gap: var(--spacing-sm);
 }
 
 .sidebar-tab:hover {
@@ -153,9 +133,9 @@
   padding: var(--spacing-lg);
 }
 
-/* Waifu Panel Container */
+/* Waifu Panel Container - 원래 크기로 복원 (280px) */
 .waifu-panel-container {
-  width: 100%;
+  width: 280px;
   background: var(--color-bg-secondary);
   border-left: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
@@ -165,9 +145,9 @@
   overflow-y: auto;
 }
 
-/* Right Panel */
+/* Right Panel - 원래 크기로 복원 (320px) */
 .right-panel {
-  width: 100%;
+  width: 320px;
   background: var(--color-bg-secondary);
   display: flex;
   flex-direction: column;
@@ -249,5 +229,3 @@
 .settings-fab:active {
   transform: scale(0.95);
 }
-
-/* 반응형 제거 - 문제 해결을 위해 임시 비활성화 */
