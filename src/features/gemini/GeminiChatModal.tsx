@@ -11,9 +11,10 @@ import {
   loadTodayChatHistory,
   saveChatHistory,
   addTokenUsage,
-  getRecentMessages
+  getRecentMessages,
+  loadTodayTokenUsage
 } from '@/data/repositories/chatHistoryRepository';
-import type { GeminiChatMessage } from '@/shared/types/domain';
+import type { GeminiChatMessage, DailyTokenUsage } from '@/shared/types/domain';
 import './gemini.css';
 
 const MAX_HISTORY_MESSAGES = 20;
@@ -32,10 +33,11 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string>('');
+  const [todayTokenUsage, setTodayTokenUsage] = useState<DailyTokenUsage | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // API 키 및 채팅 히스토리 로드
+  // API 키, 채팅 히스토리 및 토큰 사용량 로드
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -46,6 +48,10 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
         // 채팅 히스토리 로드
         const history = await loadTodayChatHistory();
         setMessages(history);
+
+        // 오늘 토큰 사용량 로드
+        const tokenUsage = await loadTodayTokenUsage();
+        setTodayTokenUsage(tokenUsage);
       } catch (error) {
         console.error('Failed to load data:', error);
       }
@@ -66,6 +72,17 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
       inputRef.current?.focus();
     }
   }, [isOpen]);
+
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
@@ -141,6 +158,9 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
           tokenUsage.promptTokens,
           tokenUsage.candidatesTokens
         );
+        // 토큰 사용량 다시 로드
+        const updatedTokenUsage = await loadTodayTokenUsage();
+        setTodayTokenUsage(updatedTokenUsage);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
@@ -162,6 +182,7 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
       setMessages([]);
       setError(null);
       await saveChatHistory([]);
+      // 토큰 사용량은 초기화하지 않음 (누적 기록)
     } catch (error) {
       console.error('Failed to clear chat:', error);
     }
@@ -266,7 +287,9 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
           <small>
             💡 최근 {MAX_HISTORY_MESSAGES}개 메시지가 저장되며 대화 컨텍스트로 사용됩니다.
             <br />
-            현재 호감도: {waifuState?.affection ?? 50}% | 레벨: {gameState?.level ?? 1} | 오늘 XP: {gameState?.dailyXP ?? 0}
+            레벨: {gameState?.level ?? 1} | 오늘 XP: {gameState?.dailyXP ?? 0}
+            <br />
+            📊 오늘 토큰 사용량: 입력 {todayTokenUsage?.promptTokens ?? 0} | 출력 {todayTokenUsage?.candidatesTokens ?? 0} | 총 {todayTokenUsage?.totalTokens ?? 0}
           </small>
         </div>
       </div>

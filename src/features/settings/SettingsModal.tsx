@@ -31,6 +31,17 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
     }
   }, [isOpen]);
 
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   const loadSettingsData = async () => {
     try {
       setLoading(true);

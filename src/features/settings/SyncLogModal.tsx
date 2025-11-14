@@ -29,6 +29,17 @@ export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
   const [filterType, setFilterType] = useState<SyncType | 'all'>('all');
   const [filterAction, setFilterAction] = useState<SyncAction | 'all'>('all');
 
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   // 로그 및 토큰 사용량 로드
   useEffect(() => {
     if (!isOpen) return;

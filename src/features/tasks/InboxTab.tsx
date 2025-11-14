@@ -4,15 +4,15 @@
  */
 
 import { useState } from 'react';
-import { useInboxTasks, useDailyData } from '@/shared/hooks';
+import { useDailyData } from '@/shared/hooks';
 import type { Task } from '@/shared/types/domain';
 import TaskCard from '@/features/schedule/TaskCard';
 import TaskModal from '@/features/schedule/TaskModal';
 import './tasks.css';
 
 export default function InboxTab() {
-  const { inboxTasks, loading } = useInboxTasks();
-  const { addTask, updateTask, deleteTask, toggleTaskCompletion } = useDailyData();
+  const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion } = useDailyData();
+  const inboxTasks = dailyData?.tasks.filter(task => !task.timeBlock) ?? [];
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -100,6 +100,9 @@ export default function InboxTab() {
                 onEdit={() => handleEditTask(task)}
                 onDelete={() => handleDeleteTask(task.id)}
                 onToggle={() => handleToggleTask(task.id)}
+                onUpdateTask={async (updates) => {
+                  await updateTask(task.id, updates);
+                }}
               />
             ))}
           </div>

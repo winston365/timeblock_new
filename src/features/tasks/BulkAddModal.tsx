@@ -39,6 +39,17 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
     }
   }, [isOpen]);
 
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   // 입력값 변경 시 미리보기 업데이트
   useEffect(() => {
     if (input.trim()) {
