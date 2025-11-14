@@ -138,7 +138,7 @@ export default function TimeBlock({
           )}
 
           <div className="block-time-group">
-            <span className="block-time-range">{block.start.toString().padStart(2, '0')}-{block.end.toString().padStart(2, '0')}</span>
+            <span className="block-time-range-large">{block.start.toString().padStart(2, '0')}-{block.end.toString().padStart(2, '0')}</span>
             <div className="block-stats-inline">
               <span className="stat-compact">📋 {tasks.length}</span>
               <span className="stat-compact">⏱️ {completedDuration}/{totalDuration}m</span>
@@ -155,7 +155,8 @@ export default function TimeBlock({
               e.stopPropagation();
               onToggleLock?.();
             }}
-            title={state?.isLocked ? "잠금 해제" : "잠금"}
+            title={state?.isLocked ? "잠금 해제" : (isCurrentBlock ? "잠금" : "현재 시간대만 잠금 가능")}
+            disabled={!isCurrentBlock && !state?.isLocked}
           >
             {state?.isLocked ? '🔒' : '🔓'}
           </button>

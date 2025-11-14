@@ -122,9 +122,10 @@
 
 .block-time-group {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: var(--spacing-md);
   min-width: 0;
+  flex: 1;
 }
 
 .block-time-range {
@@ -133,10 +134,17 @@
   color: var(--color-text);
 }
 
+.block-time-range-large {
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--color-text);
+  letter-spacing: 0.5px;
+}
+
 .block-stats-inline {
   display: flex;
-  gap: var(--spacing-xs);
-  font-size: 0.7rem;
+  gap: var(--spacing-sm);
+  font-size: 0.75rem;
   color: var(--color-text-tertiary);
 }
 
@@ -190,6 +198,17 @@
 .action-btn-sm:hover {
   background: var(--color-bg);
   transform: scale(1.1);
+}
+
+.action-btn-sm:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.action-btn-sm:disabled:hover {
+  background: transparent;
+  transform: none;
 }
 
 /* 제안 2: 애니메이션 */

@@ -191,8 +191,8 @@ export const TIME_BLOCKS = [
   { id: '8-11', label: '08:00 - 11:00', start: 8, end: 11 },
   { id: '11-14', label: '11:00 - 14:00', start: 11, end: 14 },
   { id: '14-17', label: '14:00 - 17:00', start: 14, end: 17 },
-  { id: '17-19', label: '17:00 - 19:00', start: 17, end: 19 },
-  { id: '19-24', label: '19:00 - 24:00', start: 19, end: 24 },
+  { id: '17-20', label: '17:00 - 20:00', start: 17, end: 20 },
+  { id: '20-23', label: '20:00 - 23:00', start: 20, end: 23 },
 ] as const;
 
 export const RESISTANCE_MULTIPLIERS: Record<Resistance, number> = {

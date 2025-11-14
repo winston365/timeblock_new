@@ -13,6 +13,8 @@ import {
   enableFirebaseSync
 } from '@/shared/services/firebaseService';
 import type { Template, Task } from '@/shared/types/domain';
+import { useXPToastStore } from '@/shared/hooks/useXPToast';
+import XPToast from '@/shared/components/XPToast';
 
 // 임시로 컴포넌트를 직접 import (나중에 features에서 가져올 것)
 import TopToolbar from './components/TopToolbar';
@@ -36,6 +38,7 @@ export default function AppShell() {
 
   const { gameState } = useGameState();
   const { dailyData } = useDailyData();
+  const { toasts, removeToast } = useXPToastStore();
 
   // DB 초기화 및 Firebase 설정
   useEffect(() => {
@@ -217,6 +220,16 @@ export default function AppShell() {
       >
         ⚙️
       </button>
+
+      {/* XP 토스트 */}
+      {toasts.map((toast) => (
+        <XPToast
+          key={toast.id}
+          xp={toast.xp}
+          message={toast.message}
+          onClose={() => removeToast(toast.id)}
+        />
+      ))}
     </div>
   );
 }

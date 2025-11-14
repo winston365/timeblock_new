@@ -131,6 +131,15 @@ export async function addXP(amount: number, blockId?: string): Promise<GameState
     }
 
     await saveGameState(gameState);
+
+    // XP 토스트 표시 (동적 import로 순환 참조 방지)
+    if (typeof window !== 'undefined') {
+      import('@/shared/hooks/useXPToast').then((module) => {
+        const message = amount === 15 ? '계획 잠금!' : amount === 40 ? '완벽한 블록 완료!' : '작업 완료!';
+        module.useXPToastStore.getState().addToast(amount, message);
+      }).catch(console.error);
+    }
+
     return gameState;
   } catch (error) {
     console.error('Failed to add XP:', error);

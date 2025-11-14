@@ -112,6 +112,16 @@ export default function ScheduleView() {
   const handleToggleLock = async (blockId: string) => {
     if (!dailyData) return;
 
+    // 현재 블록인지 확인
+    const isCurrentBlock = blockId === currentBlockId;
+    const blockState = dailyData.timeBlockStates[blockId];
+
+    // 잠금 해제는 언제든 가능, 잠금 설정은 현재 시간대만 가능
+    if (!blockState?.isLocked && !isCurrentBlock) {
+      alert('현재 시간대만 잠금할 수 있습니다.');
+      return;
+    }
+
     try {
       await toggleBlockLock(blockId);
     } catch (error) {
