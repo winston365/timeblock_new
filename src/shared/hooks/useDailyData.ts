@@ -14,8 +14,11 @@ import {
   toggleTaskCompletion as toggleTaskInRepo,
   updateBlockState as updateBlockStateInRepo,
   toggleBlockLock as toggleBlockLockInRepo,
+  addXP,
+  updateQuestProgress,
+  increaseAffectionFromTask,
 } from '@/data/repositories';
-import { getLocalDate } from '../lib/utils';
+import { getLocalDate, calculateTaskXP } from '../lib/utils';
 
 export function useDailyData(date: string = getLocalDate()) {
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
@@ -104,7 +107,33 @@ export function useDailyData(date: string = getLocalDate()) {
   const toggleTaskCompletion = useCallback(
     async (taskId: string) => {
       try {
-        await toggleTaskInRepo(taskId, date);
+        // 현재 task 상태 확인
+        const currentData = await loadDailyData(date);
+        const task = currentData.tasks.find(t => t.id === taskId);
+
+        if (!task) {
+          throw new Error(`Task not found: ${taskId}`);
+        }
+
+        const wasCompleted = task.completed;
+
+        // Task 완료 토글
+        const updatedTask = await toggleTaskInRepo(taskId, date);
+
+        // 완료 -> 미완료가 아니라, 미완료 -> 완료로 변경된 경우에만 XP & 퀘스트 & 와이푸 호감도 업데이트
+        if (!wasCompleted && updatedTask.completed) {
+          // XP 추가
+          const xpAmount = calculateTaskXP(updatedTask);
+          await addXP(xpAmount, updatedTask.timeBlock || undefined);
+
+          // 퀘스트 업데이트
+          await updateQuestProgress('complete_tasks', 1);
+          await updateQuestProgress('earn_xp', xpAmount);
+
+          // 와이푸 호감도 증가
+          await increaseAffectionFromTask();
+        }
+
         await loadData();
       } catch (err) {
         setError(err as Error);

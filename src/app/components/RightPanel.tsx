@@ -5,6 +5,7 @@
 import { useGameState } from '@/shared/hooks';
 import XPBar from '@/shared/components/XPBar';
 import QuestsPanel from '@/features/gamification/QuestsPanel';
+import WaifuPanel from '@/features/waifu/WaifuPanel';
 
 interface RightPanelProps {
   activeTab: 'waifu' | 'template' | 'shop';
@@ -46,14 +47,9 @@ export default function RightPanel({ activeTab, onTabChange }: RightPanelProps) 
 
       <div className="right-panel-content">
         {activeTab === 'waifu' && (
-          <div>
-            <div style={{ marginBottom: 'var(--spacing-md)' }}>
-              <QuestsPanel />
-            </div>
-            <div className="placeholder-section">
-              <h4>와이푸 시스템</h4>
-              <p>(추후 구현)</p>
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', height: '100%' }}>
+            <QuestsPanel />
+            <WaifuPanel />
           </div>
         )}
 

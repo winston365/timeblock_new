@@ -72,7 +72,7 @@
 
 .quest-item.completed {
   border-color: var(--color-success);
-  background: #f0fdf4;
+  background: rgba(16, 185, 129, 0.1);
 }
 
 .quest-icon {

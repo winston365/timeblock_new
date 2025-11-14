@@ -45,21 +45,12 @@
    ============================================================================ */
 
 .timeblocks-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-lg);
-}
-
-@media (min-width: 768px) {
-  .timeblocks-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1200px) {
-  .timeblocks-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 /* ============================================================================
@@ -270,18 +261,18 @@
 }
 
 .resistance-badge.low {
-  background: #d1fae5;
-  color: #065f46;
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
 }
 
 .resistance-badge.medium {
-  background: #fef3c7;
-  color: #92400e;
+  background: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
 }
 
 .resistance-badge.high {
-  background: #fee2e2;
-  color: #991b1b;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
 }
 
 .duration-badge {
