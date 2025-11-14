@@ -38,10 +38,10 @@ export default function TimeBlock({
 }: TimeBlockProps) {
   const [isExpanded, setIsExpanded] = useState(isCurrentBlock);
 
-  // 블록 총 XP 계산
-  const totalXP = tasks
-    .filter(t => t.completed)
-    .reduce((sum, task) => sum + calculateTaskXP(task), 0);
+  // 블록 총 XP 계산 (현재 미사용)
+  // const totalXP = tasks
+  //   .filter(t => t.completed)
+  //   .reduce((sum, task) => sum + calculateTaskXP(task), 0);
 
   // 예상 최대 XP 계산
   const maxXP = tasks.reduce((sum, task) => sum + calculateTaskXP(task), 0);

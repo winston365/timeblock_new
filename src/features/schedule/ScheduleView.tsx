@@ -12,7 +12,7 @@ import TaskModal from './TaskModal';
 import './schedule.css';
 
 export default function ScheduleView() {
-  const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion, updateTimeBlockState } = useDailyData();
+  const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion } = useDailyData();
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -114,21 +114,23 @@ export default function ScheduleView() {
   const handleToggleLock = async (blockId: string) => {
     if (!dailyData) return;
 
-    try {
-      const currentState = dailyData.timeBlockStates[blockId] || {
-        isLocked: false,
-        isPerfect: false,
-        isFailed: false,
-      };
+    // TODO: updateTimeBlockState 기능 구현 필요
+    console.log('Toggle lock for block:', blockId);
+    // try {
+    //   const currentState = dailyData.timeBlockStates[blockId] || {
+    //     isLocked: false,
+    //     isPerfect: false,
+    //     isFailed: false,
+    //   };
 
-      await updateTimeBlockState?.(blockId, {
-        ...currentState,
-        isLocked: !currentState.isLocked,
-      });
-    } catch (error) {
-      console.error('Failed to toggle lock:', error);
-      alert('블록 잠금 상태 변경에 실패했습니다.');
-    }
+    //   await updateTimeBlockState?.(blockId, {
+    //     ...currentState,
+    //     isLocked: !currentState.isLocked,
+    //   });
+    // } catch (error) {
+    //   console.error('Failed to toggle lock:', error);
+    //   alert('블록 잠금 상태 변경에 실패했습니다.');
+    // }
   };
 
   if (loading) {
