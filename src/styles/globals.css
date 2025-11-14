@@ -6,6 +6,11 @@
   box-sizing: border-box;
 }
 
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
 :root {
   /* 색상 팔레트 (다크모드) */
   --color-primary: #6366f1;
@@ -95,12 +100,16 @@
 }
 
 body {
+  margin: 0;  /* 브라우저 기본 margin 제거 - 하단 짤림 방지 */
+  padding: 0; /* 브라우저 기본 padding 제거 */
   color: var(--color-text);
   background-color: var(--color-bg);
   line-height: var(--leading-normal);
   font-size: var(--text-base);
   font-weight: var(--font-normal);
   letter-spacing: var(--tracking-normal);
+  overflow: hidden; /* body 스크롤 방지 */
+  height: 100vh; /* 정확한 뷰포트 높이 */
 }
 
 /* 제목 계층 구조 */
