@@ -51,16 +51,22 @@
   background: var(--color-primary-dark);
 }
 
-/* Main Layout */
+/* Main Layout - 황금비율 적용 */
 .main-layout {
-  display: flex;
+  display: grid;
+  grid-template-columns:
+    320px          /* 좌측 사이드바 (20%) */
+    1fr            /* 중앙 콘텐츠 (메인) */
+    240px          /* 와이푸 패널 (15%) */
+    280px;         /* 우측 패널 (17.5%) */
   flex: 1;
   overflow: hidden;
+  gap: 0;
 }
 
 /* Left Sidebar */
 .left-sidebar {
-  width: 480px;
+  width: 100%;
   background: var(--color-bg-secondary);
   border-right: 1px solid var(--color-border);
   display: flex;
@@ -134,7 +140,7 @@
 
 /* Waifu Panel Container */
 .waifu-panel-container {
-  width: 280px;
+  width: 100%;
   background: var(--color-bg-secondary);
   border-left: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
@@ -146,7 +152,7 @@
 
 /* Right Panel */
 .right-panel {
-  width: 320px;
+  width: 100%;
   background: var(--color-bg-secondary);
   display: flex;
   flex-direction: column;
@@ -199,16 +205,37 @@
   color: var(--color-text-tertiary);
 }
 
-/* 반응형 */
-@media (max-width: 1024px) {
+/* 반응형 - 황금비율 유지 */
+/* 1440px 이하: 우측 패널 숨김 */
+@media (max-width: 1440px) {
+  .main-layout {
+    grid-template-columns: 300px 1fr 240px;
+  }
+
   .right-panel {
     display: none;
   }
 }
 
+/* 1024px 이하: 와이푸 패널도 숨김 */
+@media (max-width: 1024px) {
+  .main-layout {
+    grid-template-columns: 280px 1fr;
+  }
+
+  .waifu-panel-container {
+    display: none;
+  }
+}
+
+/* 768px 이하: 좁은 사이드바 */
 @media (max-width: 768px) {
+  .main-layout {
+    grid-template-columns: 60px 1fr;
+  }
+
   .left-sidebar {
-    width: 60px;
+    width: 100%;
   }
 
   .sidebar-tab span {

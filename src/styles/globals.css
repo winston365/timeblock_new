@@ -15,10 +15,16 @@
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
 
-  /* 배경 색상 (다크모드) */
-  --color-bg: #0f172a;
-  --color-bg-secondary: #1e293b;
-  --color-bg-tertiary: #334155;
+  /* 배경 색상 (다크모드) - 명도 대비 강화 */
+  --color-bg-base: #0a0e1a;        /* 기본 배경 - 더 어둡게 */
+  --color-bg-surface: #1a2030;     /* 카드/패널 - 중간 */
+  --color-bg-elevated: #2d3950;    /* 모달/드롭다운 - 더 밝게 */
+  --color-bg-interactive: #3d4960; /* 호버 상태 - 가장 밝게 */
+
+  /* 하위 호환성을 위한 기존 변수 (새 변수 참조) */
+  --color-bg: var(--color-bg-base);
+  --color-bg-secondary: var(--color-bg-surface);
+  --color-bg-tertiary: var(--color-bg-elevated);
 
   /* 텍스트 색상 (다크모드) */
   --color-text: #f1f5f9;
@@ -251,9 +257,10 @@ select:focus-visible,
     --color-text-tertiary: #d1d5db;
 
     /* 배경 대비 강화 */
-    --color-bg: #000000;
-    --color-bg-secondary: #0f172a;
-    --color-bg-tertiary: #1e293b;
+    --color-bg-base: #000000;
+    --color-bg-surface: #0f172a;
+    --color-bg-elevated: #1e293b;
+    --color-bg-interactive: #334155;
 
     /* 경계선 강화 */
     --color-border: #64748b;
@@ -389,4 +396,125 @@ select:disabled,
 [aria-live] {
   /* 개발 중 디버깅용 - 필요시 주석 해제 */
   /* border: 2px dashed var(--color-warning); */
+}
+
+/* =========================
+   통일된 모달 시스템
+   ========================= */
+
+/* 모달 설정 변수 */
+:root {
+  --modal-backdrop: rgba(10, 14, 26, 0.8);
+  --modal-blur: 8px;
+  --modal-border: rgba(255, 255, 255, 0.05);
+  --modal-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* 모달 오버레이 - 모든 모달에 공통 적용 */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--modal-backdrop);
+  backdrop-filter: blur(var(--modal-blur));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 모달 콘텐츠 - 모든 모달에 공통 적용 */
+.modal-content {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--modal-border);
+  border-radius: 12px;
+  box-shadow:
+    var(--modal-shadow),
+    0 0 0 1px var(--modal-border);
+  max-width: 90vw;
+  max-height: 90vh;
+  animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 모달 헤더 */
+.modal-header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-surface);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2,
+.modal-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+}
+
+/* 모달 닫기 버튼 */
+.modal-close-btn,
+.btn-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-size: 1.25rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modal-close-btn:hover,
+.btn-close:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+}
+
+/* 고대비 모달 */
+@media (prefers-contrast: high) {
+  .modal-overlay {
+    background: rgba(0, 0, 0, 0.9);
+  }
+
+  .modal-content {
+    border: 2px solid var(--color-border-light);
+  }
+}
+
+/* 움직임 감소 모달 */
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal-content {
+    animation: none;
+  }
 }
