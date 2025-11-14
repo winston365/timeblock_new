@@ -5,3 +5,4 @@
 export * from './useDailyData';
 export * from './useGameState';
 export * from './useWaifuState';
+export * from './useKeyboardNavigation';
