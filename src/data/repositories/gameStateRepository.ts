@@ -7,6 +7,7 @@ import { db } from '../db/dexieClient';
 import type { GameState, Quest, Task } from '@/shared/types/domain';
 import { getLocalDate, saveToStorage, getFromStorage, getLevelFromXP } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
+import { generateQuestTarget, calculateQuestReward } from '@/shared/utils/gamification';
 
 // ============================================================================
 // GameState CRUD
@@ -234,49 +235,61 @@ async function generateTasksFromAutoTemplates(): Promise<void> {
 // ============================================================================
 
 /**
- * 일일 퀘스트 생성
+ * 일일 퀘스트 생성 (동적 난이도)
  */
 function generateDailyQuests(): Quest[] {
+  // 동적으로 목표값 생성
+  const completeTasksTarget = generateQuestTarget('complete_tasks');
+  const earnXPTarget = generateQuestTarget('earn_xp');
+  const lockBlocksTarget = generateQuestTarget('lock_blocks');
+  const perfectBlocksTarget = generateQuestTarget('perfect_blocks');
+
+  // 각 퀘스트의 보상 계산
+  const completeTasksReward = calculateQuestReward('complete_tasks', completeTasksTarget);
+  const earnXPReward = calculateQuestReward('earn_xp', earnXPTarget);
+  const lockBlocksReward = calculateQuestReward('lock_blocks', lockBlocksTarget);
+  const perfectBlocksReward = calculateQuestReward('perfect_blocks', perfectBlocksTarget);
+
   return [
     {
-      id: 'quest-complete-5',
+      id: `quest-complete-${completeTasksTarget}`,
       type: 'complete_tasks',
-      title: '작업 5개 완료하기',
-      description: '오늘 작업을 5개 완료하세요',
-      target: 5,
+      title: `작업 ${completeTasksTarget}개 완료하기`,
+      description: `오늘 작업을 ${completeTasksTarget}개 완료하세요`,
+      target: completeTasksTarget,
       progress: 0,
       completed: false,
-      reward: 20,
+      reward: completeTasksReward,
     },
     {
-      id: 'quest-earn-100xp',
+      id: `quest-earn-${earnXPTarget}xp`,
       type: 'earn_xp',
-      title: '100 XP 획득하기',
-      description: '오늘 100 XP를 획득하세요',
-      target: 100,
+      title: `${earnXPTarget} XP 획득하기`,
+      description: `오늘 ${earnXPTarget} XP를 획득하세요`,
+      target: earnXPTarget,
       progress: 0,
       completed: false,
-      reward: 30,
+      reward: earnXPReward,
     },
     {
-      id: 'quest-lock-3-blocks',
+      id: `quest-lock-${lockBlocksTarget}-blocks`,
       type: 'lock_blocks',
-      title: '블록 3개 잠그기',
-      description: '타임블록을 3개 잠그세요',
-      target: 3,
+      title: `블록 ${lockBlocksTarget}개 잠그기`,
+      description: `타임블록을 ${lockBlocksTarget}개 잠그세요`,
+      target: lockBlocksTarget,
       progress: 0,
       completed: false,
-      reward: 25,
+      reward: lockBlocksReward,
     },
     {
-      id: 'quest-perfect-block',
+      id: `quest-perfect-${perfectBlocksTarget}-block`,
       type: 'perfect_blocks',
-      title: '완벽한 블록 달성',
-      description: '블록 하나를 완벽하게 완료하세요',
-      target: 1,
+      title: `완벽한 블록 ${perfectBlocksTarget}개 달성`,
+      description: `블록을 ${perfectBlocksTarget}개 완벽하게 완료하세요`,
+      target: perfectBlocksTarget,
       progress: 0,
       completed: false,
-      reward: 50,
+      reward: perfectBlocksReward,
     },
   ];
 }

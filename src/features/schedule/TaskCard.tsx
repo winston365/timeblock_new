@@ -14,11 +14,13 @@ interface TaskCardProps {
   onDelete: () => void;
   onToggle: () => void;
   onUpdateTask?: (updates: Partial<Task>) => void;
+  onDragStart?: (taskId: string) => void;
 }
 
-export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTask }: TaskCardProps) {
+export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTask, onDragStart }: TaskCardProps) {
   const [showResistancePicker, setShowResistancePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // XP 계산
   const xp = calculateTaskXP(task);
@@ -49,8 +51,27 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
 
   const durationOptions = [15, 30, 45, 60, 90, 120, 180];
 
+  // 드래그 핸들러
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', task.id);
+    setIsDragging(true);
+    if (onDragStart) {
+      onDragStart(task.id);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
   return (
-    <div className={`task-card ${task.completed ? 'completed' : ''}`}>
+    <div
+      className={`task-card ${task.completed ? 'completed' : ''} ${isDragging ? 'dragging' : ''}`}
+      draggable="true"
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div className="task-main">
         <button
           className="task-checkbox"

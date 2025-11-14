@@ -12,7 +12,7 @@ import TaskModal from './TaskModal';
 import './schedule.css';
 
 export default function ScheduleView() {
-  const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion } = useDailyData();
+  const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion, toggleBlockLock } = useDailyData();
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -114,23 +114,37 @@ export default function ScheduleView() {
   const handleToggleLock = async (blockId: string) => {
     if (!dailyData) return;
 
-    // TODO: updateTimeBlockState 기능 구현 필요
-    console.log('Toggle lock for block:', blockId);
-    // try {
-    //   const currentState = dailyData.timeBlockStates[blockId] || {
-    //     isLocked: false,
-    //     isPerfect: false,
-    //     isFailed: false,
-    //   };
+    try {
+      await toggleBlockLock(blockId);
+    } catch (error) {
+      console.error('Failed to toggle lock:', error);
+      alert(error instanceof Error ? error.message : '블록 잠금 상태 변경에 실패했습니다.');
+    }
+  };
 
-    //   await updateTimeBlockState?.(blockId, {
-    //     ...currentState,
-    //     isLocked: !currentState.isLocked,
-    //   });
-    // } catch (error) {
-    //   console.error('Failed to toggle lock:', error);
-    //   alert('블록 잠금 상태 변경에 실패했습니다.');
-    // }
+  // 작업 이동 (드래그 앤 드롭)
+  const handleDropTask = async (taskId: string, targetBlockId: TimeBlockId) => {
+    if (!dailyData) return;
+
+    try {
+      // 작업 찾기
+      const task = dailyData.tasks.find((t) => t.id === taskId);
+      if (!task) {
+        console.error('Task not found:', taskId);
+        return;
+      }
+
+      // 같은 블록이면 무시
+      if (task.timeBlock === targetBlockId) {
+        return;
+      }
+
+      // 작업 이동
+      await updateTask(taskId, { timeBlock: targetBlockId });
+    } catch (error) {
+      console.error('Failed to move task:', error);
+      alert('작업 이동에 실패했습니다.');
+    }
   };
 
   if (loading) {
@@ -177,6 +191,7 @@ export default function ScheduleView() {
               onDeleteTask={handleDeleteTask}
               onToggleTask={handleToggleTask}
               onToggleLock={() => handleToggleLock(block.id)}
+              onDropTask={handleDropTask}
             />
           );
         })}
