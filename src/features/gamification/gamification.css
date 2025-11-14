@@ -170,51 +170,22 @@
 }
 
 /* ============================================================================
-   Level Up Notification
+   Level Up Notification - 공통 모달 스타일 확장
    ============================================================================ */
 
 .level-up-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  /* modal-overlay 클래스의 스타일 상속 */
+  z-index: 2000; /* 다른 모달보다 위에 표시 */
 }
 
 .level-up-modal {
-  background: var(--color-bg-secondary);
+  /* modal-content 스타일 상속 + 커스터마이징 */
+  background: var(--color-bg-elevated);
   border-radius: 16px;
   padding: var(--spacing-xl);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-  animation: scaleIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   max-width: 400px;
   width: 90%;
-}
-
-@keyframes scaleIn {
-  from {
-    transform: scale(0.5);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+  /* scaleIn 애니메이션은 globals.css에 정의됨 */
 }
 
 .level-up-animation {
