@@ -164,57 +164,93 @@ export async function resetDailyWaifuStats(): Promise<WaifuState> {
  * 호감도에 따른 기분 가져오기
  */
 export function getMoodFromAffection(affection: number): string {
-  if (affection >= 80) return '🥰 매우 행복';
-  if (affection >= 60) return '😊 행복';
-  if (affection >= 40) return '😌 보통';
-  if (affection >= 20) return '😐 무표정';
-  return '😔 우울';
+  if (affection >= 85) return '🥰';
+  if (affection >= 70) return '😊';
+  if (affection >= 55) return '🙂';
+  if (affection >= 40) return '😐';
+  if (affection >= 20) return '😠';
+  return '😡';
 }
 
 /**
  * 호감도에 따른 대사 가져오기
+ *
+ * 호감도 구간:
+ * - 0-20: 혐오, 적대
+ * - 20-40: 경계, 혐오감 완화
+ * - 40-55: 무관심, 냉담
+ * - 55-70: 관심, 경계 풀림
+ * - 70-85: 호감, 친근
+ * - 85-100: 애정, 헌신
  */
 export function getDialogueFromAffection(affection: number, _tasksCompleted: number): string {
-  if (affection >= 80) {
+  // 85-100: 애정, 헌신
+  if (affection >= 85) {
     const dialogues = [
-      '오늘도 정말 열심히 하시네요! 대단해요! ✨',
-      '당신과 함께 있으니 매일이 즐거워요! 💖',
-      '이렇게 노력하는 당신이 정말 자랑스러워요!',
+      '선배... 정말 멋있어요...',
+      '사랑해요! 오늘도 함께해요! 💕',
+      '선배와 함께라면 뭐든지 할 수 있어요!',
+      '세상에서 제일 좋아해요! ❤️',
+      '선배 곁에 있으면 너무 행복해요...',
     ];
     return dialogues[Math.floor(Math.random() * dialogues.length)];
   }
 
-  if (affection >= 60) {
+  // 70-85: 호감, 친근
+  if (affection >= 70) {
     const dialogues = [
-      '오늘도 화이팅이에요! 😊',
-      '작업을 하나씩 완료하는 모습이 멋져요!',
-      '함께 열심히 해봐요!',
+      '오늘 많이 했네! 대단한데?',
+      '잘하고 있어! 계속 이대로 가자!',
+      '요즘 정말 멋있어 보여!',
+      '이 정도면 진짜 대단한데? 👍',
+      '보는 내가 다 뿌듯하네!',
     ];
     return dialogues[Math.floor(Math.random() * dialogues.length)];
   }
 
+  // 55-70: 관심, 경계 풀림
+  if (affection >= 55) {
+    const dialogues = [
+      '오늘은... 괜찮네.',
+      '나쁘지 않은데?',
+      '이 정도면 봐줄 만하네.',
+      '음... 생각보다 하네.',
+      '계속 이렇게만 하면 되겠는데?',
+    ];
+    return dialogues[Math.floor(Math.random() * dialogues.length)];
+  }
+
+  // 40-55: 무관심, 냉담
   if (affection >= 40) {
     const dialogues = [
-      '오늘은 어떤 작업을 하실 건가요?',
-      '조금씩 해나가면 돼요.',
-      '천천히 해도 괜찮아요.',
+      '...뭔데.',
+      '그래서?',
+      '...아무거나 해.',
+      '말 걸지 마.',
+      '...관심 없어.',
     ];
     return dialogues[Math.floor(Math.random() * dialogues.length)];
   }
 
+  // 20-40: 경계, 혐오감 완화
   if (affection >= 20) {
     const dialogues = [
-      '조금 더 힘내볼까요?',
-      '오늘은 작업 하나라도 완료해보는 건 어때요?',
-      '...괜찮으시죠?',
+      '...또 뭐야, 씨발.',
+      '귀찮게.',
+      '뭐? 말 걸지 마.',
+      '...하.',
+      '짜증나게.',
     ];
     return dialogues[Math.floor(Math.random() * dialogues.length)];
   }
 
+  // 0-20: 혐오, 적대
   const dialogues = [
-    '...요즘 많이 힘드신가 봐요.',
-    '조금씩이라도 시작해보는 게 어때요?',
-    '저도... 걱정돼요.',
+    '꺼져. 진짜로.',
+    '시발 또 왔네.',
+    '보기 싫어. 저리 가.',
+    '진짜 짜증나.',
+    '...개같네.',
   ];
   return dialogues[Math.floor(Math.random() * dialogues.length)];
 }
