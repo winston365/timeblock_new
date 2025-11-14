@@ -6,3 +6,5 @@ export * from './dailyDataRepository';
 export * from './gameStateRepository';
 export * from './settingsRepository';
 export * from './waifuRepository';
+export * from './templateRepository';
+export * from './shopRepository';
