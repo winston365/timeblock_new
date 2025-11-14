@@ -7,7 +7,7 @@ import { useGameState, useDailyData } from '@/shared/hooks';
 import { initializeDatabase } from '@/data/db/dexieClient';
 import { addTask } from '@/data/repositories';
 import { createTaskFromTemplate } from '@/data/repositories/templateRepository';
-import type { Template } from '@/shared/types/domain';
+import type { Template, Task } from '@/shared/types/domain';
 
 // 임시로 컴포넌트를 직접 import (나중에 features에서 가져올 것)
 import TopToolbar from './components/TopToolbar';
@@ -16,12 +16,14 @@ import CenterContent from './components/CenterContent';
 import RightPanel from './components/RightPanel';
 import WaifuPanel from '@/features/waifu/WaifuPanel';
 import GeminiChatModal from '@/features/gemini/GeminiChatModal';
+import BulkAddModal from '@/features/tasks/BulkAddModal';
 
 export default function AppShell() {
   const [dbInitialized, setDbInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<'today' | 'stats' | 'energy' | 'completed' | 'inbox'>('today');
   const [rightPanelTab, setRightPanelTab] = useState<'template' | 'shop'>('template');
   const [showGeminiChat, setShowGeminiChat] = useState(false);
+  const [showBulkAdd, setShowBulkAdd] = useState(false);
 
   const { gameState } = useGameState();
   const { dailyData } = useDailyData();
@@ -38,6 +40,19 @@ export default function AppShell() {
     };
 
     initDB();
+  }, []);
+
+  // F1 단축키: 대량 할 일 추가 모달 열기
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setShowBulkAdd(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   // 템플릿에서 작업 생성 핸들러
@@ -58,6 +73,19 @@ export default function AppShell() {
     if (waifuMessage) {
       // TODO: 와이푸에게 메시지를 전달하는 로직 추가
       console.log('와이푸 메시지:', waifuMessage);
+    }
+  };
+
+  // 대량 작업 추가 핸들러
+  const handleBulkAddTasks = async (tasks: Task[]) => {
+    try {
+      for (const task of tasks) {
+        await addTask(task);
+      }
+      console.log(`✅ ${tasks.length}개의 작업이 추가되었습니다`);
+    } catch (error) {
+      console.error('Failed to add tasks:', error);
+      throw error;
     }
   };
 
@@ -124,6 +152,13 @@ export default function AppShell() {
       <GeminiChatModal
         isOpen={showGeminiChat}
         onClose={() => setShowGeminiChat(false)}
+      />
+
+      {/* 대량 할 일 추가 모달 (F1) */}
+      <BulkAddModal
+        isOpen={showBulkAdd}
+        onClose={() => setShowBulkAdd(false)}
+        onAddTasks={handleBulkAddTasks}
       />
     </div>
   );
