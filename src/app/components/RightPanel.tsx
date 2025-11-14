@@ -1,6 +1,10 @@
 /**
- * RightPanel - 오른쪽 패널 (와이푸, 템플릿, 상점)
+ * RightPanel - 오른쪽 패널 (게임화, 와이푸, 템플릿, 상점)
  */
+
+import { useGameState } from '@/shared/hooks';
+import XPBar from '@/shared/components/XPBar';
+import QuestsPanel from '@/features/gamification/QuestsPanel';
 
 interface RightPanelProps {
   activeTab: 'waifu' | 'template' | 'shop';
@@ -8,8 +12,17 @@ interface RightPanelProps {
 }
 
 export default function RightPanel({ activeTab, onTabChange }: RightPanelProps) {
+  const { gameState } = useGameState();
+
   return (
     <aside className="right-panel">
+      {/* XP 바는 항상 표시 */}
+      <div style={{ padding: 'var(--spacing-md)', borderBottom: '1px solid var(--color-border)' }}>
+        {gameState && (
+          <XPBar totalXP={gameState.totalXP} level={gameState.level} />
+        )}
+      </div>
+
       <div className="right-panel-tabs">
         <button
           className={`right-panel-tab ${activeTab === 'waifu' ? 'active' : ''}`}
@@ -34,23 +47,26 @@ export default function RightPanel({ activeTab, onTabChange }: RightPanelProps) 
       <div className="right-panel-content">
         {activeTab === 'waifu' && (
           <div>
-            <h3>와이푸</h3>
-            <p>호감도: 0</p>
-            <p>완료 작업: 0</p>
-            <p>(추후 구현)</p>
+            <div style={{ marginBottom: 'var(--spacing-md)' }}>
+              <QuestsPanel />
+            </div>
+            <div className="placeholder-section">
+              <h4>와이푸 시스템</h4>
+              <p>(추후 구현)</p>
+            </div>
           </div>
         )}
 
         {activeTab === 'template' && (
-          <div>
-            <h3>템플릿</h3>
+          <div className="placeholder-section">
+            <h3>📝 템플릿</h3>
             <p>(추후 구현)</p>
           </div>
         )}
 
         {activeTab === 'shop' && (
-          <div>
-            <h3>상점</h3>
+          <div className="placeholder-section">
+            <h3>🛒 상점</h3>
             <p>(추후 구현)</p>
           </div>
         )}

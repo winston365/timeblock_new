@@ -2,6 +2,11 @@
  * LeftSidebar - 왼쪽 사이드바 (탭 네비게이션)
  */
 
+import InboxTab from '@/features/tasks/InboxTab';
+import CompletedTab from '@/features/tasks/CompletedTab';
+import StatsTab from '@/features/stats/StatsTab';
+import EnergyTab from '@/features/energy/EnergyTab';
+
 interface LeftSidebarProps {
   activeTab: 'today' | 'stats' | 'energy' | 'completed' | 'inbox';
   onTabChange: (tab: 'today' | 'stats' | 'energy' | 'completed' | 'inbox') => void;
@@ -32,11 +37,15 @@ export default function LeftSidebar({ activeTab, onTabChange }: LeftSidebarProps
       </div>
 
       <div className="sidebar-content">
-        {activeTab === 'today' && <div>오늘 스케줄 그리드 (추후 구현)</div>}
-        {activeTab === 'stats' && <div>통계 차트 (추후 구현)</div>}
-        {activeTab === 'energy' && <div>에너지 정보 (추후 구현)</div>}
-        {activeTab === 'completed' && <div>완료 목록 (추후 구현)</div>}
-        {activeTab === 'inbox' && <div>인박스 목록 (추후 구현)</div>}
+        {activeTab === 'inbox' && <InboxTab />}
+        {activeTab === 'completed' && <CompletedTab />}
+        {activeTab === 'stats' && <StatsTab />}
+        {activeTab === 'energy' && <EnergyTab />}
+        {activeTab === 'today' && (
+          <div style={{ padding: 'var(--spacing-md)', color: 'var(--color-text-secondary)' }}>
+            <p>📅 타임블럭 스케줄러는 중앙 패널에서 확인하세요</p>
+          </div>
+        )}
       </div>
     </aside>
   );

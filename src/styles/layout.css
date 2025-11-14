@@ -173,6 +173,21 @@
   padding: var(--spacing-md);
 }
 
+.placeholder-section {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.placeholder-section h3,
+.placeholder-section h4 {
+  margin-bottom: var(--spacing-sm);
+}
+
+.placeholder-section p {
+  color: var(--color-text-tertiary);
+}
+
 /* 반응형 */
 @media (max-width: 1024px) {
   .right-panel {
