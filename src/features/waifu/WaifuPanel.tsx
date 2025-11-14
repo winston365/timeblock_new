@@ -2,11 +2,12 @@
  * WaifuPanel - 와이푸 패널
  * 세로 이미지, 대사, 호감도, 완료한 작업 수, 기분 표시
  * 호감도에 따라 자동으로 이미지가 변경됩니다.
+ * 4번 클릭 또는 10분마다 같은 호감도 범위 내에서 랜덤 이미지로 변경됩니다.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWaifuState } from '@/shared/hooks';
-import { getWaifuImagePathWithFallback } from './waifuImageUtils';
+import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier } from './waifuImageUtils';
 import './waifu.css';
 
 interface WaifuPanelProps {
@@ -14,20 +15,62 @@ interface WaifuPanelProps {
 }
 
 export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
-  const { waifuState, loading, currentMood, currentDialogue, onInteract } = useWaifuState();
+  const { waifuState, loading, currentMood, currentDialogue } = useWaifuState();
   const [displayImagePath, setDisplayImagePath] = useState<string>('');
+  const [clickCount, setClickCount] = useState(0);
+  const lastImageChangeTime = useRef<number>(Date.now());
 
-  // 이미지 경로 결정: 수동 지정 > 호감도 기반 자동 선택
+  // 이미지 변경 함수
+  const changeImage = useCallback(async (affection: number) => {
+    if (!waifuState) return;
+
+    const tier = getAffectionTier(affection);
+    const newImageNumber = getRandomImageNumber(tier.name);
+
+    const path = await getWaifuImagePathWithFallback(affection, newImageNumber);
+    setDisplayImagePath(path);
+    lastImageChangeTime.current = Date.now();
+  }, [waifuState]);
+
+  // 초기 이미지 로드 및 호감도 변경 시 이미지 업데이트
   useEffect(() => {
     if (imagePath) {
       setDisplayImagePath(imagePath);
     } else if (waifuState) {
-      // 호감도에 따라 이미지 자동 선택
-      getWaifuImagePathWithFallback(waifuState.affection).then(path => {
-        setDisplayImagePath(path);
-      });
+      changeImage(waifuState.affection);
     }
-  }, [imagePath, waifuState?.affection]);
+  }, [imagePath, waifuState?.affection, changeImage]);
+
+  // 10분마다 자동으로 이미지 변경
+  useEffect(() => {
+    if (!waifuState) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - lastImageChangeTime.current;
+
+      // 10분 (600,000ms) 경과 시 이미지 변경
+      if (elapsed >= 600000) {
+        changeImage(waifuState.affection);
+      }
+    }, 60000); // 1분마다 체크
+
+    return () => clearInterval(interval);
+  }, [waifuState, changeImage]);
+
+  // 클릭 핸들러 - 4번 클릭마다 이미지 변경 (호감도 변화는 제거)
+  const handleClick = useCallback(() => {
+    if (!waifuState) return;
+
+    const newClickCount = clickCount + 1;
+    setClickCount(newClickCount);
+
+    // 4번 클릭마다 이미지 변경
+    if (newClickCount % 4 === 0) {
+      changeImage(waifuState.affection);
+      setClickCount(0); // 카운트 리셋
+    }
+  }, [clickCount, waifuState, changeImage]);
 
   if (loading) {
     return (
@@ -50,14 +93,14 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
       {/* 와이푸 이미지 */}
       <div
         className="waifu-image-container"
-        onClick={onInteract}
+        onClick={handleClick}
         role="button"
         tabIndex={0}
-        aria-label={`와이푸와 상호작용하기. 현재 호감도: ${waifuState.affection}%, 기분: ${currentMood}`}
+        aria-label={`와이푸 이미지. 클릭 시 포즈 변경. 현재 호감도: ${waifuState.affection}%, 기분: ${currentMood}`}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            onInteract();
+            handleClick();
           }
         }}
       >
@@ -78,15 +121,17 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
               호감도별 이미지를 넣어주세요
               <br />
               <small className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
-                (very_low.png, low.png, medium.png,
+                폴더 구조: hostile/, wary/, indifferent/,
                 <br />
-                good.png, very_good.png, max.png)
+                interested/, affectionate/, loving/
+                <br />
+                각 폴더에 1.png, 2.png, 3.png...
               </small>
             </p>
           </div>
         )}
         <div className="waifu-click-hint" aria-hidden="true">
-          클릭하여 상호작용
+          클릭하여 포즈 변경 ({clickCount}/4)
         </div>
       </div>
 
@@ -138,14 +183,6 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
             <div className="stat-label">오늘 완료한 작업</div>
             <div className="stat-value tasks-value" role="status">
               {waifuState.tasksCompletedToday}개
-            </div>
-          </div>
-
-          {/* 총 상호작용 횟수 */}
-          <div className="waifu-stat-card">
-            <div className="stat-label">총 상호작용</div>
-            <div className="stat-value interactions-value">
-              {waifuState.totalInteractions}회
             </div>
           </div>
         </div>
