@@ -3,7 +3,8 @@
  */
 
 import type { Resistance, Task, TimeBlockId } from '../types/domain';
-import { RESISTANCE_MULTIPLIERS, XP_PER_MINUTE, TIME_BLOCKS } from './constants';
+import { RESISTANCE_MULTIPLIERS, TIME_BLOCKS } from '../types/domain';
+import { XP_PER_MINUTE } from './constants';
 
 // ============================================================================
 // 날짜 & 시간 유틸
@@ -158,7 +159,7 @@ export function createTask(
  * Task가 인박스에 있는지 확인
  */
 export function isInInbox(task: Task): boolean {
-  return task.timeBlock === null || task.timeBlock === '';
+  return task.timeBlock === null;
 }
 
 /**

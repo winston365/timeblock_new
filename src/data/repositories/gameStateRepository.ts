@@ -1,0 +1,367 @@
+/**
+ * GameState 저장소
+ * 게임 상태(XP, 레벨, 퀘스트 등) 관리
+ */
+
+import { db } from '../db/dexieClient';
+import type { GameState, Quest, Task } from '@/shared/types/domain';
+import { getLocalDate, saveToStorage, getFromStorage, getLevelFromXP } from '@/shared/lib/utils';
+import { STORAGE_KEYS } from '@/shared/lib/constants';
+
+// ============================================================================
+// GameState CRUD
+// ============================================================================
+
+/**
+ * 초기 GameState 생성
+ */
+export function createInitialGameState(): GameState {
+  return {
+    level: 1,
+    totalXP: 0,
+    dailyXP: 0,
+    availableXP: 0,
+    streak: 0,
+    lastLogin: getLocalDate(),
+    questBonusClaimed: false,
+    xpHistory: [],
+    dailyQuests: [],
+    timeBlockXP: {},
+    timeBlockXPHistory: [],
+    completedTasksHistory: [],
+  };
+}
+
+/**
+ * GameState 로드
+ */
+export async function loadGameState(): Promise<GameState> {
+  try {
+    // 1. IndexedDB에서 조회
+    const data = await db.gameState.get('current');
+
+    if (data) {
+      return data;
+    }
+
+    // 2. localStorage에서 조회
+    const localData = getFromStorage<GameState | null>(STORAGE_KEYS.GAME_STATE, null);
+
+    if (localData) {
+      // localStorage 데이터를 IndexedDB에 저장
+      await saveGameState(localData);
+      return localData;
+    }
+
+    // 3. 초기 상태 생성
+    const initialState = createInitialGameState();
+    await saveGameState(initialState);
+    return initialState;
+  } catch (error) {
+    console.error('Failed to load game state:', error);
+    return createInitialGameState();
+  }
+}
+
+/**
+ * GameState 저장
+ */
+export async function saveGameState(gameState: GameState): Promise<void> {
+  try {
+    // 1. IndexedDB에 저장
+    await db.gameState.put({
+      key: 'current',
+      ...gameState,
+    });
+
+    // 2. localStorage에도 저장
+    saveToStorage(STORAGE_KEYS.GAME_STATE, gameState);
+
+    console.log('✅ Game state saved');
+  } catch (error) {
+    console.error('Failed to save game state:', error);
+    throw error;
+  }
+}
+
+/**
+ * GameState 리셋
+ */
+export async function resetGameState(): Promise<GameState> {
+  const initialState = createInitialGameState();
+  await saveGameState(initialState);
+  return initialState;
+}
+
+// ============================================================================
+// XP 관리
+// ============================================================================
+
+/**
+ * XP 추가
+ */
+export async function addXP(amount: number, blockId?: string): Promise<GameState> {
+  try {
+    const gameState = await loadGameState();
+
+    gameState.totalXP += amount;
+    gameState.dailyXP += amount;
+    gameState.availableXP += amount;
+    gameState.level = getLevelFromXP(gameState.totalXP);
+
+    // 블록별 XP 기록
+    if (blockId) {
+      gameState.timeBlockXP[blockId] = (gameState.timeBlockXP[blockId] || 0) + amount;
+    }
+
+    await saveGameState(gameState);
+    return gameState;
+  } catch (error) {
+    console.error('Failed to add XP:', error);
+    throw error;
+  }
+}
+
+/**
+ * XP 소비
+ */
+export async function spendXP(amount: number): Promise<GameState> {
+  try {
+    const gameState = await loadGameState();
+
+    if (gameState.availableXP < amount) {
+      throw new Error('Not enough XP');
+    }
+
+    gameState.availableXP -= amount;
+
+    await saveGameState(gameState);
+    return gameState;
+  } catch (error) {
+    console.error('Failed to spend XP:', error);
+    throw error;
+  }
+}
+
+/**
+ * 일일 초기화 (날짜가 변경되었을 때)
+ */
+export async function initializeNewDay(): Promise<GameState> {
+  try {
+    const gameState = await loadGameState();
+    const today = getLocalDate();
+
+    // XP 히스토리에 어제 데이터 추가
+    if (gameState.lastLogin !== today && gameState.dailyXP > 0) {
+      gameState.xpHistory.push({
+        date: gameState.lastLogin,
+        xp: gameState.dailyXP,
+      });
+
+      // 최근 7일만 유지
+      if (gameState.xpHistory.length > 7) {
+        gameState.xpHistory = gameState.xpHistory.slice(-7);
+      }
+
+      // 블록별 XP 히스토리 추가
+      if (Object.keys(gameState.timeBlockXP).length > 0) {
+        gameState.timeBlockXPHistory.push({
+          date: gameState.lastLogin,
+          blocks: { ...gameState.timeBlockXP },
+        });
+
+        // 최근 5일만 유지
+        if (gameState.timeBlockXPHistory.length > 5) {
+          gameState.timeBlockXPHistory = gameState.timeBlockXPHistory.slice(-5);
+        }
+      }
+    }
+
+    // 일일 초기화
+    gameState.dailyXP = 0;
+    gameState.timeBlockXP = {};
+    gameState.questBonusClaimed = false;
+    gameState.lastLogin = today;
+
+    // 연속 출석일 계산
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getLocalDate(yesterday);
+
+    if (gameState.lastLogin === yesterdayStr) {
+      gameState.streak += 1;
+    } else if (gameState.lastLogin !== today) {
+      gameState.streak = 1;
+    }
+
+    // 새로운 일일 퀘스트 생성
+    gameState.dailyQuests = generateDailyQuests();
+
+    await saveGameState(gameState);
+    return gameState;
+  } catch (error) {
+    console.error('Failed to initialize new day:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// Quest 관리
+// ============================================================================
+
+/**
+ * 일일 퀘스트 생성
+ */
+function generateDailyQuests(): Quest[] {
+  return [
+    {
+      id: 'quest-complete-5',
+      type: 'complete_tasks',
+      title: '작업 5개 완료하기',
+      description: '오늘 작업을 5개 완료하세요',
+      target: 5,
+      progress: 0,
+      completed: false,
+      reward: 20,
+    },
+    {
+      id: 'quest-earn-100xp',
+      type: 'earn_xp',
+      title: '100 XP 획득하기',
+      description: '오늘 100 XP를 획득하세요',
+      target: 100,
+      progress: 0,
+      completed: false,
+      reward: 30,
+    },
+    {
+      id: 'quest-lock-3-blocks',
+      type: 'lock_blocks',
+      title: '블록 3개 잠그기',
+      description: '타임블록을 3개 잠그세요',
+      target: 3,
+      progress: 0,
+      completed: false,
+      reward: 25,
+    },
+    {
+      id: 'quest-perfect-block',
+      type: 'perfect_blocks',
+      title: '완벽한 블록 달성',
+      description: '블록 하나를 완벽하게 완료하세요',
+      target: 1,
+      progress: 0,
+      completed: false,
+      reward: 50,
+    },
+  ];
+}
+
+/**
+ * 퀘스트 진행도 업데이트
+ */
+export async function updateQuestProgress(questType: Quest['type'], amount: number = 1): Promise<GameState> {
+  try {
+    const gameState = await loadGameState();
+
+    gameState.dailyQuests.forEach(quest => {
+      if (quest.type === questType && !quest.completed) {
+        quest.progress = Math.min(quest.progress + amount, quest.target);
+
+        if (quest.progress >= quest.target) {
+          quest.completed = true;
+          gameState.availableXP += quest.reward;
+        }
+      }
+    });
+
+    await saveGameState(gameState);
+    return gameState;
+  } catch (error) {
+    console.error('Failed to update quest progress:', error);
+    throw error;
+  }
+}
+
+/**
+ * 퀘스트 보너스 클레임
+ */
+export async function claimQuestBonus(): Promise<GameState> {
+  try {
+    const gameState = await loadGameState();
+
+    if (gameState.questBonusClaimed) {
+      throw new Error('Quest bonus already claimed');
+    }
+
+    const completedQuests = gameState.dailyQuests.filter(q => q.completed);
+
+    if (completedQuests.length === 0) {
+      throw new Error('No completed quests');
+    }
+
+    // 모든 퀘스트 완료 시 추가 보너스
+    if (completedQuests.length === gameState.dailyQuests.length) {
+      gameState.availableXP += 100;
+    }
+
+    gameState.questBonusClaimed = true;
+
+    await saveGameState(gameState);
+    return gameState;
+  } catch (error) {
+    console.error('Failed to claim quest bonus:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// 히스토리 관리
+// ============================================================================
+
+/**
+ * 완료 작업 히스토리에 추가
+ */
+export async function addToCompletedHistory(task: Task): Promise<void> {
+  try {
+    const gameState = await loadGameState();
+
+    gameState.completedTasksHistory.unshift(task);
+
+    // 최근 50개만 유지
+    if (gameState.completedTasksHistory.length > 50) {
+      gameState.completedTasksHistory = gameState.completedTasksHistory.slice(0, 50);
+    }
+
+    await saveGameState(gameState);
+  } catch (error) {
+    console.error('Failed to add to completed history:', error);
+    throw error;
+  }
+}
+
+/**
+ * XP 히스토리 가져오기
+ */
+export async function getXPHistory(days: number = 7): Promise<Array<{ date: string; xp: number }>> {
+  try {
+    const gameState = await loadGameState();
+    return gameState.xpHistory.slice(-days);
+  } catch (error) {
+    console.error('Failed to get XP history:', error);
+    return [];
+  }
+}
+
+/**
+ * 블록별 XP 히스토리 가져오기
+ */
+export async function getTimeBlockXPHistory(days: number = 5): Promise<Array<{ date: string; blocks: Record<string, number> }>> {
+  try {
+    const gameState = await loadGameState();
+    return gameState.timeBlockXPHistory.slice(-days);
+  } catch (error) {
+    console.error('Failed to get timeblock XP history:', error);
+    return [];
+  }
+}
