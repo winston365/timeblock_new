@@ -11,7 +11,7 @@ interface CenterContentProps {
 
 export default function CenterContent({ activeTab: _activeTab, dailyData: _dailyData }: CenterContentProps) {
   return (
-    <section className="center-content">
+    <section className="center-content" id="main-content" aria-label="타임블록 스케줄러">
       <ScheduleView />
     </section>
   );

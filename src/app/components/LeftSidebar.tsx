@@ -22,31 +22,56 @@ export default function LeftSidebar({ activeTab, onTabChange }: LeftSidebarProps
   ];
 
   return (
-    <aside className="left-sidebar">
-      <div className="sidebar-tabs">
+    <nav className="left-sidebar" aria-label="메인 네비게이션">
+      <div className="sidebar-tabs" role="tablist">
         {tabs.map(tab => (
           <button
             key={tab.id}
             className={`sidebar-tab ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => onTabChange(tab.id)}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`sidebar-panel-${tab.id}`}
+            id={`sidebar-tab-${tab.id}`}
           >
-            <span>{tab.icon}</span>
+            <span aria-hidden="true">{tab.icon}</span>
             <span>{tab.label}</span>
           </button>
         ))}
       </div>
 
       <div className="sidebar-content">
-        {activeTab === 'inbox' && <InboxTab />}
-        {activeTab === 'completed' && <CompletedTab />}
-        {activeTab === 'stats' && <StatsTab />}
-        {activeTab === 'energy' && <EnergyTab />}
+        {activeTab === 'inbox' && (
+          <div role="tabpanel" id="sidebar-panel-inbox" aria-labelledby="sidebar-tab-inbox">
+            <InboxTab />
+          </div>
+        )}
+        {activeTab === 'completed' && (
+          <div role="tabpanel" id="sidebar-panel-completed" aria-labelledby="sidebar-tab-completed">
+            <CompletedTab />
+          </div>
+        )}
+        {activeTab === 'stats' && (
+          <div role="tabpanel" id="sidebar-panel-stats" aria-labelledby="sidebar-tab-stats">
+            <StatsTab />
+          </div>
+        )}
+        {activeTab === 'energy' && (
+          <div role="tabpanel" id="sidebar-panel-energy" aria-labelledby="sidebar-tab-energy">
+            <EnergyTab />
+          </div>
+        )}
         {activeTab === 'today' && (
-          <div style={{ padding: 'var(--spacing-md)', color: 'var(--color-text-secondary)' }}>
+          <div
+            role="tabpanel"
+            id="sidebar-panel-today"
+            aria-labelledby="sidebar-tab-today"
+            style={{ padding: 'var(--spacing-md)', color: 'var(--color-text-secondary)' }}
+          >
             <p>📅 타임블럭 스케줄러는 중앙 패널에서 확인하세요</p>
           </div>
         )}
       </div>
-    </aside>
+    </nav>
   );
 }
