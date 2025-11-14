@@ -250,6 +250,15 @@
   gap: var(--spacing-xs);
 }
 
+.mood-icon {
+  font-size: 1.5rem;
+}
+
+.mood-description {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
 /* 작업 수 값 */
 .tasks-value {
   color: var(--color-primary);

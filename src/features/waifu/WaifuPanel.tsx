@@ -88,6 +88,19 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     );
   }
 
+  // 기분 설명 가져오기
+  const getMoodDescription = (mood: string): string => {
+    switch (mood) {
+      case '🥰': return '애정 넘침';
+      case '😊': return '호감';
+      case '🙂': return '관심';
+      case '😐': return '무관심';
+      case '😠': return '경계';
+      case '😡': return '적대';
+      default: return '보통';
+    }
+  };
+
   return (
     <div className="waifu-panel">
       {/* 와이푸 이미지 */}
@@ -174,7 +187,8 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
           <div className="waifu-stat-card">
             <div className="stat-label">기분</div>
             <div className="stat-value mood-value" role="status">
-              {currentMood}
+              <span className="mood-icon">{currentMood}</span>
+              <span className="mood-description">{getMoodDescription(currentMood)}</span>
             </div>
           </div>
 

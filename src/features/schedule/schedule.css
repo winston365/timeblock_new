@@ -341,6 +341,15 @@
   gap: var(--spacing-xs);
 }
 
+/* 메모가 있을 때 커서를 pointer로 */
+.task-card .task-details {
+  cursor: default;
+}
+
+.task-card .task-details[onclick] {
+  cursor: pointer;
+}
+
 /* 작업명과 아이콘을 같은 행에 배치 */
 .task-header-row {
   display: flex;
@@ -433,6 +442,18 @@
   padding: 4px 8px;
   border-radius: 4px;
   font-weight: 600;
+}
+
+.memo-indicator {
+  font-size: 0.875rem;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: all 0.2s;
+}
+
+.memo-indicator:hover {
+  opacity: 1;
+  transform: scale(1.2);
 }
 
 /* Picker Dropdown - 좌우로 배치 */
