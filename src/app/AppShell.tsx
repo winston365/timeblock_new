@@ -77,20 +77,52 @@ export default function AppShell() {
             // Firebase에서 초기 데이터 가져오기
             try {
               const { fetchDataFromFirebase } = await import('@/shared/services/firebaseService');
+              const { saveGameState } = await import('@/data/repositories/gameStateRepository');
+
               const firebaseData = await fetchDataFromFirebase();
               console.log('📥 Fetched from Firebase:', {
                 dailyDataDates: Object.keys(firebaseData.dailyData),
                 hasGameState: !!firebaseData.gameState,
               });
 
-              // Firebase 데이터가 있으면 로컬과 병합
+              // Firebase 데이터를 IndexedDB에 저장
+              // GameState 저장
               if (firebaseData.gameState) {
-                await gameStateStore.loadData(); // 최신 상태로 다시 로드
+                await saveGameState(firebaseData.gameState);
+                await gameStateStore.loadData(); // 리로드
+                console.log('✅ GameState restored from Firebase');
               }
 
-              const today = getLocalDate();
-              if (firebaseData.dailyData[today]) {
-                await dailyDataStore.loadData(today); // 최신 상태로 다시 로드
+              // DailyData 저장 (모든 날짜)
+              const dailyDataDates = Object.keys(firebaseData.dailyData);
+              if (dailyDataDates.length > 0) {
+                console.log(`📦 Restoring ${dailyDataDates.length} days of data from Firebase...`);
+
+                // Firebase 동기화 임시 비활성화를 위해 직접 IndexedDB에 저장
+                const { db } = await import('@/data/db/dexieClient');
+                const { saveToStorage } = await import('@/shared/lib/utils');
+                const { STORAGE_KEYS } = await import('@/shared/lib/constants');
+
+                for (const date of dailyDataDates) {
+                  const data = firebaseData.dailyData[date];
+
+                  // IndexedDB에 직접 저장 (Firebase 재동기화 방지)
+                  await db.dailyData.put({
+                    date,
+                    tasks: data.tasks,
+                    timeBlockStates: data.timeBlockStates,
+                    updatedAt: data.updatedAt || Date.now(),
+                  });
+
+                  // localStorage에도 저장
+                  saveToStorage(`${STORAGE_KEYS.DAILY_PLANS}${date}`, data);
+                  console.log(`✅ Restored data for ${date}: ${data.tasks.length} tasks`);
+                }
+
+                // 오늘 날짜 리로드
+                const today = getLocalDate();
+                await dailyDataStore.loadData(today, true); // 강제 리로드
+                console.log('✅ All data restored from Firebase');
               }
             } catch (error) {
               console.error('Failed to fetch from Firebase:', error);
