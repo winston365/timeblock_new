@@ -1178,6 +1178,12 @@
   max-width: 400px;
 }
 
+/* 2컬럼 모달일 경우 크기 확장 (우선순위 높임) */
+.schedule-modal .modal-content:has(.modal-form-two-column) {
+  max-width: 1200px;
+  width: 95vw; /* 화면이 작을 때 자동 조절 */
+}
+
 .modal-form {
   padding: var(--spacing-md);
 }
@@ -1191,11 +1197,8 @@
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-xl);
   padding: var(--spacing-lg);
-  max-width: 900px;
-}
-
-.modal-form-two-column .modal-content {
-  max-width: 900px;
+  max-width: 1200px;
+  width: 100%;
 }
 
 .form-column {
