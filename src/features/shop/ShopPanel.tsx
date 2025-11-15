@@ -100,8 +100,14 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
       if (result.success) {
         alert(result.message);
 
-        // 아이템 목록 새로고침 (보유 개수 및 사용 버튼 표시를 위해)
-        await loadShopItemsData();
+        // Optimistic UI 업데이트: 구매한 아이템의 quantity만 즉시 업데이트
+        setShopItems(prevItems =>
+          prevItems.map(i =>
+            i.id === item.id
+              ? { ...i, quantity: (i.quantity || 0) + 1 }
+              : i
+          )
+        );
 
         // 부모 컴포넌트에 구매 성공 알림 (와이푸 메시지 표시)
         if (onPurchaseSuccess && result.waifuMessage) {
@@ -139,13 +145,19 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
       if (result.success) {
         alert(result.message);
 
+        // Optimistic UI 업데이트: 사용한 아이템의 quantity만 즉시 감소
+        setShopItems(prevItems =>
+          prevItems.map(i =>
+            i.id === item.id
+              ? { ...i, quantity: Math.max((i.quantity || 0) - 1, 0) }
+              : i
+          )
+        );
+
         // 부모 컴포넌트에 사용 성공 알림 (와이푸 메시지 표시)
         if (onPurchaseSuccess && result.waifuMessage) {
           onPurchaseSuccess(result.message, result.waifuMessage);
         }
-
-        // 아이템 목록 새로고침
-        await loadShopItemsData();
       } else {
         alert(result.message);
       }
