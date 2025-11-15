@@ -34,16 +34,30 @@ export async function loadTemplates(): Promise<Template[]> {
     const templates = await db.templates.toArray();
 
     if (templates.length > 0) {
-      return templates;
+      // preparation 필드의 undefined를 빈 문자열로 정제
+      return templates.map(template => ({
+        ...template,
+        preparation1: template.preparation1 ?? '',
+        preparation2: template.preparation2 ?? '',
+        preparation3: template.preparation3 ?? '',
+      }));
     }
 
     // 2. localStorage에서 조회
     const localTemplates = getFromStorage<Template[]>(STORAGE_KEYS.TEMPLATES, []);
 
     if (localTemplates.length > 0) {
+      // preparation 필드 정제
+      const sanitizedTemplates = localTemplates.map(template => ({
+        ...template,
+        preparation1: template.preparation1 ?? '',
+        preparation2: template.preparation2 ?? '',
+        preparation3: template.preparation3 ?? '',
+      }));
+
       // localStorage 데이터를 IndexedDB에 저장
-      await db.templates.bulkPut(localTemplates);
-      return localTemplates;
+      await db.templates.bulkPut(sanitizedTemplates);
+      return sanitizedTemplates;
     }
 
     return [];
@@ -94,9 +108,9 @@ export async function createTemplate(
       resistance,
       timeBlock,
       autoGenerate,
-      preparation1,
-      preparation2,
-      preparation3,
+      preparation1: preparation1 || '',
+      preparation2: preparation2 || '',
+      preparation3: preparation3 || '',
     };
 
     // IndexedDB에 저장
@@ -135,7 +149,15 @@ export async function updateTemplate(
       throw new Error(`Template not found: ${id}`);
     }
 
-    const updatedTemplate = { ...template, ...updates };
+    // preparation 필드의 undefined를 빈 문자열로 정제
+    const sanitizedUpdates = {
+      ...updates,
+      preparation1: updates.preparation1 ?? template.preparation1 ?? '',
+      preparation2: updates.preparation2 ?? template.preparation2 ?? '',
+      preparation3: updates.preparation3 ?? template.preparation3 ?? '',
+    };
+
+    const updatedTemplate = { ...template, ...sanitizedUpdates };
 
     // IndexedDB에 저장
     await db.templates.put(updatedTemplate);
@@ -186,7 +208,19 @@ export async function deleteTemplate(id: string): Promise<void> {
  */
 export async function getTemplate(id: string): Promise<Template | undefined> {
   try {
-    return await db.templates.get(id);
+    const template = await db.templates.get(id);
+
+    if (!template) {
+      return undefined;
+    }
+
+    // preparation 필드의 undefined를 빈 문자열로 정제
+    return {
+      ...template,
+      preparation1: template.preparation1 ?? '',
+      preparation2: template.preparation2 ?? '',
+      preparation3: template.preparation3 ?? '',
+    };
   } catch (error) {
     console.error('Failed to get template:', error);
     return undefined;
@@ -268,7 +302,15 @@ function getResistanceMultiplier(resistance: Resistance): number {
  */
 export async function getAutoGenerateTemplates(): Promise<Template[]> {
   try {
-    return await db.templates.where('autoGenerate').equals(1).toArray();
+    const templates = await db.templates.where('autoGenerate').equals(1).toArray();
+
+    // preparation 필드의 undefined를 빈 문자열로 정제
+    return templates.map(template => ({
+      ...template,
+      preparation1: template.preparation1 ?? '',
+      preparation2: template.preparation2 ?? '',
+      preparation3: template.preparation3 ?? '',
+    }));
   } catch (error) {
     console.error('Failed to get auto-generate templates:', error);
     return [];
