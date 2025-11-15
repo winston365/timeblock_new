@@ -74,12 +74,17 @@ export default function TimeBlock({
   // 예상 최대 XP 계산
   const maxXP = tasks.reduce((sum, task) => sum + calculateTaskXP(task), 0);
 
-  // 블록 총 예상 시간 계산
+  // 블록 총 예상 시간 계산 (모든 작업 - 진행률 바용)
   const totalDuration = tasks.reduce((sum, task) => sum + task.adjustedDuration, 0);
 
   // 완료된 시간 계산
   const completedDuration = tasks
     .filter(t => t.completed)
+    .reduce((sum, task) => sum + task.adjustedDuration, 0);
+
+  // 미완료 작업의 시간 계산 (시간 상태 판정용)
+  const pendingDuration = tasks
+    .filter(t => !t.completed)
     .reduce((sum, task) => sum + task.adjustedDuration, 0);
 
   // 현재 시간대의 남은 시간 계산 (시간 + 분 단위)
@@ -125,10 +130,10 @@ export default function TimeBlock({
 
   const remainingMinutes = getRemainingMinutes();
 
-  // 시간 상태 계산 (여유도 기반)
+  // 시간 상태 계산 (여유도 기반 - 미완료 작업 기준)
   const getTimeStatus = (): 'comfortable' | 'balanced' | 'tight' | 'critical' => {
-    if (totalDuration === 0) return 'balanced';
-    const ratio = remainingMinutes / totalDuration;
+    if (pendingDuration === 0) return 'balanced';
+    const ratio = remainingMinutes / pendingDuration;
     if (ratio >= 1.1) return 'comfortable';      // 남은 시간 >= 계획 시간 × 1.1배
     if (ratio >= 0.9) return 'balanced';         // 남은 시간 = 계획 시간 × 0.9~1.1배
     if (ratio >= 0.75) return 'tight';           // 남은 시간 = 계획 시간 × 0.75~0.9배
@@ -137,10 +142,10 @@ export default function TimeBlock({
 
   const timeStatus = getTimeStatus();
 
-  // 프로그레스 바 계산 (0-100%)
+  // 프로그레스 바 계산 (0-100% - 미완료 작업 기준)
   const getProgressPercentage = (): number => {
-    if (totalDuration === 0) return 0;
-    const percentage = (totalDuration / remainingMinutes) * 100;
+    if (pendingDuration === 0) return 0;
+    const percentage = (pendingDuration / remainingMinutes) * 100;
     return Math.min(Math.max(percentage, 0), 100);
   };
 
@@ -295,10 +300,10 @@ export default function TimeBlock({
                 className={`time-circle-compact status-${timeStatus}`}
                 role="status"
                 aria-live="polite"
-                aria-label={`계획된 작업 시간 ${totalDuration}분, 남은 시간 ${remainingMinutes}분`}
+                aria-label={`미완료 작업 시간 ${pendingDuration}분, 남은 시간 ${remainingMinutes}분`}
               >
                 <span className="time-remaining">
-                  <span className="planned-time">{totalDuration}m</span>
+                  <span className="planned-time">{pendingDuration}m</span>
                   <span className="time-divider">·</span>
                   <span className="remaining-time">{remainingMinutes}m</span>
                 </span>
