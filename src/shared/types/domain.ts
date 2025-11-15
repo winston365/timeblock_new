@@ -137,6 +137,7 @@ export interface ShopItem {
   name: string;
   price: number; // XP 가격
   image?: string; // Base64 이미지
+  quantity?: number; // 보유 갯수
 }
 
 // ============================================================================

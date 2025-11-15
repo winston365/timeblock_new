@@ -220,14 +220,18 @@ export async function purchaseShopItem(itemId: string): Promise<PurchaseResult> 
     // 3. XP 소비
     await spendXP(item.price);
 
-    // 4. 호감도 증가 (+10)
+    // 4. 보유 갯수 증가
+    const currentQuantity = item.quantity || 0;
+    await updateShopItem(itemId, { quantity: currentQuantity + 1 });
+
+    // 5. 호감도 증가 (+10)
     const waifuState = await loadWaifuState();
     const newAffection = Math.min(waifuState.affection + 10, 100);
     waifuState.affection = newAffection;
     waifuState.totalInteractions += 1;
     await saveWaifuState(waifuState);
 
-    // 5. 와이푸 메시지 생성
+    // 6. 와이푸 메시지 생성
     const waifuMessage = generatePurchaseMessage(item.name, newAffection);
 
 
@@ -284,5 +288,75 @@ export async function canPurchaseItem(itemId: string): Promise<boolean> {
   } catch (error) {
     console.error('Failed to check purchase availability:', error);
     return false;
+  }
+}
+
+/**
+ * 상점 아이템 사용
+ *
+ * @param {string} itemId - 사용할 아이템 ID
+ * @returns {Promise<PurchaseResult>} 사용 결과
+ * @throws 없음
+ * @sideEffects
+ *   - 보유 갯수 감소
+ */
+export async function useShopItem(itemId: string): Promise<PurchaseResult> {
+  try {
+    // 1. 아이템 조회
+    const item = await getShopItem(itemId);
+    if (!item) {
+      return {
+        success: false,
+        message: '아이템을 찾을 수 없습니다.',
+      };
+    }
+
+    // 2. 보유 갯수 확인
+    const currentQuantity = item.quantity || 0;
+    if (currentQuantity <= 0) {
+      return {
+        success: false,
+        message: '보유한 아이템이 없습니다.',
+      };
+    }
+
+    // 3. 보유 갯수 감소
+    await updateShopItem(itemId, { quantity: currentQuantity - 1 });
+
+    // 4. 와이푸 메시지 생성
+    const waifuState = await loadWaifuState();
+    const waifuMessage = generateUseMessage(item.name, waifuState.affection);
+
+    return {
+      success: true,
+      message: `${item.name}을(를) 사용했습니다!`,
+      waifuMessage,
+    };
+  } catch (error) {
+    console.error('Failed to use item:', error);
+    return {
+      success: false,
+      message: '아이템 사용 중 오류가 발생했습니다.',
+    };
+  }
+}
+
+/**
+ * 아이템 사용 시 와이푸 메시지 생성
+ */
+function generateUseMessage(itemName: string, affection: number): string {
+  const messages = [
+    `${itemName}... 사용할 거야? 즐거워 보여! 😊`,
+    `오! ${itemName}! 좋은 선택이야! ✨`,
+    `${itemName}을(를) 사용하는구나... 재밌겠다! 💕`,
+    `${itemName}... 나도 궁금해! 😄`,
+  ];
+
+  if (affection >= 80) {
+    return `${itemName}... 같이 즐기자! 💖`;
+  } else if (affection >= 50) {
+    return messages[Math.floor(Math.random() * messages.length)];
+  } else {
+    return `${itemName}... 잘 사용해. 😊`;
   }
 }
