@@ -36,6 +36,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
     geminiApiKey: '',
     autoMessageInterval: 30,
     autoMessageEnabled: false,
+    waifuMode: 'characteristic',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -209,6 +210,37 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                   <div className="info-box">
                     <strong>💡 팁:</strong> 테마는 즉시 적용되며, 자동으로 저장됩니다.
                     작업 환경에 맞는 테마를 선택하여 눈의 피로를 줄이고 집중력을 높여보세요!
+                  </div>
+
+                  <hr style={{ margin: '24px 0', border: 'none', borderTop: '1px solid var(--color-border)' }} />
+
+                  <h3>👧 와이푸 모드 설정</h3>
+                  <p className="section-description">
+                    와이푸 이미지 표시 방식을 선택할 수 있습니다.
+                  </p>
+
+                  <div className="form-group">
+                    <label htmlFor="waifu-mode-select">모드 선택</label>
+                    <select
+                      id="waifu-mode-select"
+                      className="form-input"
+                      value={settings.waifuMode}
+                      onChange={(e) =>
+                        setSettings({ ...settings, waifuMode: e.target.value as 'normal' | 'characteristic' })
+                      }
+                    >
+                      <option value="characteristic">특성 모드 (호감도에 따라 변화)</option>
+                      <option value="normal">일반 모드 (기본 이미지 고정)</option>
+                    </select>
+                    <small className="form-hint">
+                      {settings.waifuMode === 'characteristic'
+                        ? '호감도에 따라 다양한 표정의 이미지가 표시됩니다.'
+                        : '호감도와 관계없이 기본 이미지만 표시됩니다.'}
+                    </small>
+                  </div>
+
+                  <div className="info-box">
+                    <strong>💡 참고:</strong> 설정은 로컬 저장소에 저장되어 페이지를 새로고침해도 유지됩니다.
                   </div>
                 </div>
               )}

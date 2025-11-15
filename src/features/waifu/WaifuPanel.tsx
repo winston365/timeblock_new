@@ -14,6 +14,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWaifuState } from '@/shared/hooks';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier, getAffectionColor } from './waifuImageUtils';
+import { loadSettings } from '@/data/repositories/settingsRepository';
+import type { WaifuMode } from '@/shared/types/domain';
 import './waifu.css';
 
 interface WaifuPanelProps {
@@ -36,19 +38,37 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
   const { message: companionMessage } = useWaifuCompanionStore();
   const [displayImagePath, setDisplayImagePath] = useState<string>('');
   const [clickCount, setClickCount] = useState(0);
+  const [waifuMode, setWaifuMode] = useState<WaifuMode>('characteristic');
   const lastImageChangeTime = useRef<number>(Date.now());
+
+  // 설정 로드 (와이푸 모드)
+  useEffect(() => {
+    const loadWaifuMode = async () => {
+      const settings = await loadSettings();
+      setWaifuMode(settings.waifuMode);
+    };
+    loadWaifuMode();
+  }, []);
 
   // 이미지 변경 함수
   const changeImage = useCallback(async (affection: number) => {
     if (!waifuState) return;
 
+    // 일반 모드일 경우 base.png 사용
+    if (waifuMode === 'normal') {
+      setDisplayImagePath('/assets/waifu/base.png');
+      lastImageChangeTime.current = Date.now();
+      return;
+    }
+
+    // 특성 모드일 경우 호감도에 따라 이미지 선택
     const tier = getAffectionTier(affection);
     const newImageNumber = getRandomImageNumber(tier.name);
 
     const path = await getWaifuImagePathWithFallback(affection, newImageNumber);
     setDisplayImagePath(path);
     lastImageChangeTime.current = Date.now();
-  }, [waifuState]);
+  }, [waifuState, waifuMode]);
 
   // 초기 이미지 로드 및 호감도 변경 시 이미지 업데이트
   useEffect(() => {

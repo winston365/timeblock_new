@@ -31,6 +31,7 @@ export function createInitialSettings(): Settings {
     geminiApiKey: '',
     autoMessageInterval: DEFAULT_AUTO_MESSAGE_INTERVAL,
     autoMessageEnabled: true,
+    waifuMode: 'characteristic', // 기본값: 특성 모드
   };
 }
 
@@ -50,6 +51,11 @@ export async function loadSettings(): Promise<Settings> {
     const data = await db.settings.get('current');
 
     if (data) {
+      // 기존 사용자를 위한 마이그레이션: waifuMode가 없으면 기본값 설정
+      if (!data.waifuMode) {
+        data.waifuMode = 'characteristic';
+        await saveSettings(data);
+      }
       return data;
     }
 
@@ -57,6 +63,10 @@ export async function loadSettings(): Promise<Settings> {
     const localData = getFromStorage<Settings | null>(STORAGE_KEYS.SETTINGS, null);
 
     if (localData) {
+      // 기존 사용자를 위한 마이그레이션: waifuMode가 없으면 기본값 설정
+      if (!localData.waifuMode) {
+        localData.waifuMode = 'characteristic';
+      }
       await saveSettings(localData);
       return localData;
     }

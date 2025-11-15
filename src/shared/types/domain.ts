@@ -227,6 +227,11 @@ export interface DailyTokenUsage {
 // ============================================================================
 
 /**
+ * 와이푸 모드 타입
+ */
+export type WaifuMode = 'normal' | 'characteristic'; // 일반 모드 | 특성 모드
+
+/**
  * 앱 설정 (API 키, Firebase 설정, 자동 메시지 등)
  */
 export interface Settings {
@@ -242,6 +247,7 @@ export interface Settings {
   };
   autoMessageInterval: number; // 자동 메시지 간격 (분)
   autoMessageEnabled: boolean; // 자동 메시지 활성화 여부
+  waifuMode: WaifuMode; // 와이푸 모드 (일반/특성)
 }
 
 // ============================================================================
