@@ -11,8 +11,10 @@
  *   - tasks.css: 스타일시트
  */
 
-import { useCompletedTasks, useDailyData } from '@/shared/hooks';
+import { useCompletedTasks } from '@/shared/hooks';
 import { formatTime, calculateTaskXP } from '@/shared/lib/utils';
+import { toggleTaskCompletion as toggleTaskCompletionRepo } from '@/data/repositories';
+import type { Task } from '@/shared/types/domain';
 import './tasks.css';
 
 /**
@@ -25,11 +27,18 @@ import './tasks.css';
  */
 export default function CompletedTab() {
   const { completedTasks, loading } = useCompletedTasks();
-  const { toggleTaskCompletion } = useDailyData();
 
-  const handleToggleTask = async (taskId: string) => {
+  const handleToggleTask = async (task: Task) => {
     try {
-      await toggleTaskCompletion(taskId);
+      // completedAt에서 날짜 추출 (YYYY-MM-DD)
+      const taskDate = task.completedAt
+        ? new Date(task.completedAt).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+
+      await toggleTaskCompletionRepo(task.id, taskDate);
+
+      // 페이지 새로고침하여 변경사항 반영
+      window.location.reload();
     } catch (error) {
       console.error('Failed to toggle task:', error);
     }
@@ -76,7 +85,7 @@ export default function CompletedTab() {
                 <div key={task.id} className="completed-item">
                   <button
                     className="completed-checkbox"
-                    onClick={() => handleToggleTask(task.id)}
+                    onClick={() => handleToggleTask(task)}
                     title="완료 취소"
                   >
                     ✅
