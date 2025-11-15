@@ -30,6 +30,13 @@
   padding: var(--spacing-md);
   overflow-y: auto;
   max-height: calc(100vh - 200px);
+  transition: all 0.2s;
+}
+
+/* 드래그 오버 상태 */
+.tab-content.drag-over {
+  background: rgba(99, 102, 241, 0.1);
+  border: 2px dashed var(--color-primary);
 }
 
 .empty-state {

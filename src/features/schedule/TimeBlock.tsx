@@ -199,6 +199,7 @@ export default function TimeBlock({
                   <span className="stat-compact">📋 {tasks.length}</span>
                   <span className="stat-compact">⏱️ {completedDuration}/{totalDuration}m</span>
                   {maxXP > 0 && <span className="stat-compact">✨ ~{maxXP}XP</span>}
+                  {!isPastBlock && <span className="stat-compact lock-warning">⚠️ 잠금 필요</span>}
                 </>
               )}
             </div>

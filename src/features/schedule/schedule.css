@@ -253,17 +253,39 @@
   transform: none;
 }
 
-/* 잠금 필요 표시 */
+/* 잠금 필요 표시 - 더 명확하게 */
 .action-btn-sm.lock-needed {
-  animation: lockNeeded 2s ease-in-out infinite;
+  background: var(--color-warning);
+  color: white;
+  animation: lockNeededPulse 2s ease-in-out infinite;
+  font-size: 1.2rem;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
 }
 
-@keyframes lockNeeded {
+@keyframes lockNeededPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.4);
+  }
+}
+
+/* 잠금 경고 텍스트 */
+.lock-warning {
+  color: var(--color-warning);
+  font-weight: 600;
+  animation: lockWarningBlink 2s ease-in-out infinite;
+}
+
+@keyframes lockWarningBlink {
   0%, 100% {
     opacity: 1;
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.6;
   }
 }
 

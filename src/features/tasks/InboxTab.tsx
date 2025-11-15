@@ -16,6 +16,7 @@ export default function InboxTab() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const handleAddTask = () => {
     setEditingTask(null);
@@ -72,6 +73,33 @@ export default function InboxTab() {
     }
   };
 
+  // 드래그 앤 드롭 핸들러 (시간대 블록 → 인박스)
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const taskId = e.dataTransfer.getData('text/plain');
+    if (!taskId) return;
+
+    try {
+      // 작업을 인박스로 이동 (timeBlock을 null로 설정)
+      await updateTask(taskId, { timeBlock: null });
+    } catch (error) {
+      console.error('Failed to move task to inbox:', error);
+      alert('작업 이동에 실패했습니다.');
+    }
+  };
+
   if (loading) {
     return <div className="tab-loading">로딩 중...</div>;
   }
@@ -85,7 +113,12 @@ export default function InboxTab() {
         </button>
       </div>
 
-      <div className="tab-content">
+      <div
+        className={`tab-content ${isDragOver ? 'drag-over' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {inboxTasks.length === 0 ? (
           <div className="empty-state">
             <p>📭 인박스가 비어있습니다</p>
