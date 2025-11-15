@@ -50,6 +50,60 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
     }
   }, [task]);
 
+  // 자동 태그 파싱 함수
+  const parseAndApplyTags = (inputText: string) => {
+    let updatedText = inputText;
+
+    // 시간 태그 감지 및 적용 (T5, T10, T15, T30, T60, T90)
+    const timeTagMatch = inputText.match(/\b(T5|T10|T15|T30|T60|T90)\b/i);
+    if (timeTagMatch) {
+      const timeTag = timeTagMatch[1].toUpperCase();
+      const durationMap: { [key: string]: number } = {
+        'T5': 5,
+        'T10': 10,
+        'T15': 15,
+        'T30': 30,
+        'T60': 60,
+        'T90': 90,
+      };
+      const duration = durationMap[timeTag];
+      if (duration !== undefined) {
+        setBaseDuration(duration);
+      }
+      // 태그 제거
+      updatedText = updatedText.replace(/\b(T5|T10|T15|T30|T60|T90)\b/gi, '').trim();
+    }
+
+    // 난이도 태그 감지 및 적용 (D1, D2, D3)
+    const difficultyTagMatch = inputText.match(/\b(D1|D2|D3)\b/i);
+    if (difficultyTagMatch) {
+      const difficultyTag = difficultyTagMatch[1].toUpperCase();
+      const difficultyMap: { [key: string]: Resistance } = {
+        'D1': 'low',
+        'D2': 'medium',
+        'D3': 'high',
+      };
+      const difficulty = difficultyMap[difficultyTag];
+      if (difficulty !== undefined) {
+        setResistance(difficulty);
+      }
+      // 태그 제거
+      updatedText = updatedText.replace(/\b(D1|D2|D3)\b/gi, '').trim();
+    }
+
+    // 공백 정리 (여러 개의 공백을 하나로)
+    updatedText = updatedText.replace(/\s+/g, ' ').trim();
+
+    return updatedText;
+  };
+
+  // 텍스트 변경 핸들러 (자동 태그 파싱 포함)
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputText = e.target.value;
+    const parsedText = parseAndApplyTags(inputText);
+    setText(parsedText);
+  };
+
   // ESC 키로 모달 닫기
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -109,8 +163,8 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
                 id="task-text"
                 type="text"
                 value={text}
-                onChange={e => setText(e.target.value)}
-                placeholder="무엇을 할까요?"
+                onChange={handleTextChange}
+                placeholder="무엇을 할까요? (예: T30 D2 보고서 작성)"
                 autoFocus
                 required
               />
