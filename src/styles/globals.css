@@ -468,6 +468,7 @@ select:disabled,
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0; /* 헤더 고정, 스크롤 방지 */
 }
 
 .modal-header h2,

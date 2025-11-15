@@ -237,6 +237,9 @@
 
 .modal-body {
   padding: var(--spacing-sm) var(--spacing-md);
+  flex: 1; /* 남은 공간 차지 */
+  overflow-y: auto; /* 내용이 많으면 스크롤 */
+  min-height: 0; /* flex 자식의 overflow 작동을 위해 필요 */
 }
 
 .modal-actions {
