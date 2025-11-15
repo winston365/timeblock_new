@@ -37,6 +37,60 @@ export default function ScheduleView() {
 
   const currentBlockId = getCurrentBlockId();
 
+  // 활성 블록 강조 표시 업데이트
+  useEffect(() => {
+    const updateActiveBlock = (hour: number) => {
+      const allActiveBlocks = document.querySelectorAll('.time-block.active-block');
+      allActiveBlocks.forEach(blockElement => {
+        blockElement.classList.remove('active-block');
+      });
+
+      const activeBlock = TIME_BLOCKS.find(b => hour >= b.start && hour < b.end);
+
+      if (activeBlock) {
+        const targetElement = document.querySelector(`.time-block[data-block-id="${activeBlock.id}"]`);
+        if (targetElement) {
+          targetElement.classList.add('active-block');
+        }
+      }
+    };
+
+    updateActiveBlock(currentHour);
+  }, [currentHour]);
+
+  // 지난 블록의 미완료 작업을 인박스로 이동
+  useEffect(() => {
+    const movePastIncompleteTasks = async () => {
+      if (!dailyData) return;
+
+      const currentTime = new Date();
+      const currentHourValue = currentTime.getHours();
+
+      // 지난 블록 찾기 (현재 시간보다 종료 시간이 이전인 블록)
+      const pastBlocks = TIME_BLOCKS.filter(block => currentHourValue >= block.end);
+
+      // 지난 블록의 미완료 작업 찾기
+      const tasksToMove: Task[] = [];
+      for (const block of pastBlocks) {
+        const incompleteTasks = dailyData.tasks.filter(
+          task => task.timeBlock === block.id && !task.completed
+        );
+        tasksToMove.push(...incompleteTasks);
+      }
+
+      // 미완료 작업을 인박스로 이동 (timeBlock을 null로 설정)
+      for (const task of tasksToMove) {
+        try {
+          await updateTask(task.id, { timeBlock: null });
+        } catch (error) {
+          console.error(`Failed to move task ${task.id} to inbox:`, error);
+        }
+      }
+    };
+
+    movePastIncompleteTasks();
+  }, [currentHour, dailyData, updateTask]);
+
   // 작업 추가 모달 열기
   const handleAddTask = (blockId: TimeBlockId) => {
     setSelectedBlockId(blockId);

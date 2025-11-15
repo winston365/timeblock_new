@@ -17,10 +17,8 @@ import {
   spendXP,
   updateQuestProgress,
   increaseAffectionFromTask,
-  loadGameState,
 } from '@/data/repositories';
 import { getLocalDate, calculateTaskXP } from '../lib/utils';
-import { isBlockPerfect, isBlockFailed, BLOCK_LOCK_COST, PERFECT_BLOCK_REWARD } from '../utils/gamification';
 
 export function useDailyData(date: string = getLocalDate()) {
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
