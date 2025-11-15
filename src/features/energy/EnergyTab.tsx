@@ -47,6 +47,7 @@ export default function EnergyTab() {
     todayAverage,
     overallAverage,
     timeBlockAverages,
+    recentTimeBlockStats,
     addEnergyLevel,
     deleteEnergyLevel,
   } = useEnergyState();
@@ -158,10 +159,47 @@ export default function EnergyTab() {
           </div>
         </div>
 
-        {/* 시간대별 평균 */}
+        {/* 5일간 시간대별 에너지 통계 */}
+        {recentTimeBlockStats && recentTimeBlockStats.length > 0 && (
+          <div className="energy-section">
+            <h4>5일간 시간대별 에너지 통계</h4>
+            <div className="recent-energy-stats">
+              {recentTimeBlockStats.map((dayStat) => (
+                <div key={dayStat.date} className="daily-energy-stat">
+                  <div className="daily-stat-header">
+                    <strong>{dayStat.date.substring(5)}</strong>
+                  </div>
+                  <div className="daily-timeblock-list">
+                    {Object.keys(dayStat.timeBlocks).length > 0 ? (
+                      Object.entries(dayStat.timeBlocks).map(([blockId, avg]) => (
+                        <div key={blockId} className="daily-timeblock-item">
+                          <span className="block-label-compact">{getBlockLabel(blockId)}</span>
+                          <div className="energy-bar-mini">
+                            <div
+                              className="energy-bar-fill"
+                              style={{
+                                width: `${avg}%`,
+                                background: getEnergyColor(avg),
+                              }}
+                            />
+                          </div>
+                          <span className="energy-value-mini">{avg}%</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="no-data-text">데이터 없음</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 시간대별 평균 (오늘) */}
         {Object.keys(timeBlockAverages).length > 0 && (
           <div className="energy-section">
-            <h4>시간대별 평균 에너지</h4>
+            <h4>오늘 시간대별 평균 에너지</h4>
             <div className="timeblock-energy-list">
               {Object.entries(timeBlockAverages).map(([blockId, avg]) => (
                 <div key={blockId} className="timeblock-energy-item">

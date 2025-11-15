@@ -58,7 +58,7 @@
     380px                    /* 좌측 사이드바 */
     minmax(600px, 1fr)       /* 중앙 콘텐츠 (최소 600px, 최대 1fr) */
     320px                    /* 인사이트 패널 */
-    280px;                   /* 우측 패널 */
+    336px;                   /* 우측 패널 (280px * 1.2 = 336px) */
   flex: 1;
   overflow: hidden;
   gap: 0;
@@ -437,7 +437,7 @@
 /* 1600px 이하: 인사이트 패널 숨김 */
 @media (max-width: 1600px) {
   .main-layout {
-    grid-template-columns: 380px minmax(600px, 1fr) 280px;
+    grid-template-columns: 380px minmax(600px, 1fr) 336px;
   }
 
   .insight-panel {

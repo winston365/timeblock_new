@@ -105,6 +105,50 @@ function calculateOverallAverage(): number {
 }
 
 /**
+ * 지난 N일간 날짜 목록 생성 (오늘 포함)
+ */
+function getRecentDates(days: number): string[] {
+  const dates: string[] = [];
+  const today = new Date();
+
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    dates.push(getDateString(date));
+  }
+
+  return dates;
+}
+
+/**
+ * 5일간 시간대별 에너지 통계
+ */
+export interface DailyTimeBlockEnergy {
+  date: string;
+  timeBlocks: Record<string, number>; // { '5-8': 75, '8-11': 80, ... }
+}
+
+/**
+ * 5일간 시간대별 에너지 통계 계산
+ */
+function calculateRecentTimeBlockStats(days: number = 5): DailyTimeBlockEnergy[] {
+  const dates = getRecentDates(days);
+  const result: DailyTimeBlockEnergy[] = [];
+
+  for (const date of dates) {
+    const levels = loadEnergyLevels(date);
+    const timeBlocks = calculateTimeBlockAverages(levels);
+
+    result.push({
+      date,
+      timeBlocks,
+    });
+  }
+
+  return result;
+}
+
+/**
  * 에너지 상태 관리 훅
  *
  * @returns {object} 에너지 레벨 및 통계
@@ -173,6 +217,9 @@ export function useEnergyState() {
 
   const timeBlockAverages = calculateTimeBlockAverages(energyLevels);
 
+  // 5일간 시간대별 통계
+  const recentTimeBlockStats = calculateRecentTimeBlockStats(5);
+
   return {
     energyLevels,
     loading,
@@ -180,6 +227,7 @@ export function useEnergyState() {
     todayAverage,
     overallAverage,
     timeBlockAverages,
+    recentTimeBlockStats,
     addEnergyLevel,
     deleteEnergyLevel,
   };

@@ -1,13 +1,13 @@
 /**
  * Sync Logger Service
  *
- * @role Dexie 및 Firebase 동기화 이벤트를 추적하고 메모리에 저장합니다.
+ * @role Dexie 및 Firebase 동기화 이벤트를 추적하고 localStorage에 영구 저장합니다.
  *       실시간 로그 구독 기능을 제공하여 UI에서 동기화 상태를 모니터링할 수 있습니다.
  * @input SyncType ('dexie' | 'firebase'), SyncAction ('save' | 'load' | 'sync' | 'error'),
  *        메시지, 데이터, 에러 객체
- * @output SyncLogEntry 배열 (최대 100개 유지)
+ * @output SyncLogEntry 배열 (최대 100개 유지, localStorage에 영구 저장)
  * @external_dependencies
- *   - 없음: 순수 메모리 기반 로그 관리, 외부 의존성 없음
+ *   - localStorage: 로그 영구 저장
  */
 
 export type SyncType = 'dexie' | 'firebase';
@@ -23,10 +23,41 @@ export interface SyncLogEntry {
   error?: string;
 }
 
-// 메모리 내 로그 저장 (최대 100개)
+// 로컬스토리지 키
+const STORAGE_KEY = 'syncLogs';
+
+// 메모리 내 로그 캐시 (최대 100개)
 const MAX_LOGS = 100;
 let syncLogs: SyncLogEntry[] = [];
 let logListeners: Array<(logs: SyncLogEntry[]) => void> = [];
+
+/**
+ * localStorage에서 로그 로드
+ */
+function loadLogsFromStorage(): SyncLogEntry[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return [];
+    return JSON.parse(stored);
+  } catch (error) {
+    console.error('Failed to load sync logs from localStorage:', error);
+    return [];
+  }
+}
+
+/**
+ * localStorage에 로그 저장
+ */
+function saveLogsToStorage(logs: SyncLogEntry[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+  } catch (error) {
+    console.error('Failed to save sync logs to localStorage:', error);
+  }
+}
+
+// 초기 로드
+syncLogs = loadLogsFromStorage();
 
 /**
  * 동기화 로그 항목을 추가합니다.
@@ -40,6 +71,7 @@ let logListeners: Array<(logs: SyncLogEntry[]) => void> = [];
  * @throws 없음
  * @sideEffects
  *   - syncLogs 배열에 새 항목 추가 (최대 100개 유지)
+ *   - localStorage에 저장
  *   - 모든 등록된 리스너에게 업데이트 알림
  */
 export function addSyncLog(
@@ -66,6 +98,9 @@ export function addSyncLog(
     syncLogs = syncLogs.slice(0, MAX_LOGS);
   }
 
+  // localStorage에 저장
+  saveLogsToStorage(syncLogs);
+
   // 리스너 호출
   notifyListeners();
 }
@@ -89,10 +124,12 @@ export function getSyncLogs(): SyncLogEntry[] {
  * @throws 없음
  * @sideEffects
  *   - syncLogs 배열 초기화
+ *   - localStorage에서 삭제
  *   - 모든 등록된 리스너에게 업데이트 알림
  */
 export function clearSyncLogs(): void {
   syncLogs = [];
+  saveLogsToStorage(syncLogs);
   notifyListeners();
 }
 

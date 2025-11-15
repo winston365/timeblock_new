@@ -166,3 +166,72 @@
 .summary-value.xp-value {
   color: var(--color-reward);
 }
+
+/* ============================================================================
+   5일간 시간대별 XP 통계
+   ============================================================================ */
+
+.recent-block-xp-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.daily-block-xp-stat {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: var(--spacing-sm);
+}
+
+.daily-stat-header {
+  font-size: 0.875rem;
+  margin-bottom: var(--spacing-xs);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.daily-block-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.daily-block-item {
+  display: grid;
+  grid-template-columns: 90px 1fr 55px;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.block-label-compact {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+}
+
+.xp-bar-mini {
+  height: 12px;
+  background: var(--color-bg-secondary);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.xp-value-mini {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-align: right;
+  color: var(--color-reward);
+}
+
+.no-data-text {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: var(--spacing-xs);
+}

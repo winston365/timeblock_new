@@ -6,7 +6,14 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* 개선된 그라디언트: 청록-보라 계열, 부드럽고 현대적 */
+  background: linear-gradient(135deg,
+    #2D3561 0%,      /* 딥 미드나잇 블루 */
+    #4A5899 25%,     /* 스모키 퍼플블루 */
+    #6B5B95 50%,     /* 로열 아메시스트 */
+    #8B5A8E 75%,     /* 트와일라잇 퍼플 */
+    #A0568B 100%     /* 더스키 로즈퍼플 */
+  );
   z-index: 1000;
   animation: fadeIn 0.3s ease-out;
 }
@@ -25,7 +32,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.1));
+  /* 개선: 부드러운 오버레이, 깊이감 증가 */
+  background: linear-gradient(135deg,
+    rgba(45, 53, 97, 0.4) 0%,
+    rgba(107, 91, 149, 0.2) 50%,
+    rgba(160, 86, 139, 0.3) 100%
+  );
   overflow: hidden;
 }
 
@@ -33,7 +45,9 @@
   max-width: 90%;
   max-height: 90vh;
   object-fit: contain;
-  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));
+  /* 개선: 더 부드럽고 생동감 있는 그림자 */
+  filter: drop-shadow(0 20px 40px rgba(107, 91, 149, 0.5))
+          drop-shadow(0 10px 20px rgba(160, 86, 139, 0.3));
   animation: fadeInScale 0.6s ease-out;
 }
 
@@ -130,20 +144,31 @@
 }
 
 .btn-close-fullscreen {
-  padding: 8px 16px;
-  background: #e74c3c;
+  padding: 10px 18px;
+  /* 개선: 그라디언트로 세련되게 */
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 18px;
   font-weight: bold;
-  transition: all 0.2s;
+  /* 개선: 더 강한 그림자와 부드러운 전환 */
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4),
+              0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-close-fullscreen:hover {
-  background: #c0392b;
-  transform: scale(1.05);
+  background: linear-gradient(135deg, #ec5e4f, #d44638);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(231, 76, 60, 0.5),
+              0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.btn-close-fullscreen:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
 }
 
 /* 메시지 목록 */
@@ -193,18 +218,25 @@
 .example-btn {
   padding: 14px 20px;
   background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border: 2px solid var(--color-border);
+  border-radius: 12px;
   cursor: pointer;
   font-size: 14px;
   text-align: left;
-  transition: all 0.2s;
+  /* 개선: 부드러운 전환과 그림자 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .example-btn:hover {
-  background: var(--color-bg-tertiary);
-  border-color: var(--color-primary);
-  transform: translateY(-2px);
+  background: linear-gradient(135deg,
+    rgba(107, 91, 149, 0.1),
+    rgba(139, 90, 142, 0.1)
+  );
+  border-color: #8B5A8E;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(107, 91, 149, 0.2),
+              0 3px 8px rgba(0, 0, 0, 0.08);
 }
 
 /* 메시지 */
@@ -227,22 +259,39 @@
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  background: var(--color-bg-secondary);
+  /* 개선: 그라디언트 배경과 강한 그림자 */
+  background: linear-gradient(135deg, #6B5B95, #8B5A8E);
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(107, 91, 149, 0.3),
+              0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .fullscreen-message .message-bubble {
   max-width: 70%;
   padding: 16px 20px;
-  border-radius: 16px;
+  border-radius: 18px;
   background: var(--color-bg-secondary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  /* 개선: 더 깊고 부드러운 그림자, 미세한 테두리 */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08),
+              0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(107, 91, 149, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.fullscreen-message .message-bubble:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12),
+              0 3px 10px rgba(0, 0, 0, 0.06);
 }
 
 .fullscreen-message.user .message-bubble {
-  background: var(--color-primary);
+  /* 개선: 그라디언트 배경으로 시각적 풍부함 증가 */
+  background: linear-gradient(135deg, #6B5B95, #8B5A8E);
   color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(107, 91, 149, 0.4),
+              0 2px 8px rgba(160, 86, 139, 0.3);
 }
 
 .fullscreen-message .message-text {
@@ -319,18 +368,23 @@
 .fullscreen-input {
   flex: 1;
   padding: 14px 20px;
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--color-border);
   border-radius: 24px;
   font-size: 15px;
   background: var(--color-bg-primary);
   color: var(--color-text);
   outline: none;
-  transition: all 0.2s;
+  /* 개선: 부드러운 전환 효과 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .fullscreen-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  /* 개선: 그라디언트 테두리 효과 */
+  border-color: #8B5A8E;
+  box-shadow: 0 0 0 4px rgba(107, 91, 149, 0.15),
+              0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
 }
 
 .fullscreen-input:disabled {
@@ -339,19 +393,32 @@
 }
 
 .btn-send-fullscreen {
-  padding: 14px 24px;
-  background: var(--color-primary);
+  padding: 14px 28px;
+  /* 개선: 그라디언트 버튼 */
+  background: linear-gradient(135deg, #6B5B95, #8B5A8E);
   color: white;
   border: none;
   border-radius: 24px;
   cursor: pointer;
   font-size: 18px;
-  transition: all 0.2s;
+  font-weight: 600;
+  /* 개선: 더 강한 그림자와 부드러운 전환 */
+  box-shadow: 0 4px 12px rgba(107, 91, 149, 0.4),
+              0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-send-fullscreen:hover:not(:disabled) {
-  background: var(--color-primary-dark);
-  transform: scale(1.05);
+  /* 개선: 밝아지는 효과와 더 강한 그림자 */
+  background: linear-gradient(135deg, #7A6AA4, #9A69A0);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(107, 91, 149, 0.5),
+              0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.btn-send-fullscreen:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(107, 91, 149, 0.3);
 }
 
 .btn-send-fullscreen:disabled {

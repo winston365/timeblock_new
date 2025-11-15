@@ -38,6 +38,14 @@ export default function StatsTab() {
   const timeBlockXP = gameState.timeBlockXP;
   const maxBlockXP = Math.max(...Object.values(timeBlockXP), 10);
 
+  // 5일간 블록별 XP 히스토리
+  const recentBlockXPHistory = gameState.timeBlockXPHistory.slice(-5);
+  // 오늘 데이터가 없으면 추가
+  const todayInHistory = recentBlockXPHistory.find(h => h.date === today);
+  const finalBlockXPHistory = todayInHistory
+    ? recentBlockXPHistory
+    : [...recentBlockXPHistory.slice(-4), { date: today, blocks: timeBlockXP }];
+
   return (
     <div className="stats-tab">
       <div className="tab-header">
@@ -63,6 +71,48 @@ export default function StatsTab() {
                     <span className="chart-value">{item.xp}</span>
                   </div>
                   <div className="chart-label">{item.date.substring(5)}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* 5일간 시간대별 XP 통계 */}
+        <div className="stats-section">
+          <h4>5일간 시간대별 XP 통계</h4>
+          <div className="recent-block-xp-stats">
+            {finalBlockXPHistory.length === 0 ? (
+              <div className="chart-empty">데이터가 없습니다</div>
+            ) : (
+              finalBlockXPHistory.map((dayXP) => (
+                <div key={dayXP.date} className="daily-block-xp-stat">
+                  <div className="daily-stat-header">
+                    <strong>{dayXP.date.substring(5)}</strong>
+                  </div>
+                  <div className="daily-block-list">
+                    {Object.keys(dayXP.blocks).length > 0 ? (
+                      TIME_BLOCKS.map((block) => {
+                        const xp = dayXP.blocks[block.id] || 0;
+                        return (
+                          <div key={block.id} className="daily-block-item">
+                            <span className="block-label-compact">{block.label}</span>
+                            <div className="xp-bar-mini">
+                              <div
+                                className="xp-bar-fill"
+                                style={{
+                                  width: xp > 0 ? `${Math.min((xp / 200) * 100, 100)}%` : '0%',
+                                  background: 'linear-gradient(90deg, var(--color-primary), var(--color-primary-dark))',
+                                }}
+                              />
+                            </div>
+                            <span className="xp-value-mini">{xp} XP</span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="no-data-text">데이터 없음</div>
+                    )}
+                  </div>
                 </div>
               ))
             )}
