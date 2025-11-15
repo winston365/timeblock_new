@@ -10,7 +10,7 @@
  *   - hooks: 현재 상태 (에너지, 작업, 게임 상태)
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useWaifuState, useDailyData, useGameState, useEnergyState } from '@/shared/hooks';
 import { loadSettings } from '@/data/repositories/settingsRepository';
 import { callGeminiAPI, generateWaifuPersona, type PersonaContext } from '@/shared/services/geminiApi';
@@ -250,10 +250,16 @@ export default function InsightPanel() {
   const [apiKey, setApiKey] = useState<string>('');
   const [refreshInterval, setRefreshInterval] = useState<number>(15); // 분 단위
 
+  // 초기 로드 추적용 ref
+  const initialLoadRef = useRef(false);
+
   /**
    * 인사이트 생성 함수
+   *
+   * ⚠️ 주의: 이 함수는 useCallback으로 감싸지 않음
+   * 이유: 최신 상태를 항상 참조하기 위함 (deps 변경으로 인한 재생성 방지)
    */
-  const generateInsight = useCallback(async () => {
+  const generateInsight = async () => {
     if (!apiKey) {
       setError('Gemini API 키가 설정되지 않았습니다.');
       setLoading(false);
@@ -377,7 +383,7 @@ export default function InsightPanel() {
     } finally {
       setLoading(false);
     }
-  }, [apiKey, dailyData, gameState, waifuState, currentEnergy]);
+  };
 
   // API 키 로드 및 설정 로드
   useEffect(() => {
@@ -398,14 +404,16 @@ export default function InsightPanel() {
     return () => clearInterval(settingsInterval);
   }, []);
 
-  // 초기 인사이트 생성
+  // 초기 인사이트 생성 (한 번만)
   useEffect(() => {
-    if (apiKey) {
+    if (apiKey && !initialLoadRef.current) {
+      initialLoadRef.current = true;
       generateInsight();
     }
-  }, [apiKey, generateInsight]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey]); // generateInsight를 의존성에서 제거 (데이터 변경 시 재생성 방지)
 
-  // 자동 갱신 타이머
+  // 자동 갱신 타이머 (설정된 주기에만 실행)
   useEffect(() => {
     if (!apiKey) return;
 
@@ -414,7 +422,8 @@ export default function InsightPanel() {
     }, refreshInterval * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [apiKey, refreshInterval, generateInsight]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey, refreshInterval]); // generateInsight를 의존성에서 제거 (데이터 변경 시 재생성 방지)
 
   // 마크다운 파싱 (성능 최적화: insight 변경 시에만 재계산)
   const parsedHtml = useMemo(() => {
