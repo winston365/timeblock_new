@@ -5,14 +5,17 @@
  * @input 날짜, 작업 CRUD, 블록 상태 업데이트
  * @output 일일 데이터, 작업 목록, 블록 상태 및 관리 함수
  * @external_dependencies
- *   - react: useEffect hook
+ *   - react: useEffect, useState hook
  *   - dailyDataStore: Zustand 기반 전역 상태 관리 스토어
  *   - utils: 날짜 유틸리티 함수
+ *   - repositories: getRecentCompletedTasks
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDailyDataStore } from '../stores/dailyDataStore';
 import { getLocalDate } from '../lib/utils';
+import { getRecentCompletedTasks } from '@/data/repositories';
+import type { Task } from '@/shared/types/domain';
 
 /**
  * 일일 데이터 관리 훅
@@ -62,19 +65,50 @@ export function useDailyData(date: string = getLocalDate()) {
 }
 
 /**
- * 완료된 작업만 가져오는 훅
+ * 완료된 작업만 가져오는 훅 (최근 7일)
  *
- * @param {string} [date] - 조회할 날짜 (YYYY-MM-DD), 기본값: 오늘
+ * @param {number} [days=7] - 조회할 일수 (기본값: 7일)
  * @returns {object} 완료된 작업 정보
- * @returns {Task[]} completedTasks - 완료된 작업 목록
+ * @returns {Task[]} completedTasks - 완료된 작업 목록 (최근 순)
  * @returns {boolean} loading - 로딩 상태
  * @returns {Error | null} error - 에러 상태
- * @sideEffects 없음 (읽기 전용)
+ * @sideEffects
+ *   - 최근 N일의 완료된 작업을 비동기로 로드
  */
-export function useCompletedTasks(date: string = getLocalDate()) {
-  const { dailyData, loading, error } = useDailyData(date);
+export function useCompletedTasks(days: number = 7) {
+  const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const completedTasks = dailyData?.tasks.filter(task => task.completed) ?? [];
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCompletedTasks() {
+      try {
+        setLoading(true);
+        const tasks = await getRecentCompletedTasks(days);
+        if (isMounted) {
+          setCompletedTasks(tasks);
+          setError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Failed to load completed tasks:', err);
+          setError(err as Error);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadCompletedTasks();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [days]);
 
   return { completedTasks, loading, error };
 }

@@ -446,3 +446,34 @@ export async function getRecentDailyData(days: number): Promise<Array<DailyData 
     return [];
   }
 }
+
+/**
+ * 최근 N일의 완료된 작업 가져오기
+ *
+ * @param {number} [days=7] - 조회할 일수 (기본값: 7일)
+ * @returns {Promise<Task[]>} 완료된 작업 배열 (최근 순으로 정렬)
+ * @throws 없음
+ * @sideEffects
+ *   - getRecentDailyData 호출
+ */
+export async function getRecentCompletedTasks(days: number = 7): Promise<Task[]> {
+  try {
+    const recentData = await getRecentDailyData(days);
+    const allCompletedTasks: Task[] = [];
+
+    // 모든 날짜의 완료된 작업 수집
+    recentData.forEach(dayData => {
+      const completedTasks = dayData.tasks.filter(task => task.completed);
+      allCompletedTasks.push(...completedTasks);
+    });
+
+    // completedAt 기준으로 최근 순으로 정렬
+    return allCompletedTasks.sort((a, b) => {
+      if (!a.completedAt || !b.completedAt) return 0;
+      return new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime();
+    });
+  } catch (error) {
+    console.error('Failed to get recent completed tasks:', error);
+    return [];
+  }
+}
