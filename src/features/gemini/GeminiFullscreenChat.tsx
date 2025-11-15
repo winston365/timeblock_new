@@ -153,19 +153,13 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
       const hoursLeftToday = 24 - currentHour - 1;
       const minutesLeftToday = 60 - currentMinute;
 
-      // 현재 시간 블록 찾기
-      const currentBlockObj = TIME_BLOCKS.find(block => {
-        const [startHour, startMin] = block.timeRange.split(' - ')[0].split(':').map(Number);
-        const [endHour, endMin] = block.timeRange.split(' - ')[1].split(':').map(Number);
-        const currentMinutes = currentHour * 60 + currentMinute;
-        const blockStart = startHour * 60 + startMin;
-        const blockEnd = endHour * 60 + endMin;
-        return currentMinutes >= blockStart && currentMinutes < blockEnd;
-      });
-
-      const currentBlockId = currentBlockObj?.id || null;
-      const currentBlockLabel = currentBlockObj?.label || '알 수 없음';
-      const currentBlockTasks = tasks.filter(t => t.timeBlock === currentBlockId);
+      // 현재 시간대 블록 찾기
+      const currentBlock = TIME_BLOCKS.find(block => currentHour >= block.start && currentHour < block.end);
+      const currentBlockId = currentBlock?.id ?? null;
+      const currentBlockLabel = currentBlock?.label ?? '블록 외 시간';
+      const currentBlockTasks = currentBlockId
+        ? tasks.filter(t => t.timeBlock === currentBlockId).map(t => ({ text: t.text, completed: t.completed }))
+        : [];
       const lockedBlocksCount = Object.values(dailyData?.timeBlockStates ?? {}).filter(s => s.isLocked).length;
       const totalBlocksCount = TIME_BLOCKS.length;
 
