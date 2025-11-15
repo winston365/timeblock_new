@@ -51,13 +51,14 @@
   background: var(--color-primary-dark);
 }
 
-/* Main Layout - 황금비율 적용 (와이푸는 Fixed Layer로 분리됨) */
+/* Main Layout - 4열 레이아웃 (중앙 축소 + 인사이트 패널 추가) */
 .main-layout {
   display: grid;
   grid-template-columns:
-    380px          /* 좌측 사이드바 (24%) - 가로 메뉴로 인해 증가 */
-    1fr            /* 중앙 콘텐츠 (메인) */
-    280px;         /* 우측 패널 (17.5%) */
+    380px                    /* 좌측 사이드바 */
+    minmax(600px, 1fr)       /* 중앙 콘텐츠 (최소 600px, 최대 1fr) */
+    320px                    /* 인사이트 패널 */
+    280px;                   /* 우측 패널 */
   flex: 1;
   overflow: hidden;
   gap: 0;
@@ -188,6 +189,108 @@
   transform: translateX(85%);
 }
 
+/* Insight Panel */
+.insight-panel {
+  width: 100%;
+  background: var(--color-bg-secondary);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.insight-panel-header {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.insight-panel-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.insight-refresh-btn {
+  padding: 6px 12px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.insight-refresh-btn:hover {
+  background: var(--color-primary-dark);
+}
+
+.insight-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.insight-content {
+  padding: var(--spacing-md);
+  flex: 1;
+  overflow-y: auto;
+}
+
+.insight-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
+}
+
+.insight-loading-icon {
+  font-size: 48px;
+  margin-bottom: var(--spacing-md);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.insight-error {
+  padding: var(--spacing-md);
+  background: #fee;
+  color: #c00;
+  border-radius: 8px;
+  border: 1px solid #fcc;
+  margin: var(--spacing-md);
+}
+
+.insight-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.insight-footer {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
 /* Right Panel */
 .right-panel {
   width: 100%;
@@ -274,7 +377,19 @@
   transform: scale(0.95);
 }
 
-/* 반응형 - 황금비율 유지 */
+/* 반응형 레이아웃 */
+
+/* 1600px 이하: 인사이트 패널 숨김 */
+@media (max-width: 1600px) {
+  .main-layout {
+    grid-template-columns: 380px minmax(600px, 1fr) 280px;
+  }
+
+  .insight-panel {
+    display: none;
+  }
+}
+
 /* 1440px 이하: 우측 패널 숨김 */
 @media (max-width: 1440px) {
   .main-layout {
@@ -286,7 +401,7 @@
   }
 }
 
-/* 1024px 이하: 와이푸 패널 크기 축소 */
+/* 1024px 이하: 사이드바 축소, 와이푸 패널 크기 축소 */
 @media (max-width: 1024px) {
   .main-layout {
     grid-template-columns: 320px 1fr;
@@ -298,10 +413,10 @@
   }
 }
 
-/* 768px 이하: 좁은 사이드바 */
+/* 768px 이하: 모바일 레이아웃 */
 @media (max-width: 768px) {
   .main-layout {
-    grid-template-columns: 100% 0;
+    grid-template-columns: 100%;
   }
 
   .left-sidebar {
@@ -309,10 +424,14 @@
   }
 
   .sidebar-tabs {
-    flex-wrap: wrap;  /* 모바일에서는 줄바꿈 허용 */
+    flex-wrap: wrap;
   }
 
   .sidebar-tab span {
-    display: none;  /* 아이콘만 표시 */
+    display: none;
+  }
+
+  .waifu-panel-container {
+    width: 250px;
   }
 }

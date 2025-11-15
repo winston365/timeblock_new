@@ -35,6 +35,7 @@ import GeminiFullscreenChat from '@/features/gemini/GeminiFullscreenChat';
 import BulkAddModal from '@/features/tasks/BulkAddModal';
 import SettingsModal from '@/features/settings/SettingsModal';
 import SyncLogModal from '@/features/settings/SyncLogModal';
+import InsightPanel from '@/features/insight/InsightPanel';
 
 /**
  * 앱 셸 컴포넌트 - 전체 앱 레이아웃 및 초기화
@@ -294,6 +295,9 @@ export default function AppShell() {
           activeTab={activeTab}
           dailyData={null}
         />
+
+        {/* 인사이트 패널 */}
+        <InsightPanel />
 
         {/* 우측 패널 */}
         <RightPanel
