@@ -335,7 +335,8 @@ export default function ScheduleView() {
     }
   };
 
-  if (loading) {
+  // 첫 로딩 시에만 로딩 메시지 표시 (데이터 업데이트 시에는 UI 유지)
+  if (loading && !dailyData) {
     return (
       <div className="schedule-view">
         <div className="loading-message">데이터 로딩 중...</div>

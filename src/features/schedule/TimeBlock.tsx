@@ -65,21 +65,6 @@ export default function TimeBlock({
   const [showInlineInput, setShowInlineInput] = useState(false);
   const [inlineInputValue, setInlineInputValue] = useState('');
   const inlineInputRef = useRef<HTMLInputElement>(null);
-  const prevIsCurrentBlockRef = useRef(isCurrentBlock);
-
-  // 현재 시간대 변경 감지 (시간이 흘러서 현재 블록이 변경될 때만 자동 펼치기)
-  useEffect(() => {
-    // 이전에 현재 블록이 아니었는데 지금 현재 블록이 되었으면 자동 펼치기
-    if (!prevIsCurrentBlockRef.current && isCurrentBlock) {
-      setIsExpanded(true);
-    }
-    // 이전에 현재 블록이었는데 지금 아니면 자동 접기
-    else if (prevIsCurrentBlockRef.current && !isCurrentBlock) {
-      setIsExpanded(false);
-    }
-
-    prevIsCurrentBlockRef.current = isCurrentBlock;
-  }, [isCurrentBlock]);
 
   // 블록 총 XP 계산 (현재 미사용)
   // const totalXP = tasks
