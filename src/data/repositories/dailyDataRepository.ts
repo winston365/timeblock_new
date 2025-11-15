@@ -9,7 +9,9 @@ import { TIME_BLOCKS } from '@/shared/types/domain';
 import { getLocalDate, saveToStorage, getFromStorage } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
 import { addSyncLog } from '@/shared/services/syncLogger';
-import { syncDailyDataToFirebase, isFirebaseInitialized } from '@/shared/services/firebaseService';
+import { isFirebaseInitialized } from '@/shared/services/firebaseService';
+import { syncToFirebase } from '@/shared/services/firebase/syncCore';
+import { dailyDataStrategy } from '@/shared/services/firebase/strategies';
 
 // ============================================================================
 // DailyData CRUD
@@ -90,7 +92,7 @@ export async function saveDailyData(
 
     // 3. Firebase에 동기화 (비동기, 실패해도 로컬은 성공)
     if (isFirebaseInitialized()) {
-      syncDailyDataToFirebase(date, data).catch(err => {
+      syncToFirebase(dailyDataStrategy, data, date).catch(err => {
         console.error('Firebase sync failed, but local save succeeded:', err);
       });
     }

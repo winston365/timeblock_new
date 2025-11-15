@@ -7,11 +7,9 @@ import { db } from '../db/dexieClient';
 import type { ChatHistory, DailyTokenUsage, GeminiChatMessage } from '@/shared/types/domain';
 import { getLocalDate } from '@/shared/lib/utils';
 import { addSyncLog } from '@/shared/services/syncLogger';
-import {
-  syncChatHistoryToFirebase,
-  syncTokenUsageToFirebase,
-  isFirebaseInitialized
-} from '@/shared/services/firebaseService';
+import { isFirebaseInitialized } from '@/shared/services/firebaseService';
+import { syncToFirebase } from '@/shared/services/firebase/syncCore';
+import { chatHistoryStrategy, tokenUsageStrategy } from '@/shared/services/firebase/strategies';
 
 // ============================================================================
 // Chat History CRUD
@@ -68,7 +66,7 @@ export async function saveChatHistory(
 
     // Auto-sync to Firebase
     if (isFirebaseInitialized()) {
-      syncChatHistoryToFirebase(date, chatHistory).catch(err => {
+      syncToFirebase(chatHistoryStrategy, chatHistory, date).catch(err => {
         console.error('Firebase chat history sync failed, but local save succeeded:', err);
       });
     }
@@ -188,7 +186,7 @@ export async function addTokenUsage(
 
     // Auto-sync to Firebase
     if (isFirebaseInitialized()) {
-      syncTokenUsageToFirebase(date, tokenUsage).catch(err => {
+      syncToFirebase(tokenUsageStrategy, tokenUsage, date).catch(err => {
         console.error('Firebase token usage sync failed, but local save succeeded:', err);
       });
     }

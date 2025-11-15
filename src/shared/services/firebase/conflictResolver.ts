@@ -4,7 +4,7 @@
  * R6: 명확한 문맥 - Resolver는 충돌 해결 알고리즘만 담당
  */
 
-import type { GameState, Quest } from '@/shared/types/domain';
+import type { GameState } from '@/shared/types/domain';
 
 // ============================================================================
 // Types

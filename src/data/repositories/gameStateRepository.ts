@@ -8,7 +8,9 @@ import type { GameState, Quest, Task } from '@/shared/types/domain';
 import { getLocalDate, saveToStorage, getFromStorage, getLevelFromXP } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
 import { generateQuestTarget, calculateQuestReward } from '@/shared/utils/gamification';
-import { syncGameStateToFirebase, isFirebaseInitialized } from '@/shared/services/firebaseService';
+import { isFirebaseInitialized } from '@/shared/services/firebaseService';
+import { syncToFirebase } from '@/shared/services/firebase/syncCore';
+import { gameStateStrategy } from '@/shared/services/firebase/strategies';
 import { addSyncLog } from '@/shared/services/syncLogger';
 
 // ============================================================================
@@ -128,7 +130,7 @@ export async function saveGameState(gameState: GameState): Promise<void> {
 
     // 3. Firebase에 동기화 (비동기, 실패해도 로컬은 성공)
     if (isFirebaseInitialized()) {
-      syncGameStateToFirebase(gameState).catch(err => {
+      syncToFirebase(gameStateStrategy, gameState).catch(err => {
         console.error('Firebase sync failed, but local save succeeded:', err);
       });
     }

@@ -101,7 +101,8 @@ export default function AppShell() {
               const { db } = await import('@/data/db/dexieClient');
               const { saveToStorage } = await import('@/shared/lib/utils');
               const { STORAGE_KEYS } = await import('@/shared/lib/constants');
-              const { syncDailyDataToFirebase, syncGameStateToFirebase } = await import('@/shared/services/firebaseService');
+              const { syncToFirebase } = await import('@/shared/services/firebase/syncCore');
+              const { dailyDataStrategy, gameStateStrategy } = await import('@/shared/services/firebase/strategies');
 
               // DailyData 저장 (모든 날짜)
               const dailyDataDates = Object.keys(firebaseData.dailyData);
@@ -145,11 +146,11 @@ export default function AppShell() {
                 // IndexedDB에는 있지만 Firebase에는 없는 데이터 업로드
                 console.log(`⏫ Uploading ${localData.date} to Firebase...`);
                 try {
-                  await syncDailyDataToFirebase(localData.date, {
+                  await syncToFirebase(dailyDataStrategy, {
                     tasks: localData.tasks || [],
                     timeBlockStates: localData.timeBlockStates || {},
                     updatedAt: localData.updatedAt || Date.now(),
-                  });
+                  }, localData.date);
                   console.log(`✅ Uploaded ${localData.date} to Firebase`);
                 } catch (syncError) {
                   console.error(`❌ Failed to upload ${localData.date}:`, syncError);
@@ -163,7 +164,7 @@ export default function AppShell() {
                   console.log('⏫ Uploading GameState to Firebase...');
                   const { key, ...gameStateData } = localGameState;
                   try {
-                    await syncGameStateToFirebase(gameStateData);
+                    await syncToFirebase(gameStateStrategy, gameStateData);
                     console.log('✅ Uploaded GameState to Firebase');
                   } catch (syncError) {
                     console.error('❌ Failed to upload GameState:', syncError);
