@@ -103,6 +103,7 @@ export default function InboxTab() {
                 onUpdateTask={async (updates) => {
                   await updateTask(task.id, updates);
                 }}
+                hideMetadata={true}
               />
             ))}
           </div>

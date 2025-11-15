@@ -44,6 +44,11 @@ export async function loadGameState(): Promise<GameState> {
     const data = await db.gameState.get('current');
 
     if (data) {
+      // 일일퀘스트가 없거나 비어있으면 생성
+      if (!data.dailyQuests || data.dailyQuests.length === 0) {
+        data.dailyQuests = generateDailyQuests();
+        await saveGameState(data);
+      }
       return data;
     }
 
@@ -51,6 +56,10 @@ export async function loadGameState(): Promise<GameState> {
     const localData = getFromStorage<GameState | null>(STORAGE_KEYS.GAME_STATE, null);
 
     if (localData) {
+      // 일일퀘스트가 없거나 비어있으면 생성
+      if (!localData.dailyQuests || localData.dailyQuests.length === 0) {
+        localData.dailyQuests = generateDailyQuests();
+      }
       // localStorage 데이터를 IndexedDB에 저장
       await saveGameState(localData);
       return localData;

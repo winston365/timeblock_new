@@ -32,10 +32,6 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSyncLog,
           <span>🏆 보유 XP:</span>
           <span>{gameState?.availableXP ?? 0}</span>
         </div>
-        <div className="stat-item">
-          <span>📊 레벨:</span>
-          <span>{gameState?.level ?? 1}</span>
-        </div>
       </div>
 
       <div className="toolbar-actions">

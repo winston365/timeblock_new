@@ -15,9 +15,10 @@ interface TaskCardProps {
   onToggle: () => void;
   onUpdateTask?: (updates: Partial<Task>) => void;
   onDragStart?: (taskId: string) => void;
+  hideMetadata?: boolean; // 인박스에서 난이도/XP 숨기기 옵션
 }
 
-export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTask, onDragStart }: TaskCardProps) {
+export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTask, onDragStart, hideMetadata = false }: TaskCardProps) {
   const [showResistancePicker, setShowResistancePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -88,24 +89,26 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
             <div className="task-text">{task.text}</div>
 
             <div className="task-inline-badges">
-              {/* 심리적부담감 - 클릭 가능 */}
-              <div className="task-meta-item">
-                <button
-                  className={`resistance-badge ${task.resistance} clickable`}
-                  onClick={() => setShowResistancePicker(!showResistancePicker)}
-                  title="클릭하여 변경"
-                >
-                  {RESISTANCE_LABELS[task.resistance]}
-                </button>
+              {/* 심리적부담감 - 클릭 가능 (hideMetadata가 false일 때만 표시) */}
+              {!hideMetadata && (
+                <div className="task-meta-item">
+                  <button
+                    className={`resistance-badge ${task.resistance} clickable`}
+                    onClick={() => setShowResistancePicker(!showResistancePicker)}
+                    title="클릭하여 변경"
+                  >
+                    {RESISTANCE_LABELS[task.resistance]}
+                  </button>
 
-                {showResistancePicker && (
-                  <div className="picker-dropdown resistance-picker">
-                    <button onClick={() => handleResistanceChange('low')}>🟢 쉬움</button>
-                    <button onClick={() => handleResistanceChange('medium')}>🟡 보통</button>
-                    <button onClick={() => handleResistanceChange('high')}>🔴 어려움</button>
-                  </div>
-                )}
-              </div>
+                  {showResistancePicker && (
+                    <div className="picker-dropdown resistance-picker">
+                      <button onClick={() => handleResistanceChange('low')}>🟢 쉬움</button>
+                      <button onClick={() => handleResistanceChange('medium')}>🟡 보통</button>
+                      <button onClick={() => handleResistanceChange('high')}>🔴 어려움</button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* 소요시간 - 클릭 가능 */}
               <div className="task-meta-item">
@@ -128,8 +131,10 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
                 )}
               </div>
 
-              {/* XP 범위 */}
-              <span className="xp-badge">~{xp} XP</span>
+              {/* XP 범위 (hideMetadata가 false일 때만 표시) */}
+              {!hideMetadata && (
+                <span className="xp-badge">~{xp} XP</span>
+              )}
 
               {/* 메모 아이콘 */}
               {task.memo && (
