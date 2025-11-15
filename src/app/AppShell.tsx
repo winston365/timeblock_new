@@ -8,6 +8,7 @@ import { initializeDatabase } from '@/data/db/dexieClient';
 import { addTask } from '@/data/repositories';
 import { createTaskFromTemplate } from '@/data/repositories/templateRepository';
 import { loadSettings } from '@/data/repositories/settingsRepository';
+import { getLocalDate } from '@/shared/lib/utils';
 import {
   initializeFirebase,
   enableFirebaseSync
@@ -55,7 +56,7 @@ export default function AppShell() {
         console.log('🚀 Initializing stores...');
         const dailyDataStore = useDailyDataStore.getState();
         const gameStateStore = useGameStateStore.getState();
-        
+
         await Promise.all([
           dailyDataStore.loadData(),
           gameStateStore.loadData(),
@@ -73,6 +74,28 @@ export default function AppShell() {
           const initialized = initializeFirebase(settings.firebaseConfig);
           if (initialized) {
             console.log('🔥 Firebase initialized from settings');
+
+            // Firebase에서 초기 데이터 가져오기
+            try {
+              const { fetchDataFromFirebase } = await import('@/shared/services/firebaseService');
+              const firebaseData = await fetchDataFromFirebase();
+              console.log('📥 Fetched from Firebase:', {
+                dailyDataDates: Object.keys(firebaseData.dailyData),
+                hasGameState: !!firebaseData.gameState,
+              });
+
+              // Firebase 데이터가 있으면 로컬과 병합
+              if (firebaseData.gameState) {
+                await gameStateStore.loadData(); // 최신 상태로 다시 로드
+              }
+
+              const today = getLocalDate();
+              if (firebaseData.dailyData[today]) {
+                await dailyDataStore.loadData(today); // 최신 상태로 다시 로드
+              }
+            } catch (error) {
+              console.error('Failed to fetch from Firebase:', error);
+            }
 
             // 실시간 동기화 활성화
             const unsubscribe = enableFirebaseSync(
