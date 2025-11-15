@@ -31,7 +31,7 @@ interface TaskModalProps {
 export default function TaskModal({ task, initialBlockId, onSave, onClose }: TaskModalProps) {
   const [text, setText] = useState('');
   const [memo, setMemo] = useState('');
-  const [baseDuration, setBaseDuration] = useState(30);
+  const [baseDuration, setBaseDuration] = useState(15);  // 30분 -> 15분으로 변경
   const [resistance, setResistance] = useState<Resistance>('low');
 
   // 기존 작업 데이터로 초기화
