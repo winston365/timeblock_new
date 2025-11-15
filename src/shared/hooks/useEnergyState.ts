@@ -6,91 +6,40 @@
  * @output 에너지 레벨 목록, 통계, 추가/삭제 함수
  * @external_dependencies
  *   - react: useState, useEffect, useCallback hooks
- *   - localStorage: 에너지 데이터 영구 저장
+ *   - energyRepository: IndexedDB 및 Firebase 동기화
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import type { EnergyLevel } from '@/shared/types/domain';
-
-const STORAGE_KEY_PREFIX = 'energyLevels_';
+import {
+  loadEnergyLevels,
+  addEnergyLevel as addEnergyLevelToRepo,
+  deleteEnergyLevel as deleteEnergyLevelFromRepo,
+  loadRecentEnergyLevels,
+  calculateTimeBlockAverages as calculateBlockAvg,
+  calculateAverageEnergy,
+  getCurrentEnergy as getLatestEnergy,
+} from '@/data/repositories/energyRepository';
+import { getLocalDate } from '@/shared/lib/utils';
 
 /**
- * 날짜 문자열 생성 (YYYY-MM-DD)
+ * 5일간 시간대별 에너지 통계
  */
-function getDateString(date: Date = new Date()): string {
-  return date.toISOString().split('T')[0];
+export interface DailyTimeBlockEnergy {
+  date: string;
+  timeBlocks: Record<string, number>; // { '5-8': 75, '8-11': 80, ... }
 }
 
 /**
- * localStorage에서 에너지 데이터 로드
+ * 전체 날짜의 평균 에너지 계산 (최근 30일)
  */
-function loadEnergyLevels(date: string): EnergyLevel[] {
+async function calculateOverallAverage(): Promise<number> {
   try {
-    const key = `${STORAGE_KEY_PREFIX}${date}`;
-    const data = localStorage.getItem(key);
-    if (!data) return [];
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Failed to load energy levels:', error);
-    return [];
-  }
-}
-
-/**
- * localStorage에 에너지 데이터 저장
- */
-function saveEnergyLevels(date: string, levels: EnergyLevel[]): void {
-  try {
-    const key = `${STORAGE_KEY_PREFIX}${date}`;
-    localStorage.setItem(key, JSON.stringify(levels));
-  } catch (error) {
-    console.error('Failed to save energy levels:', error);
-  }
-}
-
-/**
- * 시간대별 평균 에너지 계산
- */
-function calculateTimeBlockAverages(levels: EnergyLevel[]): Record<string, number> {
-  const timeBlocks = [
-    { id: '5-8', start: 5, end: 8 },
-    { id: '8-11', start: 8, end: 11 },
-    { id: '11-14', start: 11, end: 14 },
-    { id: '14-17', start: 14, end: 17 },
-    { id: '17-19', start: 17, end: 19 },
-    { id: '19-24', start: 19, end: 24 },
-  ];
-
-  const result: Record<string, number> = {};
-
-  for (const block of timeBlocks) {
-    const blockLevels = levels.filter(
-      (level) => level.hour >= block.start && level.hour < block.end
-    );
-
-    if (blockLevels.length > 0) {
-      const avg = blockLevels.reduce((sum, level) => sum + level.energy, 0) / blockLevels.length;
-      result[block.id] = Math.round(avg);
-    }
-  }
-
-  return result;
-}
-
-/**
- * 전체 날짜의 평균 에너지 계산
- */
-function calculateOverallAverage(): number {
-  try {
-    const allKeys = Object.keys(localStorage).filter((key) => key.startsWith(STORAGE_KEY_PREFIX));
+    const recentData = await loadRecentEnergyLevels(30);
     let totalEnergy = 0;
     let count = 0;
 
-    for (const key of allKeys) {
-      const data = localStorage.getItem(key);
-      if (!data) continue;
-
-      const levels: EnergyLevel[] = JSON.parse(data);
+    for (const levels of Object.values(recentData)) {
       for (const level of levels) {
         totalEnergy += level.energy;
         count++;
@@ -105,47 +54,31 @@ function calculateOverallAverage(): number {
 }
 
 /**
- * 지난 N일간 날짜 목록 생성 (오늘 포함)
- */
-function getRecentDates(days: number): string[] {
-  const dates: string[] = [];
-  const today = new Date();
-
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    dates.push(getDateString(date));
-  }
-
-  return dates;
-}
-
-/**
- * 5일간 시간대별 에너지 통계
- */
-export interface DailyTimeBlockEnergy {
-  date: string;
-  timeBlocks: Record<string, number>; // { '5-8': 75, '8-11': 80, ... }
-}
-
-/**
  * 5일간 시간대별 에너지 통계 계산
  */
-function calculateRecentTimeBlockStats(days: number = 5): DailyTimeBlockEnergy[] {
-  const dates = getRecentDates(days);
-  const result: DailyTimeBlockEnergy[] = [];
+async function calculateRecentTimeBlockStats(days: number = 5): Promise<DailyTimeBlockEnergy[]> {
+  try {
+    const recentData = await loadRecentEnergyLevels(days);
+    const result: DailyTimeBlockEnergy[] = [];
 
-  for (const date of dates) {
-    const levels = loadEnergyLevels(date);
-    const timeBlocks = calculateTimeBlockAverages(levels);
+    // 날짜를 최근순으로 정렬
+    const dates = Object.keys(recentData).sort().reverse();
 
-    result.push({
-      date,
-      timeBlocks,
-    });
+    for (const date of dates) {
+      const levels = recentData[date];
+      const timeBlocks = calculateBlockAvg(levels);
+
+      result.push({
+        date,
+        timeBlocks,
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Failed to calculate recent stats:', error);
+    return [];
   }
-
-  return result;
 }
 
 /**
@@ -158,67 +91,108 @@ function calculateRecentTimeBlockStats(days: number = 5): DailyTimeBlockEnergy[]
  * @returns {number} todayAverage - 오늘 평균 에너지
  * @returns {number} overallAverage - 전체 기간 평균 에너지
  * @returns {Record<string, number>} timeBlockAverages - 시간대별 평균 에너지
+ * @returns {DailyTimeBlockEnergy[]} recentTimeBlockStats - 5일간 시간대별 통계
  * @returns {(energy: number, context?: string, activity?: string) => void} addEnergyLevel - 에너지 레벨 추가
  * @returns {(timestamp: number) => void} deleteEnergyLevel - 에너지 레벨 삭제
- * @sideEffects localStorage에 에너지 데이터 저장
+ * @sideEffects IndexedDB 및 Firebase에 에너지 데이터 저장
  */
 export function useEnergyState() {
   const [energyLevels, setEnergyLevels] = useState<EnergyLevel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [overallAverage, setOverallAverage] = useState(0);
+  const [recentTimeBlockStats, setRecentTimeBlockStats] = useState<DailyTimeBlockEnergy[]>([]);
 
   // 초기 로드
   useEffect(() => {
-    const today = getDateString();
-    const levels = loadEnergyLevels(today);
-    setEnergyLevels(levels);
-    setLoading(false);
+    const loadData = async () => {
+      try {
+        const today = getLocalDate();
+        const levels = await loadEnergyLevels(today);
+        setEnergyLevels(levels);
+
+        // 전체 평균 및 5일간 통계 계산
+        const [avgEnergy, stats] = await Promise.all([
+          calculateOverallAverage(),
+          calculateRecentTimeBlockStats(5),
+        ]);
+
+        setOverallAverage(avgEnergy);
+        setRecentTimeBlockStats(stats);
+      } catch (error) {
+        console.error('Failed to load energy data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
   // 에너지 추가
   const addEnergyLevel = useCallback(
-    (energy: number, context?: string, activity?: string) => {
-      const now = new Date();
-      const newLevel: EnergyLevel = {
-        timestamp: now.getTime(),
-        hour: now.getHours(),
-        energy,
-        context,
-        activity,
-      };
+    async (energy: number, context?: string, activity?: string) => {
+      try {
+        const now = new Date();
+        const newLevel: EnergyLevel = {
+          timestamp: now.getTime(),
+          hour: now.getHours(),
+          energy,
+          context,
+          activity,
+        };
 
-      const today = getDateString();
-      const updatedLevels = [...energyLevels, newLevel];
-      setEnergyLevels(updatedLevels);
-      saveEnergyLevels(today, updatedLevels);
+        const today = getLocalDate();
+        await addEnergyLevelToRepo(today, newLevel);
+
+        // 상태 업데이트
+        const updatedLevels = await loadEnergyLevels(today);
+        setEnergyLevels(updatedLevels);
+
+        // 통계 재계산
+        const [avgEnergy, stats] = await Promise.all([
+          calculateOverallAverage(),
+          calculateRecentTimeBlockStats(5),
+        ]);
+
+        setOverallAverage(avgEnergy);
+        setRecentTimeBlockStats(stats);
+      } catch (error) {
+        console.error('Failed to add energy level:', error);
+      }
     },
-    [energyLevels]
+    []
   );
 
   // 에너지 삭제
   const deleteEnergyLevel = useCallback(
-    (timestamp: number) => {
-      const today = getDateString();
-      const updatedLevels = energyLevels.filter((level) => level.timestamp !== timestamp);
-      setEnergyLevels(updatedLevels);
-      saveEnergyLevels(today, updatedLevels);
+    async (timestamp: number) => {
+      try {
+        const today = getLocalDate();
+        await deleteEnergyLevelFromRepo(today, timestamp);
+
+        // 상태 업데이트
+        const updatedLevels = await loadEnergyLevels(today);
+        setEnergyLevels(updatedLevels);
+
+        // 통계 재계산
+        const [avgEnergy, stats] = await Promise.all([
+          calculateOverallAverage(),
+          calculateRecentTimeBlockStats(5),
+        ]);
+
+        setOverallAverage(avgEnergy);
+        setRecentTimeBlockStats(stats);
+      } catch (error) {
+        console.error('Failed to delete energy level:', error);
+      }
     },
-    [energyLevels]
+    []
   );
 
   // 통계 계산
-  const currentEnergy = energyLevels.length > 0 ? energyLevels[energyLevels.length - 1].energy : 0;
-
-  const todayAverage =
-    energyLevels.length > 0
-      ? Math.round(energyLevels.reduce((sum, level) => sum + level.energy, 0) / energyLevels.length)
-      : 0;
-
-  const overallAverage = calculateOverallAverage();
-
-  const timeBlockAverages = calculateTimeBlockAverages(energyLevels);
-
-  // 5일간 시간대별 통계
-  const recentTimeBlockStats = calculateRecentTimeBlockStats(5);
+  const currentEnergy = getLatestEnergy(energyLevels);
+  const todayAverage = calculateAverageEnergy(energyLevels);
+  const timeBlockAverages = calculateBlockAvg(energyLevels);
 
   return {
     energyLevels,

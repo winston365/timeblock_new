@@ -13,7 +13,7 @@
 
 import type { SyncStrategy } from './syncCore';
 import { mergeGameState } from './conflictResolver';
-import type { DailyData, GameState, ChatHistory, DailyTokenUsage } from '@/shared/types/domain';
+import type { DailyData, GameState, ChatHistory, DailyTokenUsage, EnergyLevel } from '@/shared/types/domain';
 
 // ============================================================================
 // DailyData 전략 (Last-Write-Wins)
@@ -54,4 +54,14 @@ export const tokenUsageStrategy: SyncStrategy<DailyTokenUsage> = {
   collection: 'tokenUsage',
   getSuccessMessage: (data, key) =>
     `TokenUsage synced: ${key} (${data.totalTokens} tokens)`,
+};
+
+// ============================================================================
+// EnergyLevels 전략 (Last-Write-Wins)
+// ============================================================================
+
+export const energyLevelsStrategy: SyncStrategy<EnergyLevel[]> = {
+  collection: 'energyLevels',
+  getSuccessMessage: (data, key) =>
+    `EnergyLevels synced: ${key} (${data.length} records)`,
 };
