@@ -10,9 +10,9 @@ import { loadSettings } from '@/data/repositories/settingsRepository';
 import { getLocalDate } from '@/shared/lib/utils';
 import {
   initializeFirebase,
-  enableFirebaseSync,
-  debugFirebaseData
+  enableFirebaseSync
 } from '@/shared/services/firebaseService';
+import { exposeDebugToWindow } from '@/shared/services/firebase/firebaseDebug';
 import type { Template, Task } from '@/shared/types/domain';
 import { useXPToastStore } from '@/shared/hooks/useXPToast';
 import XPToast from '@/shared/components/XPToast';
@@ -69,10 +69,7 @@ export default function AppShell() {
         console.log('✅ App initialized successfully');
 
         // 디버그 함수를 window에 노출
-        if (typeof window !== 'undefined') {
-          (window as any).debugFirebase = debugFirebaseData;
-          console.log('💡 Debug: 콘솔에서 window.debugFirebase() 호출 가능');
-        }
+        exposeDebugToWindow();
 
         // Firebase 설정 확인 및 초기화
         const settings = await loadSettings();
