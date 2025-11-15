@@ -92,37 +92,6 @@ export default function TimeBlock({
 
   const timeRemaining = getTimeRemaining();
 
-  // 현재 시간 인디케이터 위치 계산 (블록 내 경과 시간 비율)
-  const getCurrentTimeIndicatorPosition = (): number | null => {
-    if (!isCurrentBlock) return null;
-
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-
-    // 현재 시간을 분 단위로 변환
-    const currentTotalMinutes = currentHour * 60 + currentMinute;
-
-    // 블록 시작/종료 시간을 분 단위로 변환
-    const blockStartMinutes = block.start * 60;
-    const blockEndMinutes = block.end * 60;
-
-    // 블록 시작 전이면 표시하지 않음
-    if (currentTotalMinutes < blockStartMinutes) return null;
-
-    // 블록 종료 후면 100% 위치
-    if (currentTotalMinutes >= blockEndMinutes) return 100;
-
-    // 블록 내 경과 시간 비율 계산
-    const elapsedMinutes = currentTotalMinutes - blockStartMinutes;
-    const totalBlockMinutes = blockEndMinutes - blockStartMinutes;
-    const percentage = (elapsedMinutes / totalBlockMinutes) * 100;
-
-    return percentage;
-  };
-
-  const currentTimePosition = getCurrentTimeIndicatorPosition();
-
   // 빈 공간 클릭시 접기
   const handleBlockContentClick = (e: React.MouseEvent) => {
     // 태스크 카드나 버튼이 아닌 빈 공간 클릭시에만 토글
@@ -222,19 +191,6 @@ export default function TimeBlock({
           }}
         />
       </div>
-
-      {/* 현재 시간 인디케이터 라인 */}
-      {currentTimePosition !== null && (
-        <div
-          className="current-time-indicator"
-          style={{
-            top: `${currentTimePosition}%`,
-          }}
-        >
-          <div className="current-time-line" />
-          <div className="current-time-dot" />
-        </div>
-      )}
 
       {isExpanded && (
         <div className="block-content" onClick={handleBlockContentClick}>
