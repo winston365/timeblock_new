@@ -202,43 +202,10 @@ export default function AppShell() {
     };
   }, []); // 빈 배열 - 한 번만 실행
 
-  // 브라우저 기본 우클릭 메뉴 완전 차단 (캡처 단계)
-  useEffect(() => {
-    const handleContextMenu = (e: MouseEvent) => {
-      // task-card 내부는 TaskCard 컴포넌트가 자체 처리
-      const target = e.target as HTMLElement;
-      if (target.closest('.task-card')) {
-        return; // TaskCard가 처리하도록 허용
-      }
-
-      // 다른 모든 영역은 차단
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    };
-
-    // 캡처 단계에서 등록 - React보다 먼저 실행
-    document.addEventListener('contextmenu', handleContextMenu, {
-      capture: true,
-      passive: false
-    });
-
-    return () => {
-      document.removeEventListener('contextmenu', handleContextMenu, { capture: true });
-    };
-  }, []);
-
-  // React 레벨 우클릭 메뉴 차단 (이중 방어)
+  // 브라우저 기본 우클릭 메뉴 완전 차단 (무조건 차단)
+  // TaskCard는 stopPropagation으로 이벤트가 여기까지 오지 않음
   const handleReactContextMenu = (e: React.MouseEvent) => {
-    // task-card 내부는 허용
-    const target = e.target as HTMLElement;
-    if (target.closest('.task-card')) {
-      return;
-    }
-
-    // 다른 영역 차단
     e.preventDefault();
-    e.stopPropagation();
   };
 
   // F1 단축키: 대량 할 일 추가 모달 열기
