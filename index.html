@@ -10,19 +10,48 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      // 브라우저 기본 우클릭 메뉴 완전 차단 (task-card 제외)
-      // capture: true로 React보다 먼저 이벤트 처리
-      document.addEventListener('contextmenu', (e) => {
-        // task-card나 context-menu 내부가 아니면 무조건 차단
-        const isTaskCard = e.target.closest('.task-card');
-        const isContextMenu = e.target.closest('.context-menu');
+      // 브라우저 기본 우클릭 메뉴 완전 차단 (다중 방어 시스템)
+      (function() {
+        'use strict';
 
-        if (!isTaskCard && !isContextMenu) {
-          e.preventDefault();
-          e.stopPropagation();
-          return false;
+        // 차단 핸들러
+        function blockContextMenu(e) {
+          // task-card나 context-menu 내부는 허용
+          const isTaskCard = e.target && e.target.closest && e.target.closest('.task-card');
+          const isContextMenu = e.target && e.target.closest && e.target.closest('.context-menu');
+
+          if (!isTaskCard && !isContextMenu) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            return false;
+          }
         }
-      }, { capture: true });
+
+        // 방어벽 1: document에 즉시 등록 (캡처 단계, passive false)
+        document.addEventListener('contextmenu', blockContextMenu, { capture: true, passive: false });
+
+        // 방어벽 2: document에 버블링 단계에서도 등록
+        document.addEventListener('contextmenu', blockContextMenu, { passive: false });
+
+        // 방어벽 3: DOMContentLoaded 후 body, html에도 등록
+        document.addEventListener('DOMContentLoaded', function() {
+          if (document.body) {
+            document.body.addEventListener('contextmenu', blockContextMenu, { capture: true, passive: false });
+          }
+          if (document.documentElement) {
+            document.documentElement.addEventListener('contextmenu', blockContextMenu, { capture: true, passive: false });
+          }
+        });
+
+        // 방어벽 4: window에도 등록 (최후의 방어선)
+        window.addEventListener('contextmenu', blockContextMenu, { capture: true, passive: false });
+
+        // 방어벽 5: oncontextmenu 속성도 설정
+        document.oncontextmenu = function(e) {
+          return blockContextMenu(e) !== false;
+        };
+      })();
     </script>
   </body>
 </html>
