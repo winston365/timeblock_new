@@ -44,8 +44,25 @@ export async function loadGameState(): Promise<GameState> {
     const data = await db.gameState.get('current');
 
     if (data) {
-      // 일일퀘스트가 없거나 비어있으면 생성
-      if (!data.dailyQuests || data.dailyQuests.length === 0) {
+      // 필수 필드 초기화 (Firebase에서 가져온 데이터에 없을 수 있음)
+      if (!Array.isArray(data.dailyQuests)) {
+        data.dailyQuests = generateDailyQuests();
+      }
+      if (!Array.isArray(data.xpHistory)) {
+        data.xpHistory = [];
+      }
+      if (!Array.isArray(data.timeBlockXPHistory)) {
+        data.timeBlockXPHistory = [];
+      }
+      if (!Array.isArray(data.completedTasksHistory)) {
+        data.completedTasksHistory = [];
+      }
+      if (!data.timeBlockXP) {
+        data.timeBlockXP = {};
+      }
+
+      // 일일퀘스트가 비어있으면 생성
+      if (data.dailyQuests.length === 0) {
         data.dailyQuests = generateDailyQuests();
         await saveGameState(data);
       }
@@ -56,10 +73,23 @@ export async function loadGameState(): Promise<GameState> {
     const localData = getFromStorage<GameState | null>(STORAGE_KEYS.GAME_STATE, null);
 
     if (localData) {
-      // 일일퀘스트가 없거나 비어있으면 생성
-      if (!localData.dailyQuests || localData.dailyQuests.length === 0) {
+      // 필수 필드 초기화
+      if (!Array.isArray(localData.dailyQuests)) {
         localData.dailyQuests = generateDailyQuests();
       }
+      if (!Array.isArray(localData.xpHistory)) {
+        localData.xpHistory = [];
+      }
+      if (!Array.isArray(localData.timeBlockXPHistory)) {
+        localData.timeBlockXPHistory = [];
+      }
+      if (!Array.isArray(localData.completedTasksHistory)) {
+        localData.completedTasksHistory = [];
+      }
+      if (!localData.timeBlockXP) {
+        localData.timeBlockXP = {};
+      }
+
       // localStorage 데이터를 IndexedDB에 저장
       await saveGameState(localData);
       return localData;
@@ -184,6 +214,20 @@ export async function initializeNewDay(): Promise<GameState> {
   try {
     const gameState = await loadGameState();
     const today = getLocalDate();
+
+    // 히스토리 필드 초기화 (Firebase에서 가져온 데이터에 없을 수 있음)
+    if (!Array.isArray(gameState.xpHistory)) {
+      gameState.xpHistory = [];
+    }
+    if (!Array.isArray(gameState.timeBlockXPHistory)) {
+      gameState.timeBlockXPHistory = [];
+    }
+    if (!Array.isArray(gameState.completedTasksHistory)) {
+      gameState.completedTasksHistory = [];
+    }
+    if (!gameState.timeBlockXP) {
+      gameState.timeBlockXP = {};
+    }
 
     // XP 히스토리에 어제 데이터 추가
     if (gameState.lastLogin !== today && gameState.dailyXP > 0) {
@@ -395,6 +439,11 @@ export async function claimQuestBonus(): Promise<GameState> {
 export async function addToCompletedHistory(task: Task): Promise<void> {
   try {
     const gameState = await loadGameState();
+
+    // completedTasksHistory 초기화 (안전장치)
+    if (!Array.isArray(gameState.completedTasksHistory)) {
+      gameState.completedTasksHistory = [];
+    }
 
     gameState.completedTasksHistory.unshift(task);
 
