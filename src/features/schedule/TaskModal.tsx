@@ -92,7 +92,7 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
 
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
-      <div className="modal-content">
+      <div className="modal-content modal-content-wide">
         <div className="modal-header">
           <h3>{task ? '작업 수정' : '새 작업 추가'}</h3>
           <button className="modal-close-btn" onClick={onClose}>
