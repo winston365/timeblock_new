@@ -17,9 +17,7 @@ import { loadSettings } from '@/data/repositories/settingsRepository';
 import {
   loadTodayChatHistory,
   saveChatHistory,
-  addTokenUsage,
-  getRecentMessages,
-  loadTodayTokenUsage
+  addTokenUsage
 } from '@/data/repositories/chatHistoryRepository';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 import { getWaifuImagePathWithFallback } from '@/features/waifu/waifuImageUtils';
@@ -139,7 +137,11 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
       setInput('');
 
       // 최근 메시지 가져오기 (API 컨텍스트용)
-      const history = getRecentMessages(updatedMessages, MAX_HISTORY_MESSAGES);
+      const recentMessages = updatedMessages.slice(-MAX_HISTORY_MESSAGES);
+      const history = recentMessages.map((msg) => ({
+        role: msg.role,
+        text: msg.text,
+      }));
 
       // PersonaContext 생성 (GeminiChatModal과 동일)
       const tasks = dailyData?.tasks ?? [];
