@@ -13,7 +13,7 @@
 
 import { useState, useEffect } from 'react';
 import type { Template } from '@/shared/types/domain';
-import { loadTemplates, deleteTemplate } from '@/data/repositories';
+import { loadTemplates, deleteTemplate as deleteTemplateRepo } from '@/data/repositories';
 import { TemplateModal } from './TemplateModal';
 import { RESISTANCE_LABELS, TIME_BLOCKS } from '@/shared/types/domain';
 import './template.css';
@@ -62,11 +62,10 @@ export default function TemplatePanel({ onTaskCreate }: TemplatePanelProps) {
 
     try {
       // Optimistic UI 업데이트: 즉시 목록에서 제거
-      const deletedTemplate = templates.find(t => t.id === id);
       setTemplates(prevTemplates => prevTemplates.filter(t => t.id !== id));
 
       // 백그라운드에서 DB 업데이트
-      await deleteTemplate(id);
+      await deleteTemplateRepo(id);
     } catch (error) {
       console.error('Failed to delete template:', error);
       alert('템플릿 삭제에 실패했습니다.');

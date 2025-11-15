@@ -134,7 +134,7 @@ export async function resetWaifuState(): Promise<WaifuState> {
  * @returns {Promise<WaifuState>} 호감도가 업데이트된 WaifuState 객체
  * @throws {Error} loadWaifuState 또는 saveWaifuState 실패 시
  * @sideEffects
- *   - 호감도를 오늘 획득한 XP 기반으로 계산 (400 XP = 100%)
+ *   - 호감도를 보유 XP 기반으로 계산 (400 XP = 100%)
  *   - tasksCompletedToday +1
  *   - lastInteraction 갱신
  *   - IndexedDB/localStorage에 저장
@@ -144,8 +144,8 @@ export async function increaseAffectionFromTask(): Promise<WaifuState> {
     const waifuState = await loadWaifuState();
     const gameState = await loadGameState();
 
-    // 오늘 획득한 XP를 기반으로 호감도 계산 (400 XP = 100%)
-    const affectionFromXP = Math.min((gameState.dailyXP / 400) * 100, 100);
+    // 보유한 XP를 기반으로 호감도 계산 (400 XP = 100%)
+    const affectionFromXP = Math.min((gameState.availableXP / 400) * 100, 100);
     waifuState.affection = Math.round(affectionFromXP);
 
     waifuState.tasksCompletedToday += 1;

@@ -77,46 +77,54 @@ export default function StatsTab() {
           </div>
         </div>
 
-        {/* 5일간 시간대별 XP 통계 */}
+        {/* 5일간 시간대별 XP 통계 (그리드 형식) */}
         <div className="stats-section">
           <h4>5일간 시간대별 XP 통계</h4>
-          <div className="recent-block-xp-stats">
-            {finalBlockXPHistory.length === 0 ? (
-              <div className="chart-empty">데이터가 없습니다</div>
-            ) : (
-              finalBlockXPHistory.map((dayXP) => (
-                <div key={dayXP.date} className="daily-block-xp-stat">
-                  <div className="daily-stat-header">
-                    <strong>{dayXP.date.substring(5)}</strong>
-                  </div>
-                  <div className="daily-block-list">
-                    {Object.keys(dayXP.blocks).length > 0 ? (
-                      TIME_BLOCKS.map((block) => {
+          {finalBlockXPHistory.length === 0 ? (
+            <div className="chart-empty">데이터가 없습니다</div>
+          ) : (
+            <div className="timeblock-grid-container">
+              <table className="timeblock-grid-table">
+                <thead>
+                  <tr>
+                    <th className="timeblock-header">시간대</th>
+                    {finalBlockXPHistory.map((dayXP) => (
+                      <th key={dayXP.date} className="date-header">
+                        {dayXP.date.substring(5)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {TIME_BLOCKS.map((block) => (
+                    <tr key={block.id}>
+                      <td className="timeblock-label">{block.label}</td>
+                      {finalBlockXPHistory.map((dayXP) => {
                         const xp = dayXP.blocks[block.id] || 0;
+                        const maxCellXP = 200;
+                        const intensity = Math.min((xp / maxCellXP) * 100, 100);
                         return (
-                          <div key={block.id} className="daily-block-item">
-                            <span className="block-label-compact">{block.label}</span>
-                            <div className="xp-bar-mini">
-                              <div
-                                className="xp-bar-fill"
-                                style={{
-                                  width: xp > 0 ? `${Math.min((xp / 200) * 100, 100)}%` : '0%',
-                                  background: 'linear-gradient(90deg, var(--color-primary), var(--color-primary-dark))',
-                                }}
-                              />
-                            </div>
-                            <span className="xp-value-mini">{xp} XP</span>
-                          </div>
+                          <td
+                            key={`${dayXP.date}-${block.id}`}
+                            className="timeblock-cell"
+                            style={{
+                              background: xp > 0
+                                ? `linear-gradient(135deg,
+                                    rgba(102, 126, 234, ${intensity / 100}),
+                                    rgba(118, 75, 162, ${intensity / 100}))`
+                                : 'transparent',
+                            }}
+                          >
+                            {xp > 0 ? xp : '-'}
+                          </td>
                         );
-                      })
-                    ) : (
-                      <div className="no-data-text">데이터 없음</div>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* 오늘 블록별 XP */}

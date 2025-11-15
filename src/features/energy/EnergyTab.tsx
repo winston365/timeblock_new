@@ -159,39 +159,48 @@ export default function EnergyTab() {
           </div>
         </div>
 
-        {/* 5일간 시간대별 에너지 통계 */}
+        {/* 5일간 시간대별 에너지 통계 (그리드 형식) */}
         {recentTimeBlockStats && recentTimeBlockStats.length > 0 && (
           <div className="energy-section">
             <h4>5일간 시간대별 에너지 통계</h4>
-            <div className="recent-energy-stats">
-              {recentTimeBlockStats.map((dayStat) => (
-                <div key={dayStat.date} className="daily-energy-stat">
-                  <div className="daily-stat-header">
-                    <strong>{dayStat.date.substring(5)}</strong>
-                  </div>
-                  <div className="daily-timeblock-list">
-                    {Object.keys(dayStat.timeBlocks).length > 0 ? (
-                      Object.entries(dayStat.timeBlocks).map(([blockId, avg]) => (
-                        <div key={blockId} className="daily-timeblock-item">
-                          <span className="block-label-compact">{getBlockLabel(blockId)}</span>
-                          <div className="energy-bar-mini">
-                            <div
-                              className="energy-bar-fill"
-                              style={{
-                                width: `${avg}%`,
-                                background: getEnergyColor(avg),
-                              }}
-                            />
-                          </div>
-                          <span className="energy-value-mini">{avg}%</span>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="no-data-text">데이터 없음</div>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="timeblock-grid-container">
+              <table className="timeblock-grid-table">
+                <thead>
+                  <tr>
+                    <th className="timeblock-header">시간대</th>
+                    {recentTimeBlockStats.map((dayStat) => (
+                      <th key={dayStat.date} className="date-header">
+                        {dayStat.date.substring(5)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {['5-8', '8-11', '11-14', '14-17', '17-19', '19-24'].map((blockId) => (
+                    <tr key={blockId}>
+                      <td className="timeblock-label">{getBlockLabel(blockId)}</td>
+                      {recentTimeBlockStats.map((dayStat) => {
+                        const avg = dayStat.timeBlocks[blockId];
+                        const energyValue = avg !== undefined ? avg : null;
+                        return (
+                          <td
+                            key={`${dayStat.date}-${blockId}`}
+                            className="timeblock-cell"
+                            style={{
+                              background: energyValue !== null
+                                ? getEnergyColor(energyValue)
+                                : 'transparent',
+                              opacity: energyValue !== null ? 0.7 : 1,
+                            }}
+                          >
+                            {energyValue !== null ? `${energyValue}%` : '-'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
