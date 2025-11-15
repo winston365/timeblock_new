@@ -50,7 +50,7 @@ export default function AppShell() {
   const [showSettings, setShowSettings] = useState(false);
   const [showSyncLog, setShowSyncLog] = useState(false);
 
-  const { gameState } = useGameState();
+  const { gameState, updateQuestProgress } = useGameState();
   const { toasts, removeToast } = useXPToastStore();
   const { visibility } = useWaifuCompanionStore();
 
@@ -221,6 +221,13 @@ export default function AppShell() {
       const task = createTaskFromTemplate(template);
       const dailyDataStore = useDailyDataStore.getState();
       await dailyDataStore.addTask(task);
+
+      // 준비된 작업이면 퀘스트 진행
+      const isPrepared = !!(task.preparation1 && task.preparation2 && task.preparation3);
+      if (isPrepared) {
+        await updateQuestProgress('prepare_tasks', 1);
+      }
+
       alert(`"${template.name}" 템플릿에서 작업이 추가되었습니다!`);
     } catch (error) {
       console.error('Failed to create task from template:', error);
