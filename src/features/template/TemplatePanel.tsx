@@ -61,11 +61,17 @@ export default function TemplatePanel({ onTaskCreate }: TemplatePanelProps) {
     if (!confirm('이 템플릿을 삭제하시겠습니까?')) return;
 
     try {
+      // Optimistic UI 업데이트: 즉시 목록에서 제거
+      const deletedTemplate = templates.find(t => t.id === id);
+      setTemplates(prevTemplates => prevTemplates.filter(t => t.id !== id));
+
+      // 백그라운드에서 DB 업데이트
       await deleteTemplate(id);
-      await loadTemplatesData();
     } catch (error) {
       console.error('Failed to delete template:', error);
       alert('템플릿 삭제에 실패했습니다.');
+      // 에러 발생 시 목록 새로고침으로 복원
+      await loadTemplatesData();
     }
   };
 
@@ -73,6 +79,7 @@ export default function TemplatePanel({ onTaskCreate }: TemplatePanelProps) {
     setIsModalOpen(false);
     setEditingTemplate(null);
 
+    // 저장 시에만 목록 새로고침 (추가/수정된 템플릿 반영)
     if (saved) {
       await loadTemplatesData();
     }

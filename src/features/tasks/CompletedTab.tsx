@@ -11,6 +11,7 @@
  *   - tasks.css: 스타일시트
  */
 
+import { useState, useEffect } from 'react';
 import { useCompletedTasks } from '@/shared/hooks';
 import { formatTime, calculateTaskXP } from '@/shared/lib/utils';
 import { toggleTaskCompletion as toggleTaskCompletionRepo } from '@/data/repositories';
@@ -26,21 +27,31 @@ import './tasks.css';
  *   - 완료 시간 역순 정렬 (최근 것이 위)
  */
 export default function CompletedTab() {
-  const { completedTasks, loading } = useCompletedTasks();
+  const { completedTasks: initialCompletedTasks, loading } = useCompletedTasks();
+  const [completedTasks, setCompletedTasks] = useState<Task[]>(initialCompletedTasks);
+
+  // initialCompletedTasks가 변경되면 로컬 state 업데이트
+  useEffect(() => {
+    setCompletedTasks(initialCompletedTasks);
+  }, [initialCompletedTasks]);
 
   const handleToggleTask = async (task: Task) => {
     try {
+      // Optimistic UI 업데이트: 즉시 목록에서 제거
+      setCompletedTasks(prevTasks => prevTasks.filter(t => t.id !== task.id));
+
       // completedAt에서 날짜 추출 (YYYY-MM-DD)
       const taskDate = task.completedAt
         ? new Date(task.completedAt).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
 
+      // 백그라운드에서 DB 업데이트
       await toggleTaskCompletionRepo(task.id, taskDate);
-
-      // 페이지 새로고침하여 변경사항 반영
-      window.location.reload();
     } catch (error) {
       console.error('Failed to toggle task:', error);
+      // 에러 발생 시 원래 상태로 복원
+      setCompletedTasks(initialCompletedTasks);
+      alert('작업 취소에 실패했습니다.');
     }
   };
 
