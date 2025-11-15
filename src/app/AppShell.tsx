@@ -23,6 +23,7 @@ import { useXPToastStore } from '@/shared/hooks/useXPToast';
 import XPToast from '@/shared/components/XPToast';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
+import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 
 // 임시로 컴포넌트를 직접 import (나중에 features에서 가져올 것)
 import TopToolbar from './components/TopToolbar';
@@ -30,7 +31,7 @@ import LeftSidebar from './components/LeftSidebar';
 import CenterContent from './components/CenterContent';
 import RightPanel from './components/RightPanel';
 import WaifuPanel from '@/features/waifu/WaifuPanel';
-import GeminiChatModal from '@/features/gemini/GeminiChatModal';
+import GeminiFullscreenChat from '@/features/gemini/GeminiFullscreenChat';
 import BulkAddModal from '@/features/tasks/BulkAddModal';
 import SettingsModal from '@/features/settings/SettingsModal';
 import SyncLogModal from '@/features/settings/SyncLogModal';
@@ -50,6 +51,7 @@ export default function AppShell() {
 
   const { gameState } = useGameState();
   const { toasts, removeToast } = useXPToastStore();
+  const { visibility } = useWaifuCompanionStore();
 
   // DB 초기화 및 Firebase 설정
   useEffect(() => {
@@ -293,15 +295,6 @@ export default function AppShell() {
           dailyData={null}
         />
 
-        {/* 와이푸 패널 */}
-        <aside
-          className="waifu-panel-container"
-          aria-label="와이푸 패널"
-          role="complementary"
-        >
-          <WaifuPanel />
-        </aside>
-
         {/* 우측 패널 */}
         <RightPanel
           activeTab={rightPanelTab}
@@ -311,8 +304,19 @@ export default function AppShell() {
         />
       </main>
 
-      {/* Gemini 챗봇 모달 */}
-      <GeminiChatModal
+      {/* 와이푸 컴패니언 레이어 (Fixed Position) */}
+      <aside
+        className="waifu-panel-container"
+        data-visibility={visibility}
+        aria-label="와이푸 컴패니언"
+        role="complementary"
+        aria-hidden={visibility === 'hidden'}
+      >
+        <WaifuPanel />
+      </aside>
+
+      {/* Gemini 챗봇 전체 화면 */}
+      <GeminiFullscreenChat
         isOpen={showGeminiChat}
         onClose={() => setShowGeminiChat(false)}
       />

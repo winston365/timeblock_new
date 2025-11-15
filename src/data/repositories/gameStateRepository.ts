@@ -192,10 +192,16 @@ export async function addXP(amount: number, blockId?: string): Promise<GameState
   try {
     const gameState = await loadGameState();
 
+    // 레벨업 감지를 위해 기존 레벨 저장
+    const previousLevel = gameState.level;
+
     gameState.totalXP += amount;
     gameState.dailyXP += amount;
     gameState.availableXP += amount;
     gameState.level = getLevelFromXP(gameState.totalXP);
+
+    // 레벨업 감지
+    const leveledUp = gameState.level > previousLevel;
 
     // 블록별 XP 기록
     if (blockId) {
@@ -210,6 +216,14 @@ export async function addXP(amount: number, blockId?: string): Promise<GameState
         const message = amount === 15 ? '계획 잠금!' : amount === 40 ? '완벽한 블록 완료!' : '작업 완료!';
         module.useXPToastStore.getState().addToast(amount, message);
       }).catch(console.error);
+
+      // 레벨업 시 와이푸 컴패니언 등장
+      if (leveledUp) {
+        import('@/shared/stores/waifuCompanionStore').then((module) => {
+          const waifuStore = module.useWaifuCompanionStore.getState();
+          waifuStore.show(`축하해! 레벨 ${gameState.level}로 올랐어! 🎊✨`);
+        }).catch(console.error);
+      }
     }
 
     return gameState;

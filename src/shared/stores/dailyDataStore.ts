@@ -26,6 +26,7 @@ import {
   increaseAffectionFromTask,
 } from '@/data/repositories';
 import { getLocalDate, calculateTaskXP } from '../lib/utils';
+import { useWaifuCompanionStore } from './waifuCompanionStore';
 
 interface DailyDataStore {
   // 상태
@@ -185,6 +186,10 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         // 와이푸 호감도 증가
         await increaseAffectionFromTask();
 
+        // 와이푸 등장 (기본 완료 메시지)
+        let waifuMessage = `좋아! "${updatedTask.title}" 완료했구나! (+${xpAmount}XP)`;
+        let isPerfectBlock = false;
+
         // 잠금된 블록의 모든 작업이 완료되었는지 체크
         if (updatedTask.timeBlock) {
           const updatedData = await loadDailyData(currentDate);
@@ -202,8 +207,14 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
               currentDate
             );
             await updateQuestProgress('perfect_blocks', 1);
+            isPerfectBlock = true;
+            waifuMessage = `완벽해! ${updatedTask.timeBlock} 블록 완성! 🎉 (+40XP 보너스!)`;
           }
         }
+
+        // 와이푸 컴패니언 등장
+        const waifuStore = useWaifuCompanionStore.getState();
+        waifuStore.show(waifuMessage);
       }
 
       await loadData(currentDate, true); // 강제 리로드

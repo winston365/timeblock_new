@@ -51,13 +51,12 @@
   background: var(--color-primary-dark);
 }
 
-/* Main Layout - 황금비율 적용 */
+/* Main Layout - 황금비율 적용 (와이푸는 Fixed Layer로 분리됨) */
 .main-layout {
   display: grid;
   grid-template-columns:
     380px          /* 좌측 사이드바 (24%) - 가로 메뉴로 인해 증가 */
     1fr            /* 중앙 콘텐츠 (메인) */
-    240px          /* 와이푸 패널 (15%) */
     280px;         /* 우측 패널 (17.5%) */
   flex: 1;
   overflow: hidden;
@@ -153,16 +152,40 @@
   padding: var(--spacing-lg);
 }
 
-/* Waifu Panel Container */
+/* Waifu Panel Container - Fixed Layer (Companion Mode) */
 .waifu-panel-container {
-  width: 100%;
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  width: 320px;
+  max-height: 70vh;
   background: var(--color-bg-secondary);
-  border-left: 1px solid var(--color-border);
-  border-right: 1px solid var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: 12px 12px 0 0;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.2);
+  z-index: 50;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
   overflow-y: auto;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 와이푸 표시 상태별 위치 */
+.waifu-panel-container[data-visibility='hidden'] {
+  transform: translateX(100%);
+}
+
+.waifu-panel-container[data-visibility='peeking'] {
+  transform: translateX(90%);
+}
+
+.waifu-panel-container[data-visibility='visible'] {
+  transform: translateX(0);
+}
+
+/* 호버 시 살짝 더 나옴 */
+.waifu-panel-container[data-visibility='peeking']:hover {
+  transform: translateX(85%);
 }
 
 /* Right Panel */
@@ -255,7 +278,7 @@
 /* 1440px 이하: 우측 패널 숨김 */
 @media (max-width: 1440px) {
   .main-layout {
-    grid-template-columns: 340px 1fr 240px;
+    grid-template-columns: 340px 1fr;
   }
 
   .right-panel {
@@ -263,14 +286,15 @@
   }
 }
 
-/* 1024px 이하: 와이푸 패널도 숨김 */
+/* 1024px 이하: 와이푸 패널 크기 축소 */
 @media (max-width: 1024px) {
   .main-layout {
     grid-template-columns: 320px 1fr;
   }
 
   .waifu-panel-container {
-    display: none;
+    width: 280px;
+    max-height: 60vh;
   }
 }
 

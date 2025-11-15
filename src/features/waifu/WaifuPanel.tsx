@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWaifuState } from '@/shared/hooks';
+import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier, getAffectionColor } from './waifuImageUtils';
 import './waifu.css';
 
@@ -32,6 +33,7 @@ interface WaifuPanelProps {
  */
 export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
   const { waifuState, loading, currentMood, currentDialogue } = useWaifuState();
+  const { message: companionMessage } = useWaifuCompanionStore();
   const [displayImagePath, setDisplayImagePath] = useState<string>('');
   const [clickCount, setClickCount] = useState(0);
   const lastImageChangeTime = useRef<number>(Date.now());
@@ -169,7 +171,7 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
         {/* 대사 */}
         <div className="waifu-dialogue" role="status" aria-live="polite">
           <div className="dialogue-bubble">
-            <p className="dialogue-text">{currentDialogue}</p>
+            <p className="dialogue-text">{companionMessage || currentDialogue}</p>
           </div>
         </div>
 
