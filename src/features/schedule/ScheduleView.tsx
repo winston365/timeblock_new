@@ -172,6 +172,29 @@ export default function ScheduleView() {
     setIsModalOpen(true);
   };
 
+  // 인라인 작업 생성 (기본값: 30분, 쉬움)
+  const handleCreateTask = async (text: string, blockId: TimeBlockId) => {
+    try {
+      const newTask: Task = {
+        id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        text: text.trim(),
+        memo: '',
+        baseDuration: 30,
+        resistance: 'low',
+        adjustedDuration: 30,
+        timeBlock: blockId,
+        completed: false,
+        actualDuration: 0,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+      };
+      await addTask(newTask);
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      throw error;
+    }
+  };
+
   // 작업 편집 모달 열기
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
@@ -239,16 +262,6 @@ export default function ScheduleView() {
   // 블록 잠금 토글
   const handleToggleLock = async (blockId: string) => {
     if (!dailyData) return;
-
-    // 현재 블록인지 확인
-    const isCurrentBlock = blockId === currentBlockId;
-    const blockState = dailyData.timeBlockStates[blockId];
-
-    // 잠금 해제는 언제든 가능, 잠금 설정은 현재 시간대만 가능
-    if (!blockState?.isLocked && !isCurrentBlock) {
-      alert('현재 시간대만 잠금할 수 있습니다.');
-      return;
-    }
 
     try {
       await toggleBlockLock(blockId);
@@ -344,6 +357,7 @@ export default function ScheduleView() {
               state={blockState}
               isCurrentBlock={isCurrentBlock}
               onAddTask={() => handleAddTask(block.id as TimeBlockId)}
+              onCreateTask={handleCreateTask}
               onEditTask={handleEditTask}
               onDeleteTask={handleDeleteTask}
               onToggleTask={handleToggleTask}

@@ -191,8 +191,7 @@ export function useDailyData(date: string = getLocalDate()) {
 
         // 잠금 -> 해제
         if (blockState.isLocked) {
-          // 잠금 해제 시 -40XP
-          await spendXP(40);
+          // 잠금 해제 시 XP 변화 없음 (이미 베팅한 15 XP는 돌려받지 못함)
 
           // 블록 상태 업데이트 (잠금 해제)
           await updateBlockStateInRepo(
@@ -201,15 +200,15 @@ export function useDailyData(date: string = getLocalDate()) {
             date
           );
         }
-        // 해제 -> 잠금
+        // 해제 -> 잠금 (베팅)
         else {
           // 블록에 작업이 없으면 잠금 불가
           if (blockTasks.length === 0) {
             throw new Error('작업이 없는 블록은 잠금할 수 없습니다.');
           }
 
-          // 잠금 설정 시 +15XP
-          await addXP(15, blockId);
+          // 잠금 설정 시 15 XP 소모 (베팅)
+          await spendXP(15);
 
           // 블록 잠금
           await updateBlockStateInRepo(blockId, { isLocked: true }, date);

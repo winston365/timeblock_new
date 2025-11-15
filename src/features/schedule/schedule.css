@@ -923,3 +923,77 @@
 .task-card[draggable="true"] {
   cursor: move;
 }
+
+/* ============================================================================
+   Inline Task Input
+   ============================================================================ */
+
+.inline-task-input {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs);
+  background: var(--color-bg-elevated);
+  border: 2px solid var(--color-primary);
+  border-radius: 8px;
+  margin-top: var(--spacing-xs);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.15);
+}
+
+.inline-input-field {
+  flex: 1;
+  padding: var(--spacing-sm);
+  font-size: 0.875rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  outline: none;
+}
+
+.inline-input-field::placeholder {
+  color: var(--color-text-tertiary);
+  font-size: 0.75rem;
+}
+
+.inline-input-cancel {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.inline-input-cancel:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-danger);
+  transform: scale(1.1);
+}
+
+/* ============================================================================
+   Locked Block Visual Enhancement
+   ============================================================================ */
+
+.stat-compact.locked-bonus {
+  color: var(--color-reward);
+  font-weight: 700;
+  animation: shimmerGlow 2s ease-in-out infinite;
+}
+
+@keyframes shimmerGlow {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+  }
+  50% {
+    opacity: 0.85;
+    text-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+  }
+}
