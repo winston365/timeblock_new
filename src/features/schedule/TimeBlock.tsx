@@ -117,6 +117,14 @@ export default function TimeBlock({
 
   const timeRemaining = getTimeRemaining();
 
+  // 남은 시간을 분 단위로 계산
+  const getRemainingMinutes = () => {
+    if (!timeRemaining) return 0;
+    return timeRemaining.hours * 60 + timeRemaining.minutes;
+  };
+
+  const remainingMinutes = getRemainingMinutes();
+
   // 인라인 입력 필드 포커스
   useEffect(() => {
     if (showInlineInput && inlineInputRef.current) {
@@ -202,7 +210,7 @@ export default function TimeBlock({
           {/* 원형 시간표 (현재 시간대 블록만) */}
           {isCurrentBlock && timeRemaining && (
             <div className="time-circle-compact">
-              <span className="time-remaining">{timeRemaining.text}</span>
+              <span className="time-remaining">{totalDuration}m / {remainingMinutes}m</span>
             </div>
           )}
 
