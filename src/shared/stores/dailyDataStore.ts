@@ -187,7 +187,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         await increaseAffectionFromTask();
 
         // 와이푸 등장 (기본 완료 메시지)
-        let waifuMessage = `좋아! "${updatedTask.title}" 완료했구나! (+${xpAmount}XP)`;
+        let waifuMessage = `좋아! "${updatedTask.text}" 완료했구나! (+${xpAmount}XP)`;
         let isPerfectBlock = false;
 
         // 잠금된 블록의 모든 작업이 완료되었는지 체크
@@ -254,7 +254,20 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
       // 잠금 -> 해제
       if (blockState.isLocked) {
-        // 잠금 해제 시 XP 변화 없음 (이미 베팅한 15 XP는 돌려받지 못함)
+        // 잠금 해제 시 40 XP 추가 소모 (베팅한 15 XP + 패널티 40 XP)
+        const confirmUnlock = confirm(
+          '⚠️ 블록 잠금을 해제하시겠습니까?\n\n' +
+          '- 베팅한 15 XP는 돌려받지 못합니다.\n' +
+          '- 추가로 40 XP를 소모합니다. (총 손실: 55 XP)\n\n' +
+          '정말로 해제하시겠습니까?'
+        );
+
+        if (!confirmUnlock) {
+          return; // 사용자가 취소하면 아무것도 하지 않음
+        }
+
+        // 40 XP 소모
+        await spendXP(40);
 
         // 블록 상태 업데이트 (잠금 해제)
         await updateBlockStateInRepo(

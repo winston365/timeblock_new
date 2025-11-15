@@ -8,7 +8,7 @@
  *   - utils: XP 계산 및 시간 포맷팅 함수
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
 import { RESISTANCE_LABELS } from '@/shared/types/domain';
 import { formatDuration, calculateTaskXP } from '@/shared/lib/utils';
@@ -37,6 +37,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showMemo, setShowMemo] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   // XP 계산
   const xp = calculateTaskXP(task);
@@ -81,13 +82,45 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     setIsDragging(false);
   };
 
+  // 우클릭 핸들러
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  // 컨텍스트 메뉴 닫기
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setContextMenu(null);
+    };
+
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [contextMenu]);
+
+  // 메뉴 항목 클릭 핸들러
+  const handleMenuEdit = () => {
+    setContextMenu(null);
+    onEdit();
+  };
+
+  const handleMenuDelete = () => {
+    setContextMenu(null);
+    onDelete();
+  };
+
   return (
-    <div
-      className={`task-card ${task.completed ? 'completed' : ''} ${isDragging ? 'dragging' : ''}`}
-      draggable="true"
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
+    <>
+      <div
+        className={`task-card ${task.completed ? 'completed' : ''} ${isDragging ? 'dragging' : ''}`}
+        draggable="true"
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onContextMenu={handleContextMenu}
+      >
       <div className="task-main">
         <button
           className="task-checkbox"
@@ -162,24 +195,28 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
             <div className="task-memo" onClick={(e) => e.stopPropagation()}>📝 {task.memo}</div>
           )}
         </div>
+      </div>
+      </div>
 
-        <div className="task-actions">
-          <button
-            className="task-action-btn edit-btn"
-            onClick={onEdit}
-            title="수정"
-          >
-            ✏️
+      {/* 우클릭 컨텍스트 메뉴 */}
+      {contextMenu && (
+        <div
+          className="context-menu"
+          style={{
+            position: 'fixed',
+            top: `${contextMenu.y}px`,
+            left: `${contextMenu.x}px`,
+            zIndex: 10000,
+          }}
+        >
+          <button className="context-menu-item" onClick={handleMenuEdit}>
+            ✏️ 수정
           </button>
-          <button
-            className="task-action-btn delete-btn"
-            onClick={onDelete}
-            title="삭제"
-          >
-            🗑️
+          <button className="context-menu-item" onClick={handleMenuDelete}>
+            🗑️ 삭제
           </button>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }

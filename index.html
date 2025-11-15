@@ -9,5 +9,11 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // 기본 우클릭 메뉴 비활성화
+      document.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+      });
+    </script>
   </body>
 </html>
