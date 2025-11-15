@@ -41,25 +41,31 @@ export default function AppShell() {
   const { gameState } = useGameState();
   const { toasts, removeToast } = useXPToastStore();
 
-  // Store 직접 접근 (초기화용)
-  const dailyDataStore = useDailyDataStore();
-  const gameStateStore = useGameStateStore();
-
   // DB 초기화 및 Firebase 설정
   useEffect(() => {
+    let isSubscribed = true;
+
     const initDB = async () => {
       try {
+        console.log('🔧 Starting database initialization...');
         await initializeDatabase();
+        console.log('✅ Database initialized');
 
-        // Store 초기화
+        // Store 초기화 - 직접 접근
         console.log('🚀 Initializing stores...');
+        const dailyDataStore = useDailyDataStore.getState();
+        const gameStateStore = useGameStateStore.getState();
+        
         await Promise.all([
           dailyDataStore.loadData(),
           gameStateStore.loadData(),
         ]);
         console.log('✅ Stores initialized');
 
+        if (!isSubscribed) return;
+
         setDbInitialized(true);
+        console.log('✅ App initialized successfully');
 
         // Firebase 설정 확인 및 초기화
         const settings = await loadSettings();
@@ -81,16 +87,27 @@ export default function AppShell() {
             );
 
             // 컴포넌트 언마운트 시 동기화 해제
-            return () => unsubscribe();
+            return () => {
+              isSubscribed = false;
+              unsubscribe();
+            };
           }
         }
       } catch (error) {
-        console.error('Failed to initialize database:', error);
+        console.error('❌ Failed to initialize:', error);
+        if (isSubscribed) {
+          // 에러가 발생해도 UI는 표시 (데이터 없이)
+          setDbInitialized(true);
+        }
       }
     };
 
     initDB();
-  }, [dailyDataStore, gameStateStore]);
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, []); // 빈 배열 - 한 번만 실행
 
   // F1 단축키: 대량 할 일 추가 모달 열기
   useEffect(() => {
@@ -148,7 +165,12 @@ export default function AppShell() {
         aria-live="polite"
         aria-label="애플리케이션 로딩 중"
       >
-        <div>데이터베이스 초기화 중...</div>
+        <div>
+          <div>데이터베이스 초기화 중...</div>
+          <div style={{ fontSize: '12px', marginTop: '10px', color: '#666' }}>
+            개발자 도구(F12)의 콘솔을 확인해주세요
+          </div>
+        </div>
       </div>
     );
   }
