@@ -24,11 +24,15 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
     const data = await db.dailyData.get(date);
 
     if (data) {
-      addSyncLog('dexie', 'load', `DailyData loaded for ${date}`, { taskCount: data.tasks.length });
+      // 데이터 유효성 검사
+      const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+      const timeBlockStates = data.timeBlockStates || {};
+
+      addSyncLog('dexie', 'load', `DailyData loaded for ${date}`, { taskCount: tasks.length });
       // IndexedDB에 데이터가 있으면 반환
       return {
-        tasks: data.tasks,
-        timeBlockStates: data.timeBlockStates,
+        tasks,
+        timeBlockStates,
         updatedAt: data.updatedAt,
       };
     }

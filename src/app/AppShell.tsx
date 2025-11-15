@@ -106,11 +106,17 @@ export default function AppShell() {
                 for (const date of dailyDataDates) {
                   const data = firebaseData.dailyData[date];
 
+                  // 데이터 유효성 검사
+                  if (!data || !data.tasks) {
+                    console.warn(`⚠️ Invalid data for ${date}, skipping`);
+                    continue;
+                  }
+
                   // IndexedDB에 직접 저장 (Firebase 재동기화 방지)
                   await db.dailyData.put({
                     date,
                     tasks: data.tasks,
-                    timeBlockStates: data.timeBlockStates,
+                    timeBlockStates: data.timeBlockStates || {},
                     updatedAt: data.updatedAt || Date.now(),
                   });
 

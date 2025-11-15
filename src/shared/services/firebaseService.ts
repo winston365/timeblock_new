@@ -3,7 +3,7 @@
  * 다중 장치 간 데이터 동기화 및 충돌 해결
  */
 
-import { initializeApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, FirebaseApp, deleteApp } from 'firebase/app';
 import {
   getDatabase,
   ref,
@@ -35,12 +35,20 @@ export function initializeFirebase(config: Settings['firebaseConfig']): boolean 
   }
 
   try {
-    // 이미 초기화되어 있으면 재초기화
+    // 이미 초기화되어 있으면 기존 앱 삭제 후 재초기화
     if (firebaseApp) {
-      console.log('Firebase already initialized, reinitializing...');
+      console.log('Firebase already initialized, deleting old instance...');
+      try {
+        deleteApp(firebaseApp).catch(err => console.warn('Failed to delete old Firebase app:', err));
+      } catch (e) {
+        console.warn('Error during Firebase app deletion:', e);
+      }
+      firebaseApp = null;
+      firebaseDatabase = null;
+      isInitialized = false;
     }
 
-    // Firebase 앱 초기화 (8개 필수 변수)
+    // Firebase 앱 초기화 (7개 필수 변수 + measurementId는 선택)
     firebaseApp = initializeApp({
       apiKey: config.apiKey,
       authDomain: config.authDomain,
@@ -181,8 +189,12 @@ function mergeGameState(
   const mergedLevel = Math.max(local.level, remote.level);
 
   // dailyQuests 병합: 각 퀘스트별로 progress 최대값 사용
-  const mergedQuests = [...local.dailyQuests];
-  for (const remoteQuest of remote.dailyQuests) {
+  // dailyQuests가 배열이 아니면 빈 배열로 초기화
+  const localQuests = Array.isArray(local.dailyQuests) ? local.dailyQuests : [];
+  const remoteQuests = Array.isArray(remote.dailyQuests) ? remote.dailyQuests : [];
+
+  const mergedQuests = [...localQuests];
+  for (const remoteQuest of remoteQuests) {
     const localQuestIndex = mergedQuests.findIndex(q => q.id === remoteQuest.id);
     if (localQuestIndex >= 0) {
       // 같은 퀘스트가 있으면 progress 최대값 사용
