@@ -12,6 +12,7 @@ import {
   initializeNewDay as initializeNewDayInRepo,
   updateQuestProgress as updateQuestProgressInRepo,
 } from '@/data/repositories';
+import { getLocalDate } from '../lib/utils';
 
 interface GameStateStore {
   // 상태
@@ -35,11 +36,20 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
   loading: false,
   error: null,
 
-  // 데이터 로드
+  // 데이터 로드 (자동 날짜 확인)
   loadData: async () => {
     try {
       set({ loading: true, error: null });
-      const data = await loadGameState();
+      let data = await loadGameState();
+
+      // 날짜가 바뀌었는지 확인
+      const today = getLocalDate();
+      if (data.lastLogin !== today) {
+        console.log(`[GameStateStore] Date changed: ${data.lastLogin} → ${today}, initializing new day...`);
+        data = await initializeNewDayInRepo();
+        console.log('[GameStateStore] New day initialized');
+      }
+
       console.log('[GameStateStore] Loaded game state:', data);
       set({ gameState: data, loading: false });
     } catch (err) {

@@ -93,15 +93,16 @@ export default function AppShell() {
                 console.log('✅ GameState restored from Firebase');
               }
 
+              // Firebase 동기화 임시 비활성화를 위해 직접 IndexedDB에 저장
+              const { db } = await import('@/data/db/dexieClient');
+              const { saveToStorage } = await import('@/shared/lib/utils');
+              const { STORAGE_KEYS } = await import('@/shared/lib/constants');
+              const { syncDailyDataToFirebase, syncGameStateToFirebase } = await import('@/shared/services/firebaseService');
+
               // DailyData 저장 (모든 날짜)
               const dailyDataDates = Object.keys(firebaseData.dailyData);
               if (dailyDataDates.length > 0) {
                 console.log(`📦 Restoring ${dailyDataDates.length} days of data from Firebase...`);
-
-                // Firebase 동기화 임시 비활성화를 위해 직접 IndexedDB에 저장
-                const { db } = await import('@/data/db/dexieClient');
-                const { saveToStorage } = await import('@/shared/lib/utils');
-                const { STORAGE_KEYS } = await import('@/shared/lib/constants');
 
                 for (const date of dailyDataDates) {
                   const data = firebaseData.dailyData[date];
@@ -125,11 +126,52 @@ export default function AppShell() {
                   console.log(`✅ Restored data for ${date}: ${data.tasks.length} tasks`);
                 }
 
-                // 오늘 날짜 리로드
-                const today = getLocalDate();
-                await dailyDataStore.loadData(today, true); // 강제 리로드
                 console.log('✅ All data restored from Firebase');
               }
+
+              // 🔥 IndexedDB의 모든 데이터를 Firebase로 동기화 (Firebase에 없는 것만)
+              console.log('🔄 Syncing IndexedDB to Firebase...');
+              const allLocalDailyData = await db.dailyData.toArray();
+              const firebaseDates = new Set(Object.keys(firebaseData.dailyData));
+
+              for (const localData of allLocalDailyData) {
+                // Firebase에 이미 있는 날짜는 스킵
+                if (firebaseDates.has(localData.date)) continue;
+
+                // IndexedDB에는 있지만 Firebase에는 없는 데이터 업로드
+                console.log(`⏫ Uploading ${localData.date} to Firebase...`);
+                try {
+                  await syncDailyDataToFirebase(localData.date, {
+                    tasks: localData.tasks || [],
+                    timeBlockStates: localData.timeBlockStates || {},
+                    updatedAt: localData.updatedAt || Date.now(),
+                  });
+                  console.log(`✅ Uploaded ${localData.date} to Firebase`);
+                } catch (syncError) {
+                  console.error(`❌ Failed to upload ${localData.date}:`, syncError);
+                }
+              }
+
+              // GameState도 동기화
+              if (!firebaseData.gameState) {
+                const localGameState = await db.gameState.get('current');
+                if (localGameState) {
+                  console.log('⏫ Uploading GameState to Firebase...');
+                  const { key, ...gameStateData } = localGameState;
+                  try {
+                    await syncGameStateToFirebase(gameStateData);
+                    console.log('✅ Uploaded GameState to Firebase');
+                  } catch (syncError) {
+                    console.error('❌ Failed to upload GameState:', syncError);
+                  }
+                }
+              }
+
+              // 오늘 날짜 리로드
+              const today = getLocalDate();
+              await dailyDataStore.loadData(today, true); // 강제 리로드
+              console.log('✅ Initial sync complete');
+              console.log('👉 Check Firebase Console: https://console.firebase.google.com/project/test1234-edcb6/database/test1234-edcb6-default-rtdb/data');
             } catch (error) {
               console.error('Failed to fetch from Firebase:', error);
             }

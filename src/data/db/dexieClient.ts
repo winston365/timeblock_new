@@ -87,11 +87,103 @@ export const db = new TimeBlockDB();
  */
 export async function initializeDatabase(): Promise<void> {
   try {
+    // IndexedDB 열기 시도
     await db.open();
     console.log('✅ Dexie DB initialized successfully');
+
+    // DB 상태 확인
+    const info = await getDatabaseInfo();
+    console.log('📊 DB Status:', info);
+
+    // localStorage에서 IndexedDB로 데이터 마이그레이션
+    await migrateFromLocalStorage();
   } catch (error) {
     console.error('❌ Failed to initialize Dexie DB:', error);
-    throw error;
+
+    // IndexedDB가 막혀있으면 재생성 시도
+    try {
+      console.log('🔄 Attempting to recreate database...');
+      await db.delete();
+      await db.open();
+      console.log('✅ Database recreated successfully');
+
+      // 재생성 후 마이그레이션
+      await migrateFromLocalStorage();
+    } catch (retryError) {
+      console.error('❌ Failed to recreate database:', retryError);
+      throw retryError;
+    }
+  }
+}
+
+/**
+ * localStorage에서 IndexedDB로 데이터 마이그레이션
+ */
+async function migrateFromLocalStorage(): Promise<void> {
+  try {
+    console.log('🔄 Checking localStorage for migration...');
+    let migratedCount = 0;
+
+    // 1. dailyPlans 마이그레이션
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith('dailyPlans_')) continue;
+
+      const date = key.replace('dailyPlans_', '');
+
+      // IndexedDB에 이미 있는지 확인
+      const existing = await db.dailyData.get(date);
+      if (existing) continue; // 이미 있으면 스킵
+
+      // localStorage에서 가져오기
+      const dataStr = localStorage.getItem(key);
+      if (!dataStr) continue;
+
+      try {
+        const data = JSON.parse(dataStr);
+
+        // IndexedDB에 저장
+        await db.dailyData.put({
+          date,
+          tasks: data.tasks || [],
+          timeBlockStates: data.timeBlockStates || {},
+          updatedAt: data.updatedAt || Date.now(),
+        });
+
+        migratedCount++;
+        console.log(`✅ Migrated ${key} to IndexedDB`);
+      } catch (parseError) {
+        console.warn(`⚠️ Failed to parse ${key}:`, parseError);
+      }
+    }
+
+    // 2. gameState 마이그레이션
+    const gameStateStr = localStorage.getItem('gameState');
+    if (gameStateStr) {
+      const existingGameState = await db.gameState.get('current');
+      if (!existingGameState) {
+        try {
+          const gameState = JSON.parse(gameStateStr);
+          await db.gameState.put({
+            key: 'current',
+            ...gameState,
+          });
+          console.log('✅ Migrated gameState to IndexedDB');
+          migratedCount++;
+        } catch (parseError) {
+          console.warn('⚠️ Failed to parse gameState:', parseError);
+        }
+      }
+    }
+
+    if (migratedCount > 0) {
+      console.log(`✅ Migration complete: ${migratedCount} items migrated`);
+    } else {
+      console.log('ℹ️ No migration needed');
+    }
+  } catch (error) {
+    console.error('❌ Migration failed:', error);
+    // 마이그레이션 실패해도 앱은 계속 동작
   }
 }
 
