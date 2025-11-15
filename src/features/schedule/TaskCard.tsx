@@ -38,6 +38,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const [isDragging, setIsDragging] = useState(false);
   const [showMemo, setShowMemo] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const taskCardRef = useRef<HTMLDivElement>(null);
 
   // XP 계산
   const xp = calculateTaskXP(task);
@@ -82,12 +83,24 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     setIsDragging(false);
   };
 
-  // 우클릭 핸들러
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setContextMenu({ x: e.clientX, y: e.clientY });
-  };
+  // 네이티브 우클릭 핸들러 (확실한 동작을 위해)
+  useEffect(() => {
+    const cardElement = taskCardRef.current;
+    if (!cardElement) return;
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setContextMenu({ x: e.clientX, y: e.clientY });
+    };
+
+    // 네이티브 리스너로 등록
+    cardElement.addEventListener('contextmenu', handleContextMenu);
+
+    return () => {
+      cardElement.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, []);
 
   // 컨텍스트 메뉴 닫기
   useEffect(() => {
@@ -115,11 +128,11 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   return (
     <>
       <div
+        ref={taskCardRef}
         className={`task-card ${task.completed ? 'completed' : ''} ${isDragging ? 'dragging' : ''}`}
         draggable="true"
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onContextMenu={handleContextMenu}
       >
       <div className="task-main">
         <button
