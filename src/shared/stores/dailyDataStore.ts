@@ -50,14 +50,32 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
   // 데이터 로드
   loadData: async (date?: string) => {
     const targetDate = date || getLocalDate();
+    const { currentDate, dailyData, loading } = get();
+
+    // 이미 같은 날짜 데이터가 로드되어 있으면 스킵
+    if (currentDate === targetDate && dailyData && !loading) {
+      console.log(`[DailyDataStore] Data already loaded for ${targetDate}, skipping`);
+      return;
+    }
+
+    // 이미 로딩 중이면 스킵
+    if (loading) {
+      console.log(`[DailyDataStore] Already loading, skipping`);
+      return;
+    }
 
     try {
       set({ loading: true, error: null, currentDate: targetDate });
       const data = await loadDailyData(targetDate);
-      console.log(`[DailyDataStore] Loaded data for ${targetDate}:`, data);
+      console.log(`[DailyDataStore] ✅ Loaded data for ${targetDate}:`, {
+        tasksCount: data.tasks?.length || 0,
+        tasks: data.tasks,
+        timeBlockStates: data.timeBlockStates,
+        updatedAt: data.updatedAt,
+      });
       set({ dailyData: data, loading: false });
     } catch (err) {
-      console.error('[DailyDataStore] Failed to load daily data:', err);
+      console.error('[DailyDataStore] ❌ Failed to load daily data:', err);
       set({ error: err as Error, loading: false });
     }
   },

@@ -5,23 +5,27 @@
  * Zustand store를 사용하여 전역 상태 관리 및 동기화 문제 해결
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useDailyDataStore } from '../stores/dailyDataStore';
 import { getLocalDate } from '../lib/utils';
 
 export function useDailyData(date: string = getLocalDate()) {
   const store = useDailyDataStore();
   const { dailyData, currentDate, loading, error } = store;
-  const hasInitialized = useRef(false);
 
-  // 초기 로드 - 한 번만 실행
+  // 날짜가 변경되었을 때만 로드 (store 내부에서 중복 체크)
   useEffect(() => {
-    const needsLoad = !hasInitialized.current || date !== currentDate || !dailyData;
-    
-    if (needsLoad) {
-      console.log(`[useDailyData] Loading data for ${date}`);
-      hasInitialized.current = true;
+    if (date !== currentDate) {
+      console.log(`[useDailyData] Date changed: ${currentDate} → ${date}`);
       store.loadData(date);
+    } else if (!dailyData && !loading) {
+      console.log(`[useDailyData] No data for ${date}, loading...`);
+      store.loadData(date);
+    } else {
+      console.log(`[useDailyData] Using existing data for ${date}`, {
+        tasksCount: dailyData?.tasks?.length || 0,
+        loading,
+      });
     }
   }, [date]); // date만 의존성으로 유지
 
