@@ -1775,3 +1775,341 @@
 .context-menu-item:active {
   background: var(--color-bg-quaternary);
 }
+
+/* ============================================================================
+   타이머 확인 모달
+   ============================================================================ */
+
+.timer-confirm-modal {
+  max-width: 500px !important;
+}
+
+.timer-confirm-content {
+  text-align: center;
+  padding: var(--spacing-xl) 0;
+}
+
+.timer-confirm-task-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: rgba(79, 70, 229, 0.1);
+  border-radius: 8px;
+}
+
+.timer-confirm-question {
+  font-size: 1.125rem;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-md);
+  line-height: 1.6;
+}
+
+.timer-confirm-hint {
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  padding: var(--spacing-md);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.1));
+  border-left: 4px solid #FFD700;
+  border-radius: 8px;
+  line-height: 1.6;
+}
+
+.timer-confirm-hint strong {
+  color: #FF8C00;
+  font-weight: 700;
+}
+
+.btn-timer-yes {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  border: none;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+  transition: all 0.3s;
+}
+
+.btn-timer-yes:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 165, 0, 0.4);
+}
+
+/* ============================================================================
+   완료 축하 모달
+   ============================================================================ */
+
+.celebration-overlay {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.celebration-modal {
+  max-width: 600px !important;
+  position: relative;
+  overflow: visible;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  animation: celebrationPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes celebrationPop {
+  0% {
+    transform: scale(0.3) rotate(-10deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05) rotate(2deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.celebration-header {
+  background: rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.celebration-header h2 {
+  color: #fff;
+  font-size: 1.75rem;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  animation: headingGlow 2s infinite alternate;
+}
+
+@keyframes headingGlow {
+  0% {
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  100% {
+    text-shadow: 0 2px 16px rgba(255, 215, 0, 0.6);
+  }
+}
+
+.celebration-body {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: #fff;
+}
+
+.celebration-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  margin-bottom: var(--spacing-lg);
+  animation: badgeSpin 1s ease-out;
+}
+
+@keyframes badgeSpin {
+  0% {
+    transform: rotate(0deg) scale(0);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+.badge-icon {
+  font-size: 4rem;
+  line-height: 1;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.badge-text {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #FFD700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.celebration-task-name {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #FFD700;
+  margin-bottom: var(--spacing-lg);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.celebration-message {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: var(--spacing-xl);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.celebration-xp {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  backdrop-filter: blur(10px);
+}
+
+.xp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) 0;
+}
+
+.xp-label {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.xp-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #FFD700;
+}
+
+.xp-value.glow {
+  animation: xpGlow 1.5s infinite alternate;
+}
+
+@keyframes xpGlow {
+  0% {
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  }
+  100% {
+    text-shadow: 0 0 20px rgba(255, 215, 0, 1);
+  }
+}
+
+.xp-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    transparent 100%
+  );
+  margin: var(--spacing-sm) 0;
+}
+
+.total-xp {
+  padding-top: var(--spacing-md);
+}
+
+.total-xp .xp-label {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.total-xp .xp-value {
+  font-size: 1.75rem;
+  color: #FFF;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+}
+
+.celebration-encouragement {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-style: italic;
+}
+
+.celebration-actions {
+  padding: var(--spacing-lg);
+  background: rgba(0, 0, 0, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-celebration-close {
+  width: 100%;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  border: none;
+  color: #333;
+  font-weight: 700;
+  font-size: 1.125rem;
+  padding: var(--spacing-md) var(--spacing-lg);
+  box-shadow: 0 4px 16px rgba(255, 165, 0, 0.4);
+  transition: all 0.3s;
+}
+
+.btn-celebration-close:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 165, 0, 0.6);
+}
+
+/* 파티클 애니메이션 */
+.celebration-particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.particle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #FFD700;
+  border-radius: 50%;
+  opacity: 0;
+  animation: particleFloat 3s infinite;
+}
+
+.particle:nth-child(1) {
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.particle:nth-child(2) {
+  left: 30%;
+  animation-delay: 0.5s;
+}
+
+.particle:nth-child(3) {
+  left: 50%;
+  animation-delay: 1s;
+}
+
+.particle:nth-child(4) {
+  left: 70%;
+  animation-delay: 1.5s;
+}
+
+.particle:nth-child(5) {
+  left: 90%;
+  animation-delay: 2s;
+}
+
+.particle:nth-child(6) {
+  left: 20%;
+  animation-delay: 2.5s;
+}
+
+@keyframes particleFloat {
+  0% {
+    bottom: -10px;
+    opacity: 0;
+    transform: translateX(0) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    bottom: 100%;
+    opacity: 0;
+    transform: translateX(50px) rotate(360deg);
+  }
+}

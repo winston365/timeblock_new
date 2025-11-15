@@ -41,6 +41,7 @@ export interface Task {
   preparation1?: string; // 준비 사항 1 (예상 방해물 또는 대처 환경)
   preparation2?: string; // 준비 사항 2 (예상 방해물 또는 대처 환경)
   preparation3?: string; // 준비 사항 3 (예상 방해물 또는 대처 환경)
+  timerUsed?: boolean; // 타이머 사용 여부 (몰입 작업)
 }
 
 /**
@@ -79,7 +80,7 @@ export interface DailyData {
  */
 export interface Quest {
   id: string;
-  type: 'complete_tasks' | 'earn_xp' | 'lock_blocks' | 'perfect_blocks' | 'prepare_tasks';
+  type: 'complete_tasks' | 'earn_xp' | 'lock_blocks' | 'perfect_blocks' | 'prepare_tasks' | 'use_timer';
   title: string;
   description: string;
   target: number; // 목표값
@@ -104,6 +105,7 @@ export interface GameState {
   timeBlockXP: Record<string, number>; // 블록별 XP
   timeBlockXPHistory: Array<{ date: string; blocks: Record<string, number> }>; // 블록별 XP 히스토리
   completedTasksHistory: Task[]; // 완료 작업 히스토리
+  dailyTimerCount: number; // 오늘 타이머 사용 횟수 (몰입 작업 수)
 }
 
 // ============================================================================

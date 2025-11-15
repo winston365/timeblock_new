@@ -48,6 +48,7 @@ export function createInitialGameState(): GameState {
     timeBlockXP: {},
     timeBlockXPHistory: [],
     completedTasksHistory: [],
+    dailyTimerCount: 0, // 오늘 타이머 사용 횟수
   };
 }
 
@@ -83,12 +84,17 @@ export async function loadGameState(): Promise<GameState> {
       if (!data.timeBlockXP) {
         data.timeBlockXP = {};
       }
+      if (typeof data.dailyTimerCount !== 'number') {
+        data.dailyTimerCount = 0;
+      }
 
       // 일일퀘스트가 비어있으면 생성
       if (data.dailyQuests.length === 0) {
         data.dailyQuests = generateDailyQuests();
         await saveGameState(data);
       } else {
+        let questsUpdated = false;
+
         // 준비된 할일 퀘스트가 없으면 추가
         const hasPrepareTasksQuest = data.dailyQuests.some(q => q.type === 'prepare_tasks');
         if (!hasPrepareTasksQuest) {
@@ -104,6 +110,28 @@ export async function loadGameState(): Promise<GameState> {
             completed: false,
             reward: prepareTasksReward,
           });
+          questsUpdated = true;
+        }
+
+        // 타이머 퀘스트가 없으면 추가
+        const hasUseTimerQuest = data.dailyQuests.some(q => q.type === 'use_timer');
+        if (!hasUseTimerQuest) {
+          const useTimerTarget = 5;
+          const useTimerReward = 100;
+          data.dailyQuests.push({
+            id: `quest-timer-${useTimerTarget}-tasks`,
+            type: 'use_timer',
+            title: `⏱️ 타이머 ${useTimerTarget}회 사용하기`,
+            description: `타이머를 사용하여 ${useTimerTarget}개의 작업을 완료하세요`,
+            target: useTimerTarget,
+            progress: 0,
+            completed: false,
+            reward: useTimerReward,
+          });
+          questsUpdated = true;
+        }
+
+        if (questsUpdated) {
           await saveGameState(data);
         }
       }
@@ -134,6 +162,23 @@ export async function loadGameState(): Promise<GameState> {
             reward: prepareTasksReward,
           });
         }
+
+        // 타이머 퀘스트가 없으면 추가
+        const hasUseTimerQuest = localData.dailyQuests.some(q => q.type === 'use_timer');
+        if (!hasUseTimerQuest) {
+          const useTimerTarget = 5;
+          const useTimerReward = 100;
+          localData.dailyQuests.push({
+            id: `quest-timer-${useTimerTarget}-tasks`,
+            type: 'use_timer',
+            title: `⏱️ 타이머 ${useTimerTarget}회 사용하기`,
+            description: `타이머를 사용하여 ${useTimerTarget}개의 작업을 완료하세요`,
+            target: useTimerTarget,
+            progress: 0,
+            completed: false,
+            reward: useTimerReward,
+          });
+        }
       }
       if (!Array.isArray(localData.xpHistory)) {
         localData.xpHistory = [];
@@ -146,6 +191,9 @@ export async function loadGameState(): Promise<GameState> {
       }
       if (!localData.timeBlockXP) {
         localData.timeBlockXP = {};
+      }
+      if (typeof localData.dailyTimerCount !== 'number') {
+        localData.dailyTimerCount = 0;
       }
 
       // localStorage 데이터를 IndexedDB에 저장
@@ -472,6 +520,7 @@ function generateDailyQuests(): Quest[] {
   const lockBlocksTarget = generateQuestTarget('lock_blocks');
   const perfectBlocksTarget = generateQuestTarget('perfect_blocks');
   const prepareTasksTarget = 3; // 준비된 할일 목표: 3개
+  const useTimerTarget = 5; // 타이머 사용 목표: 5개
 
   // 각 퀘스트의 보상 계산
   const completeTasksReward = calculateQuestReward('complete_tasks');
@@ -479,6 +528,7 @@ function generateDailyQuests(): Quest[] {
   const lockBlocksReward = calculateQuestReward('lock_blocks');
   const perfectBlocksReward = calculateQuestReward('perfect_blocks');
   const prepareTasksReward = 150; // 준비된 할일은 고정 보상
+  const useTimerReward = 100; // 타이머 사용은 고정 보상
 
   return [
     {
@@ -531,6 +581,16 @@ function generateDailyQuests(): Quest[] {
       completed: false,
       reward: prepareTasksReward,
     },
+    {
+      id: `quest-timer-${useTimerTarget}-tasks`,
+      type: 'use_timer',
+      title: `⏱️ 타이머 ${useTimerTarget}회 사용하기`,
+      description: `타이머를 사용하여 ${useTimerTarget}개의 작업을 완료하세요`,
+      target: useTimerTarget,
+      progress: 0,
+      completed: false,
+      reward: useTimerReward,
+    },
   ];
 }
 
@@ -549,6 +609,11 @@ function generateDailyQuests(): Quest[] {
 export async function updateQuestProgress(questType: Quest['type'], amount: number = 1): Promise<GameState> {
   try {
     const gameState = await loadGameState();
+
+    // use_timer 타입이면 dailyTimerCount 증가
+    if (questType === 'use_timer') {
+      gameState.dailyTimerCount = (gameState.dailyTimerCount || 0) + amount;
+    }
 
     gameState.dailyQuests.forEach(quest => {
       if (quest.type === questType && !quest.completed) {
