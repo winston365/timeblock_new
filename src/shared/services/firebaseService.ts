@@ -460,15 +460,26 @@ export async function debugFirebaseData(): Promise<void> {
     }
 
     if (gameStateValue) {
+      const gs = gameStateValue.data;
       console.log('  GameState:', {
-        level: gameStateValue.data?.level,
-        totalXP: gameStateValue.data?.totalXP,
-        dailyXP: gameStateValue.data?.dailyXP,
+        level: gs?.level,
+        totalXP: gs?.totalXP,
+        dailyXP: gs?.dailyXP,
+        lastLogin: gs?.lastLogin,
+        streak: gs?.streak,
         updatedAt: gameStateValue.updatedAt
       });
+      console.log('  XP History:', gs?.xpHistory ?? []);
+      console.log('  TimeBlock XP History:', gs?.timeBlockXPHistory ?? []);
+      console.log('  Completed Tasks History count:', gs?.completedTasksHistory?.length ?? 0);
     }
 
     console.log('🌐 Firebase Console: https://console.firebase.google.com/project/test1234-edcb6/database/test1234-edcb6-default-rtdb/data/users/user');
+
+    // 원본 데이터 전체 출력 (JSON)
+    console.log('📋 Raw Firebase Data:');
+    console.log('DailyData:', dailyDataValue);
+    console.log('GameState:', gameStateValue);
   } catch (error) {
     console.error('❌ Failed to debug Firebase data:', error);
   }
