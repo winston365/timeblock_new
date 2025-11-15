@@ -28,7 +28,7 @@ interface DailyDataStore {
   error: Error | null;
 
   // 액션
-  loadData: (date?: string) => Promise<void>;
+  loadData: (date?: string, force?: boolean) => Promise<void>;
   saveData: (tasks: Task[], timeBlockStates: DailyData['timeBlockStates']) => Promise<void>;
   addTask: (task: Task) => Promise<void>;
   updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
@@ -48,26 +48,29 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
   error: null,
 
   // 데이터 로드
-  loadData: async (date?: string) => {
+  loadData: async (date?: string, force?: boolean) => {
     const targetDate = date || getLocalDate();
     const { currentDate, dailyData, loading } = get();
 
-    // 이미 같은 날짜 데이터가 로드되어 있으면 스킵
-    if (currentDate === targetDate && dailyData && !loading) {
-      console.log(`[DailyDataStore] Data already loaded for ${targetDate}, skipping`);
-      return;
-    }
+    // force가 아닐 때만 중복 체크
+    if (!force) {
+      // 이미 같은 날짜 데이터가 로드되어 있으면 스킵
+      if (currentDate === targetDate && dailyData && !loading) {
+        console.log(`[DailyDataStore] Data already loaded for ${targetDate}, skipping`);
+        return;
+      }
 
-    // 이미 로딩 중이면 스킵
-    if (loading) {
-      console.log(`[DailyDataStore] Already loading, skipping`);
-      return;
+      // 이미 로딩 중이면 스킵
+      if (loading) {
+        console.log(`[DailyDataStore] Already loading, skipping`);
+        return;
+      }
     }
 
     try {
       set({ loading: true, error: null, currentDate: targetDate });
       const data = await loadDailyData(targetDate);
-      console.log(`[DailyDataStore] ✅ Loaded data for ${targetDate}:`, {
+      console.log(`[DailyDataStore] ✅ Loaded data for ${targetDate}${force ? ' (force)' : ''}:`, {
         tasksCount: data.tasks?.length || 0,
         tasks: data.tasks,
         timeBlockStates: data.timeBlockStates,
@@ -258,10 +261,11 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     }
   },
 
-  // 수동 갱신
+  // 수동 갱신 (강제 리로드)
   refresh: async () => {
     const { currentDate, loadData } = get();
-    await loadData(currentDate);
+    console.log(`[DailyDataStore] 🔄 Refreshing data for ${currentDate}`);
+    await loadData(currentDate, true); // force=true
   },
 
   // 상태 초기화

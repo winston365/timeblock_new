@@ -96,8 +96,9 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
     }
   },
 
-  // 수동 갱신
+  // 수동 갱신 (강제 리로드)
   refresh: async () => {
+    console.log('[GameStateStore] 🔄 Refreshing game state');
     await get().loadData();
   },
 
