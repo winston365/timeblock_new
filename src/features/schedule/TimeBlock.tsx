@@ -35,7 +35,7 @@ export default function TimeBlock({
   state,
   isCurrentBlock,
   isPastBlock = false,
-  onAddTask,
+  onAddTask: _onAddTask, // NOTE: 현재 사용되지 않음
   onCreateTask,
   onEditTask,
   onUpdateTask,
@@ -129,19 +129,20 @@ export default function TimeBlock({
   };
 
   // 추가 버튼 클릭 핸들러
-  const handleAddClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-
-    // onCreateTask가 있으면 인라인 입력 사용, 없으면 기존 모달 방식
-    if (onCreateTask) {
-      setShowInlineInput(true);
-      if (!isExpanded) {
-        setIsExpanded(true);
-      }
-    } else {
-      onAddTask();
-    }
-  };
+  // NOTE: 현재 사용되지 않음 - 필요시 주석 해제
+  // const handleAddClick = (e: React.MouseEvent) => {
+  //   e.stopPropagation();
+  //
+  //   // onCreateTask가 있으면 인라인 입력 사용, 없으면 기존 모달 방식
+  //   if (onCreateTask) {
+  //     setShowInlineInput(true);
+  //     if (!isExpanded) {
+  //       setIsExpanded(true);
+  //     }
+  //   } else {
+  //     onAddTask();
+  //   }
+  // };
 
   // 빈 공간 클릭시 접기
   const handleBlockContentClick = (e: React.MouseEvent) => {
