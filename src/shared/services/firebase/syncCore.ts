@@ -13,7 +13,7 @@
  *   - ../syncLogger: 동기화 로그 시스템
  */
 
-import { ref, set, get, onValue, off, type Database } from 'firebase/database';
+import { ref, set, get, onValue, off } from 'firebase/database';
 import type { SyncData } from './conflictResolver';
 import { resolveConflictLWW } from './conflictResolver';
 import { getDataHash, getServerTimestamp, getDeviceId, getFirebasePath } from './syncUtils';

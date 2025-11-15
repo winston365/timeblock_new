@@ -10,7 +10,7 @@
  *   - hooks: 현재 상태 (에너지, 작업, 게임 상태)
  */
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useWaifuState, useDailyData, useGameState, useEnergyState } from '@/shared/hooks';
 import { loadSettings } from '@/data/repositories/settingsRepository';
 import { callGeminiAPI, generateWaifuPersona, type PersonaContext } from '@/shared/services/geminiApi';
@@ -19,12 +19,13 @@ import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import type { DailyData } from '@/shared/types/domain';
 
-interface EnergyDataPoint {
-  date: string;
-  timeBlock: string;
-  energy: number;
-  timestamp: string;
-}
+// TODO: 에너지 히스토리 기능 추가 시 사용
+// interface EnergyDataPoint {
+//   date: string;
+//   timeBlock: string;
+//   energy: number;
+//   timestamp: string;
+// }
 
 interface CompletedTaskData {
   date: string;
@@ -38,14 +39,8 @@ interface XPDataPoint {
   dailyXP: number;
 }
 
-/**
- * 과거 10일간 에너지 데이터 수집
- */
-async function collectEnergyData(): Promise<EnergyDataPoint[]> {
-  // TODO: 에너지 히스토리가 있다면 여기서 로드
-  // 현재는 빈 배열 반환
-  return [];
-}
+// TODO: 에너지 히스토리 데이터 수집 함수 필요시 추가
+// async function collectEnergyData(): Promise<EnergyDataPoint[]> { ... }
 
 /**
  * 과거 10일간 완료한 작업 데이터 수집
@@ -84,9 +79,10 @@ async function collectCompletedTasksData(): Promise<CompletedTaskData[]> {
  * 간단한 XP 계산 (resistance 고려)
  */
 function calculateTaskXP(task: any): number {
-  const multipliers = { low: 1.0, medium: 1.3, high: 1.6 };
+  const multipliers: Record<string, number> = { low: 1.0, medium: 1.3, high: 1.6 };
   const baseXP = Math.ceil((task.baseDuration / 30) * 25);
-  return Math.ceil(baseXP * multipliers[task.resistance]);
+  const resistance = task.resistance as keyof typeof multipliers;
+  return Math.ceil(baseXP * (multipliers[resistance] ?? 1.0));
 }
 
 /**
@@ -116,6 +112,7 @@ function generateInsightPrompt(
     currentTime: string;
     currentBlock: string;
     inboxTasks: any[];
+    currentEnergy?: number;
   }
 ): string {
   const {
@@ -125,6 +122,7 @@ function generateInsightPrompt(
     currentTime,
     currentBlock,
     inboxTasks,
+    currentEnergy = 0,
   } = data;
 
   return `${personaPrompt}
@@ -136,7 +134,7 @@ function generateInsightPrompt(
 - 남은 작업: ${todayData?.tasks.filter(t => !t.completed && t.timeBlock).length ?? 0}개
 - 인박스 작업: ${inboxTasks.length}개
 
-${todayData?.tasks.filter(t => t.completed).length > 0 ? `
+${(todayData?.tasks.filter(t => t.completed).length ?? 0) > 0 ? `
 #### 오늘 완료한 작업
 ${TIME_BLOCKS.map(block => {
   const blockTasks = todayData?.tasks.filter(t => t.completed && t.timeBlock === block.id) ?? [];
@@ -145,7 +143,7 @@ ${TIME_BLOCKS.map(block => {
 }).filter(Boolean).join('\n')}
 ` : ''}
 
-${todayData?.tasks.filter(t => !t.completed && t.timeBlock === currentBlock).length > 0 ? `
+${(todayData?.tasks.filter(t => !t.completed && t.timeBlock === currentBlock).length ?? 0) > 0 ? `
 #### 현재 시간대 미완료 작업
 ${todayData?.tasks.filter(t => !t.completed && t.timeBlock === currentBlock).map(t => `- ${t.text}`).join('\n')}
 ` : ''}
@@ -175,14 +173,14 @@ ${xpData.length > 0 ? xpData.map(d =>
 ### 🔍 분석 시 고려사항
 
 #### 1️⃣ 에너지 레벨 고려
-- **현재 에너지**: ${data.currentEnergy ?? 0}
+- **현재 에너지**: ${currentEnergy}
 - 에너지 높음(70+): 어려운 작업, 집중 필요 작업 추천
 - 에너지 중간(40-70): 중요도 높은 작업, 계획된 작업 추천
 - 에너지 낮음(0-40): 간단한 작업, 정리 작업, 휴식 추천
 
 #### 2️⃣ 시간대별 맥락 고려
-- **현재 시간**: ${data.currentTime}
-- **현재 블록**: ${data.currentBlock}
+- **현재 시간**: ${currentTime}
+- **현재 블록**: ${currentBlock}
 - 새벽(0-6시): 충분한 휴식 권장, 내일 계획 준비
 - 오전(6-12시): 집중력 높은 시간, 중요 작업 우선
 - 오후(12-18시): 점심 후 에너지 관리, 협업 작업 적합
@@ -328,8 +326,8 @@ export default function InsightPanel() {
 
       // 최근 5일 패턴
       const recentDays = await getRecentDailyData(5);
-      const recentBlockPatterns = TIME_BLOCKS.flatMap(block => {
-        return recentDays.map(day => {
+      const recentBlockPatterns = TIME_BLOCKS.reduce((acc, block) => {
+        acc[block.id] = recentDays.map(day => {
           const blockTasks = day.tasks.filter(t => t.timeBlock === block.id && t.completed);
           return {
             date: day.date,
@@ -337,7 +335,8 @@ export default function InsightPanel() {
             tasks: blockTasks.map(t => t.text)
           };
         });
-      });
+        return acc;
+      }, {} as Record<string, Array<{ date: string; completedCount: number; tasks: string[] }>>);
 
       const affection = waifuState?.affection ?? 50;
       let mood = '중립적';

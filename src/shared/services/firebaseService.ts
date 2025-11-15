@@ -30,7 +30,7 @@ export type { SyncData } from './firebase/conflictResolver';
 // Import dependencies for legacy functions
 // ============================================================================
 
-import { syncToFirebase, listenToFirebase, fetchFromFirebase } from './firebase/syncCore';
+import { syncToFirebase, listenToFirebase } from './firebase/syncCore';
 import {
   dailyDataStrategy,
   gameStateStrategy,

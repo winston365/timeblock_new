@@ -188,7 +188,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
         // 와이푸 등장 (기본 완료 메시지)
         let waifuMessage = `좋아! "${updatedTask.text}" 완료했구나! (+${xpAmount}XP)`;
-        let isPerfectBlock = false;
 
         // 잠금된 블록의 모든 작업이 완료되었는지 체크
         if (updatedTask.timeBlock) {
@@ -207,7 +206,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
               currentDate
             );
             await updateQuestProgress('perfect_blocks', 1);
-            isPerfectBlock = true;
             waifuMessage = `완벽해! ${updatedTask.timeBlock} 블록 완성! 🎉 (+40XP 보너스!)`;
           }
         }

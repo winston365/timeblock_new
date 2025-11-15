@@ -21,7 +21,7 @@ import {
 } from '@/data/repositories/chatHistoryRepository';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 import { getWaifuImagePathWithFallback } from '@/features/waifu/waifuImageUtils';
-import type { GeminiChatMessage, DailyTokenUsage } from '@/shared/types/domain';
+import type { GeminiChatMessage } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import './gemini-fullscreen.css';
 
@@ -167,8 +167,8 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
 
       // 최근 5일 패턴
       const recentDays = await getRecentDailyData(5);
-      const recentBlockPatterns = TIME_BLOCKS.flatMap(block => {
-        return recentDays.map(day => {
+      const recentBlockPatterns = TIME_BLOCKS.reduce((acc, block) => {
+        acc[block.id] = recentDays.map(day => {
           const blockTasks = day.tasks.filter(t => t.timeBlock === block.id && t.completed);
           return {
             date: day.date,
@@ -176,7 +176,8 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
             tasks: blockTasks.map(t => t.text)
           };
         });
-      });
+        return acc;
+      }, {} as Record<string, Array<{ date: string; completedCount: number; tasks: string[] }>>);
 
       const affection = waifuState?.affection ?? 50;
       let mood = '중립적';

@@ -171,7 +171,7 @@ export default function AppShell() {
 
             // 실시간 동기화 활성화
             const unsubscribe = enableFirebaseSync(
-              async (date) => {
+              async () => {
                 await dailyDataStore.refresh();
               },
               async () => {

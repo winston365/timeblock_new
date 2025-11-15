@@ -110,7 +110,7 @@ export async function initializeDatabase(): Promise<void> {
     await db.open();
 
     // DB 상태 확인
-    const info = await getDatabaseInfo();
+    await getDatabaseInfo();
 
     // localStorage에서 IndexedDB로 데이터 마이그레이션
     await migrateFromLocalStorage();
