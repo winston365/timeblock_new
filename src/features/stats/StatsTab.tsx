@@ -5,6 +5,7 @@
 
 import { useGameState } from '@/shared/hooks';
 import { TIME_BLOCKS } from '@/shared/types/domain';
+import { getLocalDate } from '@/shared/lib/utils';
 import './stats.css';
 
 export default function StatsTab() {
@@ -14,7 +15,13 @@ export default function StatsTab() {
     return <div className="tab-loading">로딩 중...</div>;
   }
 
-  const xpHistory = gameState.xpHistory.slice(-5); // 최근 5일
+  // 과거 4일 + 오늘 = 최근 5일
+  const pastHistory = gameState.xpHistory.slice(-4);
+  const today = getLocalDate();
+  const todayData = { date: today, xp: gameState.dailyXP };
+
+  // 오늘 데이터를 마지막에 추가
+  const xpHistory = [...pastHistory, todayData];
   const maxXP = Math.max(...xpHistory.map(h => h.xp), 100);
 
   const timeBlockXP = gameState.timeBlockXP;
