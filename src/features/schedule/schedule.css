@@ -299,6 +299,30 @@
   transition: width 0.3s ease;
 }
 
+/* 하단 작업 추가 바 */
+.block-add-bar {
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: none;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+}
+
+.block-add-bar:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-primary);
+  border-top-color: var(--color-primary);
+}
+
 /* 전역 현재 시간 인디케이터 */
 .global-time-indicator {
   position: absolute;
@@ -710,11 +734,11 @@
 /* 스케줄 모달 특화 스타일 */
 .schedule-modal .modal-content {
   width: 100%;
-  max-width: 500px;
+  max-width: 420px;
 }
 
 .modal-form {
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
 }
 
 .form-group {
@@ -768,6 +792,38 @@
 
 .adjusted-duration-info strong {
   color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Duration Buttons */
+.duration-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-xs);
+}
+
+.duration-btn {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.duration-btn:hover {
+  border-color: var(--color-primary);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+}
+
+.duration-btn.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: white;
   font-weight: 600;
 }
 

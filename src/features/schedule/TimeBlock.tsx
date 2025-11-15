@@ -217,15 +217,6 @@ export default function TimeBlock({
           >
             {state?.isLocked ? '🔒' : '🔓'}
           </button>
-
-          {/* 할일 추가 버튼 */}
-          <button
-            className="action-btn-sm"
-            onClick={handleAddClick}
-            title="할 일 추가"
-          >
-            ➕
-          </button>
         </div>
       </div>
 
@@ -291,6 +282,15 @@ export default function TimeBlock({
           </div>
         </div>
       )}
+
+      {/* 하단 작업 추가 바 */}
+      <button
+        className="block-add-bar"
+        onClick={handleAddClick}
+        title="할 일 추가"
+      >
+        ➕ 작업 추가
+      </button>
     </div>
   );
 }

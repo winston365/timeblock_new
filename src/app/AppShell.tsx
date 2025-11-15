@@ -30,7 +30,7 @@ import SyncLogModal from '@/features/settings/SyncLogModal';
 export default function AppShell() {
   const [dbInitialized, setDbInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<'today' | 'stats' | 'energy' | 'completed' | 'inbox'>('today');
-  const [rightPanelTab, setRightPanelTab] = useState<'template' | 'shop'>('template');
+  const [rightPanelTab, setRightPanelTab] = useState<'quest' | 'template' | 'shop'>('quest');
   const [showGeminiChat, setShowGeminiChat] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -222,7 +222,7 @@ export default function AppShell() {
       </button>
 
       {/* XP 토스트 */}
-      {toasts.map((toast) => (
+      {toasts.map((toast: { id: string; xp: number; message?: string }) => (
         <XPToast
           key={toast.id}
           xp={toast.xp}

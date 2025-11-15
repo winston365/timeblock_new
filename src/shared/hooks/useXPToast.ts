@@ -18,15 +18,15 @@ interface XPToastStore {
 
 export const useXPToastStore = create<XPToastStore>((set) => ({
   toasts: [],
-  addToast: (xp, message) => {
+  addToast: (xp: number, message?: string) => {
     const id = `xp-toast-${Date.now()}-${Math.random()}`;
-    set((state) => ({
+    set((state: XPToastStore) => ({
       toasts: [...state.toasts, { id, xp, message }],
     }));
   },
-  removeToast: (id) => {
-    set((state) => ({
-      toasts: state.toasts.filter((toast) => toast.id !== id),
+  removeToast: (id: string) => {
+    set((state: XPToastStore) => ({
+      toasts: state.toasts.filter((toast: XPToastItem) => toast.id !== id),
     }));
   },
 }));

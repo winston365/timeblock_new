@@ -15,7 +15,7 @@ import {
   loadTodayTokenUsage
 } from '@/data/repositories/chatHistoryRepository';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
-import type { GeminiChatMessage, DailyTokenUsage, Task } from '@/shared/types/domain';
+import type { GeminiChatMessage, DailyTokenUsage } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import './gemini.css';
 
@@ -54,7 +54,7 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
   const { waifuState } = useWaifuState();
   const { dailyData } = useDailyData();
   const { gameState } = useGameState();
-  const { currentEnergy, energyRecordedAt } = useEnergyState();
+  const { currentEnergy } = useEnergyState();
   const [messages, setMessages] = useState<GeminiChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -226,7 +226,7 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
 
         // 에너지 정보
         currentEnergy: currentEnergy ?? 0,
-        energyRecordedAt: energyRecordedAt ?? null,
+        energyRecordedAt: null,
 
         // XP 히스토리
         xpHistory: gameState?.xpHistory ?? [],

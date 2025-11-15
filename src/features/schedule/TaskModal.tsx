@@ -98,36 +98,37 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
               value={memo}
               onChange={e => setMemo(e.target.value)}
               placeholder="추가 메모 (선택사항)"
-              rows={3}
+              rows={2}
             />
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="task-duration">예상 시간 (분)</label>
-              <input
-                id="task-duration"
-                type="number"
-                value={baseDuration}
-                onChange={e => setBaseDuration(Number(e.target.value))}
-                min={5}
-                max={300}
-                step={5}
-              />
+          <div className="form-group">
+            <label htmlFor="task-duration">예상 시간</label>
+            <div className="duration-buttons">
+              {[5, 10, 15, 30, 45, 60, 90, 120].map(duration => (
+                <button
+                  key={duration}
+                  type="button"
+                  className={`duration-btn ${baseDuration === duration ? 'active' : ''}`}
+                  onClick={() => setBaseDuration(duration)}
+                >
+                  {duration < 60 ? `${duration}분` : duration === 60 ? '1시간' : duration === 90 ? '1시간 30분' : '2시간'}
+                </button>
+              ))}
             </div>
+          </div>
 
-            <div className="form-group">
-              <label htmlFor="task-resistance">난이도</label>
-              <select
-                id="task-resistance"
-                value={resistance}
-                onChange={e => setResistance(e.target.value as Resistance)}
-              >
-                <option value="low">🟢 쉬움 (x1.0)</option>
-                <option value="medium">🟡 보통 (x1.3)</option>
-                <option value="high">🔴 어려움 (x1.6)</option>
-              </select>
-            </div>
+          <div className="form-group">
+            <label htmlFor="task-resistance">난이도</label>
+            <select
+              id="task-resistance"
+              value={resistance}
+              onChange={e => setResistance(e.target.value as Resistance)}
+            >
+              <option value="low">🟢 쉬움 (x1.0)</option>
+              <option value="medium">🟡 보통 (x1.3)</option>
+              <option value="high">🔴 어려움 (x1.6)</option>
+            </select>
           </div>
 
           <div className="adjusted-duration-info">

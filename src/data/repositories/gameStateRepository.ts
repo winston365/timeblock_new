@@ -28,7 +28,7 @@ export function createInitialGameState(): GameState {
     lastLogin: getLocalDate(),
     questBonusClaimed: false,
     xpHistory: [],
-    dailyQuests: [],
+    dailyQuests: generateDailyQuests(),
     timeBlockXP: {},
     timeBlockXPHistory: [],
     completedTasksHistory: [],
