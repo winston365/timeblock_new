@@ -37,7 +37,6 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showMemo, setShowMemo] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   // XP 계산
   const xp = calculateTaskXP(task);
@@ -82,35 +81,6 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     setIsDragging(false);
   };
 
-  // React 우클릭 핸들러 (stopPropagation으로 AppShell까지 전파 차단)
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation(); // 이벤트가 AppShell까지 가지 않도록
-    setContextMenu({ x: e.clientX, y: e.clientY });
-  };
-
-  // 컨텍스트 메뉴 닫기
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setContextMenu(null);
-    };
-
-    if (contextMenu) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [contextMenu]);
-
-  // 메뉴 항목 클릭 핸들러
-  const handleMenuEdit = () => {
-    setContextMenu(null);
-    onEdit();
-  };
-
-  const handleMenuDelete = () => {
-    setContextMenu(null);
-    onDelete();
-  };
 
   return (
     <>
@@ -119,7 +89,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
         draggable="true"
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onContextMenu={handleContextMenu}
+        onDoubleClick={onEdit}
       >
       <div className="task-main">
         <button
@@ -187,6 +157,19 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
               {task.memo && (
                 <span className="memo-indicator" title="메모 있음">📝</span>
               )}
+
+              {/* 삭제 버튼 */}
+              <button
+                className="task-delete-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                title="삭제"
+                aria-label="작업 삭제"
+              >
+                🗑️
+              </button>
             </div>
           </div>
 
@@ -197,26 +180,6 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
         </div>
       </div>
       </div>
-
-      {/* 우클릭 컨텍스트 메뉴 */}
-      {contextMenu && (
-        <div
-          className="context-menu"
-          style={{
-            position: 'fixed',
-            top: `${contextMenu.y}px`,
-            left: `${contextMenu.x}px`,
-            zIndex: 10000,
-          }}
-        >
-          <button className="context-menu-item" onClick={handleMenuEdit}>
-            ✏️ 수정
-          </button>
-          <button className="context-menu-item" onClick={handleMenuDelete}>
-            🗑️ 삭제
-          </button>
-        </div>
-      )}
     </>
   );
 }

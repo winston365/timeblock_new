@@ -202,12 +202,6 @@ export default function AppShell() {
     };
   }, []); // 빈 배열 - 한 번만 실행
 
-  // 브라우저 기본 우클릭 메뉴 차단 (React 방식)
-  // TaskCard는 stopPropagation으로 이 핸들러까지 오지 않음
-  const handleGlobalContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-  };
-
   // F1 단축키: 대량 할 일 추가 모달 열기
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -258,7 +252,6 @@ export default function AppShell() {
     return (
       <div
         className="app-container"
-        onContextMenu={handleGlobalContextMenu}
         style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
         role="status"
         aria-live="polite"
@@ -275,7 +268,7 @@ export default function AppShell() {
   }
 
   return (
-    <div className="app-container" onContextMenu={handleGlobalContextMenu}>
+    <div className="app-container">
       {/* 접근성: 건너뛰기 링크 */}
       <a href="#main-content" className="skip-to-content">
         메인 콘텐츠로 건너뛰기
