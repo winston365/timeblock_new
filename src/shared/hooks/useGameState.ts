@@ -5,39 +5,32 @@
  * Zustand store를 사용하여 전역 상태 관리 및 동기화 문제 해결
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useGameStateStore } from '../stores/gameStateStore';
 
 export function useGameState() {
-  const {
-    gameState,
-    loading,
-    error,
-    loadData,
-    addXP,
-    spendXP,
-    initializeNewDay,
-    updateQuestProgress,
-    refresh,
-  } = useGameStateStore();
+  const store = useGameStateStore();
+  const { gameState, loading, error } = store;
+  const hasInitialized = useRef(false);
 
-  // 초기 로드
+  // 초기 로드 - 한 번만 실행
   useEffect(() => {
-    if (!gameState) {
+    if (!hasInitialized.current && !gameState) {
       console.log('[useGameState] Loading game state');
-      loadData();
+      hasInitialized.current = true;
+      store.loadData();
     }
-  }, [gameState, loadData]);
+  }, []); // 빈 배열로 한 번만 실행
 
   return {
     gameState,
     loading,
     error,
-    refresh,
-    addXP,
-    spendXP,
-    initializeNewDay,
-    updateQuestProgress,
+    refresh: store.refresh,
+    addXP: store.addXP,
+    spendXP: store.spendXP,
+    initializeNewDay: store.initializeNewDay,
+    updateQuestProgress: store.updateQuestProgress,
   };
 }
 

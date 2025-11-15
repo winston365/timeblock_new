@@ -5,47 +5,38 @@
  * Zustand store를 사용하여 전역 상태 관리 및 동기화 문제 해결
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useDailyDataStore } from '../stores/dailyDataStore';
 import { getLocalDate } from '../lib/utils';
 
 export function useDailyData(date: string = getLocalDate()) {
-  const {
-    dailyData,
-    currentDate,
-    loading,
-    error,
-    loadData,
-    saveData,
-    addTask,
-    updateTask,
-    deleteTask,
-    toggleTaskCompletion,
-    updateBlockState,
-    toggleBlockLock,
-    refresh,
-  } = useDailyDataStore();
+  const store = useDailyDataStore();
+  const { dailyData, currentDate, loading, error } = store;
+  const hasInitialized = useRef(false);
 
-  // 날짜가 변경되거나 초기 로드 시 데이터 로드
+  // 초기 로드 - 한 번만 실행
   useEffect(() => {
-    if (date !== currentDate || !dailyData) {
-      console.log(`[useDailyData] Loading data for ${date} (current: ${currentDate})`);
-      loadData(date);
+    const needsLoad = !hasInitialized.current || date !== currentDate || !dailyData;
+    
+    if (needsLoad) {
+      console.log(`[useDailyData] Loading data for ${date}`);
+      hasInitialized.current = true;
+      store.loadData(date);
     }
-  }, [date, currentDate, dailyData, loadData]);
+  }, [date]); // date만 의존성으로 유지
 
   return {
     dailyData,
     loading,
     error,
-    refresh,
-    saveData,
-    addTask,
-    updateTask,
-    deleteTask,
-    toggleTaskCompletion,
-    updateBlockState,
-    toggleBlockLock,
+    refresh: store.refresh,
+    saveData: store.saveData,
+    addTask: store.addTask,
+    updateTask: store.updateTask,
+    deleteTask: store.deleteTask,
+    toggleTaskCompletion: store.toggleTaskCompletion,
+    updateBlockState: store.updateBlockState,
+    toggleBlockLock: store.toggleBlockLock,
   };
 }
 

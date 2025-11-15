@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useGameState, useDailyData } from '@/shared/hooks';
+import { useGameState } from '@/shared/hooks';
 import { initializeDatabase } from '@/data/db/dexieClient';
 import { addTask } from '@/data/repositories';
 import { createTaskFromTemplate } from '@/data/repositories/templateRepository';
@@ -15,6 +15,8 @@ import {
 import type { Template, Task } from '@/shared/types/domain';
 import { useXPToastStore } from '@/shared/hooks/useXPToast';
 import XPToast from '@/shared/components/XPToast';
+import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
+import { useGameStateStore } from '@/shared/stores/gameStateStore';
 
 // 임시로 컴포넌트를 직접 import (나중에 features에서 가져올 것)
 import TopToolbar from './components/TopToolbar';
@@ -37,14 +39,26 @@ export default function AppShell() {
   const [showSyncLog, setShowSyncLog] = useState(false);
 
   const { gameState } = useGameState();
-  const { dailyData } = useDailyData();
   const { toasts, removeToast } = useXPToastStore();
+
+  // Store 직접 접근 (초기화용)
+  const dailyDataStore = useDailyDataStore();
+  const gameStateStore = useGameStateStore();
 
   // DB 초기화 및 Firebase 설정
   useEffect(() => {
     const initDB = async () => {
       try {
         await initializeDatabase();
+
+        // Store 초기화
+        console.log('🚀 Initializing stores...');
+        await Promise.all([
+          dailyDataStore.loadData(),
+          gameStateStore.loadData(),
+        ]);
+        console.log('✅ Stores initialized');
+
         setDbInitialized(true);
 
         // Firebase 설정 확인 및 초기화
@@ -58,11 +72,11 @@ export default function AppShell() {
             const unsubscribe = enableFirebaseSync(
               async (date) => {
                 console.log('📥 Received DailyData from Firebase:', date);
-                // DailyData 업데이트는 hook에서 자동으로 처리됨
+                await dailyDataStore.refresh();
               },
               async () => {
                 console.log('📥 Received GameState from Firebase');
-                // GameState 업데이트는 hook에서 자동으로 처리됨
+                await gameStateStore.refresh();
               }
             );
 
@@ -76,7 +90,7 @@ export default function AppShell() {
     };
 
     initDB();
-  }, []);
+  }, [dailyDataStore, gameStateStore]);
 
   // F1 단축키: 대량 할 일 추가 모달 열기
   useEffect(() => {
@@ -165,7 +179,7 @@ export default function AppShell() {
         {/* 중앙 콘텐츠 */}
         <CenterContent
           activeTab={activeTab}
-          dailyData={dailyData}
+          dailyData={null}
         />
 
         {/* 와이푸 패널 */}
