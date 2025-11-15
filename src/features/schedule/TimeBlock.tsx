@@ -129,10 +129,10 @@ export default function TimeBlock({
   const getTimeStatus = (): 'comfortable' | 'balanced' | 'tight' | 'critical' => {
     if (totalDuration === 0) return 'balanced';
     const ratio = remainingMinutes / totalDuration;
-    if (ratio >= 1.5) return 'comfortable';      // 남은 시간이 1.5배 이상
-    if (ratio >= 0.9) return 'balanced';         // 남은 시간이 적정
-    if (ratio >= 0.6) return 'tight';            // 남은 시간이 부족
-    return 'critical';                           // 남은 시간이 매우 부족
+    if (ratio >= 1.1) return 'comfortable';      // 남은 시간 >= 계획 시간 × 1.1배
+    if (ratio >= 0.9) return 'balanced';         // 남은 시간 = 계획 시간 × 0.9~1.1배
+    if (ratio >= 0.75) return 'tight';           // 남은 시간 = 계획 시간 × 0.75~0.9배
+    return 'critical';                           // 남은 시간 < 계획 시간 × 0.75배
   };
 
   const timeStatus = getTimeStatus();
