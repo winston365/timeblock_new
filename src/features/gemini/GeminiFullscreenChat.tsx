@@ -21,7 +21,7 @@ import {
 } from '@/data/repositories/chatHistoryRepository';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 import { getWaifuImagePathWithFallback } from '@/features/waifu/waifuImageUtils';
-import type { GeminiChatMessage } from '@/shared/types/domain';
+import type { GeminiChatMessage, WaifuMode } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import './gemini-fullscreen.css';
 
@@ -54,6 +54,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
   const [error, setError] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string>('');
   const [waifuImagePath, setWaifuImagePath] = useState<string>('');
+  const [waifuMode, setWaifuMode] = useState<WaifuMode>('characteristic');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -63,6 +64,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
       try {
         const settings = await loadSettings();
         setApiKey(settings.geminiApiKey || '');
+        setWaifuMode(settings.waifuMode);
 
         const history = await loadTodayChatHistory();
         setMessages(history);
@@ -80,15 +82,21 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
   useEffect(() => {
     const loadWaifuImage = async () => {
       if (waifuState) {
-        const path = await getWaifuImagePathWithFallback(waifuState.affection, 1);
-        setWaifuImagePath(path);
+        // 일반 모드일 경우 base.png 사용
+        if (waifuMode === 'normal') {
+          setWaifuImagePath('/assets/waifu/base.png');
+        } else {
+          // 특성 모드일 경우 호감도에 따라 이미지 선택
+          const path = await getWaifuImagePathWithFallback(waifuState.affection, 1);
+          setWaifuImagePath(path);
+        }
       }
     };
 
     if (isOpen) {
       loadWaifuImage();
     }
-  }, [isOpen, waifuState]);
+  }, [isOpen, waifuState, waifuMode]);
 
   // 메시지 목록 자동 스크롤
   useEffect(() => {

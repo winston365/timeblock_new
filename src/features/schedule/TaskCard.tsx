@@ -8,7 +8,7 @@
  *   - utils: XP 계산 및 시간 포맷팅 함수
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
 import { RESISTANCE_LABELS } from '@/shared/types/domain';
 import { formatDuration, calculateTaskXP } from '@/shared/lib/utils';

@@ -130,6 +130,21 @@ export default function TimeBlock({
 
   const remainingMinutes = getRemainingMinutes();
 
+  // 분을 시간과 분으로 변환하는 함수
+  const formatMinutesToHM = (minutes: number): string => {
+    if (minutes === 0) return '0m';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+
+    if (hours > 0 && mins > 0) {
+      return `${hours}h${mins}m`;
+    } else if (hours > 0) {
+      return `${hours}h`;
+    } else {
+      return `${mins}m`;
+    }
+  };
+
   // 시간 상태 계산 (여유도 기반 - 미완료 작업 기준)
   const getTimeStatus = (): 'comfortable' | 'balanced' | 'tight' | 'critical' => {
     if (pendingDuration === 0) return 'balanced';
@@ -321,9 +336,9 @@ export default function TimeBlock({
                 aria-label={`미완료 작업 시간 ${pendingDuration}분, 남은 시간 ${remainingMinutes}분`}
               >
                 <span className="time-remaining">
-                  <span className="planned-time">{pendingDuration}m</span>
+                  <span className="planned-time">{formatMinutesToHM(pendingDuration)}</span>
                   <span className="time-divider">·</span>
-                  <span className="remaining-time">{remainingMinutes}m</span>
+                  <span className="remaining-time">{formatMinutesToHM(remainingMinutes)}</span>
                 </span>
               </div>
 

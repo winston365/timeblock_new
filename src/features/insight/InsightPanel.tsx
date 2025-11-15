@@ -435,7 +435,8 @@ export default function InsightPanel() {
   useEffect(() => {
     if (apiKey && !initialLoadRef.current) {
       initialLoadRef.current = true;
-      generateInsight();
+      // 초기 로드 시에는 인사이트를 생성하지 않음 (사용자가 새로고침 버튼 클릭 또는 자동 갱신 대기)
+      setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKey]); // generateInsight를 의존성에서 제거 (데이터 변경 시 재생성 방지)
@@ -483,6 +484,13 @@ export default function InsightPanel() {
         {error && !loading && (
           <div className="insight-error">
             ⚠️ {error}
+          </div>
+        )}
+
+        {!insight && !loading && !error && (
+          <div className="insight-empty">
+            <div className="insight-empty-icon">💡</div>
+            <p>새로고침 버튼을 눌러 인사이트를 생성하세요</p>
           </div>
         )}
 

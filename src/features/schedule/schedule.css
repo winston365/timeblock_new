@@ -257,17 +257,17 @@
 .time-remaining {
   color: white;
   font-weight: 700;
-  font-size: 0.75rem; /* 11px -> 12px */
+  font-size: 0.625rem; /* 10px - 시간(h)과 분(m) 함께 표시하므로 크기 축소 */
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   line-height: 1;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 /* 계획 시간 (왼쪽 숫자) */
 .planned-time {
-  font-size: 0.75rem; /* 11px -> 12px */
+  font-size: 0.625rem; /* 10px - 시간(h)과 분(m) 함께 표시하므로 크기 축소 */
   font-weight: 600;
   opacity: 0.9;
 }
@@ -276,11 +276,12 @@
 .time-divider {
   opacity: 0.6;
   font-weight: 400;
+  font-size: 0.625rem;
 }
 
 /* 남은 시간 (오른쪽 숫자) - 더 강조 */
 .remaining-time {
-  font-size: 0.8125rem; /* 12px -> 13px */
+  font-size: 0.6875rem; /* 11px - 시간(h)과 분(m) 함께 표시하므로 크기 축소 */
   font-weight: 800;
   letter-spacing: -0.02em;
 }
