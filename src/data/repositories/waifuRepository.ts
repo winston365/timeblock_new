@@ -168,7 +168,7 @@ export async function increaseAffectionFromTask(): Promise<WaifuState> {
  *   - clickCount +1
  *   - totalInteractions +1
  *   - lastInteraction 갱신
- *   - 10회 클릭마다 호감도 +1 (최대 100)
+ *   - 호감도는 보유 XP 기반으로만 계산되므로 클릭으로 증가하지 않음
  *   - IndexedDB/localStorage에 저장
  */
 export async function interactWithWaifu(): Promise<WaifuState> {
@@ -179,10 +179,8 @@ export async function interactWithWaifu(): Promise<WaifuState> {
     waifuState.totalInteractions += 1;
     waifuState.lastInteraction = Date.now();
 
-    // 10회 클릭마다 호감도 1 증가
-    if (waifuState.clickCount % 10 === 0) {
-      waifuState.affection = Math.min(waifuState.affection + 1, 100);
-    }
+    // 호감도는 보유 XP 기반으로만 계산 (클릭으로 증가 안 함)
+    // 클릭은 단순히 상호작용 카운터만 증가
 
     await saveWaifuState(waifuState);
     return waifuState;

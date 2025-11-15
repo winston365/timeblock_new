@@ -14,7 +14,7 @@
 import { useState, useEffect } from 'react';
 import type { ShopItem } from '@/shared/types/domain';
 import { loadShopItems, deleteShopItem, purchaseShopItem, useShopItem } from '@/data/repositories';
-import { useGameState } from '@/shared/hooks';
+import { useGameState, useWaifuState } from '@/shared/hooks';
 import { ShopModal } from './ShopModal';
 import './shop.css';
 
@@ -37,7 +37,8 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ShopItem | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
-  const { gameState } = useGameState();
+  const { gameState, refresh: refreshGameState } = useGameState();
+  const { refresh: refreshWaifuState } = useWaifuState();
 
   // 상점 아이템 로드
   useEffect(() => {
@@ -108,6 +109,12 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
               : i
           )
         );
+
+        // GameState 새로고침 (보유 XP 즉시 업데이트)
+        await refreshGameState();
+
+        // WaifuState 새로고침 (호감도 즉시 업데이트)
+        await refreshWaifuState();
 
         // 부모 컴포넌트에 구매 성공 알림 (와이푸 메시지 표시)
         if (onPurchaseSuccess && result.waifuMessage) {
