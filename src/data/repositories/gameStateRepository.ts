@@ -272,6 +272,7 @@ export async function spendXP(amount: number): Promise<GameState> {
  *   - 퀘스트 보너스 플래그 리셋
  *   - 연속 출석일 계산 및 업데이트
  *   - 새로운 일일 퀘스트 생성
+ *   - 어제의 미완료 인박스 작업들을 오늘로 이동
  *   - 자동 생성 템플릿에서 작업 생성
  *   - saveGameState 호출
  */
@@ -279,6 +280,7 @@ export async function initializeNewDay(): Promise<GameState> {
   try {
     const gameState = await loadGameState();
     const today = getLocalDate();
+    const yesterday = gameState.lastLogin; // 마지막 로그인 날짜 = 어제
 
     // 히스토리 필드 초기화 (Firebase에서 가져온 데이터에 없을 수 있음)
     if (!Array.isArray(gameState.xpHistory)) {
@@ -327,9 +329,9 @@ export async function initializeNewDay(): Promise<GameState> {
     gameState.lastLogin = today;
 
     // 연속 출석일 계산
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = getLocalDate(yesterday);
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = getLocalDate(yesterdayDate);
 
     if (gameState.lastLogin === yesterdayStr) {
       gameState.streak += 1;
@@ -340,6 +342,9 @@ export async function initializeNewDay(): Promise<GameState> {
     // 새로운 일일 퀘스트 생성
     gameState.dailyQuests = generateDailyQuests();
 
+    // 어제의 미완료 인박스 작업들을 오늘로 이동
+    await migrateUncompletedInboxTasks(yesterday, today);
+
     // 자동 생성 템플릿에서 작업 생성
     await generateTasksFromAutoTemplates();
 
@@ -348,6 +353,51 @@ export async function initializeNewDay(): Promise<GameState> {
   } catch (error) {
     console.error('Failed to initialize new day:', error);
     throw error;
+  }
+}
+
+/**
+ * 어제의 미완료 인박스 작업들을 오늘로 이동 (내부 헬퍼)
+ *
+ * @param {string} yesterdayDate - 어제 날짜 (YYYY-MM-DD)
+ * @param {string} todayDate - 오늘 날짜 (YYYY-MM-DD)
+ * @returns {Promise<void>}
+ * @sideEffects
+ *   - 어제의 미완료 인박스 작업들을 오늘의 DailyData에 추가
+ */
+async function migrateUncompletedInboxTasks(yesterdayDate: string, todayDate: string): Promise<void> {
+  try {
+    // dailyDataRepository를 동적으로 import (순환 참조 방지)
+    const { loadDailyData, saveDailyData } = await import('./dailyDataRepository');
+
+    // 어제의 DailyData 로드
+    const yesterdayData = await loadDailyData(yesterdayDate);
+
+    // 미완료 인박스 작업 찾기 (timeBlock이 null이고 완료되지 않은 작업들)
+    const uncompletedInboxTasks = yesterdayData.tasks.filter(
+      task => task.timeBlock === null && !task.completed
+    );
+
+    if (uncompletedInboxTasks.length === 0) {
+      return; // 이동할 작업이 없으면 종료
+    }
+
+    // 오늘의 DailyData 로드
+    const todayData = await loadDailyData(todayDate);
+
+    // 미완료 인박스 작업들을 오늘로 이동 (중복 방지)
+    const existingTaskIds = new Set(todayData.tasks.map(t => t.id));
+    const tasksToMigrate = uncompletedInboxTasks.filter(task => !existingTaskIds.has(task.id));
+
+    if (tasksToMigrate.length > 0) {
+      todayData.tasks.push(...tasksToMigrate);
+      await saveDailyData(todayDate, todayData.tasks, todayData.timeBlockStates);
+
+      console.log(`✅ Migrated ${tasksToMigrate.length} uncompleted inbox tasks from ${yesterdayDate} to ${todayDate}`);
+    }
+  } catch (error) {
+    console.error('Failed to migrate uncompleted inbox tasks:', error);
+    // 마이그레이션 실패해도 앱은 계속 동작
   }
 }
 
