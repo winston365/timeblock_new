@@ -21,6 +21,7 @@ import {
 } from '@/data/repositories/chatHistoryRepository';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 import { getWaifuImagePathWithFallback } from '@/features/waifu/waifuImageUtils';
+import baseImage from '@/features/waifu/base.png';
 import type { GeminiChatMessage, WaifuMode } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import './gemini-fullscreen.css';
@@ -84,7 +85,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
       if (waifuState) {
         // 일반 모드일 경우 base.png 사용
         if (waifuMode === 'normal') {
-          setWaifuImagePath('/assets/waifu/base.png');
+          setWaifuImagePath(baseImage);
         } else {
           // 특성 모드일 경우 호감도에 따라 이미지 선택
           const path = await getWaifuImagePathWithFallback(waifuState.affection, 1);

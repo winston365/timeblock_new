@@ -16,6 +16,7 @@ import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier, getAffectionColor } from './waifuImageUtils';
 import { loadSettings } from '@/data/repositories/settingsRepository';
 import type { WaifuMode } from '@/shared/types/domain';
+import baseImage from './base.png';
 import './waifu.css';
 
 interface WaifuPanelProps {
@@ -56,7 +57,7 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
 
     // 일반 모드일 경우 base.png 사용
     if (waifuMode === 'normal') {
-      setDisplayImagePath('/assets/waifu/base.png');
+      setDisplayImagePath(baseImage);
       lastImageChangeTime.current = Date.now();
       return;
     }
