@@ -10,11 +10,12 @@
  *   - hooks: 현재 상태 (에너지, 작업, 게임 상태)
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWaifuState, useDailyData, useGameState, useEnergyState } from '@/shared/hooks';
 import { loadSettings } from '@/data/repositories/settingsRepository';
 import { callGeminiAPI, generateWaifuPersona, type PersonaContext } from '@/shared/services/geminiApi';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
+import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import type { DailyData } from '@/shared/types/domain';
 
@@ -361,10 +362,15 @@ export default function InsightPanel() {
       });
 
       // AI 호출
-      const { text } = await callGeminiAPI(prompt, [], apiKey);
+      const { text, tokenUsage } = await callGeminiAPI(prompt, [], apiKey);
 
       setInsight(text);
       setLastUpdated(new Date());
+
+      // 토큰 사용량 저장 (전체 로그에 기록)
+      if (tokenUsage) {
+        await addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '인사이트 생성 실패');
       console.error('Insight generation error:', err);
@@ -410,6 +416,12 @@ export default function InsightPanel() {
     return () => clearInterval(interval);
   }, [apiKey, refreshInterval, generateInsight]);
 
+  // 마크다운 파싱 (성능 최적화: insight 변경 시에만 재계산)
+  const parsedHtml = useMemo(() => {
+    if (!insight) return '';
+    return parseMarkdown(insight);
+  }, [insight]);
+
   return (
     <aside className="insight-panel" role="complementary" aria-label="오늘의 인사이트">
       <div className="insight-panel-header">
@@ -441,7 +453,7 @@ export default function InsightPanel() {
         {insight && !loading && !error && (
           <div
             className="insight-text"
-            dangerouslySetInnerHTML={{ __html: parseMarkdown(insight) }}
+            dangerouslySetInnerHTML={{ __html: parsedHtml }}
           />
         )}
       </div>
