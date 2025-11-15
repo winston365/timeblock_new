@@ -241,6 +241,24 @@ export default function TimeBlock({
     }
   };
 
+  // 작업 완료 토글 핸들러 (잠금 확인)
+  const handleTaskToggle = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    // 작업을 완료하려고 할 때 (현재 미완료 상태)
+    if (!task.completed) {
+      // 블록이 잠기지 않았으면 경고
+      if (!state?.isLocked) {
+        alert('⚠️ 블록을 먼저 잠궈야 작업을 완료할 수 있습니다!\n\n블록 잠금 버튼(⚠️)을 눌러주세요. (비용: 15 XP)');
+        return;
+      }
+    }
+
+    // 잠금 확인 통과 또는 완료 취소인 경우
+    onToggleTask(taskId);
+  };
+
   // 드래그 앤 드롭 핸들러
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -390,7 +408,7 @@ export default function TimeBlock({
                 task={task}
                 onEdit={() => onEditTask(task)}
                 onDelete={() => onDeleteTask(task.id)}
-                onToggle={() => onToggleTask(task.id)}
+                onToggle={() => handleTaskToggle(task.id)}
                 onUpdateTask={onUpdateTask ? (updates) => onUpdateTask(task.id, updates) : undefined}
               />
             ))}
