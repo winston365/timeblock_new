@@ -10,7 +10,8 @@ import { loadSettings } from '@/data/repositories/settingsRepository';
 import { getLocalDate } from '@/shared/lib/utils';
 import {
   initializeFirebase,
-  enableFirebaseSync
+  enableFirebaseSync,
+  debugFirebaseData
 } from '@/shared/services/firebaseService';
 import type { Template, Task } from '@/shared/types/domain';
 import { useXPToastStore } from '@/shared/hooks/useXPToast';
@@ -66,6 +67,12 @@ export default function AppShell() {
 
         setDbInitialized(true);
         console.log('✅ App initialized successfully');
+
+        // 디버그 함수를 window에 노출
+        if (typeof window !== 'undefined') {
+          (window as any).debugFirebase = debugFirebaseData;
+          console.log('💡 Debug: 콘솔에서 window.debugFirebase() 호출 가능');
+        }
 
         // Firebase 설정 확인 및 초기화
         const settings = await loadSettings();
@@ -171,7 +178,7 @@ export default function AppShell() {
               const today = getLocalDate();
               await dailyDataStore.loadData(today, true); // 강제 리로드
               console.log('✅ Initial sync complete');
-              console.log('👉 Check Firebase Console: https://console.firebase.google.com/project/test1234-edcb6/database/test1234-edcb6-default-rtdb/data');
+              console.log('👉 Firebase Console (users/user): https://console.firebase.google.com/project/test1234-edcb6/database/test1234-edcb6-default-rtdb/data/users/user');
             } catch (error) {
               console.error('Failed to fetch from Firebase:', error);
             }

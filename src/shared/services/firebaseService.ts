@@ -287,6 +287,7 @@ export async function syncDailyDataToFirebase(
       completedTasks: dailyData.tasks.filter(t => t.completed).length
     });
     console.log(`✅ DailyData synced to Firebase: ${date} (${dailyData.tasks.length} tasks)`);
+    console.log(`📍 Firebase path: users/${userId}/dailyData/${date}`);
   } catch (error) {
     console.error('Failed to sync DailyData to Firebase:', error);
     addSyncLog('firebase', 'error', `Failed to sync DailyData for ${date}`, undefined, error as Error);
@@ -380,6 +381,7 @@ export async function syncGameStateToFirebase(gameState: GameState): Promise<voi
       dailyXP: dataToUpload.data.dailyXP
     });
     console.log(`✅ GameState synced to Firebase (Level ${dataToUpload.data.level}, XP ${dataToUpload.data.totalXP})`);
+    console.log(`📍 Firebase path: users/${userId}/gameState`);
   } catch (error) {
     console.error('Failed to sync GameState to Firebase:', error);
     addSyncLog('firebase', 'error', 'Failed to sync GameState', undefined, error as Error);
@@ -420,6 +422,56 @@ export function listenToGameStateFromFirebase(
   });
 
   return () => off(dataRef);
+}
+
+/**
+ * Firebase 데이터 확인 (디버그용)
+ * 콘솔에서 window.debugFirebase() 호출
+ */
+export async function debugFirebaseData(): Promise<void> {
+  if (!isFirebaseInitialized() || !firebaseDatabase) {
+    console.error('❌ Firebase is not initialized');
+    return;
+  }
+
+  try {
+    const userId = 'user';
+
+    // DailyData 확인
+    const dailyDataRef = ref(firebaseDatabase, `users/${userId}/dailyData`);
+    const dailyDataSnapshot = await get(dailyDataRef);
+    const dailyDataValue = dailyDataSnapshot.val();
+
+    // GameState 확인
+    const gameStateRef = ref(firebaseDatabase, `users/${userId}/gameState`);
+    const gameStateSnapshot = await get(gameStateRef);
+    const gameStateValue = gameStateSnapshot.val();
+
+    console.log('🔍 Firebase Data Debug:');
+    console.log('📍 Path: users/user');
+    console.log('📅 DailyData dates:', dailyDataValue ? Object.keys(dailyDataValue) : 'empty');
+    console.log('🎮 GameState exists:', !!gameStateValue);
+
+    if (dailyDataValue) {
+      Object.entries(dailyDataValue).forEach(([date, data]: [string, any]) => {
+        const taskCount = data?.data?.tasks?.length ?? 0;
+        console.log(`  - ${date}: ${taskCount} tasks, updatedAt: ${data?.updatedAt}`);
+      });
+    }
+
+    if (gameStateValue) {
+      console.log('  GameState:', {
+        level: gameStateValue.data?.level,
+        totalXP: gameStateValue.data?.totalXP,
+        dailyXP: gameStateValue.data?.dailyXP,
+        updatedAt: gameStateValue.updatedAt
+      });
+    }
+
+    console.log('🌐 Firebase Console: https://console.firebase.google.com/project/test1234-edcb6/database/test1234-edcb6-default-rtdb/data/users/user');
+  } catch (error) {
+    console.error('❌ Failed to debug Firebase data:', error);
+  }
 }
 
 /**
