@@ -222,9 +222,9 @@ export function createTaskFromTemplate(template: Template): Task {
     createdAt: now,
     completedAt: null,
     fromAutoTemplate: false,
-    preparation1: template.preparation1,
-    preparation2: template.preparation2,
-    preparation3: template.preparation3,
+    preparation1: template.preparation1 || '',
+    preparation2: template.preparation2 || '',
+    preparation3: template.preparation3 || '',
   };
 }
 
