@@ -95,8 +95,16 @@ export async function saveDailyData(
 ): Promise<void> {
   const updatedAt = Date.now();
 
+  // Firebase는 undefined를 허용하지 않으므로, 모든 undefined 값을 빈 문자열로 변환
+  const sanitizedTasks = tasks.map(task => ({
+    ...task,
+    preparation1: task.preparation1 ?? '',
+    preparation2: task.preparation2 ?? '',
+    preparation3: task.preparation3 ?? '',
+  }));
+
   const data: DailyData = {
-    tasks,
+    tasks: sanitizedTasks,
     timeBlockStates,
     updatedAt,
   };
@@ -112,8 +120,8 @@ export async function saveDailyData(
     saveToStorage(`${STORAGE_KEYS.DAILY_PLANS}${date}`, data);
 
     addSyncLog('dexie', 'save', `DailyData saved for ${date}`, {
-      taskCount: tasks.length,
-      completedTasks: tasks.filter(t => t.completed).length
+      taskCount: sanitizedTasks.length,
+      completedTasks: sanitizedTasks.filter(t => t.completed).length
     });
 
     // 3. Firebase에 동기화 (비동기, 실패해도 로컬은 성공)
