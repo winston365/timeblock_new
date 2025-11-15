@@ -277,10 +277,65 @@
 
 .insight-text {
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.8;
   color: var(--color-text);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* 마크다운 스타일링 */
+.insight-text h2 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: var(--spacing-md) 0 var(--spacing-sm) 0;
+  color: var(--color-primary);
+  border-bottom: 2px solid var(--color-border);
+  padding-bottom: var(--spacing-xs);
+}
+
+.insight-text h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: var(--spacing-sm) 0;
+  color: var(--color-text);
+}
+
+.insight-text ul, .insight-text ol {
+  margin: var(--spacing-sm) 0;
+  padding-left: var(--spacing-lg);
+}
+
+.insight-text li {
+  margin: var(--spacing-xs) 0;
+  line-height: 1.6;
+}
+
+.insight-text strong {
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.insight-text em {
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+.insight-text code {
+  background: var(--color-bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.insight-text p {
+  margin: var(--spacing-sm) 0;
+}
+
+.insight-text hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: var(--spacing-md) 0;
 }
 
 .insight-footer {

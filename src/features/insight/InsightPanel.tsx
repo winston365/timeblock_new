@@ -13,7 +13,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useWaifuState, useDailyData, useGameState, useEnergyState } from '@/shared/hooks';
 import { loadSettings } from '@/data/repositories/settingsRepository';
-import { callGeminiAPI } from '@/shared/services/geminiApi';
+import { callGeminiAPI, generateWaifuPersona, type PersonaContext } from '@/shared/services/geminiApi';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import type { DailyData } from '@/shared/types/domain';
@@ -106,39 +106,29 @@ async function collectXPData(gameState: any): Promise<XPDataPoint[]> {
 /**
  * AI 인사이트 생성 프롬프트
  */
-function generateInsightPrompt(data: {
-  energyData: EnergyDataPoint[];
-  completedTasksData: CompletedTaskData[];
-  xpData: XPDataPoint[];
-  todayData: DailyData | null;
-  currentTime: string;
-  currentBlock: string;
-  inboxTasks: any[];
-  gameState: any;
-  waifuState: any;
-}): string {
+function generateInsightPrompt(
+  personaPrompt: string,
+  data: {
+    completedTasksData: CompletedTaskData[];
+    xpData: XPDataPoint[];
+    todayData: DailyData | null;
+    currentTime: string;
+    currentBlock: string;
+    inboxTasks: any[];
+  }
+): string {
   const {
-    energyData,
     completedTasksData,
     xpData,
     todayData,
     currentTime,
     currentBlock,
     inboxTasks,
-    gameState,
-    waifuState,
   } = data;
 
-  return `당신은 사용자의 AI 생산성 코치입니다. 과거 10일간의 데이터를 분석하여 **짧고 강력한 인사이트**를 제공하세요.
+  return `${personaPrompt}
 
-## 📊 데이터 요약
-
-### 현재 상황
-- 현재 시간: ${currentTime}
-- 현재 시간대: ${currentBlock}
-- 레벨: ${gameState?.level ?? 1}
-- 오늘 획득 XP: ${gameState?.dailyXP ?? 0}
-- 와이푸 호감도: ${waifuState?.affection ?? 0}%
+## 📊 추가 데이터 (과거 10일)
 
 ### 오늘 진행 상황
 - 완료한 작업: ${todayData?.tasks.filter(t => t.completed).length ?? 0}개
@@ -175,27 +165,72 @@ ${xpData.length > 0 ? xpData.map(d =>
   `- ${d.date}: ${d.dailyXP} XP`
 ).join('\n') : '아직 데이터 없음'}
 
-## 🎯 인사이트 작성 가이드라인
+---
 
-1. **길이**: 150자 이내 (3-5문장)
-2. **톤**: 친근하고 격려하는 말투 (반말 사용)
-3. **구성**:
-   - 첫 문장: 패턴 인사이트 또는 칭찬
-   - 중간: 현재 상황 피드백
-   - 마지막: 구체적인 행동 제안
+## 💡 오늘의 인사이트 작성
 
-4. **포함 요소** (하나 이상):
-   - 가장 생산적인 시간대
-   - 개선이 필요한 영역
-   - 오늘 할 수 있는 작업 제안
-   - 동기부여 메시지
+위 데이터를 기반으로 **오늘의 인사이트**를 작성해줘. 다음 요구사항을 따라줘:
 
-5. **예시**:
-   "지난 주 보니까 오후 2-5시에 집중력이 최고네! 오늘도 그 시간대에 중요한 일 몰아서 하면 좋을 것 같아. 인박스에 있는 '프로젝트 기획서' 지금 바로 시작해보는 건 어때? 화이팅! 🔥"
+### 📝 형식 요구사항
+- **마크다운 형식** 사용 (제목, 굵게, 리스트 등)
+- **구조화된 형식**:
+  1. **## 🎯 오늘의 패턴 분석** - 과거 데이터 기반 인사이트 (2-3줄)
+  2. **## 💪 지금 할 일** - 현재 시간대 추천 작업 (1-2개)
+  3. **## ✨ 동기부여** - 격려 메시지 (1-2줄)
 
-## ✍️ 인사이트 작성
+### 💬 톤 & 스타일
+- 친근한 반말체
+- 이모지 적절히 사용
+- 구체적이고 실용적인 조언
 
-(150자 이내, 친근한 반말체로)`;
+### 📏 길이
+- **총 300-500자** (기존 150자보다 길게)
+- 각 섹션마다 충분히 설명
+
+### 예시:
+\`\`\`
+## 🎯 오늘의 패턴 분석
+지난 10일 보니까 **오후 2-5시**에 평균 3개 작업 완료하며 가장 집중력이 좋았어! 그런데 오전 시간대는 좀 비어있네. 오전에 간단한 작업부터 시작하면 하루가 더 알차질 것 같아.
+
+## 💪 지금 할 일
+- **우선순위 1**: 인박스에 있는 '프로젝트 기획서' - 지금 시작하기 딱 좋은 시간이야!
+- **우선순위 2**: 미완료 작업 '회의 자료 준비' - 30분 투자하면 끝낼 수 있어
+
+## ✨ 동기부여
+벌써 레벨 ${5}까지 왔잖아! 🎉 오늘도 꾸준히 하다보면 곧 레벨업할 거야. 화이팅! 💪
+\`\`\`
+
+위 형식으로 **마크다운 형식**을 사용해서 작성해줘!`;
+}
+
+/**
+ * 간단한 마크다운 → HTML 변환
+ */
+function parseMarkdown(markdown: string): string {
+  return markdown
+    // ## 헤더
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    // ### 헤더
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    // **굵게**
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // *기울임*
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // - 리스트
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    // 리스트 묶기
+    .replace(/(<li>.*<\/li>\n?)+/gs, '<ul>$&</ul>')
+    // 빈 줄 → <br>
+    .replace(/\n\n/g, '</p><p>')
+    // 전체를 <p>로 감싸기
+    .replace(/^(.+)$/gm, (match) => {
+      if (match.startsWith('<h') || match.startsWith('<ul') || match.startsWith('</ul>') || match.startsWith('<li')) {
+        return match;
+      }
+      return match;
+    })
+    // 줄바꿈 처리
+    .replace(/\n/g, '<br />');
 }
 
 /**
@@ -229,27 +264,100 @@ export default function InsightPanel() {
 
     try {
       // 데이터 수집
-      const energyData = await collectEnergyData();
       const completedTasksData = await collectCompletedTasksData();
       const xpData = await collectXPData(gameState);
 
       const now = new Date();
       const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
       const currentBlock = TIME_BLOCKS.find(b => currentHour >= b.start && currentHour < b.end);
 
-      const inboxTasks = dailyData?.tasks.filter(t => !t.timeBlock && !t.completed) ?? [];
+      const tasks = dailyData?.tasks ?? [];
+      const completedTasks = tasks.filter(t => t.completed);
+      const inboxTasks = tasks.filter(t => !t.timeBlock && !t.completed);
 
-      // 프롬프트 생성
-      const prompt = generateInsightPrompt({
-        energyData,
+      // PersonaContext 생성 (GeminiChatModal과 동일)
+      const endOfDay = new Date(now);
+      endOfDay.setHours(23, 59, 59, 999);
+      const msLeftToday = endOfDay.getTime() - now.getTime();
+      const hoursLeftToday = Math.floor(msLeftToday / (1000 * 60 * 60));
+      const minutesLeftToday = Math.floor((msLeftToday % (1000 * 60 * 60)) / (1000 * 60));
+
+      const currentBlockId = currentBlock?.id ?? null;
+      const currentBlockLabel = currentBlock?.label ?? '블록 외 시간';
+      const currentBlockTasks = currentBlockId
+        ? tasks.filter(t => t.timeBlock === currentBlockId).map(t => ({ text: t.text, completed: t.completed }))
+        : [];
+      const lockedBlocksCount = Object.values(dailyData?.timeBlockStates ?? {}).filter(s => s.isLocked).length;
+      const totalBlocksCount = TIME_BLOCKS.length;
+
+      // 최근 5일 패턴
+      const recentDays = await getRecentDailyData(5);
+      const recentBlockPatterns = TIME_BLOCKS.flatMap(block => {
+        return recentDays.map(day => {
+          const blockTasks = day.tasks.filter(t => t.timeBlock === block.id && t.completed);
+          return {
+            date: day.date,
+            completedCount: blockTasks.length,
+            tasks: blockTasks.map(t => t.text)
+          };
+        });
+      });
+
+      const affection = waifuState?.affection ?? 50;
+      let mood = '중립적';
+      if (affection < 20) mood = '냉담함';
+      else if (affection < 40) mood = '약간 경계';
+      else if (affection < 60) mood = '따뜻함';
+      else if (affection < 80) mood = '다정함';
+      else mood = '매우 애정 어림';
+
+      const personaContext: PersonaContext = {
+        affection,
+        level: gameState?.level ?? 1,
+        totalXP: gameState?.totalXP ?? 0,
+        dailyXP: gameState?.dailyXP ?? 0,
+        availableXP: gameState?.availableXP ?? 0,
+        tasksCompleted: completedTasks.length,
+        totalTasks: tasks.length,
+        inboxTasks: inboxTasks.map(t => ({
+          text: t.text,
+          resistance: t.resistance,
+          baseDuration: t.baseDuration
+        })),
+        recentTasks: tasks.slice(-5).map(t => ({
+          text: t.text,
+          completed: t.completed,
+          resistance: t.resistance
+        })),
+        currentHour,
+        currentMinute,
+        hoursLeftToday,
+        minutesLeftToday,
+        currentBlockId,
+        currentBlockLabel,
+        currentBlockTasks,
+        lockedBlocksCount,
+        totalBlocksCount,
+        currentEnergy: currentEnergy ?? 0,
+        energyRecordedAt: null,
+        xpHistory: gameState?.xpHistory ?? [],
+        timeBlockXPHistory: gameState?.timeBlockXPHistory ?? [],
+        recentBlockPatterns,
+        mood,
+      };
+
+      // 페르소나 프롬프트 생성
+      const personaPrompt = generateWaifuPersona(personaContext);
+
+      // 인사이트 프롬프트 생성
+      const prompt = generateInsightPrompt(personaPrompt, {
         completedTasksData,
         xpData,
         todayData: dailyData,
         currentTime: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-        currentBlock: currentBlock?.label ?? '블록 외 시간',
+        currentBlock: currentBlockLabel,
         inboxTasks,
-        gameState,
-        waifuState,
       });
 
       // AI 호출
@@ -263,7 +371,7 @@ export default function InsightPanel() {
     } finally {
       setLoading(false);
     }
-  }, [apiKey, dailyData, gameState, waifuState]);
+  }, [apiKey, dailyData, gameState, waifuState, currentEnergy]);
 
   // API 키 로드 및 설정 로드
   useEffect(() => {
@@ -278,6 +386,10 @@ export default function InsightPanel() {
     };
 
     loadData();
+
+    // 5초마다 설정 다시 로드 (설정 변경 감지)
+    const settingsInterval = setInterval(loadData, 5000);
+    return () => clearInterval(settingsInterval);
   }, []);
 
   // 초기 인사이트 생성
@@ -327,9 +439,10 @@ export default function InsightPanel() {
         )}
 
         {insight && !loading && !error && (
-          <div className="insight-text">
-            {insight}
-          </div>
+          <div
+            className="insight-text"
+            dangerouslySetInnerHTML={{ __html: parseMarkdown(insight) }}
+          />
         )}
       </div>
 

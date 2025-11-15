@@ -246,9 +246,30 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                     </small>
                   </div>
 
+                  <div className="form-group">
+                    <label htmlFor="insight-interval">
+                      💡 인사이트 자동 갱신 주기 (분)
+                    </label>
+                    <input
+                      id="insight-interval"
+                      type="number"
+                      className="form-input"
+                      placeholder="15"
+                      min="5"
+                      max="120"
+                      value={settings.autoMessageInterval || 15}
+                      onChange={(e) =>
+                        setSettings({ ...settings, autoMessageInterval: parseInt(e.target.value) || 15 })
+                      }
+                    />
+                    <small className="form-hint">
+                      오늘의 인사이트 패널이 자동으로 갱신되는 주기입니다. (최소 5분, 최대 120분)
+                    </small>
+                  </div>
+
                   <div className="info-box">
                     <strong>💡 참고:</strong> Gemini API 키가 없어도 앱의 다른 기능은 정상적으로
-                    사용할 수 있습니다. AI 챗봇 기능만 제한됩니다.
+                    사용할 수 있습니다. AI 챗봇 및 인사이트 기능만 제한됩니다.
                   </div>
                 </div>
               )}
