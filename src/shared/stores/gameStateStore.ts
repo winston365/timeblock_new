@@ -32,7 +32,7 @@ interface GameStateStore {
   addXP: (amount: number, blockId?: string) => Promise<void>;
   spendXP: (amount: number) => Promise<void>;
   initializeNewDay: () => Promise<void>;
-  updateQuestProgress: (questType: 'complete_tasks' | 'earn_xp' | 'lock_blocks' | 'perfect_blocks' | 'prepare_tasks', amount?: number) => Promise<void>;
+  updateQuestProgress: (questType: 'complete_tasks' | 'earn_xp' | 'lock_blocks' | 'perfect_blocks' | 'prepare_tasks' | 'use_timer', amount?: number) => Promise<void>;
   refresh: () => Promise<void>;
   reset: () => void;
 }
@@ -116,7 +116,7 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
   },
 
   // 퀘스트 진행도 업데이트
-  updateQuestProgress: async (questType: 'complete_tasks' | 'earn_xp' | 'lock_blocks' | 'perfect_blocks' | 'prepare_tasks', amount: number = 1) => {
+  updateQuestProgress: async (questType: 'complete_tasks' | 'earn_xp' | 'lock_blocks' | 'perfect_blocks' | 'prepare_tasks' | 'use_timer', amount: number = 1) => {
     try {
       const updatedState = await updateQuestProgressInRepo(questType, amount);
       set({ gameState: updatedState });

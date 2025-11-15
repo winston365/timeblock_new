@@ -45,6 +45,10 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSyncLog,
           <span>🏆 보유 XP:</span>
           <span>{gameState?.availableXP ?? 0}</span>
         </div>
+        <div className="stat-item stat-item-timer">
+          <span>⏱️ 오늘 몰입:</span>
+          <span className="timer-count">{gameState?.dailyTimerCount ?? 0}회</span>
+        </div>
 
         {/* 와이푸 호감도 */}
         {waifuState && (

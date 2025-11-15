@@ -12,6 +12,9 @@ import { useState } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
 import { RESISTANCE_LABELS } from '@/shared/types/domain';
 import { formatDuration, calculateTaskXP } from '@/shared/lib/utils';
+import { TimerConfirmModal } from './TimerConfirmModal';
+import { CompletionCelebrationModal } from './CompletionCelebrationModal';
+import { useGameState } from '@/shared/hooks';
 
 interface TaskCardProps {
   task: Task;
@@ -37,6 +40,13 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showMemo, setShowMemo] = useState(false);
+  const [showTimerConfirm, setShowTimerConfirm] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationXP, setCelebrationXP] = useState(0);
+  const [timerBonus, setTimerBonus] = useState(0);
+
+  // 게임 상태에서 퀘스트 업데이트 함수 가져오기
+  const { updateQuestProgress } = useGameState();
 
   // XP 계산
   const xp = calculateTaskXP(task);
@@ -84,6 +94,50 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     setIsDragging(false);
   };
 
+  // 작업 완료 체크 핸들러
+  const handleToggleClick = () => {
+    // 완료 취소하는 경우 (이미 완료된 작업)
+    if (task.completed) {
+      onToggle();
+      return;
+    }
+
+    // 완료하려는 경우 - 타이머 확인 모달 표시
+    setShowTimerConfirm(true);
+  };
+
+  // 타이머 확인 모달에서 선택한 경우
+  const handleTimerConfirm = async (timerUsed: boolean) => {
+    setShowTimerConfirm(false);
+
+    // timerUsed 필드 업데이트
+    if (onUpdateTask) {
+      onUpdateTask({ timerUsed });
+    }
+
+    // 완료 처리
+    onToggle();
+
+    // 타이머 사용했으면 퀘스트 진행도 업데이트 및 축하 모달 표시
+    if (timerUsed) {
+      // 타이머 퀘스트 진행도 업데이트
+      await updateQuestProgress('use_timer', 1);
+
+      const TIMER_BONUS = 20;
+      const baseXP = xp;
+      const totalXP = baseXP + TIMER_BONUS;
+
+      setCelebrationXP(totalXP);
+      setTimerBonus(TIMER_BONUS);
+      setShowCelebration(true);
+    }
+  };
+
+  // 축하 모달 닫기
+  const handleCelebrationClose = () => {
+    setShowCelebration(false);
+  };
+
 
   return (
     <>
@@ -97,7 +151,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
       <div className="task-main">
         <button
           className="task-checkbox"
-          onClick={onToggle}
+          onClick={handleToggleClick}
           aria-label={task.completed ? '완료 취소' : '완료'}
         >
           {task.completed ? '✅' : '⬜'}
@@ -186,6 +240,24 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
         </div>
       </div>
       </div>
+
+      {/* 타이머 확인 모달 */}
+      {showTimerConfirm && (
+        <TimerConfirmModal
+          taskName={task.text}
+          onConfirm={handleTimerConfirm}
+        />
+      )}
+
+      {/* 축하 모달 */}
+      {showCelebration && (
+        <CompletionCelebrationModal
+          task={task}
+          xpGained={celebrationXP}
+          timerBonus={timerBonus}
+          onClose={handleCelebrationClose}
+        />
+      )}
     </>
   );
 }
