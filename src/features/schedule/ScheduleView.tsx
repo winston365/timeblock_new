@@ -14,6 +14,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useDailyData } from '@/shared/hooks';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
+import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import TimeBlock from './TimeBlock';
 import TaskModal from './TaskModal';
 import './schedule.css';
@@ -30,6 +31,7 @@ import './schedule.css';
  */
 export default function ScheduleView() {
   const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion, toggleBlockLock } = useDailyData();
+  const { show: showWaifu } = useWaifuCompanionStore();
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   const [currentMinute, setCurrentMinute] = useState(new Date().getMinutes());
   const [indicatorPosition, setIndicatorPosition] = useState<number | null>(null);
@@ -189,16 +191,16 @@ export default function ScheduleView() {
     setIsModalOpen(true);
   };
 
-  // 인라인 작업 생성 (기본값: 30분, 쉬움)
+  // 인라인 작업 생성 (기본값: 15분, 쉬움)
   const handleCreateTask = async (text: string, blockId: TimeBlockId) => {
     try {
       const newTask: Task = {
         id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         text: text.trim(),
         memo: '',
-        baseDuration: 30,
+        baseDuration: 15,  // 30분 -> 15분으로 변경
         resistance: 'low',
-        adjustedDuration: 30,
+        adjustedDuration: 15,  // 30분 -> 15분으로 변경
         timeBlock: blockId,
         completed: false,
         actualDuration: 0,
@@ -206,6 +208,9 @@ export default function ScheduleView() {
         completedAt: null,
       };
       await addTask(newTask);
+
+      // 와이푸 반응: 작업 추가
+      showWaifu(`"${text.trim()}" 추가했어! 화이팅! 💪`);
     } catch (error) {
       console.error('Failed to create task:', error);
       throw error;
@@ -259,7 +264,14 @@ export default function ScheduleView() {
   // 작업 삭제
   const handleDeleteTask = async (taskId: string) => {
     try {
+      // 삭제할 작업 정보 가져오기
+      const task = dailyData?.tasks.find(t => t.id === taskId);
+      const taskName = task?.text || '작업';
+
       await deleteTask(taskId);
+
+      // 와이푸 반응: 작업 삭제
+      showWaifu(`"${taskName}" 삭제했어. 괜찮아? 🤔`);
     } catch (error) {
       console.error('Failed to delete task:', error);
       alert('작업 삭제에 실패했습니다.');

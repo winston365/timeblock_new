@@ -147,9 +147,21 @@ export default function TimeBlock({
   const progressPercentage = getProgressPercentage();
 
   // SVG 원형 프로그레스 바 계산
-  const radius = 28; // 원의 반지름
+  const radius = 32; // 원의 반지름 (28 -> 32, 72px SVG에 맞춤)
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
+
+  // 툴팁 텍스트 생성
+  const getTooltipText = (): string => {
+    const utilization = Math.round(progressPercentage);
+    const statusText = {
+      comfortable: '여유 있음',
+      balanced: '적정',
+      tight: '촉박',
+      critical: '위험'
+    }[timeStatus];
+    return `활용률 ${utilization}% • ${statusText}`;
+  };
 
   // 인라인 입력 필드 포커스
   useEffect(() => {
@@ -235,21 +247,21 @@ export default function TimeBlock({
         <div className="block-primary-info">
           {/* 원형 시간표 (현재 시간대 블록만) */}
           {isCurrentBlock && timeRemaining && (
-            <div className="time-circle-wrapper">
+            <div className="time-circle-wrapper" data-tooltip={getTooltipText()}>
               {/* SVG 원형 프로그레스 바 */}
-              <svg className="circular-progress" width="64" height="64">
+              <svg className="circular-progress" width="72" height="72">
                 {/* 배경 링 */}
                 <circle
                   className="progress-ring"
-                  cx="32"
-                  cy="32"
+                  cx="36"
+                  cy="36"
                   r={radius}
                 />
                 {/* 진행 링 */}
                 <circle
                   className={`progress-ring-fill status-${timeStatus}`}
-                  cx="32"
-                  cy="32"
+                  cx="36"
+                  cy="36"
                   r={radius}
                   strokeDasharray={circumference}
                   strokeDashoffset={strokeDashoffset}
@@ -262,7 +274,6 @@ export default function TimeBlock({
                 role="status"
                 aria-live="polite"
                 aria-label={`계획된 작업 시간 ${totalDuration}분, 남은 시간 ${remainingMinutes}분`}
-                title={`시간 활용률: ${Math.round(progressPercentage)}%`}
               >
                 <span className="time-remaining">
                   <span className="planned-time">{totalDuration}m</span>
@@ -352,7 +363,7 @@ export default function TimeBlock({
                 value={inlineInputValue}
                 onChange={(e) => setInlineInputValue(e.target.value)}
                 onKeyDown={handleInlineInputKeyDown}
-                placeholder="할 일을 입력하고 Enter를 누르세요 (기본: 30분, 🟢 쉬움)"
+                placeholder="할 일을 입력하고 Enter를 누르세요 (기본: 15분, 🟢 쉬움)"
                 className="inline-input-field"
               />
             </div>
