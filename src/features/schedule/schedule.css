@@ -734,7 +734,7 @@
 /* 스케줄 모달 특화 스타일 */
 .schedule-modal .modal-content {
   width: 100%;
-  max-width: 420px;
+  max-width: 280px;
 }
 
 .modal-form {
