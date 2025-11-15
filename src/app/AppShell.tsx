@@ -202,7 +202,7 @@ export default function AppShell() {
     };
   }, []); // 빈 배열 - 한 번만 실행
 
-  // 브라우저 기본 우클릭 메뉴 완전 차단
+  // 브라우저 기본 우클릭 메뉴 완전 차단 (캡처 단계)
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
       // task-card 내부는 TaskCard 컴포넌트가 자체 처리
@@ -217,13 +217,29 @@ export default function AppShell() {
       return false;
     };
 
-    // 버블링 단계에서 등록 (React 이벤트와 조화)
-    document.addEventListener('contextmenu', handleContextMenu, { passive: false });
+    // 캡처 단계에서 등록 - React보다 먼저 실행
+    document.addEventListener('contextmenu', handleContextMenu, {
+      capture: true,
+      passive: false
+    });
 
     return () => {
-      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('contextmenu', handleContextMenu, { capture: true });
     };
   }, []);
+
+  // React 레벨 우클릭 메뉴 차단 (이중 방어)
+  const handleReactContextMenu = (e: React.MouseEvent) => {
+    // task-card 내부는 허용
+    const target = e.target as HTMLElement;
+    if (target.closest('.task-card')) {
+      return;
+    }
+
+    // 다른 영역 차단
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   // F1 단축키: 대량 할 일 추가 모달 열기
   useEffect(() => {
@@ -275,6 +291,7 @@ export default function AppShell() {
     return (
       <div
         className="app-container"
+        onContextMenu={handleReactContextMenu}
         style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
         role="status"
         aria-live="polite"
@@ -291,7 +308,7 @@ export default function AppShell() {
   }
 
   return (
-    <div className="app-container">
+    <div className="app-container" onContextMenu={handleReactContextMenu}>
       {/* 접근성: 건너뛰기 링크 */}
       <a href="#main-content" className="skip-to-content">
         메인 콘텐츠로 건너뛰기
