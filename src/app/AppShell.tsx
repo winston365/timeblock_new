@@ -202,6 +202,29 @@ export default function AppShell() {
     };
   }, []); // 빈 배열 - 한 번만 실행
 
+  // 브라우저 기본 우클릭 메뉴 완전 차단
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      // task-card 내부는 TaskCard 컴포넌트가 자체 처리
+      const target = e.target as HTMLElement;
+      if (target.closest('.task-card')) {
+        return; // TaskCard가 처리하도록 허용
+      }
+
+      // 다른 모든 영역은 차단
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+
+    // 버블링 단계에서 등록 (React 이벤트와 조화)
+    document.addEventListener('contextmenu', handleContextMenu, { passive: false });
+
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, []);
+
   // F1 단축키: 대량 할 일 추가 모달 열기
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
