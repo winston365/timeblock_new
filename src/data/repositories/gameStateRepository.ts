@@ -92,7 +92,7 @@ export async function loadGameState(): Promise<GameState> {
         // 준비된 할일 퀘스트가 없으면 추가
         const hasPrepareTasksQuest = data.dailyQuests.some(q => q.type === 'prepare_tasks');
         if (!hasPrepareTasksQuest) {
-          const prepareTasksTarget = 3;
+          const prepareTasksTarget = 10;
           const prepareTasksReward = 150;
           data.dailyQuests.push({
             id: `quest-prepare-${prepareTasksTarget}-tasks`,
