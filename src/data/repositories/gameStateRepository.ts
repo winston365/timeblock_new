@@ -88,6 +88,24 @@ export async function loadGameState(): Promise<GameState> {
       if (data.dailyQuests.length === 0) {
         data.dailyQuests = generateDailyQuests();
         await saveGameState(data);
+      } else {
+        // 준비된 할일 퀘스트가 없으면 추가
+        const hasPrepareTasksQuest = data.dailyQuests.some(q => q.type === 'prepare_tasks');
+        if (!hasPrepareTasksQuest) {
+          const prepareTasksTarget = 3;
+          const prepareTasksReward = 150;
+          data.dailyQuests.push({
+            id: `quest-prepare-${prepareTasksTarget}-tasks`,
+            type: 'prepare_tasks',
+            title: `⭐ 준비된 할일 ${prepareTasksTarget}개 만들기`,
+            description: `방해물과 대처법을 모두 입력한 할일을 ${prepareTasksTarget}개 만드세요`,
+            target: prepareTasksTarget,
+            progress: 0,
+            completed: false,
+            reward: prepareTasksReward,
+          });
+          await saveGameState(data);
+        }
       }
       return data;
     }
@@ -99,6 +117,23 @@ export async function loadGameState(): Promise<GameState> {
       // 필수 필드 초기화
       if (!Array.isArray(localData.dailyQuests)) {
         localData.dailyQuests = generateDailyQuests();
+      } else {
+        // 준비된 할일 퀘스트가 없으면 추가
+        const hasPrepareTasksQuest = localData.dailyQuests.some(q => q.type === 'prepare_tasks');
+        if (!hasPrepareTasksQuest) {
+          const prepareTasksTarget = 3;
+          const prepareTasksReward = 150;
+          localData.dailyQuests.push({
+            id: `quest-prepare-${prepareTasksTarget}-tasks`,
+            type: 'prepare_tasks',
+            title: `⭐ 준비된 할일 ${prepareTasksTarget}개 만들기`,
+            description: `방해물과 대처법을 모두 입력한 할일을 ${prepareTasksTarget}개 만드세요`,
+            target: prepareTasksTarget,
+            progress: 0,
+            completed: false,
+            reward: prepareTasksReward,
+          });
+        }
       }
       if (!Array.isArray(localData.xpHistory)) {
         localData.xpHistory = [];

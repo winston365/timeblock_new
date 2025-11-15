@@ -1178,9 +1178,9 @@
   max-width: 400px;
 }
 
-/* 2컬럼 모달 - 크기 확장 (1200px) */
+/* 2컬럼 모달 - 크기 확장 (800px) */
 .modal-content-wide {
-  max-width: 1200px !important;
+  max-width: 800px !important;
   width: 95vw !important; /* 화면이 작을 때 자동 조절 */
 }
 
