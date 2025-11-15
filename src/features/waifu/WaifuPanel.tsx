@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWaifuState } from '@/shared/hooks';
-import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier } from './waifuImageUtils';
+import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier, getAffectionColor } from './waifuImageUtils';
 import './waifu.css';
 
 interface WaifuPanelProps {
@@ -174,7 +174,10 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
               >
                 <div
                   className="affection-fill"
-                  style={{ width: `${waifuState.affection}%` }}
+                  style={{
+                    width: `${waifuState.affection}%`,
+                    backgroundColor: getAffectionColor(waifuState.affection)
+                  }}
                 />
               </div>
               <span className="stat-value" aria-hidden="true">

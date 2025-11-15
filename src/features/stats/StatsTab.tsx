@@ -85,15 +85,15 @@ export default function StatsTab() {
           <div className="stats-summary">
             <div className="summary-item">
               <span className="summary-label">오늘 획득 XP</span>
-              <span className="summary-value">{gameState.dailyXP}</span>
+              <span className="summary-value xp-value">{gameState.dailyXP}</span>
             </div>
             <div className="summary-item">
               <span className="summary-label">총 누적 XP</span>
-              <span className="summary-value">{gameState.totalXP}</span>
+              <span className="summary-value xp-value">{gameState.totalXP}</span>
             </div>
             <div className="summary-item">
               <span className="summary-label">사용 가능 XP</span>
-              <span className="summary-value">{gameState.availableXP}</span>
+              <span className="summary-value xp-value">{gameState.availableXP}</span>
             </div>
             <div className="summary-item">
               <span className="summary-label">연속 출석</span>

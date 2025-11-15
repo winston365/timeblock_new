@@ -52,7 +52,7 @@
 
 .chart-bar {
   width: 100%;
-  background: linear-gradient(to top, var(--color-primary), var(--color-primary-dark));
+  background: linear-gradient(to top, var(--color-reward), var(--color-warning));
   border-radius: 4px 4px 0 0;
   display: flex;
   align-items: flex-start;
@@ -67,6 +67,7 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .chart-label {
@@ -116,7 +117,7 @@
 
 .block-xp-bar {
   height: 100%;
-  background: var(--color-primary);
+  background: linear-gradient(90deg, var(--color-reward), var(--color-warning));
   transition: width 0.3s ease;
   min-width: 2px;
 }
@@ -128,7 +129,7 @@
   transform: translateY(-50%);
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--color-reward);
 }
 
 /* ============================================================================
@@ -160,4 +161,8 @@
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--color-primary);
+}
+
+.summary-value.xp-value {
+  color: var(--color-reward);
 }

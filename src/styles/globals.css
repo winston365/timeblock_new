@@ -14,6 +14,7 @@
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
+  --color-reward: #ffd700; /* Gold - 보상/XP 시그니처 컬러 */
 
   /* 배경 색상 (다크모드) - 명도 대비 강화 */
   --color-bg-base: #0a0e1a;        /* 기본 배경 - 더 어둡게 */

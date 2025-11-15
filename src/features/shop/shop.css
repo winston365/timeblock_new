@@ -60,7 +60,7 @@
 
 .shop-xp-value {
   font-size: 1.1rem;
-  color: var(--color-primary);
+  color: var(--color-reward);
 }
 
 /* Empty State */
@@ -138,7 +138,7 @@
 
 .shop-item-price {
   font-size: 0.9rem;
-  color: var(--color-primary);
+  color: var(--color-reward);
   font-weight: 600;
   margin: 0;
 }

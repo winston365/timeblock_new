@@ -42,6 +42,10 @@
   align-items: center;
   cursor: pointer;
   transition: transform 0.2s;
+  /* 엿보기 효과 - 캐릭터가 왼쪽 스케줄 영역을 침범 */
+  margin-left: -40px;
+  margin-right: -20px;
+  z-index: 10;
 }
 
 .waifu-image-container:hover {
@@ -122,12 +126,16 @@
 }
 
 .dialogue-bubble {
-  background: var(--color-bg-tertiary);
+  background: linear-gradient(135deg,
+    var(--color-bg-tertiary) 0%,
+    var(--color-bg-surface) 100%
+  );
   border: 2px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: 20px;
   padding: var(--spacing-md);
   position: relative;
   animation: fadeInUp 0.5s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .dialogue-bubble::before {
@@ -212,9 +220,9 @@
 
 .affection-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  /* 배경색은 인라인 스타일로 동적으로 적용 (getAffectionColor) */
   border-radius: 4px;
-  transition: width 0.5s ease;
+  transition: width 0.5s ease, background-color 0.5s ease;
   position: relative;
 }
 

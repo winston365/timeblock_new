@@ -22,7 +22,8 @@
 
 .xp-progress-text {
   font-size: 0.75rem;
-  color: var(--color-text-secondary);
+  color: var(--color-reward);
+  font-weight: 600;
 }
 
 .xp-bar-track {
@@ -36,7 +37,7 @@
 
 .xp-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
+  background: linear-gradient(90deg, var(--color-reward), var(--color-warning));
   transition: width 0.5s ease;
   position: relative;
   overflow: hidden;
@@ -74,5 +75,6 @@
 
 .xp-next {
   font-size: 0.75rem;
-  color: var(--color-text-tertiary);
+  color: var(--color-reward);
+  font-weight: 500;
 }
