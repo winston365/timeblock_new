@@ -114,7 +114,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
                   onClick={() => setShowDurationPicker(!showDurationPicker)}
                   title="클릭하여 변경"
                 >
-                  ⏱️ {formatDuration(task.adjustedDuration)}
+                  ⏱️ {formatDuration(task.baseDuration)}
                 </button>
 
                 {showDurationPicker && (

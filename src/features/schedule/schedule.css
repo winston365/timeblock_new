@@ -195,10 +195,10 @@
   gap: 4px;
 }
 
-/* 제안 1: 원형 시간표 크기 조정 (48px → 36px) */
+/* 제안 1: 원형 시간표 크기 조정 (36px → 48px) */
 .time-circle-compact {
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: var(--color-primary);
   display: flex;
@@ -213,7 +213,7 @@
 .time-remaining {
   color: white;
   font-weight: 700;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 
 .block-actions {
@@ -251,6 +251,34 @@
 .action-btn-sm:disabled:hover {
   background: transparent;
   transform: none;
+}
+
+/* 잠금 필요 표시 */
+.action-btn-sm.lock-needed {
+  animation: lockNeeded 2s ease-in-out infinite;
+}
+
+@keyframes lockNeeded {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* 지난 블록 스타일 */
+.time-block.past-block {
+  opacity: 0.6;
+  filter: grayscale(0.3);
+}
+
+.time-block.past-block.collapsed {
+  min-height: 45px;
+}
+
+.time-block.past-block .block-header {
+  padding: var(--spacing-xs) var(--spacing-md);
 }
 
 /* 제안 2: 애니메이션 */

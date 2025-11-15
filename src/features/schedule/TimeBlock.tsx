@@ -18,6 +18,7 @@ interface TimeBlockProps {
   tasks: Task[];
   state: TimeBlockState;
   isCurrentBlock: boolean;
+  isPastBlock?: boolean;
   onAddTask: () => void;
   onCreateTask?: (text: string, blockId: TimeBlockId) => Promise<void>;
   onEditTask: (task: Task) => void;
@@ -33,6 +34,7 @@ export default function TimeBlock({
   tasks,
   state,
   isCurrentBlock,
+  isPastBlock = false,
   onAddTask,
   onCreateTask,
   onEditTask,
@@ -172,7 +174,7 @@ export default function TimeBlock({
 
   return (
     <div
-      className={`time-block ${isCurrentBlock ? 'current-block' : ''} ${isExpanded ? 'expanded' : 'collapsed'} ${isDragOver ? 'drag-over' : ''}`}
+      className={`time-block ${isCurrentBlock ? 'current-block' : ''} ${isPastBlock ? 'past-block' : ''} ${isExpanded ? 'expanded' : 'collapsed'} ${isDragOver ? 'drag-over' : ''}`}
       data-block-id={block.id}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -206,18 +208,23 @@ export default function TimeBlock({
         <div className="block-actions">
           {/* 잠금 아이콘 */}
           <button
-            className="action-btn-sm"
+            className={`action-btn-sm ${!state?.isLocked && !isPastBlock ? 'lock-needed' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
-              onToggleLock?.();
+              if (!isPastBlock) {
+                onToggleLock?.();
+              }
             }}
+            disabled={isPastBlock}
             title={
-              state?.isLocked
+              isPastBlock
+                ? "지난 시간대는 잠금할 수 없습니다"
+                : state?.isLocked
                 ? "잠금 해제 (베팅한 15 XP는 돌려받지 못함)"
-                : "계획을 잠급니다 (비용: 15 XP / 완벽 달성 시: +40 XP)"
+                : "⚠️ 잠금 필요! (비용: 15 XP / 완벽 달성 시: +40 XP)"
             }
           >
-            {state?.isLocked ? '🔒' : '🔓'}
+            {state?.isLocked ? '🔒' : isPastBlock ? '🔓' : '⚠️'}
           </button>
         </div>
       </div>
@@ -241,58 +248,32 @@ export default function TimeBlock({
       {isExpanded && (
         <div className="block-content" onClick={handleBlockContentClick}>
           <div className="task-list">
-            {tasks.length === 0 && !showInlineInput ? (
-              <div className="empty-message">할 일이 없습니다</div>
-            ) : (
-              tasks.map(task => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onEdit={() => onEditTask(task)}
-                  onDelete={() => onDeleteTask(task.id)}
-                  onToggle={() => onToggleTask(task.id)}
-                  onUpdateTask={onUpdateTask ? (updates) => onUpdateTask(task.id, updates) : undefined}
-                />
-              ))
-            )}
+            {tasks.map(task => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onEdit={() => onEditTask(task)}
+                onDelete={() => onDeleteTask(task.id)}
+                onToggle={() => onToggleTask(task.id)}
+                onUpdateTask={onUpdateTask ? (updates) => onUpdateTask(task.id, updates) : undefined}
+              />
+            ))}
 
-            {/* 인라인 입력 필드 */}
-            {showInlineInput && (
-              <div className="inline-task-input">
-                <input
-                  ref={inlineInputRef}
-                  type="text"
-                  value={inlineInputValue}
-                  onChange={(e) => setInlineInputValue(e.target.value)}
-                  onKeyDown={handleInlineInputKeyDown}
-                  placeholder="할 일을 입력하고 Enter를 누르세요 (기본: 30분, 🟢 쉬움)"
-                  className="inline-input-field"
-                />
-                <button
-                  className="inline-input-cancel"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowInlineInput(false);
-                    setInlineInputValue('');
-                  }}
-                  title="취소 (Esc)"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
+            {/* 인라인 입력 필드 - 항상 표시 */}
+            <div className="inline-task-input">
+              <input
+                ref={inlineInputRef}
+                type="text"
+                value={inlineInputValue}
+                onChange={(e) => setInlineInputValue(e.target.value)}
+                onKeyDown={handleInlineInputKeyDown}
+                placeholder="할 일을 입력하고 Enter를 누르세요 (기본: 30분, 🟢 쉬움)"
+                className="inline-input-field"
+              />
+            </div>
           </div>
         </div>
       )}
-
-      {/* 하단 작업 추가 바 */}
-      <button
-        className="block-add-bar"
-        onClick={handleAddClick}
-        title="할 일 추가"
-      >
-        ➕ 작업 추가
-      </button>
     </div>
   );
 }

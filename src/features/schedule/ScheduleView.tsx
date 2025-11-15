@@ -358,6 +358,7 @@ export default function ScheduleView() {
           const blockTasks = dailyData.tasks.filter(task => task.timeBlock === block.id);
           const blockState = dailyData.timeBlockStates[block.id];
           const isCurrentBlock = block.id === currentBlockId;
+          const isPastBlock = currentHour >= block.end;
 
           return (
             <TimeBlock
@@ -366,6 +367,7 @@ export default function ScheduleView() {
               tasks={blockTasks}
               state={blockState}
               isCurrentBlock={isCurrentBlock}
+              isPastBlock={isPastBlock}
               onAddTask={() => handleAddTask(block.id as TimeBlockId)}
               onCreateTask={handleCreateTask}
               onEditTask={handleEditTask}

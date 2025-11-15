@@ -185,6 +185,7 @@
   background: transparent;
   color: var(--color-text-secondary);
   font-weight: 500;
+  font-size: 0.8125rem;
   border-bottom: 2px solid transparent;
   transition: all 0.2s;
 }
