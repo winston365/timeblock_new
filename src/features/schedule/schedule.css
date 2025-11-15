@@ -195,25 +195,174 @@
   gap: 4px;
 }
 
-/* 제안 1: 원형 시간표 크기 조정 (36px → 48px) */
+/* ============================================================================
+   원형 프로그레스 타임 인디케이터
+   ============================================================================ */
+
+/* 래퍼 - SVG와 중앙 컨텐츠를 담는 컨테이너 */
+.time-circle-wrapper {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+}
+
+/* SVG 원형 프로그레스 바 */
+.circular-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg); /* 12시 방향부터 시작 */
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
+}
+
+/* 배경 링 (회색) */
+.progress-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 3;
+}
+
+/* 진행 링 - 기본 (균형 상태) */
+.progress-ring-fill {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease, stroke 0.3s ease;
+}
+
+/* 중앙 시간 표시 원 */
 .time-circle-compact {
-  width: 48px;
-  height: 48px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
-  /* 제안 2: 맥동 애니메이션 */
-  animation: pulse 2s ease-in-out infinite;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: help;
 }
 
 .time-remaining {
   color: white;
   font-weight: 700;
-  font-size: 0.875rem;
+  font-size: 0.6875rem; /* 11px - 작게 */
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* 계획 시간 (왼쪽 숫자) */
+.planned-time {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+/* 구분자 */
+.time-divider {
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+/* 남은 시간 (오른쪽 숫자) - 더 강조 */
+.remaining-time {
+  font-size: 0.75rem; /* 12px - 약간 더 크게 */
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* ============================================================================
+   시간 상태별 색상 스타일
+   ============================================================================ */
+
+/* 상태: 여유 있음 (초록색) - 남은 시간 >= 1.5배 */
+.time-circle-compact.status-comfortable {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.4);
+}
+
+.progress-ring-fill.status-comfortable {
+  stroke: #6ee7b7; /* 밝은 초록 */
+}
+
+/* 상태: 적정 (파랑색) - 남은 시간 0.9~1.5배 */
+.time-circle-compact.status-balanced {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.4);
+}
+
+.progress-ring-fill.status-balanced {
+  stroke: #a5b4fc; /* 밝은 파랑 */
+}
+
+/* 상태: 촉박 (주황색) - 남은 시간 0.6~0.9배 */
+.time-circle-compact.status-tight {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.4);
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+.progress-ring-fill.status-tight {
+  stroke: #fcd34d; /* 밝은 주황 */
+}
+
+/* 상태: 위험 (빨강색) - 남은 시간 < 0.6배 */
+.time-circle-compact.status-critical {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 2px 12px rgba(239, 68, 68, 0.5);
+  animation: pulse-urgent 1.5s ease-in-out infinite;
+}
+
+.progress-ring-fill.status-critical {
+  stroke: #fca5a5; /* 밝은 빨강 */
+}
+
+/* ============================================================================
+   애니메이션
+   ============================================================================ */
+
+/* 경고 맥동 (주황 - 촉박) */
+@keyframes pulse-warning {
+  0%, 100% {
+    box-shadow: 0 2px 12px rgba(245, 158, 11, 0.4);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.6);
+    transform: translate(-50%, -50%) scale(1.03);
+  }
+}
+
+/* 긴급 맥동 (빨강 - 위험) */
+@keyframes pulse-urgent {
+  0%, 100% {
+    box-shadow: 0 2px 12px rgba(239, 68, 68, 0.5);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    box-shadow: 0 6px 24px rgba(239, 68, 68, 0.8);
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+/* 호버 효과 */
+.time-circle-wrapper:hover .time-circle-compact {
+  transform: translate(-50%, -50%) scale(1.08);
+  z-index: 10;
+}
+
+.time-circle-wrapper:hover .circular-progress {
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
 }
 
 .block-actions {
@@ -938,10 +1087,32 @@
   }
 
   /* 모바일에서 원형 시간표 크기 조정 */
+  .time-circle-wrapper {
+    width: 52px;
+    height: 52px;
+  }
+
+  .circular-progress {
+    width: 52px;
+    height: 52px;
+  }
+
   .time-circle-compact {
-    width: 32px;
-    height: 32px;
-    font-size: 0.7rem;
+    width: 46px;
+    height: 46px;
+  }
+
+  .time-remaining {
+    font-size: 0.625rem; /* 10px */
+    gap: 2px;
+  }
+
+  .planned-time {
+    font-size: 0.625rem;
+  }
+
+  .remaining-time {
+    font-size: 0.6875rem; /* 11px */
   }
 
   /* 모바일에서 통계 정보 래핑 */
@@ -962,7 +1133,19 @@
   }
 
   .time-circle-compact {
-    border: 2px solid currentColor;
+    border: 3px solid white;
+    font-weight: 900;
+  }
+
+  /* 고대비 모드에서 프로그레스 링 강조 */
+  .progress-ring {
+    stroke: rgba(255, 255, 255, 0.3);
+    stroke-width: 4;
+  }
+
+  .progress-ring-fill {
+    stroke: white;
+    stroke-width: 4;
   }
 
   .resistance-badge,
@@ -975,7 +1158,18 @@
 /* 움직임 감소 모드 */
 @media (prefers-reduced-motion: reduce) {
   .time-circle-compact {
-    animation: none;
+    animation: none !important;
+  }
+
+  /* 프로그레스 바 애니메이션 비활성화 */
+  .progress-ring-fill {
+    transition: none !important;
+  }
+
+  .time-circle-wrapper:hover .time-circle-compact,
+  .time-circle-wrapper:hover .circular-progress {
+    transform: none !important;
+    filter: none !important;
   }
 
   .picker-dropdown,
