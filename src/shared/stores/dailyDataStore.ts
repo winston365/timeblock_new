@@ -102,7 +102,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
     try {
       await addTaskToRepo(task, currentDate);
-      await loadData(currentDate);
+      await loadData(currentDate, true); // 강제 리로드
     } catch (err) {
       console.error('[DailyDataStore] Failed to add task:', err);
       set({ error: err as Error });
@@ -116,7 +116,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
     try {
       await updateTaskInRepo(taskId, updates, currentDate);
-      await loadData(currentDate);
+      await loadData(currentDate, true); // 강제 리로드
     } catch (err) {
       console.error('[DailyDataStore] Failed to update task:', err);
       set({ error: err as Error });
@@ -130,7 +130,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
     try {
       await deleteTaskFromRepo(taskId, currentDate);
-      await loadData(currentDate);
+      await loadData(currentDate, true); // 강제 리로드
     } catch (err) {
       console.error('[DailyDataStore] Failed to delete task:', err);
       set({ error: err as Error });
@@ -190,7 +190,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         }
       }
 
-      await loadData(currentDate);
+      await loadData(currentDate, true); // 강제 리로드
     } catch (err) {
       console.error('[DailyDataStore] Failed to toggle task completion:', err);
       set({ error: err as Error });
@@ -204,7 +204,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
     try {
       await updateBlockStateInRepo(blockId, updates, currentDate);
-      await loadData(currentDate);
+      await loadData(currentDate, true); // 강제 리로드
     } catch (err) {
       console.error('[DailyDataStore] Failed to update block state:', err);
       set({ error: err as Error });
@@ -253,7 +253,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         await updateQuestProgress('lock_blocks', 1);
       }
 
-      await loadData(currentDate);
+      await loadData(currentDate, true); // 강제 리로드
     } catch (err) {
       console.error('[DailyDataStore] Failed to toggle block lock:', err);
       set({ error: err as Error });
