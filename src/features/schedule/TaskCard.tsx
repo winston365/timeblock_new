@@ -15,6 +15,7 @@ import { formatDuration, calculateTaskXP } from '@/shared/lib/utils';
 import { TimerConfirmModal } from './TimerConfirmModal';
 import { CompletionCelebrationModal } from './CompletionCelebrationModal';
 import { useGameState } from '@/shared/hooks';
+import { addXP } from '@/data/repositories/gameStateRepository';
 
 interface TaskCardProps {
   task: Task;
@@ -120,7 +121,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     // 완료 처리
     onToggle();
 
-    // 타이머 사용했으면 퀘스트 진행도 업데이트 및 축하 모달 표시
+    // 타이머 사용했으면 퀘스트 진행도 업데이트, XP 추가 및 축하 모달 표시
     if (timerUsed) {
       // 타이머 퀘스트 진행도 업데이트
       await updateQuestProgress('use_timer', 1);
@@ -128,6 +129,9 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
       const TIMER_BONUS = 20;
       const baseXP = xp;
       const totalXP = baseXP + TIMER_BONUS;
+
+      // 타이머 보너스 XP 추가
+      await addXP(TIMER_BONUS, task.timeBlock || undefined);
 
       setCelebrationXP(totalXP);
       setTimerBonus(TIMER_BONUS);

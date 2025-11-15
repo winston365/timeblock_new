@@ -13,7 +13,7 @@
 
 import { useState, useEffect } from 'react';
 import type { ShopItem } from '@/shared/types/domain';
-import { loadShopItems, deleteShopItem, purchaseShopItem } from '@/data/repositories';
+import { loadShopItems, deleteShopItem, purchaseShopItem, useShopItem } from '@/data/repositories';
 import { useGameState } from '@/shared/hooks';
 import { ShopModal } from './ShopModal';
 import './shop.css';
@@ -119,6 +119,39 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
     return gameState ? gameState.availableXP >= price : false;
   };
 
+  const handleUseItem = async (item: ShopItem) => {
+    const quantity = item.quantity || 0;
+    if (quantity <= 0) {
+      alert('보유한 아이템이 없습니다.');
+      return;
+    }
+
+    if (!confirm(`${item.name}을(를) 사용하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      const result = await useShopItem(item.id);
+
+      if (result.success) {
+        alert(result.message);
+
+        // 부모 컴포넌트에 사용 성공 알림 (와이푸 메시지 표시)
+        if (onPurchaseSuccess && result.waifuMessage) {
+          onPurchaseSuccess(result.message, result.waifuMessage);
+        }
+
+        // 아이템 목록 새로고침
+        await loadShopItemsData();
+      } else {
+        alert(result.message);
+      }
+    } catch (error) {
+      console.error('Failed to use item:', error);
+      alert('아이템 사용 중 오류가 발생했습니다.');
+    }
+  };
+
   return (
     <div className="shop-panel">
       <div className="shop-header">
@@ -160,6 +193,9 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
               <div className="shop-item-body">
                 <strong className="shop-item-name">{item.name}</strong>
                 <p className="shop-item-price">💰 {item.price} XP</p>
+                {item.quantity !== undefined && item.quantity > 0 && (
+                  <p className="shop-item-quantity">보유: {item.quantity}개</p>
+                )}
               </div>
 
               <div className="shop-item-actions">
@@ -171,6 +207,15 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
                 >
                   {canAfford(item.price) ? '구매' : '💰 부족'}
                 </button>
+                {item.quantity !== undefined && item.quantity > 0 && (
+                  <button
+                    className="btn-shop-use"
+                    onClick={() => handleUseItem(item)}
+                    title="사용하기"
+                  >
+                    사용
+                  </button>
+                )}
                 <button
                   className="btn-shop-edit"
                   onClick={() => handleEditItem(item)}
