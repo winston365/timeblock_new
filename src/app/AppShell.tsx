@@ -1,5 +1,10 @@
 /**
  * AppShell - 앱 전체 레이아웃 및 상태 관리
+ *
+ * @role 앱의 최상위 컴포넌트로 레이아웃 구성, DB 초기화, Firebase 동기화, 전역 상태 관리 담당
+ * @input 없음 (최상위 컴포넌트)
+ * @output 앱 전체 UI (Toolbar, Sidebar, Content, Panels, Modals)
+ * @dependencies 각종 feature 컴포넌트, hooks, stores, services
  */
 
 import { useState, useEffect } from 'react';
@@ -30,6 +35,10 @@ import BulkAddModal from '@/features/tasks/BulkAddModal';
 import SettingsModal from '@/features/settings/SettingsModal';
 import SyncLogModal from '@/features/settings/SyncLogModal';
 
+/**
+ * 앱 셸 컴포넌트 - 전체 앱 레이아웃 및 초기화
+ * @returns 앱 전체 UI
+ */
 export default function AppShell() {
   const [dbInitialized, setDbInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<'today' | 'stats' | 'energy' | 'completed' | 'inbox'>('today');
@@ -48,12 +57,9 @@ export default function AppShell() {
 
     const initDB = async () => {
       try {
-        console.log('🔧 Starting database initialization...');
         await initializeDatabase();
-        console.log('✅ Database initialized');
 
         // Store 초기화 - 직접 접근
-        console.log('🚀 Initializing stores...');
         const dailyDataStore = useDailyDataStore.getState();
         const gameStateStore = useGameStateStore.getState();
 
@@ -61,12 +67,10 @@ export default function AppShell() {
           dailyDataStore.loadData(),
           gameStateStore.loadData(),
         ]);
-        console.log('✅ Stores initialized');
 
         if (!isSubscribed) return;
 
         setDbInitialized(true);
-        console.log('✅ App initialized successfully');
 
         // 디버그 함수를 window에 노출
         exposeDebugToWindow();
@@ -76,25 +80,18 @@ export default function AppShell() {
         if (settings.firebaseConfig) {
           const initialized = initializeFirebase(settings.firebaseConfig);
           if (initialized) {
-            console.log('🔥 Firebase initialized from settings');
-
             // Firebase에서 초기 데이터 가져오기
             try {
               const { fetchDataFromFirebase } = await import('@/shared/services/firebaseService');
               const { saveGameState } = await import('@/data/repositories/gameStateRepository');
 
               const firebaseData = await fetchDataFromFirebase();
-              console.log('📥 Fetched from Firebase:', {
-                dailyDataDates: Object.keys(firebaseData.dailyData),
-                hasGameState: !!firebaseData.gameState,
-              });
 
               // Firebase 데이터를 IndexedDB에 저장
               // GameState 저장
               if (firebaseData.gameState) {
                 await saveGameState(firebaseData.gameState);
                 await gameStateStore.loadData(); // 리로드
-                console.log('✅ GameState restored from Firebase');
               }
 
               // Firebase 동기화 임시 비활성화를 위해 직접 IndexedDB에 저장
@@ -107,8 +104,6 @@ export default function AppShell() {
               // DailyData 저장 (모든 날짜)
               const dailyDataDates = Object.keys(firebaseData.dailyData);
               if (dailyDataDates.length > 0) {
-                console.log(`📦 Restoring ${dailyDataDates.length} days of data from Firebase...`);
-
                 for (const date of dailyDataDates) {
                   const data = firebaseData.dailyData[date];
 
@@ -128,14 +123,10 @@ export default function AppShell() {
 
                   // localStorage에도 저장
                   saveToStorage(`${STORAGE_KEYS.DAILY_PLANS}${date}`, data);
-                  console.log(`✅ Restored data for ${date}: ${data.tasks.length} tasks`);
                 }
-
-                console.log('✅ All data restored from Firebase');
               }
 
               // 🔥 IndexedDB의 모든 데이터를 Firebase로 동기화 (Firebase에 없는 것만)
-              console.log('🔄 Syncing IndexedDB to Firebase...');
               const allLocalDailyData = await db.dailyData.toArray();
               const firebaseDates = new Set(Object.keys(firebaseData.dailyData));
 
@@ -144,14 +135,12 @@ export default function AppShell() {
                 if (firebaseDates.has(localData.date)) continue;
 
                 // IndexedDB에는 있지만 Firebase에는 없는 데이터 업로드
-                console.log(`⏫ Uploading ${localData.date} to Firebase...`);
                 try {
                   await syncToFirebase(dailyDataStrategy, {
                     tasks: localData.tasks || [],
                     timeBlockStates: localData.timeBlockStates || {},
                     updatedAt: localData.updatedAt || Date.now(),
                   }, localData.date);
-                  console.log(`✅ Uploaded ${localData.date} to Firebase`);
                 } catch (syncError) {
                   console.error(`❌ Failed to upload ${localData.date}:`, syncError);
                 }
@@ -161,11 +150,9 @@ export default function AppShell() {
               if (!firebaseData.gameState) {
                 const localGameState = await db.gameState.get('current');
                 if (localGameState) {
-                  console.log('⏫ Uploading GameState to Firebase...');
                   const { key, ...gameStateData } = localGameState;
                   try {
                     await syncToFirebase(gameStateStrategy, gameStateData);
-                    console.log('✅ Uploaded GameState to Firebase');
                   } catch (syncError) {
                     console.error('❌ Failed to upload GameState:', syncError);
                   }
@@ -175,8 +162,6 @@ export default function AppShell() {
               // 오늘 날짜 리로드
               const today = getLocalDate();
               await dailyDataStore.loadData(today, true); // 강제 리로드
-              console.log('✅ Initial sync complete');
-              console.log('👉 Firebase Console (users/user): https://console.firebase.google.com/project/test1234-edcb6/database/test1234-edcb6-default-rtdb/data/users/user');
             } catch (error) {
               console.error('Failed to fetch from Firebase:', error);
             }
@@ -184,11 +169,9 @@ export default function AppShell() {
             // 실시간 동기화 활성화
             const unsubscribe = enableFirebaseSync(
               async (date) => {
-                console.log('📥 Received DailyData from Firebase:', date);
                 await dailyDataStore.refresh();
               },
               async () => {
-                console.log('📥 Received GameState from Firebase');
                 await gameStateStore.refresh();
               }
             );
@@ -246,7 +229,6 @@ export default function AppShell() {
   const handleShopPurchaseSuccess = (_message: string, waifuMessage?: string) => {
     if (waifuMessage) {
       // TODO: 와이푸에게 메시지를 전달하는 로직 추가
-      console.log('와이푸 메시지:', waifuMessage);
     }
   };
 
@@ -257,7 +239,6 @@ export default function AppShell() {
       for (const task of tasks) {
         await dailyDataStore.addTask(task);
       }
-      console.log(`✅ ${tasks.length}개의 작업이 추가되었습니다`);
     } catch (error) {
       console.error('Failed to add tasks:', error);
       throw error;

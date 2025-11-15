@@ -1,6 +1,15 @@
 /**
- * WaifuState 저장소
- * 와이푸 상태(호감도, 포즈, 상호작용) 관리
+ * WaifuState Repository
+ *
+ * @role 와이푸 상태 데이터의 영속성 관리 (CRUD, 호감도, 상호작용 로직)
+ * @input WaifuState 객체, 작업 완료 이벤트, 클릭 이벤트
+ * @output WaifuState 객체, 기분/대사 문자열
+ * @external_dependencies
+ *   - IndexedDB (db.waifuState): 메인 저장소
+ *   - localStorage (STORAGE_KEYS.WAIFU_STATE): 백업 저장소
+ *   - @/shared/types/domain: WaifuState 타입
+ *   - @/shared/lib/utils: 저장소 유틸리티
+ *   - @/shared/lib/constants: 상수 (호감도 증가량 등)
  */
 
 import { db } from '../db/dexieClient';
@@ -14,6 +23,10 @@ import { STORAGE_KEYS, AFFECTION_PER_TASK } from '@/shared/lib/constants';
 
 /**
  * 초기 WaifuState 생성
+ *
+ * @returns {WaifuState} 기본값으로 초기화된 WaifuState 객체
+ * @throws 없음
+ * @sideEffects 없음 (순수 함수)
  */
 export function createInitialWaifuState(): WaifuState {
   return {
@@ -32,6 +45,13 @@ export function createInitialWaifuState(): WaifuState {
 
 /**
  * WaifuState 로드
+ *
+ * @returns {Promise<WaifuState>} IndexedDB 또는 localStorage에서 로드한 WaifuState, 없으면 초기 상태
+ * @throws 없음 (에러 시 초기 상태 반환)
+ * @sideEffects
+ *   - IndexedDB 읽기 (db.waifuState.get)
+ *   - localStorage 읽기 (STORAGE_KEYS.WAIFU_STATE)
+ *   - 데이터 없을 시 IndexedDB/localStorage에 초기 상태 저장
  */
 export async function loadWaifuState(): Promise<WaifuState> {
   try {
@@ -63,6 +83,14 @@ export async function loadWaifuState(): Promise<WaifuState> {
 
 /**
  * WaifuState 저장
+ *
+ * @param {WaifuState} waifuState - 저장할 WaifuState 객체
+ * @returns {Promise<void>}
+ * @throws {Error} IndexedDB 저장 실패 시
+ * @sideEffects
+ *   - IndexedDB에 저장 (db.waifuState.put)
+ *   - localStorage에 저장 (STORAGE_KEYS.WAIFU_STATE)
+ *   - 콘솔 로그 출력
  */
 export async function saveWaifuState(waifuState: WaifuState): Promise<void> {
   try {
@@ -75,7 +103,6 @@ export async function saveWaifuState(waifuState: WaifuState): Promise<void> {
     // 2. localStorage에도 저장
     saveToStorage(STORAGE_KEYS.WAIFU_STATE, waifuState);
 
-    console.log('✅ Waifu state saved');
   } catch (error) {
     console.error('Failed to save waifu state:', error);
     throw error;
@@ -84,6 +111,11 @@ export async function saveWaifuState(waifuState: WaifuState): Promise<void> {
 
 /**
  * WaifuState 리셋
+ *
+ * @returns {Promise<WaifuState>} 초기화된 WaifuState 객체
+ * @throws {Error} saveWaifuState 실패 시
+ * @sideEffects
+ *   - IndexedDB/localStorage에 초기 상태 저장
  */
 export async function resetWaifuState(): Promise<WaifuState> {
   const initialState = createInitialWaifuState();
@@ -97,6 +129,14 @@ export async function resetWaifuState(): Promise<WaifuState> {
 
 /**
  * 작업 완료 시 호감도 증가
+ *
+ * @returns {Promise<WaifuState>} 호감도가 증가한 WaifuState 객체
+ * @throws {Error} loadWaifuState 또는 saveWaifuState 실패 시
+ * @sideEffects
+ *   - 호감도 +AFFECTION_PER_TASK (최대 100)
+ *   - tasksCompletedToday +1
+ *   - lastInteraction 갱신
+ *   - IndexedDB/localStorage에 저장
  */
 export async function increaseAffectionFromTask(): Promise<WaifuState> {
   try {
@@ -116,6 +156,15 @@ export async function increaseAffectionFromTask(): Promise<WaifuState> {
 
 /**
  * 클릭 시 상호작용
+ *
+ * @returns {Promise<WaifuState>} 상호작용 카운터가 증가한 WaifuState 객체
+ * @throws {Error} loadWaifuState 또는 saveWaifuState 실패 시
+ * @sideEffects
+ *   - clickCount +1
+ *   - totalInteractions +1
+ *   - lastInteraction 갱신
+ *   - 10회 클릭마다 호감도 +1 (최대 100)
+ *   - IndexedDB/localStorage에 저장
  */
 export async function interactWithWaifu(): Promise<WaifuState> {
   try {
@@ -140,6 +189,13 @@ export async function interactWithWaifu(): Promise<WaifuState> {
 
 /**
  * 일일 초기화 (날짜가 변경되었을 때)
+ *
+ * @returns {Promise<WaifuState>} 일일 통계가 초기화된 WaifuState 객체
+ * @throws {Error} loadWaifuState 또는 saveWaifuState 실패 시
+ * @sideEffects
+ *   - tasksCompletedToday = 0
+ *   - clickCount = 0
+ *   - IndexedDB/localStorage에 저장
  */
 export async function resetDailyWaifuStats(): Promise<WaifuState> {
   try {
@@ -161,7 +217,12 @@ export async function resetDailyWaifuStats(): Promise<WaifuState> {
 // ============================================================================
 
 /**
- * 호감도에 따른 기분 가져오기
+ * 호감도에 따른 기분 이모지 가져오기
+ *
+ * @param {number} affection - 호감도 (0~100)
+ * @returns {string} 기분 이모지 (🥰, 😊, 🙂, 😐, 😠, 😡)
+ * @throws 없음
+ * @sideEffects 없음 (순수 함수)
  */
 export function getMoodFromAffection(affection: number): string {
   if (affection >= 85) return '🥰';
@@ -174,6 +235,12 @@ export function getMoodFromAffection(affection: number): string {
 
 /**
  * 호감도에 따른 대사 가져오기
+ *
+ * @param {number} affection - 호감도 (0~100)
+ * @param {number} _tasksCompleted - 완료한 작업 수 (현재 미사용)
+ * @returns {string} 호감도 구간에 따른 랜덤 대사
+ * @throws 없음
+ * @sideEffects 없음 (순수 함수, Math.random 사용)
  *
  * 호감도 구간:
  * - 0-20: 혐오, 적대

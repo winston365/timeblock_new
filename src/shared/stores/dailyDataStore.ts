@@ -1,6 +1,13 @@
 /**
  * DailyData Zustand Store
- * 일일 데이터 전역 상태 관리
+ *
+ * @role 일일 데이터(작업, 블록 상태)의 전역 상태 관리 및 동기화 중복 방지
+ * @input 날짜, 작업 CRUD 요청, 블록 상태 업데이트 요청
+ * @output 일일 데이터 상태, CRUD 함수, 로딩/에러 상태
+ * @external_dependencies
+ *   - zustand: 전역 상태 관리 라이브러리
+ *   - repositories: 작업, 블록, XP, 퀘스트, 와이푸 데이터 레포지토리
+ *   - utils: 날짜 및 XP 계산 유틸리티
  */
 
 import { create } from 'zustand';
@@ -40,6 +47,23 @@ interface DailyDataStore {
   reset: () => void;
 }
 
+/**
+ * 일일 데이터 Zustand 스토어
+ *
+ * @returns {DailyDataStore} 일일 데이터 상태 및 관리 함수
+ * @sideEffects
+ *   - localStorage/Firebase에 일일 데이터 저장
+ *   - 작업 완료 시 XP, 퀘스트, 와이푸 호감도 업데이트
+ *   - 블록 잠금 시 XP 차감
+ *   - 중복 로드 방지를 위한 내부 플래그 관리
+ *
+ * @example
+ * ```tsx
+ * const { dailyData, addTask, toggleTaskCompletion } = useDailyDataStore();
+ * await addTask({ id: '1', title: '작업', completed: false });
+ * await toggleTaskCompletion('1');
+ * ```
+ */
 export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
   // 초기 상태
   dailyData: null,
@@ -56,13 +80,11 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     if (!force) {
       // 이미 같은 날짜 데이터가 로드되어 있으면 스킵
       if (currentDate === targetDate && dailyData && !loading) {
-        console.log(`[DailyDataStore] Data already loaded for ${targetDate}, skipping`);
         return;
       }
 
       // 이미 로딩 중이면 스킵
       if (loading) {
-        console.log(`[DailyDataStore] Already loading, skipping`);
         return;
       }
     }
@@ -70,12 +92,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     try {
       set({ loading: true, error: null, currentDate: targetDate });
       const data = await loadDailyData(targetDate);
-      console.log(`[DailyDataStore] ✅ Loaded data for ${targetDate}${force ? ' (force)' : ''}:`, {
-        tasksCount: data.tasks?.length || 0,
-        tasks: data.tasks,
-        timeBlockStates: data.timeBlockStates,
-        updatedAt: data.updatedAt,
-      });
       set({ dailyData: data, loading: false });
     } catch (err) {
       console.error('[DailyDataStore] ❌ Failed to load daily data:', err);
@@ -264,7 +280,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
   // 수동 갱신 (강제 리로드)
   refresh: async () => {
     const { currentDate, loadData } = get();
-    console.log(`[DailyDataStore] 🔄 Refreshing data for ${currentDate}`);
     await loadData(currentDate, true); // force=true
   },
 

@@ -1,6 +1,12 @@
 /**
- * BulkAddModal - 대량 할 일 추가 모달
- * F1 단축키로 열기
+ * BulkAddModal
+ *
+ * @role 여러 작업을 한 번에 추가할 수 있는 대량 추가 모달 컴포넌트 (F1 단축키로 열기)
+ * @input isOpen (boolean), onClose (function), onAddTasks (function)
+ * @output 텍스트 입력 영역, 기본 설정 옵션, 파싱된 작업 미리보기, 추가 버튼을 포함한 모달 UI
+ * @external_dependencies
+ *   - TIME_BLOCKS, RESISTANCE_MULTIPLIERS: 도메인 타입 및 상수
+ *   - bulkAdd.css: 스타일시트
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -22,6 +28,17 @@ interface ParsedTask {
   timeBlock?: TimeBlockId;
 }
 
+/**
+ * 대량 할 일 추가 모달 컴포넌트
+ * 한 줄에 하나씩 작업을 입력하면 자동으로 파싱하여 여러 작업을 한 번에 추가할 수 있습니다.
+ *
+ * @param {BulkAddModalProps} props - isOpen, onClose, onAddTasks를 포함하는 props
+ * @returns {JSX.Element | null} 모달 UI (isOpen이 false면 null)
+ * @sideEffects
+ *   - ESC 키로 모달 닫기
+ *   - Ctrl/Cmd + Enter로 작업 추가
+ *   - 입력값 변경 시 실시간 미리보기 업데이트
+ */
 export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddModalProps) {
   const [input, setInput] = useState('');
   const [defaultTimeBlock, setDefaultTimeBlock] = useState<TimeBlockId>(null);

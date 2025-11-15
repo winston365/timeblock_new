@@ -1,6 +1,11 @@
 /**
- * src/features/schedule/TaskModal.tsx
- * 작업 추가/수정 모달
+ * TaskModal
+ *
+ * @role 작업 추가/수정을 위한 모달 폼 컴포넌트. 제목, 메모, 예상 시간, 난이도 입력 제공
+ * @input task (수정할 작업 또는 null), initialBlockId (초기 블록 ID), onSave (저장 핸들러), onClose (닫기 핸들러)
+ * @output 작업 입력 폼 모달
+ * @external_dependencies
+ *   - utils: 조정된 시간 계산 함수
  */
 
 import { useState, useEffect } from 'react';
@@ -14,6 +19,15 @@ interface TaskModalProps {
   onClose: () => void;
 }
 
+/**
+ * 작업 추가/수정 모달
+ *
+ * @param {TaskModalProps} props - 컴포넌트 props
+ * @returns {JSX.Element} 모달 폼
+ * @sideEffects
+ *   - 작업 저장 시 onSave 콜백 호출
+ *   - ESC 키로 모달 닫기
+ */
 export default function TaskModal({ task, initialBlockId, onSave, onClose }: TaskModalProps) {
   const [text, setText] = useState('');
   const [memo, setMemo] = useState('');

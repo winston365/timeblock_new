@@ -1,6 +1,14 @@
 /**
- * 데이터 타입별 동기화 전략 정의
- * R8: 중복 제거 - 각 데이터 타입의 전략을 한 곳에서 관리
+ * Synchronization Strategies
+ *
+ * @role 각 데이터 타입별 동기화 전략을 정의합니다.
+ *       DailyData, GameState, ChatHistory, TokenUsage의 충돌 해결 및 로그 메시지를 설정합니다.
+ * @input 없음 (전략 상수 정의 파일)
+ * @output SyncStrategy<T> 객체들 (dailyDataStrategy, gameStateStrategy, chatHistoryStrategy, tokenUsageStrategy)
+ * @external_dependencies
+ *   - ./syncCore: SyncStrategy 타입 정의
+ *   - ./conflictResolver: mergeGameState 충돌 해결 함수
+ *   - @/shared/types/domain: 도메인 타입 정의
  */
 
 import type { SyncStrategy } from './syncCore';

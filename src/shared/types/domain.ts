@@ -1,16 +1,30 @@
 /**
  * 도메인 타입 정의
- * 기존 앱의 데이터 구조를 TypeScript로 재정의
+ *
+ * @role 타임블록 앱의 핵심 도메인 타입 정의 (Task, GameState, Template, Waifu 등)
+ * @input 없음 (타입 정의 파일)
+ * @output TypeScript 타입 및 인터페이스
+ * @dependencies 없음
  */
 
 // ============================================================================
 // Task 관련 타입
 // ============================================================================
 
+/**
+ * 작업의 심리적 저항도 (난이도)
+ */
 export type Resistance = 'low' | 'medium' | 'high';
 
+/**
+ * 타임블록 ID (5시간 단위)
+ */
 export type TimeBlockId = '5-8' | '8-11' | '11-14' | '14-17' | '17-19' | '19-24' | null;
 
+/**
+ * 작업 (Task) 타입
+ * 사용자가 수행할 개별 작업을 나타냄
+ */
 export interface Task {
   id: string; // 고유 ID (타임스탬프 기반)
   text: string; // 작업 제목
@@ -26,18 +40,27 @@ export interface Task {
   fromAutoTemplate?: boolean; // 자동생성 템플릿 여부
 }
 
+/**
+ * 타임블록 상태 (잠금, 완벽 완료, 실패)
+ */
 export interface TimeBlockState {
   isLocked: boolean; // 블록 잠금 여부
   isPerfect: boolean; // 완벽 완료 여부
   isFailed: boolean; // 실패 여부
 }
 
+/**
+ * 블록 ID별 상태 매핑
+ */
 export type TimeBlockStates = Record<string, TimeBlockState>;
 
 // ============================================================================
 // Daily Data 타입
 // ============================================================================
 
+/**
+ * 일일 데이터 (작업 목록, 블록 상태)
+ */
 export interface DailyData {
   tasks: Task[]; // 작업 목록
   timeBlockStates: TimeBlockStates; // 블록 상태
@@ -48,6 +71,9 @@ export interface DailyData {
 // Game State 타입
 // ============================================================================
 
+/**
+ * 일일 퀘스트 타입
+ */
 export interface Quest {
   id: string;
   type: 'complete_tasks' | 'earn_xp' | 'lock_blocks' | 'perfect_blocks';
@@ -59,6 +85,9 @@ export interface Quest {
   reward: number; // 보상 XP
 }
 
+/**
+ * 게임 상태 (레벨, XP, 퀘스트 등)
+ */
 export interface GameState {
   level: number; // 플레이어 레벨
   totalXP: number; // 총 누적 XP
@@ -78,6 +107,9 @@ export interface GameState {
 // Template & Shop 타입
 // ============================================================================
 
+/**
+ * 작업 템플릿 (반복 작업용)
+ */
 export interface Template {
   id: string;
   name: string;
@@ -89,6 +121,9 @@ export interface Template {
   autoGenerate: boolean; // 매일 자동 생성 여부
 }
 
+/**
+ * 상점 아이템 (XP로 구매 가능한 아이템)
+ */
 export interface ShopItem {
   id: string;
   name: string;
@@ -100,6 +135,9 @@ export interface ShopItem {
 // Waifu 타입
 // ============================================================================
 
+/**
+ * 와이푸 상태 (호감도, 포즈, 상호작용 기록)
+ */
 export interface WaifuState {
   affection: number; // 호감도 (0-100)
   currentPose: string; // 현재 포즈
@@ -117,6 +155,9 @@ export interface WaifuState {
 // Energy 타입
 // ============================================================================
 
+/**
+ * 에너지 레벨 기록 (시간대별 에너지 수준)
+ */
 export interface EnergyLevel {
   timestamp: number; // 기록 시각 (밀리초)
   hour: number; // 시간 (0-23)
@@ -129,16 +170,28 @@ export interface EnergyLevel {
 // Gemini Chat 타입
 // ============================================================================
 
+/**
+ * 채팅 메시지 역할 (사용자 또는 AI 모델)
+ */
 export type ChatRole = 'user' | 'model';
 
+/**
+ * 채팅 카테고리 (작업 조언, 동기부여, 질답, 분석)
+ */
 export type ChatCategory = 'task-advice' | 'motivation' | 'qa' | 'analysis';
 
+/**
+ * API 토큰 사용량
+ */
 export interface TokenUsage {
   promptTokens: number;
   candidatesTokens: number;
   totalTokens: number;
 }
 
+/**
+ * Gemini AI 채팅 메시지
+ */
 export interface GeminiChatMessage {
   id: string;
   role: ChatRole;
@@ -148,12 +201,18 @@ export interface GeminiChatMessage {
   tokenUsage?: TokenUsage;
 }
 
+/**
+ * 일일 채팅 히스토리
+ */
 export interface ChatHistory {
   date: string; // YYYY-MM-DD
   messages: GeminiChatMessage[];
   updatedAt: number; // 타임스탬프 (밀리초)
 }
 
+/**
+ * 일일 토큰 사용량 통계
+ */
 export interface DailyTokenUsage {
   date: string; // YYYY-MM-DD
   promptTokens: number; // 입력 토큰 합계
@@ -167,6 +226,9 @@ export interface DailyTokenUsage {
 // Settings 타입
 // ============================================================================
 
+/**
+ * 앱 설정 (API 키, Firebase 설정, 자동 메시지 등)
+ */
 export interface Settings {
   geminiApiKey: string;
   firebaseConfig?: {
@@ -211,6 +273,9 @@ export const RESISTANCE_LABELS: Record<Resistance, string> = {
 // Helper Types
 // ============================================================================
 
+/**
+ * 타임블록 정보 (블록 + 작업 + 상태 통합)
+ */
 export interface TimeBlockInfo {
   id: string;
   label: string;

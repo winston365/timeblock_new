@@ -1,6 +1,13 @@
 /**
- * Template 저장소
- * 템플릿 CRUD 및 자동 생성 관리
+ * Template Repository
+ *
+ * @role 작업 템플릿 데이터 관리 및 자동 생성 작업 처리
+ * @input Template 객체, 템플릿 ID, Task 생성 요청
+ * @output Template 배열, Template 객체, Task 객체
+ * @external_dependencies
+ *   - IndexedDB (db.templates): 메인 저장소
+ *   - localStorage (STORAGE_KEYS.TEMPLATES): 백업 저장소
+ *   - @/shared/types/domain: Template, Task, TimeBlockId, Resistance 타입
  */
 
 import { db } from '../db/dexieClient';
@@ -14,6 +21,12 @@ import { STORAGE_KEYS } from '@/shared/lib/constants';
 
 /**
  * 모든 템플릿 로드
+ *
+ * @returns {Promise<Template[]>} 템플릿 배열
+ * @throws 없음
+ * @sideEffects
+ *   - IndexedDB에서 데이터 조회
+ *   - localStorage 폴백 시 IndexedDB에 데이터 복원
  */
 export async function loadTemplates(): Promise<Template[]> {
   try {
@@ -42,6 +55,19 @@ export async function loadTemplates(): Promise<Template[]> {
 
 /**
  * 템플릿 생성
+ *
+ * @param {string} name - 템플릿 이름
+ * @param {string} text - 작업 내용
+ * @param {string} memo - 메모
+ * @param {number} baseDuration - 기본 소요 시간 (분)
+ * @param {Resistance} resistance - 저항도 (low, medium, high)
+ * @param {TimeBlockId} timeBlock - 타임블록 ID
+ * @param {boolean} autoGenerate - 자동 생성 여부
+ * @returns {Promise<Template>} 생성된 템플릿
+ * @throws {Error} IndexedDB 또는 localStorage 저장 실패 시
+ * @sideEffects
+ *   - IndexedDB에 템플릿 저장
+ *   - localStorage에 백업
  */
 export async function createTemplate(
   name: string,
@@ -71,7 +97,6 @@ export async function createTemplate(
     const templates = await loadTemplates();
     saveToStorage(STORAGE_KEYS.TEMPLATES, templates);
 
-    console.log('✅ Template created:', template.name);
     return template;
   } catch (error) {
     console.error('Failed to create template:', error);
@@ -81,6 +106,14 @@ export async function createTemplate(
 
 /**
  * 템플릿 업데이트
+ *
+ * @param {string} id - 템플릿 ID
+ * @param {Partial<Omit<Template, 'id'>>} updates - 업데이트할 필드
+ * @returns {Promise<Template>} 업데이트된 템플릿
+ * @throws {Error} 템플릿이 존재하지 않거나 저장 실패 시
+ * @sideEffects
+ *   - IndexedDB에서 템플릿 조회 및 업데이트
+ *   - localStorage에 백업
  */
 export async function updateTemplate(
   id: string,
@@ -102,7 +135,6 @@ export async function updateTemplate(
     const templates = await loadTemplates();
     saveToStorage(STORAGE_KEYS.TEMPLATES, templates);
 
-    console.log('✅ Template updated:', updatedTemplate.name);
     return updatedTemplate;
   } catch (error) {
     console.error('Failed to update template:', error);
@@ -112,6 +144,13 @@ export async function updateTemplate(
 
 /**
  * 템플릿 삭제
+ *
+ * @param {string} id - 삭제할 템플릿 ID
+ * @returns {Promise<void>}
+ * @throws {Error} IndexedDB 삭제 실패 시
+ * @sideEffects
+ *   - IndexedDB에서 템플릿 삭제
+ *   - localStorage에 변경사항 반영
  */
 export async function deleteTemplate(id: string): Promise<void> {
   try {
@@ -121,7 +160,6 @@ export async function deleteTemplate(id: string): Promise<void> {
     const templates = await loadTemplates();
     saveToStorage(STORAGE_KEYS.TEMPLATES, templates);
 
-    console.log('✅ Template deleted:', id);
   } catch (error) {
     console.error('Failed to delete template:', error);
     throw error;
@@ -130,6 +168,12 @@ export async function deleteTemplate(id: string): Promise<void> {
 
 /**
  * 특정 템플릿 조회
+ *
+ * @param {string} id - 템플릿 ID
+ * @returns {Promise<Template | undefined>} 템플릿 객체 또는 undefined
+ * @throws 없음
+ * @sideEffects
+ *   - IndexedDB에서 데이터 조회
  */
 export async function getTemplate(id: string): Promise<Template | undefined> {
   try {
@@ -146,6 +190,11 @@ export async function getTemplate(id: string): Promise<Template | undefined> {
 
 /**
  * 템플릿에서 Task 생성
+ *
+ * @param {Template} template - 템플릿 객체
+ * @returns {Task} 생성된 작업 객체
+ * @throws 없음
+ * @sideEffects 없음 (순수 함수)
  */
 export function createTaskFromTemplate(template: Template): Task {
   const now = new Date().toISOString();
@@ -169,6 +218,11 @@ export function createTaskFromTemplate(template: Template): Task {
 
 /**
  * 자동 생성 템플릿에서 Task 생성
+ *
+ * @param {Template} template - 자동 생성 템플릿 객체
+ * @returns {Task} fromAutoTemplate 플래그가 true인 작업 객체
+ * @throws 없음
+ * @sideEffects 없음 (순수 함수)
  */
 export function createTaskFromAutoTemplate(template: Template): Task {
   const task = createTaskFromTemplate(template);
@@ -194,6 +248,11 @@ function getResistanceMultiplier(resistance: Resistance): number {
 
 /**
  * 자동 생성 템플릿 조회
+ *
+ * @returns {Promise<Template[]>} autoGenerate가 true인 템플릿 배열
+ * @throws 없음
+ * @sideEffects
+ *   - IndexedDB에서 필터링된 데이터 조회
  */
 export async function getAutoGenerateTemplates(): Promise<Template[]> {
   try {
@@ -206,13 +265,17 @@ export async function getAutoGenerateTemplates(): Promise<Template[]> {
 
 /**
  * 자동 생성 템플릿에서 작업 생성 (매일 00시 실행)
+ *
+ * @returns {Promise<Task[]>} 생성된 작업 배열
+ * @throws 없음
+ * @sideEffects
+ *   - IndexedDB에서 자동 생성 템플릿 조회
  */
 export async function generateTasksFromAutoTemplates(): Promise<Task[]> {
   try {
     const autoTemplates = await getAutoGenerateTemplates();
     const tasks = autoTemplates.map(template => createTaskFromAutoTemplate(template));
 
-    console.log(`✅ Generated ${tasks.length} tasks from auto-templates`);
     return tasks;
   } catch (error) {
     console.error('Failed to generate tasks from auto-templates:', error);

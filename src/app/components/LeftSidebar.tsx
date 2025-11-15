@@ -1,5 +1,10 @@
 /**
  * LeftSidebar - 왼쪽 사이드바 (탭 네비게이션)
+ *
+ * @role 왼쪽 사이드바에서 오늘, 통계, 에너지, 완료, 인박스 탭 네비게이션 제공
+ * @input activeTab: 현재 활성화된 탭, onTabChange: 탭 변경 핸들러
+ * @output 탭 네비게이션 UI 및 각 탭 컨텐츠
+ * @dependencies InboxTab, CompletedTab, StatsTab, EnergyTab 컴포넌트
  */
 
 import InboxTab from '@/features/tasks/InboxTab';
@@ -12,6 +17,11 @@ interface LeftSidebarProps {
   onTabChange: (tab: 'today' | 'stats' | 'energy' | 'completed' | 'inbox') => void;
 }
 
+/**
+ * 왼쪽 사이드바 컴포넌트 - 주요 탭 네비게이션 제공
+ * @param props - LeftSidebarProps
+ * @returns 왼쪽 사이드바 UI
+ */
 export default function LeftSidebar({ activeTab, onTabChange }: LeftSidebarProps) {
   const tabs = [
     { id: 'today' as const, icon: '🎯', label: '오늘' },

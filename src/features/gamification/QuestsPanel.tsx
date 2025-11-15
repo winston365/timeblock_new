@@ -1,12 +1,22 @@
 /**
- * src/features/gamification/QuestsPanel.tsx
- * 일일 퀘스트 패널
+ * QuestsPanel
+ *
+ * @role 일일 퀘스트 목록과 진행 상황을 표시하는 패널 컴포넌트
+ * @input 없음 (useQuests 훅으로 데이터 로드)
+ * @output 퀘스트 목록, 진행률 바, 완료 배너
+ * @external_dependencies
+ *   - useQuests: 퀘스트 데이터 훅
  */
 
 import { useQuests } from '@/shared/hooks';
 import type { Quest } from '@/shared/types/domain';
 import './gamification.css';
 
+/**
+ * 일일 퀘스트 패널
+ *
+ * @returns {JSX.Element} 퀘스트 패널 UI
+ */
 export default function QuestsPanel() {
   const { quests, loading } = useQuests();
 

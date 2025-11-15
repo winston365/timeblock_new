@@ -1,12 +1,24 @@
 /**
- * src/features/energy/EnergyTab.tsx
- * 에너지 탭 - 에너지 수준 관리
+ * EnergyTab
+ *
+ * @role 에너지 수준 입력 및 통계 표시 탭 컴포넌트. 시간대별 평균 에너지 분석 제공
+ * @input 없음 (useEnergyState 훅으로 데이터 로드)
+ * @output 에너지 입력 폼, 통계 카드, 시간대별 평균, 오늘 기록 목록
+ * @external_dependencies
+ *   - useEnergyState: 에너지 데이터 및 CRUD 훅
  */
 
 import { useState } from 'react';
 import { useEnergyState } from '@/shared/hooks';
 import './energy.css';
 
+/**
+ * 에너지 탭
+ *
+ * @returns {JSX.Element} 에너지 탭 UI
+ * @sideEffects
+ *   - 에너지 레벨 추가/삭제 시 데이터 저장
+ */
 const ACTIVITY_OPTIONS = [
   { value: '', label: '선택 안함' },
   { value: '💼 업무', label: '💼 업무' },
@@ -20,6 +32,13 @@ const ACTIVITY_OPTIONS = [
   { value: '😴 수면', label: '😴 수면' },
 ];
 
+/**
+ * 에너지 탭 메인 컴포넌트
+ *
+ * @returns {JSX.Element} 에너지 탭 UI
+ * @sideEffects
+ *   - 에너지 레벨 추가/삭제 시 저장소 업데이트
+ */
 export default function EnergyTab() {
   const {
     energyLevels,

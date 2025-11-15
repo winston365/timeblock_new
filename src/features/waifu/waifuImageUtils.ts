@@ -1,7 +1,12 @@
 /**
- * waifuImageUtils - 와이푸 이미지 관리 유틸리티
- * 호감도에 따라 적절한 이미지를 반환합니다.
- * 4번 클릭 또는 10분마다 같은 호감도 범위 내에서 랜덤 이미지로 변경됩니다.
+ * waifuImageUtils
+ *
+ * @role 호감도 값에 따라 적절한 와이푸 이미지를 선택하고 관리하는 유틸리티 모듈
+ * @input 없음 (유틸리티 함수들만 export)
+ * @output 호감도별 이미지 경로, 색상, 레이블 등을 반환하는 함수들
+ * @external_dependencies
+ *   - Image API: 이미지 로드 가능 여부 확인
+ *   - /assets/waifu/poses/: 호감도별 이미지 파일 경로
  */
 
 /**

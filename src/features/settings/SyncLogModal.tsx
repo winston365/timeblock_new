@@ -1,5 +1,12 @@
 /**
- * 전체 로그 모달 (동기화 로그 + Gemini 토큰 사용량)
+ * SyncLogModal
+ *
+ * @role 동기화 로그와 Gemini 토큰 사용량을 탭으로 구분하여 표시하는 모달 컴포넌트
+ * @input isOpen (모달 표시 여부), onClose (모달 닫기 핸들러)
+ * @output 동기화 로그 목록과 Gemini 토큰 사용량 통계를 탭으로 표시하는 모달 UI
+ * @external_dependencies
+ *   - syncLogger: 동기화 로그 관리 및 구독
+ *   - chatHistoryRepository: 토큰 사용량 데이터 로드
  */
 
 import { useState, useEffect } from 'react';
@@ -22,7 +29,11 @@ const PRICE_PER_MILLION_INPUT = 1.25; // US$ 1.25 per 1M input tokens
 const PRICE_PER_MILLION_OUTPUT = 10.0; // US$ 10.00 per 1M output tokens
 
 /**
- * 토큰 비용 계산 (USD)
+ * 토큰 비용 계산
+ *
+ * @param {number} promptTokens - 입력 토큰 수
+ * @param {number} candidatesTokens - 출력 토큰 수
+ * @returns {{ inputCost: number; outputCost: number; totalCost: number }} 입력/출력/총 비용 (USD)
  */
 function calculateTokenCost(promptTokens: number, candidatesTokens: number): { inputCost: number; outputCost: number; totalCost: number } {
   const inputCost = (promptTokens / 1_000_000) * PRICE_PER_MILLION_INPUT;
@@ -32,7 +43,10 @@ function calculateTokenCost(promptTokens: number, candidatesTokens: number): { i
 }
 
 /**
- * 비용을 포맷팅 (USD)
+ * 비용 포맷팅
+ *
+ * @param {number} cost - USD 비용
+ * @returns {string} 포맷팅된 비용 문자열
  */
 function formatCost(cost: number): string {
   if (cost < 0.01) {
@@ -46,6 +60,16 @@ interface SyncLogModalProps {
   onClose: () => void;
 }
 
+/**
+ * 동기화 로그 및 Gemini 토큰 사용량 모달
+ *
+ * @param {SyncLogModalProps} props - 컴포넌트 props
+ * @returns {JSX.Element | null} 모달 컴포넌트 또는 null
+ * @sideEffects
+ *   - 동기화 로그 실시간 구독
+ *   - 토큰 사용량 로드
+ *   - 로그 삭제 시 로컬 스토리지 업데이트
+ */
 export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('sync');
   const [logs, setLogs] = useState<SyncLogEntry[]>([]);

@@ -1,6 +1,12 @@
 /**
  * useEnergyState - 에너지 관리 훅
- * 에너지 수준 기록, 조회, 통계 계산
+ *
+ * @role 에너지 수준 기록, 조회, 시간대별/일별 통계 계산
+ * @input 에너지 레벨, 시간, 활동 컨텍스트
+ * @output 에너지 레벨 목록, 통계, 추가/삭제 함수
+ * @external_dependencies
+ *   - react: useState, useEffect, useCallback hooks
+ *   - localStorage: 에너지 데이터 영구 저장
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -98,6 +104,20 @@ function calculateOverallAverage(): number {
   }
 }
 
+/**
+ * 에너지 상태 관리 훅
+ *
+ * @returns {object} 에너지 레벨 및 통계
+ * @returns {EnergyLevel[]} energyLevels - 오늘의 에너지 레벨 기록 목록
+ * @returns {boolean} loading - 로딩 상태
+ * @returns {number} currentEnergy - 현재 에너지 레벨
+ * @returns {number} todayAverage - 오늘 평균 에너지
+ * @returns {number} overallAverage - 전체 기간 평균 에너지
+ * @returns {Record<string, number>} timeBlockAverages - 시간대별 평균 에너지
+ * @returns {(energy: number, context?: string, activity?: string) => void} addEnergyLevel - 에너지 레벨 추가
+ * @returns {(timestamp: number) => void} deleteEnergyLevel - 에너지 레벨 삭제
+ * @sideEffects localStorage에 에너지 데이터 저장
+ */
 export function useEnergyState() {
   const [energyLevels, setEnergyLevels] = useState<EnergyLevel[]>([]);
   const [loading, setLoading] = useState(true);

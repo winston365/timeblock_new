@@ -1,5 +1,12 @@
 /**
- * XPToast - XP 획득 시 축하 메시지 표시
+ * XPToast
+ *
+ * @role XP 획득 시 사용자에게 축하 메시지와 획득한 XP를 표시하는 토스트 알림 컴포넌트
+ * @input xp (number), message (string, optional), onClose (function)
+ * @output XP 아이콘, 메시지, 획득 XP를 표시하는 토스트 UI (3초 후 자동 사라짐)
+ * @external_dependencies
+ *   - React hooks (useState, useEffect): 상태 관리 및 타이머 관리
+ *   - XPToast.css: 스타일시트 및 애니메이션
  */
 
 import { useEffect, useState } from 'react';
@@ -11,6 +18,15 @@ interface XPToastProps {
   onClose: () => void;
 }
 
+/**
+ * XP 획득 시 축하 메시지를 표시하는 토스트 컴포넌트
+ *
+ * @param {XPToastProps} props - xp, message, onClose를 포함하는 props
+ * @returns {JSX.Element} 토스트 알림 UI
+ * @sideEffects
+ *   - 3초 후 자동으로 사라짐
+ *   - 타이머를 사용하여 onClose 콜백 호출
+ */
 export default function XPToast({ xp, message, onClose }: XPToastProps) {
   const [isVisible, setIsVisible] = useState(true);
 

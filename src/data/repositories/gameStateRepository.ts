@@ -1,6 +1,15 @@
 /**
- * GameState 저장소
- * 게임 상태(XP, 레벨, 퀘스트 등) 관리
+ * GameState Repository
+ *
+ * @role 게임화 시스템 데이터 관리 (XP, 레벨, 퀘스트, 연속 출석 등)
+ * @input GameState 객체, XP 값, Quest 타입, Task 객체
+ * @output GameState 객체, Quest 배열, XP 히스토리
+ * @external_dependencies
+ *   - IndexedDB (db.gameState): 메인 저장소
+ *   - localStorage (STORAGE_KEYS.GAME_STATE): 백업 저장소
+ *   - Firebase: 실시간 동기화 (syncToFirebase)
+ *   - @/shared/types/domain: GameState, Quest, Task 타입
+ *   - @/shared/utils/gamification: 퀘스트 생성 및 보상 계산 로직
  */
 
 import { db } from '../db/dexieClient';
@@ -19,6 +28,11 @@ import { addSyncLog } from '@/shared/services/syncLogger';
 
 /**
  * 초기 GameState 생성
+ *
+ * @returns {GameState} 기본값으로 초기화된 게임 상태
+ * @throws 없음
+ * @sideEffects
+ *   - generateDailyQuests 호출하여 초기 퀘스트 생성
  */
 export function createInitialGameState(): GameState {
   return {
@@ -39,6 +53,13 @@ export function createInitialGameState(): GameState {
 
 /**
  * GameState 로드
+ *
+ * @returns {Promise<GameState>} 게임 상태 객체 (없으면 초기값)
+ * @throws 없음
+ * @sideEffects
+ *   - IndexedDB에서 데이터 조회
+ *   - localStorage 폴백 시 IndexedDB에 데이터 복원
+ *   - 필수 필드 누락 시 초기화 및 저장
  */
 export async function loadGameState(): Promise<GameState> {
   try {
@@ -109,6 +130,15 @@ export async function loadGameState(): Promise<GameState> {
 
 /**
  * GameState 저장
+ *
+ * @param {GameState} gameState - 저장할 게임 상태 객체
+ * @returns {Promise<void>}
+ * @throws {Error} IndexedDB 또는 localStorage 저장 실패 시
+ * @sideEffects
+ *   - IndexedDB에 데이터 저장
+ *   - localStorage에 백업
+ *   - Firebase에 비동기 동기화
+ *   - syncLogger에 로그 기록
  */
 export async function saveGameState(gameState: GameState): Promise<void> {
   try {
@@ -126,7 +156,6 @@ export async function saveGameState(gameState: GameState): Promise<void> {
       xp: gameState.totalXP,
       dailyXP: gameState.dailyXP
     });
-    console.log(`✅ Game state saved (Level ${gameState.level}, XP ${gameState.totalXP})`);
 
     // 3. Firebase에 동기화 (비동기, 실패해도 로컬은 성공)
     if (isFirebaseInitialized()) {
@@ -141,21 +170,23 @@ export async function saveGameState(gameState: GameState): Promise<void> {
   }
 }
 
-/**
- * GameState 리셋
- */
-export async function resetGameState(): Promise<GameState> {
-  const initialState = createInitialGameState();
-  await saveGameState(initialState);
-  return initialState;
-}
-
 // ============================================================================
 // XP 관리
 // ============================================================================
 
 /**
  * XP 추가
+ *
+ * @param {number} amount - 추가할 XP 양
+ * @param {string} [blockId] - 블록 ID (블록별 XP 기록용, 선택)
+ * @returns {Promise<GameState>} 업데이트된 게임 상태
+ * @throws {Error} 로드 또는 저장 실패 시
+ * @sideEffects
+ *   - totalXP, dailyXP, availableXP 증가
+ *   - 레벨 재계산
+ *   - 블록별 XP 기록
+ *   - XP 토스트 표시 (브라우저 환경에서)
+ *   - saveGameState 호출
  */
 export async function addXP(amount: number, blockId?: string): Promise<GameState> {
   try {
@@ -190,6 +221,13 @@ export async function addXP(amount: number, blockId?: string): Promise<GameState
 
 /**
  * XP 소비
+ *
+ * @param {number} amount - 소비할 XP 양
+ * @returns {Promise<GameState>} 업데이트된 게임 상태
+ * @throws {Error} XP 부족 또는 저장 실패 시
+ * @sideEffects
+ *   - availableXP 감소
+ *   - saveGameState 호출
  */
 export async function spendXP(amount: number): Promise<GameState> {
   try {
@@ -211,6 +249,17 @@ export async function spendXP(amount: number): Promise<GameState> {
 
 /**
  * 일일 초기화 (날짜가 변경되었을 때)
+ *
+ * @returns {Promise<GameState>} 초기화된 게임 상태
+ * @throws {Error} 로드 또는 저장 실패 시
+ * @sideEffects
+ *   - XP 히스토리에 어제 데이터 추가
+ *   - dailyXP, timeBlockXP 초기화
+ *   - 퀘스트 보너스 플래그 리셋
+ *   - 연속 출석일 계산 및 업데이트
+ *   - 새로운 일일 퀘스트 생성
+ *   - 자동 생성 템플릿에서 작업 생성
+ *   - saveGameState 호출
  */
 export async function initializeNewDay(): Promise<GameState> {
   try {
@@ -315,6 +364,7 @@ async function generateTasksFromAutoTemplates(): Promise<void> {
 
 /**
  * 일일 퀘스트 생성 (동적 난이도)
+ * 내부 헬퍼 함수
  */
 function generateDailyQuests(): Quest[] {
   // 동적으로 목표값 생성
@@ -375,6 +425,15 @@ function generateDailyQuests(): Quest[] {
 
 /**
  * 퀘스트 진행도 업데이트
+ *
+ * @param {Quest['type']} questType - 퀘스트 타입
+ * @param {number} [amount=1] - 진행도 증가량
+ * @returns {Promise<GameState>} 업데이트된 게임 상태
+ * @throws {Error} 로드 또는 저장 실패 시
+ * @sideEffects
+ *   - 해당 타입 퀘스트의 진행도 증가
+ *   - 목표 달성 시 퀘스트 완료 처리 및 보상 XP 지급
+ *   - saveGameState 호출
  */
 export async function updateQuestProgress(questType: Quest['type'], amount: number = 1): Promise<GameState> {
   try {
@@ -401,6 +460,13 @@ export async function updateQuestProgress(questType: Quest['type'], amount: numb
 
 /**
  * 퀘스트 보너스 클레임
+ *
+ * @returns {Promise<GameState>} 업데이트된 게임 상태
+ * @throws {Error} 이미 클레임했거나 완료된 퀘스트가 없거나 저장 실패 시
+ * @sideEffects
+ *   - 모든 퀘스트 완료 시 보너스 XP 지급 (+100)
+ *   - questBonusClaimed 플래그 설정
+ *   - saveGameState 호출
  */
 export async function claimQuestBonus(): Promise<GameState> {
   try {
@@ -437,6 +503,13 @@ export async function claimQuestBonus(): Promise<GameState> {
 
 /**
  * 완료 작업 히스토리에 추가
+ *
+ * @param {Task} task - 완료된 작업 객체
+ * @returns {Promise<void>}
+ * @throws {Error} 로드 또는 저장 실패 시
+ * @sideEffects
+ *   - completedTasksHistory 배열에 작업 추가 (최근 50개 유지)
+ *   - saveGameState 호출
  */
 export async function addToCompletedHistory(task: Task): Promise<void> {
   try {
@@ -463,6 +536,12 @@ export async function addToCompletedHistory(task: Task): Promise<void> {
 
 /**
  * XP 히스토리 가져오기
+ *
+ * @param {number} [days=7] - 조회할 일수
+ * @returns {Promise<Array<{ date: string; xp: number }>>} 날짜별 XP 배열
+ * @throws 없음
+ * @sideEffects
+ *   - loadGameState 호출
  */
 export async function getXPHistory(days: number = 7): Promise<Array<{ date: string; xp: number }>> {
   try {
@@ -476,6 +555,12 @@ export async function getXPHistory(days: number = 7): Promise<Array<{ date: stri
 
 /**
  * 블록별 XP 히스토리 가져오기
+ *
+ * @param {number} [days=5] - 조회할 일수
+ * @returns {Promise<Array<{ date: string; blocks: Record<string, number> }>>} 날짜별 블록 XP 배열
+ * @throws 없음
+ * @sideEffects
+ *   - loadGameState 호출
  */
 export async function getTimeBlockXPHistory(days: number = 5): Promise<Array<{ date: string; blocks: Record<string, number> }>> {
   try {

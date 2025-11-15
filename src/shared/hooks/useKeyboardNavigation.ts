@@ -1,6 +1,11 @@
 /**
  * useKeyboardNavigation - 키보드 네비게이션 훅
- * WCAG 2.1 AAA 준수를 위한 전역 키보드 단축키 관리
+ *
+ * @role WCAG 2.1 AAA 준수를 위한 전역 키보드 단축키 및 포커스 관리
+ * @input 단축키 설정, 활성화 상태, 포커스 대상 셀렉터
+ * @output 등록된 단축키 목록, 화살표 키 네비게이션, 탭 네비게이션
+ * @external_dependencies
+ *   - react: useEffect, useCallback, useState hooks
  */
 
 import { useEffect, useCallback } from 'react';
@@ -23,6 +28,12 @@ interface UseKeyboardNavigationOptions {
 
 /**
  * 키보드 단축키를 등록하고 관리하는 훅
+ *
+ * @param {UseKeyboardNavigationOptions} options - 단축키 설정 및 활성화 옵션
+ * @param {KeyboardShortcut[]} options.shortcuts - 등록할 단축키 목록
+ * @param {boolean} [options.enabled=true] - 단축키 활성화 여부
+ * @returns {{ shortcuts: Array<{ key: string, modifiers: object, description: string }> }} 등록된 단축키 목록
+ * @sideEffects window에 keydown 이벤트 리스너 등록/제거
  *
  * @example
  * ```tsx
@@ -98,6 +109,15 @@ export function useKeyboardNavigation({
 
 /**
  * 화살표 키를 이용한 포커스 이동 훅
+ *
+ * @template T - HTML 엘리먼트 타입
+ * @param {object} options - 네비게이션 설정
+ * @param {string} options.selector - 포커스 이동 대상 CSS 셀렉터
+ * @param {'vertical' | 'horizontal' | 'both'} [options.orientation='vertical'] - 이동 방향
+ * @param {boolean} [options.loop=false] - 끝에서 처음으로 순환 이동 여부
+ * @param {boolean} [options.enabled=true] - 활성화 여부
+ * @returns {(container: T | null) => void} 컨테이너 ref 콜백
+ * @sideEffects 컨테이너에 keydown 이벤트 리스너 등록/제거
  *
  * @example
  * ```tsx
@@ -197,6 +217,18 @@ export function useArrowKeyNavigation<T extends HTMLElement>({
 
 /**
  * Tab 키를 이용한 탭 네비게이션 훅
+ *
+ * @param {object} options - 탭 네비게이션 설정
+ * @param {string[]} options.tabs - 탭 ID 목록
+ * @param {string} [options.defaultTab] - 기본 선택 탭
+ * @param {(tab: string) => void} [options.onChange] - 탭 변경 콜백
+ * @returns {object} 탭 상태 및 접근성 props
+ * @returns {string} activeTab - 현재 활성 탭
+ * @returns {(tab: string) => void} setActiveTab - 탭 변경 함수
+ * @returns {object} tabListProps - 탭 리스트 컨테이너 props (role, onKeyDown)
+ * @returns {(tab: string) => object} getTabProps - 개별 탭 props 생성 함수
+ * @returns {(tab: string) => object} getPanelProps - 탭 패널 props 생성 함수
+ * @sideEffects 탭 상태 변경 및 onChange 콜백 호출
  *
  * @example
  * ```tsx

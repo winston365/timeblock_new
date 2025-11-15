@@ -1,5 +1,10 @@
 /**
  * RightPanel - 오른쪽 패널 (게임화, 템플릿, 상점)
+ *
+ * @role 퀘스트, 템플릿, 상점 기능을 탭 형태로 제공하는 오른쪽 패널 컴포넌트
+ * @input activeTab: 현재 활성화된 탭, onTabChange: 탭 변경 핸들러, onTaskCreateFromTemplate: 템플릿에서 작업 생성 핸들러, onShopPurchaseSuccess: 구매 성공 핸들러
+ * @output 탭 기반 UI (퀘스트, 템플릿, 상점)
+ * @dependencies QuestsPanel, TemplatePanel, ShopPanel 컴포넌트
  */
 
 import QuestsPanel from '@/features/gamification/QuestsPanel';
@@ -14,6 +19,11 @@ interface RightPanelProps {
   onShopPurchaseSuccess?: (message: string, waifuMessage?: string) => void;
 }
 
+/**
+ * 오른쪽 패널 컴포넌트 - 퀘스트, 템플릿, 상점 기능 제공
+ * @param props - RightPanelProps
+ * @returns 오른쪽 패널 UI
+ */
 export default function RightPanel({
   activeTab,
   onTabChange,

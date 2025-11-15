@@ -1,6 +1,12 @@
 /**
- * src/features/schedule/TimeBlock.tsx
- * 개별 시간 블록 컴포넌트
+ * TimeBlock
+ *
+ * @role 시간대별 작업 목록을 표시하고 관리하는 타임블록 컴포넌트. 드래그앤드롭, 인라인 작업 생성, 잠금 기능 제공
+ * @input block (시간대 정보), tasks (작업 목록), state (블록 상태), 각종 핸들러 함수들
+ * @output 시간대 헤더, 작업 카드 목록, 인라인 입력 필드, 진행률 바를 포함한 블록 UI
+ * @external_dependencies
+ *   - TaskCard: 개별 작업 표시
+ *   - utils: XP 계산 함수
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -29,6 +35,16 @@ interface TimeBlockProps {
   onDropTask?: (taskId: string, targetBlockId: TimeBlockId) => void;
 }
 
+/**
+ * 타임블록 컴포넌트
+ *
+ * @param {TimeBlockProps} props - 컴포넌트 props
+ * @returns {JSX.Element} 타임블록 UI
+ * @sideEffects
+ *   - 드래그앤드롭으로 작업 이동
+ *   - 인라인 입력으로 작업 생성
+ *   - 잠금 상태 변경 시 XP 차감/보상
+ */
 export default function TimeBlock({
   block,
   tasks,

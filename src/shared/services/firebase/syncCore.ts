@@ -1,7 +1,16 @@
 /**
- * 제네릭 동기화 코어
- * R8: 중복 기능 통합 - 모든 데이터 타입의 동기화 로직 일반화
- * R5: Side Effects 격리 - Firebase I/O와 Pure 로직 분리
+ * Generic Synchronization Core
+ *
+ * @role 모든 데이터 타입에 대한 제네릭 동기화 로직을 제공합니다.
+ *       Firebase I/O 작업과 Pure 충돌 해결 로직을 분리하여 재사용 가능한 API를 제공합니다.
+ * @input SyncStrategy<T>, 동기화할 데이터, 데이터 키 (선택적)
+ * @output Promise<void> (동기화 완료), 리스너 해제 함수, 데이터 객체
+ * @external_dependencies
+ *   - firebase/database: Firebase Realtime Database SDK (ref, set, get, onValue, off)
+ *   - ./conflictResolver: 충돌 해결 로직 (resolveConflictLWW)
+ *   - ./syncUtils: 동기화 유틸리티 함수들
+ *   - ./firebaseClient: Firebase 클라이언트 관리
+ *   - ../syncLogger: 동기화 로그 시스템
  */
 
 import { ref, set, get, onValue, off, type Database } from 'firebase/database';
@@ -48,11 +57,20 @@ const lastSyncHash: Record<string, string> = {};
 // ============================================================================
 
 /**
- * 제네릭 동기화 함수 - Firebase에 데이터 업로드
+ * 제네릭 동기화 함수 - Firebase에 데이터를 업로드합니다.
+ * 중복 동기화를 방지하고 충돌 시 전략에 따라 해결합니다.
+ *
  * @template T 데이터 타입
- * @param strategy 동기화 전략
- * @param data 동기화할 데이터
- * @param key 데이터 키 (선택적, 없으면 컬렉션 전체)
+ * @param {SyncStrategy<T>} strategy - 동기화 전략 (컬렉션명, 충돌 해결 함수 등)
+ * @param {T} data - 동기화할 데이터
+ * @param {string} key - 데이터 키 (선택적, 없으면 컬렉션 루트)
+ * @returns {Promise<void>} 동기화 완료 Promise
+ * @throws 없음 (에러는 내부적으로 처리되며, 로컬 작업은 계속 진행)
+ * @sideEffects
+ *   - Firebase Realtime Database에 데이터 저장
+ *   - lastSyncHash 캐시 업데이트
+ *   - syncLogger에 동기화 로그 추가
+ *   - 콘솔에 성공/실패 로그 출력
  */
 export async function syncToFirebase<T>(
   strategy: SyncStrategy<T>,
@@ -72,7 +90,6 @@ export async function syncToFirebase<T>(
     const hashKey = `${strategy.collection}-${key || 'root'}`;
 
     if (lastSyncHash[hashKey] === dataHash) {
-      console.log(`[Sync Skip] ${strategy.collection} unchanged, skipping Firebase sync`);
       return;
     }
 
@@ -92,7 +109,6 @@ export async function syncToFirebase<T>(
       const resolved = resolveConflict(localSyncData, remoteData);
 
       if (resolved.deviceId !== deviceId) {
-        console.log(`[Sync Skip] Remote ${strategy.collection} is newer, skipping upload`);
         addSyncLog('firebase', 'sync', `${strategy.collection} sync skipped (remote newer): ${key || ''}`);
         return;
       }
@@ -107,8 +123,6 @@ export async function syncToFirebase<T>(
       `${strategy.collection} synced to Firebase: ${key || ''}`;
 
     addSyncLog('firebase', 'sync', successMessage);
-    console.log(`✅ ${successMessage}`);
-    console.log(`📍 Firebase path: ${path}`);
   } catch (error) {
     console.error(`Failed to sync ${strategy.collection} to Firebase:`, error);
     addSyncLog('firebase', 'error', `Failed to sync ${strategy.collection}`, undefined, error as Error);
@@ -117,12 +131,20 @@ export async function syncToFirebase<T>(
 }
 
 /**
- * 제네릭 실시간 리스닝 함수 - Firebase에서 데이터 변경 감지
+ * 제네릭 실시간 리스닝 함수 - Firebase에서 데이터 변경을 감지합니다.
+ * 다른 디바이스에서 업데이트된 데이터를 자동으로 수신합니다.
+ *
  * @template T 데이터 타입
- * @param strategy 동기화 전략
- * @param onUpdate 데이터 업데이트 콜백
- * @param key 데이터 키 (선택적)
- * @returns 리스닝 해제 함수
+ * @param {SyncStrategy<T>} strategy - 동기화 전략
+ * @param {Function} onUpdate - 데이터 업데이트 시 호출될 콜백 함수
+ * @param {string} key - 데이터 키 (선택적)
+ * @returns {Function} 리스닝 해제 함수
+ * @throws 없음 (에러는 내부적으로 처리)
+ * @sideEffects
+ *   - Firebase onValue 리스너 등록
+ *   - 다른 디바이스에서 변경 시 onUpdate 콜백 실행
+ *   - syncLogger에 수신 로그 추가
+ *   - 콘솔에 수신 로그 출력
  */
 export function listenToFirebase<T>(
   strategy: SyncStrategy<T>,
@@ -143,7 +165,6 @@ export function listenToFirebase<T>(
       if (syncData && syncData.deviceId !== deviceId) {
         // 다른 디바이스에서 업데이트된 데이터
         addSyncLog('firebase', 'sync', `Received ${strategy.collection} update from Firebase`);
-        console.log(`📥 Received ${strategy.collection} update from Firebase`);
         onUpdate(syncData.data);
       }
     });
@@ -156,11 +177,16 @@ export function listenToFirebase<T>(
 }
 
 /**
- * 제네릭 데이터 가져오기 - Firebase에서 일회성 읽기
+ * 제네릭 데이터 가져오기 - Firebase에서 일회성 읽기를 수행합니다.
+ *
  * @template T 데이터 타입
- * @param strategy 동기화 전략
- * @param key 데이터 키 (선택적)
- * @returns 데이터 또는 null
+ * @param {SyncStrategy<T>} strategy - 동기화 전략
+ * @param {string} key - 데이터 키 (선택적)
+ * @returns {Promise<T | null>} 데이터 또는 null (데이터가 없는 경우)
+ * @throws 없음 (에러는 내부적으로 처리되며 null 반환)
+ * @sideEffects
+ *   - Firebase Database에서 데이터 읽기
+ *   - 콘솔에 에러 로그 출력 (실패 시)
  */
 export async function fetchFromFirebase<T>(
   strategy: SyncStrategy<T>,

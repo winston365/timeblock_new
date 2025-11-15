@@ -1,6 +1,10 @@
 /**
  * 게임화 시스템 유틸리티
- * XP 계산, 레벨업 체크, 보상 계산 등
+ *
+ * @role XP 계산, 레벨업 체크, 퀘스트 목표/보상 계산, 호감도 증가량 계산 등 게임화 관련 모든 계산 로직 제공
+ * @input Task 객체, 레벨 정보, 블록 정보, 퀘스트 타입 등
+ * @output XP 값, 레벨 값, 보상 값, 히스토리 데이터 등
+ * @dependencies Task, Resistance 타입
  */
 
 import type { Task, Resistance } from '@/shared/types/domain';
@@ -32,6 +36,8 @@ export const BLOCK_UNLOCK_PENALTY = 40;
 /**
  * 작업 완료 시 기본 XP 계산
  * baseXP = adjustedDuration * 0.5 * resistanceMultiplier
+ * @param task - 완료된 작업
+ * @returns 기본 XP 값
  */
 export function calculateTaskBaseXP(task: Task): number {
   const resistanceMultiplier = RESISTANCE_XP_MULTIPLIERS[task.resistance] || 1.0;
@@ -42,6 +48,8 @@ export function calculateTaskBaseXP(task: Task): number {
 /**
  * 레벨 보너스 계산
  * 5레벨마다 +5 XP
+ * @param level - 현재 레벨
+ * @returns 레벨 보너스 XP
  */
 export function calculateLevelBonus(level: number): number {
   return Math.floor(level / 5) * 5;
@@ -50,6 +58,9 @@ export function calculateLevelBonus(level: number): number {
 /**
  * 작업 완료 시 총 XP 계산
  * totalXP = baseXP + levelBonus
+ * @param task - 완료된 작업
+ * @param level - 현재 레벨
+ * @returns 총 XP 값
  */
 export function calculateTaskTotalXP(task: Task, level: number): number {
   const baseXP = calculateTaskBaseXP(task);
@@ -60,6 +71,8 @@ export function calculateTaskTotalXP(task: Task, level: number): number {
 /**
  * 레벨업에 필요한 XP 계산
  * requiredXP = level * 100
+ * @param level - 현재 레벨
+ * @returns 다음 레벨까지 필요한 XP
  */
 export function calculateRequiredXP(level: number): number {
   return level * 100;
@@ -67,6 +80,8 @@ export function calculateRequiredXP(level: number): number {
 
 /**
  * 레벨업 체크 및 새 레벨 계산
+ * @param currentXP - 현재 보유 XP
+ * @param currentLevel - 현재 레벨
  * @returns 새 레벨 (레벨업이 없으면 현재 레벨 반환)
  */
 export function checkLevelUp(currentXP: number, currentLevel: number): number {
@@ -84,6 +99,9 @@ export function checkLevelUp(currentXP: number, currentLevel: number): number {
 /**
  * 블록 완벽 완료 체크
  * 블록 내 모든 작업이 완료되었는지 확인
+ * @param tasks - 전체 작업 목록
+ * @param blockId - 확인할 블록 ID
+ * @returns 완벽 완료 여부
  */
 export function isBlockPerfect(tasks: Task[], blockId: string): boolean {
   const blockTasks = tasks.filter((t) => t.timeBlock === blockId);
@@ -94,6 +112,10 @@ export function isBlockPerfect(tasks: Task[], blockId: string): boolean {
 /**
  * 블록 실패 체크
  * 블록이 잠겨있고 미완료 작업이 있는지 확인
+ * @param tasks - 전체 작업 목록
+ * @param blockId - 확인할 블록 ID
+ * @param isLocked - 블록 잠금 여부
+ * @returns 실패 여부
  */
 export function isBlockFailed(tasks: Task[], blockId: string, isLocked: boolean): boolean {
   if (!isLocked) return false;
@@ -103,6 +125,8 @@ export function isBlockFailed(tasks: Task[], blockId: string, isLocked: boolean)
 
 /**
  * 일일 퀘스트 타입별 목표값 생성
+ * @param type - 퀘스트 타입
+ * @returns 목표값
  */
 export function generateQuestTarget(type: string): number {
   switch (type) {
@@ -121,6 +145,8 @@ export function generateQuestTarget(type: string): number {
 
 /**
  * 일일 퀘스트 보상 계산
+ * @param type - 퀘스트 타입
+ * @returns 보상 XP
  */
 export function calculateQuestReward(type: string): number {
   switch (type) {
@@ -139,6 +165,8 @@ export function calculateQuestReward(type: string): number {
 
 /**
  * 작업 완료 시 호감도 증가량 계산
+ * @param task - 완료된 작업
+ * @returns 호감도 증가량
  */
 export function calculateAffectionIncrease(task: Task): number {
   // 기본 +2
@@ -156,6 +184,10 @@ export function calculateAffectionIncrease(task: Task): number {
 
 /**
  * XP 히스토리 업데이트 헬퍼
+ * @param history - 기존 XP 히스토리
+ * @param date - 날짜 (YYYY-MM-DD)
+ * @param xpToAdd - 추가할 XP
+ * @returns 업데이트된 히스토리 (최근 7일)
  */
 export function updateXPHistory(
   history: Array<{ date: string; xp: number }>,
@@ -176,6 +208,11 @@ export function updateXPHistory(
 
 /**
  * 블록별 XP 히스토리 업데이트 헬퍼
+ * @param history - 기존 블록별 XP 히스토리
+ * @param date - 날짜 (YYYY-MM-DD)
+ * @param blockId - 블록 ID
+ * @param xpToAdd - 추가할 XP
+ * @returns 업데이트된 히스토리 (최근 5일)
  */
 export function updateTimeBlockXPHistory(
   history: Array<{ date: string; blocks: Record<string, number> }>,

@@ -1,5 +1,10 @@
 /**
  * 공통 유틸리티 함수
+ *
+ * @role 날짜/시간 처리, Task 생성/조작, XP/호감도 계산, 로컬스토리지 관리 등 앱 전반에서 사용되는 유틸리티 함수 제공
+ * @input 다양한 입력 (날짜, Task, 설정값 등)
+ * @output 포맷된 문자열, 계산된 값, 변환된 데이터 등
+ * @dependencies domain 타입, constants
  */
 
 import type { Resistance, Task, TimeBlockId } from '../types/domain';

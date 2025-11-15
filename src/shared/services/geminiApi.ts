@@ -1,6 +1,13 @@
 /**
- * Gemini API 클라이언트
- * Google Gemini 2.0 Flash API를 사용한 대화 기능
+ * Gemini API Client Service
+ *
+ * @role Google Gemini 2.5 Flash API를 사용하여 AI 대화 기능을 제공합니다.
+ *       와이푸 페르소나 시스템 프롬프트를 생성하고 대화 컨텍스트를 관리합니다.
+ * @input 사용자 프롬프트, 대화 히스토리, API 키, PersonaContext (게임 상태 정보)
+ * @output Gemini API 응답 텍스트, 토큰 사용량 정보, 와이푸 페르소나 시스템 프롬프트
+ * @external_dependencies
+ *   - Google Gemini API: generativelanguage.googleapis.com (gemini-2.5-flash-preview-05-20 모델)
+ *   - Fetch API: HTTP 요청 전송
  */
 
 interface GeminiMessage {
@@ -26,7 +33,17 @@ interface GeminiResponse {
 const GEMINI_API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent';
 
 /**
- * Gemini API 호출
+ * Gemini API를 호출하여 AI 응답을 생성합니다.
+ *
+ * @param {string} prompt - 사용자 프롬프트
+ * @param {Array<{role: 'user' | 'model'; text: string}>} history - 대화 히스토리 (기본값: 빈 배열)
+ * @param {string} apiKey - Gemini API 키 (선택적)
+ * @returns {Promise<{text: string; tokenUsage?: {promptTokens: number; candidatesTokens: number; totalTokens: number}}>}
+ *          AI 응답 텍스트와 토큰 사용량 정보
+ * @throws {Error} API 키가 없거나, API 호출 실패, 또는 응답이 없는 경우
+ * @sideEffects
+ *   - Google Gemini API에 HTTP POST 요청 전송
+ *   - 콘솔에 에러 로그 출력 (실패 시)
  */
 export async function callGeminiAPI(
   prompt: string,
@@ -149,8 +166,15 @@ export interface PersonaContext {
 }
 
 /**
- * 와이푸 페르소나를 포함한 시스템 프롬프트 생성
- * 19세 상담사 AI, ADHD/ASD 지원 특화
+ * 와이푸 페르소나를 포함한 시스템 프롬프트를 생성합니다.
+ * 19세 상담사 AI, ADHD/ASD 지원 특화 캐릭터로 설정합니다.
+ *
+ * @param {PersonaContext} context - 페르소나 생성에 필요한 게임 상태 정보
+ *                                   (호감도, XP, 작업 정보, 타임블록, 에너지 등)
+ * @returns {string} 완성된 시스템 프롬프트 마크다운 텍스트
+ * @throws 없음
+ * @sideEffects
+ *   - 없음: 순수 함수, 입력을 기반으로 문자열 생성만 수행
  */
 export function generateWaifuPersona(context: PersonaContext): string {
   const {

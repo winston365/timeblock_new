@@ -1,6 +1,12 @@
 /**
  * WaifuState 훅
- * 와이푸 상태(호감도, 포즈, 상호작용) 관리
+ *
+ * @role 와이푸 상태(호감도, 포즈, 상호작용) 관리 및 UI 동기화
+ * @input 작업 완료, 와이푸 클릭 상호작용
+ * @output 와이푸 상태, 호감도, 기분, 대사, 상호작용 함수
+ * @external_dependencies
+ *   - react: useState, useEffect, useCallback hooks
+ *   - waifuRepository: 와이푸 데이터 CRUD 및 비즈니스 로직
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -14,6 +20,22 @@ import {
   getDialogueFromAffection,
 } from '@/data/repositories/waifuRepository';
 
+/**
+ * 와이푸 상태 관리 훅
+ *
+ * @returns {object} 와이푸 상태 및 관리 함수
+ * @returns {WaifuState | null} waifuState - 현재 와이푸 상태 (호감도, 포즈 등)
+ * @returns {boolean} loading - 로딩 상태
+ * @returns {Error | null} error - 에러 상태
+ * @returns {() => Promise<void>} refresh - 와이푸 상태 새로고침
+ * @returns {() => Promise<void>} onTaskComplete - 작업 완료 시 호감도 증가
+ * @returns {() => Promise<void>} onInteract - 와이푸 클릭 상호작용
+ * @returns {() => Promise<void>} resetDaily - 일일 와이푸 통계 초기화
+ * @returns {string} currentMood - 현재 기분 이모지 및 텍스트
+ * @returns {string} currentDialogue - 현재 와이푸 대사
+ * @throws {Error} 데이터 로드, 상태 업데이트 실패 시
+ * @sideEffects waifuRepository를 통해 와이푸 상태 변경 및 저장
+ */
 export function useWaifuState() {
   const [waifuState, setWaifuState] = useState<WaifuState | null>(null);
   const [loading, setLoading] = useState(true);

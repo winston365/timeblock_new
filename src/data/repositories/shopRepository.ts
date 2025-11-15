@@ -1,6 +1,15 @@
 /**
- * Shop 저장소
- * 상점 아이템 CRUD 및 구매 관리
+ * Shop Repository
+ *
+ * @role 상점 아이템 데이터 관리 및 구매 트랜잭션 처리
+ * @input ShopItem 객체, 아이템 ID, 구매 요청
+ * @output ShopItem 배열, ShopItem 객체, PurchaseResult 객체
+ * @external_dependencies
+ *   - IndexedDB (db.shopItems): 메인 저장소
+ *   - localStorage (STORAGE_KEYS.SHOP_ITEMS): 백업 저장소
+ *   - gameStateRepository: XP 소비 로직
+ *   - waifuRepository: 호감도 증가 로직
+ *   - @/shared/types/domain: ShopItem 타입
  */
 
 import { db } from '../db/dexieClient';
@@ -16,6 +25,12 @@ import { loadWaifuState, saveWaifuState } from './waifuRepository';
 
 /**
  * 모든 상점 아이템 로드
+ *
+ * @returns {Promise<ShopItem[]>} 상점 아이템 배열
+ * @throws 없음
+ * @sideEffects
+ *   - IndexedDB에서 데이터 조회
+ *   - localStorage 폴백 시 IndexedDB에 데이터 복원
  */
 export async function loadShopItems(): Promise<ShopItem[]> {
   try {
@@ -44,6 +59,15 @@ export async function loadShopItems(): Promise<ShopItem[]> {
 
 /**
  * 상점 아이템 생성
+ *
+ * @param {string} name - 아이템 이름
+ * @param {number} price - 아이템 가격 (XP)
+ * @param {string} [image] - 아이템 이미지 URL (선택)
+ * @returns {Promise<ShopItem>} 생성된 상점 아이템
+ * @throws {Error} IndexedDB 또는 localStorage 저장 실패 시
+ * @sideEffects
+ *   - IndexedDB에 아이템 저장
+ *   - localStorage에 백업
  */
 export async function createShopItem(
   name: string,
@@ -65,7 +89,6 @@ export async function createShopItem(
     const items = await loadShopItems();
     saveToStorage(STORAGE_KEYS.SHOP_ITEMS, items);
 
-    console.log('✅ Shop item created:', item.name);
     return item;
   } catch (error) {
     console.error('Failed to create shop item:', error);
@@ -75,6 +98,14 @@ export async function createShopItem(
 
 /**
  * 상점 아이템 업데이트
+ *
+ * @param {string} id - 아이템 ID
+ * @param {Partial<Omit<ShopItem, 'id'>>} updates - 업데이트할 필드
+ * @returns {Promise<ShopItem>} 업데이트된 상점 아이템
+ * @throws {Error} 아이템이 존재하지 않거나 저장 실패 시
+ * @sideEffects
+ *   - IndexedDB에서 아이템 조회 및 업데이트
+ *   - localStorage에 백업
  */
 export async function updateShopItem(
   id: string,
@@ -96,7 +127,6 @@ export async function updateShopItem(
     const items = await loadShopItems();
     saveToStorage(STORAGE_KEYS.SHOP_ITEMS, items);
 
-    console.log('✅ Shop item updated:', updatedItem.name);
     return updatedItem;
   } catch (error) {
     console.error('Failed to update shop item:', error);
@@ -106,6 +136,13 @@ export async function updateShopItem(
 
 /**
  * 상점 아이템 삭제
+ *
+ * @param {string} id - 삭제할 아이템 ID
+ * @returns {Promise<void>}
+ * @throws {Error} IndexedDB 삭제 실패 시
+ * @sideEffects
+ *   - IndexedDB에서 아이템 삭제
+ *   - localStorage에 변경사항 반영
  */
 export async function deleteShopItem(id: string): Promise<void> {
   try {
@@ -115,7 +152,6 @@ export async function deleteShopItem(id: string): Promise<void> {
     const items = await loadShopItems();
     saveToStorage(STORAGE_KEYS.SHOP_ITEMS, items);
 
-    console.log('✅ Shop item deleted:', id);
   } catch (error) {
     console.error('Failed to delete shop item:', error);
     throw error;
@@ -124,6 +160,12 @@ export async function deleteShopItem(id: string): Promise<void> {
 
 /**
  * 특정 상점 아이템 조회
+ *
+ * @param {string} id - 아이템 ID
+ * @returns {Promise<ShopItem | undefined>} 아이템 객체 또는 undefined
+ * @throws 없음
+ * @sideEffects
+ *   - IndexedDB에서 데이터 조회
  */
 export async function getShopItem(id: string): Promise<ShopItem | undefined> {
   try {
@@ -146,6 +188,14 @@ export interface PurchaseResult {
 
 /**
  * 상점 아이템 구매
+ *
+ * @param {string} itemId - 구매할 아이템 ID
+ * @returns {Promise<PurchaseResult>} 구매 결과 (성공 여부, 메시지, 와이푸 메시지)
+ * @throws 없음
+ * @sideEffects
+ *   - gameStateRepository를 통해 XP 차감
+ *   - waifuRepository를 통해 호감도 증가 (+10)
+ *   - 와이푸 상호작용 횟수 증가
  */
 export async function purchaseShopItem(itemId: string): Promise<PurchaseResult> {
   try {
@@ -180,7 +230,6 @@ export async function purchaseShopItem(itemId: string): Promise<PurchaseResult> 
     // 5. 와이푸 메시지 생성
     const waifuMessage = generatePurchaseMessage(item.name, newAffection);
 
-    console.log(`✅ Purchased: ${item.name} for ${item.price} XP`);
 
     return {
       success: true,
@@ -218,6 +267,12 @@ function generatePurchaseMessage(itemName: string, affection: number): string {
 
 /**
  * 구매 가능 여부 확인
+ *
+ * @param {string} itemId - 확인할 아이템 ID
+ * @returns {Promise<boolean>} 구매 가능 여부
+ * @throws 없음
+ * @sideEffects
+ *   - IndexedDB에서 아이템 및 게임 상태 조회
  */
 export async function canPurchaseItem(itemId: string): Promise<boolean> {
   try {

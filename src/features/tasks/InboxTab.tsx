@@ -1,6 +1,14 @@
 /**
- * src/features/tasks/InboxTab.tsx
- * 인박스 탭 - 블록에 배치되지 않은 작업 목록
+ * InboxTab
+ *
+ * @role 시간 블록에 배치되지 않은 작업들을 관리하는 인박스 탭 컴포넌트
+ * @input 없음
+ * @output 인박스 작업 목록, 추가/편집/삭제 버튼, 드래그앤드롭 영역을 포함한 UI
+ * @external_dependencies
+ *   - useDailyData: 일일 데이터 및 작업 관리 훅
+ *   - TaskCard: 개별 작업 카드 컴포넌트
+ *   - TaskModal: 작업 추가/편집 모달 컴포넌트
+ *   - tasks.css: 스타일시트
  */
 
 import { useState } from 'react';
@@ -10,6 +18,14 @@ import TaskCard from '@/features/schedule/TaskCard';
 import TaskModal from '@/features/schedule/TaskModal';
 import './tasks.css';
 
+/**
+ * 인박스 탭 컴포넌트
+ *
+ * @returns {JSX.Element} 인박스 탭 UI
+ * @sideEffects
+ *   - 작업 추가/수정/삭제 시 Firebase 동기화
+ *   - 드래그앤드롭으로 작업을 인박스로 이동 가능
+ */
 export default function InboxTab() {
   const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion } = useDailyData();
   const inboxTasks = dailyData?.tasks.filter(task => !task.timeBlock) ?? [];

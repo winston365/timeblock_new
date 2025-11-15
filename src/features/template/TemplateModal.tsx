@@ -1,5 +1,12 @@
 /**
- * TemplateModal - 템플릿 추가/편집 모달
+ * TemplateModal
+ *
+ * @role 템플릿을 추가하거나 편집하는 모달 컴포넌트
+ * @input template (Template | null), onClose (function)
+ * @output 템플릿 이름, 할 일, 메모, 소요시간, 저항도, 시간대, 자동 생성 옵션 입력 필드 및 저장 버튼을 포함한 모달 UI
+ * @external_dependencies
+ *   - createTemplate, updateTemplate: 템플릿 Repository
+ *   - TIME_BLOCKS, RESISTANCE_LABELS: 도메인 타입 및 상수
  */
 
 import { useState, useEffect } from 'react';
@@ -12,6 +19,16 @@ interface TemplateModalProps {
   onClose: (saved: boolean) => void;
 }
 
+/**
+ * 템플릿 추가/편집 모달 컴포넌트
+ *
+ * @param {TemplateModalProps} props - template, onClose를 포함하는 props
+ * @returns {JSX.Element} 모달 UI
+ * @sideEffects
+ *   - ESC 키로 모달 닫기
+ *   - 저장 시 Firebase 동기화
+ *   - 자동 생성 옵션 체크 시 매일 00시에 자동으로 작업 생성
+ */
 export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const [name, setName] = useState('');
   const [text, setText] = useState('');

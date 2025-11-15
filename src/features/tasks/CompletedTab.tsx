@@ -1,12 +1,28 @@
 /**
- * src/features/tasks/CompletedTab.tsx
- * 완료 탭 - 완료된 작업 목록
+ * CompletedTab
+ *
+ * @role 완료된 작업 목록을 표시하고 관리하는 탭 컴포넌트
+ * @input 없음
+ * @output 완료된 작업 목록, 총 획득 XP, 완료 시간, 완료 취소 버튼을 포함한 UI
+ * @external_dependencies
+ *   - useCompletedTasks: 완료된 작업 목록 훅
+ *   - useDailyData: 일일 데이터 및 작업 토글 훅
+ *   - formatTime, calculateTaskXP: 유틸리티 함수
+ *   - tasks.css: 스타일시트
  */
 
 import { useCompletedTasks, useDailyData } from '@/shared/hooks';
 import { formatTime, calculateTaskXP } from '@/shared/lib/utils';
 import './tasks.css';
 
+/**
+ * 완료 탭 컴포넌트
+ *
+ * @returns {JSX.Element} 완료된 작업 목록 UI
+ * @sideEffects
+ *   - 완료 취소 시 Firebase 동기화
+ *   - 완료 시간 역순 정렬 (최근 것이 위)
+ */
 export default function CompletedTab() {
   const { completedTasks, loading } = useCompletedTasks();
   const { toggleTaskCompletion } = useDailyData();

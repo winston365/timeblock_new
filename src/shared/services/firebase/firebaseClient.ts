@@ -1,7 +1,14 @@
 /**
- * Firebase 클라이언트 초기화 및 연결 관리
- * R5: Side Effects 격리 - Firebase 연결 상태 관리
- * R6: 명확한 문맥 - Client는 연결 관리만 담당
+ * Firebase Client Management
+ *
+ * @role Firebase 앱 초기화 및 연결 상태를 관리합니다.
+ *       Realtime Database 인스턴스를 생성하고 앱 생명주기를 제어합니다.
+ * @input Settings.firebaseConfig (API 키, 프로젝트 ID 등)
+ * @output boolean (초기화 성공 여부), Database 인스턴스
+ * @external_dependencies
+ *   - firebase/app: Firebase App SDK (initializeApp, deleteApp)
+ *   - firebase/database: Firebase Realtime Database SDK (getDatabase)
+ *   - @/shared/types/domain: Settings 타입 정의
  */
 
 import { initializeApp, FirebaseApp, deleteApp } from 'firebase/app';
@@ -21,8 +28,17 @@ let isInitialized = false;
 // ============================================================================
 
 /**
- * Firebase 앱 초기화
- * @returns 초기화 성공 여부
+ * Firebase 앱을 초기화합니다.
+ * 기존 앱이 있으면 삭제 후 재초기화합니다.
+ *
+ * @param {Settings['firebaseConfig']} config - Firebase 설정 객체
+ * @returns {boolean} 초기화 성공 여부
+ * @throws 없음 (에러는 내부적으로 처리되며 false 반환)
+ * @sideEffects
+ *   - Firebase App 인스턴스 생성/재생성
+ *   - Realtime Database 인스턴스 생성
+ *   - 모듈 레벨 상태 변수 업데이트 (firebaseApp, firebaseDatabase, isInitialized)
+ *   - 콘솔에 초기화 성공/실패 로그 출력
  */
 export function initializeFirebase(config: Settings['firebaseConfig']): boolean {
   if (!config) {
@@ -33,7 +49,6 @@ export function initializeFirebase(config: Settings['firebaseConfig']): boolean 
   try {
     // 기존 앱이 있으면 삭제 후 재초기화
     if (firebaseApp) {
-      console.log('[Firebase Client] Deleting old instance...');
       try {
         deleteApp(firebaseApp).catch(err =>
           console.warn('[Firebase Client] Failed to delete old app:', err)
@@ -61,7 +76,6 @@ export function initializeFirebase(config: Settings['firebaseConfig']): boolean 
     firebaseDatabase = getDatabase(firebaseApp);
     isInitialized = true;
 
-    console.log('✅ Firebase initialized successfully');
     return true;
   } catch (error) {
     console.error('[Firebase Client] Initialization failed:', error);
@@ -73,15 +87,24 @@ export function initializeFirebase(config: Settings['firebaseConfig']): boolean 
 }
 
 /**
- * Firebase 초기화 상태 확인
+ * Firebase 초기화 상태를 확인합니다.
+ *
+ * @returns {boolean} Firebase가 초기화되어 사용 가능한지 여부
+ * @throws 없음
+ * @sideEffects
+ *   - 없음: 읽기 전용 작업
  */
 export function isFirebaseInitialized(): boolean {
   return isInitialized && firebaseDatabase !== null;
 }
 
 /**
- * Firebase Database 인스턴스 가져오기
+ * Firebase Database 인스턴스를 가져옵니다.
+ *
+ * @returns {Database} Firebase Realtime Database 인스턴스
  * @throws {Error} Firebase가 초기화되지 않은 경우
+ * @sideEffects
+ *   - 없음: 읽기 전용 작업
  */
 export function getFirebaseDatabase(): Database {
   if (!firebaseDatabase) {
@@ -91,13 +114,19 @@ export function getFirebaseDatabase(): Database {
 }
 
 /**
- * Firebase 연결 해제
+ * Firebase 연결을 해제하고 앱을 종료합니다.
+ *
+ * @returns {void} 반환값 없음
+ * @throws 없음 (에러는 내부적으로 처리)
+ * @sideEffects
+ *   - Firebase App 삭제
+ *   - 모듈 레벨 상태 변수 초기화 (firebaseApp, firebaseDatabase, isInitialized)
+ *   - 콘솔에 연결 해제 성공/실패 로그 출력
  */
 export function disconnectFirebase(): void {
   if (firebaseApp) {
     deleteApp(firebaseApp)
       .then(() => {
-        console.log('[Firebase Client] Disconnected successfully');
         firebaseApp = null;
         firebaseDatabase = null;
         isInitialized = false;

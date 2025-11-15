@@ -1,6 +1,13 @@
 /**
- * Firebase 디버그 유틸리티
- * R7: 기능 분리 - 디버그 기능을 별도 모듈로 격리
+ * Firebase Debug Utilities
+ *
+ * @role Firebase Realtime Database의 데이터를 검사하고 디버깅하는 기능을 제공합니다.
+ *       개발자 콘솔에서 window.debugFirebase() 호출로 Firebase 데이터를 확인할 수 있습니다.
+ * @input 없음 (사용자가 콘솔에서 직접 호출)
+ * @output 콘솔에 Firebase 데이터 정보 출력
+ * @external_dependencies
+ *   - firebase/database: Firebase Realtime Database SDK (ref, get)
+ *   - ./firebaseClient: Firebase 클라이언트 관리
  */
 
 import { ref, get } from 'firebase/database';
@@ -11,8 +18,14 @@ import { getFirebaseDatabase } from './firebaseClient';
 // ============================================================================
 
 /**
- * Firebase 데이터 확인 (디버그용)
- * 콘솔에서 window.debugFirebase() 호출
+ * Firebase 데이터를 확인합니다 (디버그용).
+ * 콘솔에서 window.debugFirebase() 호출하여 사용합니다.
+ *
+ * @returns {Promise<void>} 완료 Promise
+ * @throws 없음 (에러는 내부적으로 처리)
+ * @sideEffects
+ *   - Firebase Database에서 데이터 읽기
+ *   - 콘솔에 상세한 디버그 정보 출력 (날짜 목록, 작업 수, 게임 상태, XP 히스토리 등)
  */
 export async function debugFirebaseData(): Promise<void> {
   try {
@@ -68,7 +81,14 @@ export async function debugFirebaseData(): Promise<void> {
 }
 
 /**
- * window에 디버그 함수 노출
+ * window 객체에 디버그 함수를 노출합니다.
+ * 개발자 콘솔에서 window.debugFirebase() 호출을 가능하게 합니다.
+ *
+ * @returns {void} 반환값 없음
+ * @throws 없음
+ * @sideEffects
+ *   - window.debugFirebase에 debugFirebaseData 함수 할당
+ *   - 콘솔에 사용 안내 메시지 출력
  */
 export function exposeDebugToWindow(): void {
   if (typeof window !== 'undefined') {

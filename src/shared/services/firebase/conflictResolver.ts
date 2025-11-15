@@ -1,7 +1,12 @@
 /**
- * 충돌 해결 Pure 로직
- * R5: Pure 함수 - Side Effect 없음, 테스트 용이
- * R6: 명확한 문맥 - Resolver는 충돌 해결 알고리즘만 담당
+ * Conflict Resolver - Pure Logic
+ *
+ * @role Firebase 동기화 시 발생하는 데이터 충돌을 해결하는 순수 함수들을 제공합니다.
+ *       Last-Write-Wins 및 Delta-based Merge 전략을 구현합니다.
+ * @input SyncData<T> (로컬 및 원격 데이터, 타임스탬프, 디바이스 ID 포함)
+ * @output SyncData<T> (충돌 해결된 데이터)
+ * @external_dependencies
+ *   - 없음: 순수 함수만 포함, 외부 의존성 없음
  */
 
 import type { GameState } from '@/shared/types/domain';
@@ -21,37 +26,43 @@ export interface SyncData<T> {
 // ============================================================================
 
 /**
- * Last-Write-Wins (LWW) 충돌 해결
- * @returns 더 최신 데이터 (타임스탬프 기준)
+ * Last-Write-Wins (LWW) 충돌 해결 알고리즘을 적용합니다.
+ * 타임스탬프가 더 큰 데이터를 선택합니다.
+ *
+ * @param {SyncData<T>} local - 로컬 동기화 데이터
+ * @param {SyncData<T>} remote - 원격 동기화 데이터
+ * @returns {SyncData<T>} 더 최신 데이터 (타임스탬프 기준)
+ * @throws 없음
+ * @sideEffects
+ *   - 콘솔에 충돌 해결 로그 출력
  */
 export function resolveConflictLWW<T>(
   local: SyncData<T>,
   remote: SyncData<T>
 ): SyncData<T> {
-  console.log('[LWW] Conflict detected, resolving...');
-  console.log('[LWW] Local timestamp:', local.updatedAt);
-  console.log('[LWW] Remote timestamp:', remote.updatedAt);
 
   if (local.updatedAt >= remote.updatedAt) {
-    console.log('[LWW] Local data is newer, keeping local');
     return local;
   } else {
-    console.log('[LWW] Remote data is newer, keeping remote');
     return remote;
   }
 }
 
 /**
- * GameState Delta-based Merge
- * XP, Quest 등 누적 필드는 최대값 사용, 히스토리는 병합
+ * GameState Delta-based Merge 알고리즘을 적용합니다.
+ * XP, Quest 등 누적 필드는 최대값 사용, 히스토리는 병합합니다.
+ *
+ * @param {SyncData<GameState>} local - 로컬 게임 상태 데이터
+ * @param {SyncData<GameState>} remote - 원격 게임 상태 데이터
+ * @returns {SyncData<GameState>} 병합된 게임 상태 (누적 필드는 최대값, 히스토리는 병합)
+ * @throws 없음
+ * @sideEffects
+ *   - 콘솔에 병합 로그 출력
  */
 export function mergeGameState(
   local: SyncData<GameState>,
   remote: SyncData<GameState>
 ): SyncData<GameState> {
-  console.log('[Delta Merge] Merging GameState...');
-  console.log('[Delta Merge] Local timestamp:', local.updatedAt);
-  console.log('[Delta Merge] Remote timestamp:', remote.updatedAt);
 
   // 누적 필드: 최대값 사용
   const mergedTotalXP = Math.max(local.data.totalXP, remote.data.totalXP);
@@ -92,8 +103,6 @@ export function mergeGameState(
     remote.data.completedTasksHistory || []
   );
 
-  console.log('[Delta Merge] TotalXP:', local.data.totalXP, '/', remote.data.totalXP, '→', mergedTotalXP);
-  console.log('[Delta Merge] DailyXP:', local.data.dailyXP, '/', remote.data.dailyXP, '→', mergedDailyXP);
 
   // 더 최신 타임스탬프 사용
   const useLocal = local.updatedAt >= remote.updatedAt;

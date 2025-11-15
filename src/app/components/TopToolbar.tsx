@@ -1,5 +1,10 @@
 /**
  * TopToolbar - 상단 툴바
+ *
+ * @role 앱 상단에 위치하여 게임 상태, 에너지, XP 정보를 표시하고 주요 기능 버튼 제공
+ * @input gameState: 게임 상태 데이터, onOpenGeminiChat: AI 대화 열기, onOpenSyncLog: 로그 열기, onOpenEnergyTab: 에너지 탭 열기
+ * @output 상단 툴바 UI (통계 표시 및 버튼)
+ * @dependencies useEnergyState 훅
  */
 
 import type { GameState } from '@/shared/types/domain';
@@ -12,6 +17,11 @@ interface TopToolbarProps {
   onOpenEnergyTab?: () => void;
 }
 
+/**
+ * 상단 툴바 컴포넌트 - 게임 상태 표시 및 주요 기능 버튼 제공
+ * @param props - TopToolbarProps
+ * @returns 상단 툴바 UI
+ */
 export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSyncLog, onOpenEnergyTab }: TopToolbarProps) {
   const { currentEnergy } = useEnergyState();
 

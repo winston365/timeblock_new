@@ -1,8 +1,13 @@
 /**
- * WaifuPanel - 와이푸 패널
- * 세로 이미지, 대사, 호감도, 완료한 작업 수, 기분 표시
- * 호감도에 따라 자동으로 이미지가 변경됩니다.
- * 4번 클릭 또는 10분마다 같은 호감도 범위 내에서 랜덤 이미지로 변경됩니다.
+ * WaifuPanel
+ *
+ * @role 와이푸 캐릭터의 이미지, 대사, 호감도, 완료 작업 수, 기분을 표시하는 패널 컴포넌트
+ * @input imagePath (string, optional) - 수동 이미지 경로 지정
+ * @output 와이푸 이미지, 대사 말풍선, 호감도 바, 기분 표시, 완료 작업 수를 포함한 UI
+ * @external_dependencies
+ *   - useWaifuState: 와이푸 상태 훅
+ *   - waifuImageUtils: 이미지 경로 및 호감도 관리 유틸리티
+ *   - waifu.css: 스타일시트
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -14,6 +19,17 @@ interface WaifuPanelProps {
   imagePath?: string; // 수동 이미지 경로 (optional, 지정하지 않으면 호감도 기반 자동 선택)
 }
 
+/**
+ * 와이푸 패널 컴포넌트
+ * 호감도에 따라 자동으로 이미지가 변경되며, 클릭 시(4번마다) 또는 10분마다 같은 호감도 범위 내에서 랜덤 이미지로 변경됩니다.
+ *
+ * @param {WaifuPanelProps} props - imagePath를 포함하는 props
+ * @returns {JSX.Element} 와이푸 패널 UI
+ * @sideEffects
+ *   - 10분마다 자동으로 이미지 변경
+ *   - 4번 클릭마다 이미지 변경
+ *   - 호감도 변경 시 이미지 자동 업데이트
+ */
 export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
   const { waifuState, loading, currentMood, currentDialogue } = useWaifuState();
   const [displayImagePath, setDisplayImagePath] = useState<string>('');

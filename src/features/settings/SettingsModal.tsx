@@ -1,5 +1,12 @@
 /**
- * 설정 모달 - Gemini 및 Firebase API 설정
+ * SettingsModal
+ *
+ * @role Gemini API 키, Firebase 설정, 테마 설정을 관리하는 모달 컴포넌트
+ * @input isOpen (모달 표시 여부), onClose (모달 닫기), onSaved (저장 완료 콜백)
+ * @output 탭 기반 설정 UI (테마, Gemini, Firebase)
+ * @external_dependencies
+ *   - settingsRepository: 설정 데이터 로드/저장
+ *   - firebaseService: Firebase 초기화
  */
 
 import { useState, useEffect } from 'react';
@@ -14,6 +21,16 @@ interface SettingsModalProps {
   onSaved?: () => void;
 }
 
+/**
+ * 설정 모달 컴포넌트
+ *
+ * @param {SettingsModalProps} props - 컴포넌트 props
+ * @returns {JSX.Element | null} 설정 모달 또는 null
+ * @sideEffects
+ *   - 설정 데이터 로드/저장
+ *   - Firebase 재초기화
+ *   - 테마 변경 시 DOM 및 localStorage 업데이트
+ */
 export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModalProps) {
   const [settings, setSettings] = useState<Settings>({
     geminiApiKey: '',
@@ -79,7 +96,6 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
       if (settings.firebaseConfig) {
         const initialized = initializeFirebase(settings.firebaseConfig);
         if (initialized) {
-          console.log('🔥 Firebase reinitialized with new settings');
         }
       }
 

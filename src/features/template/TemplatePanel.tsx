@@ -1,5 +1,14 @@
 /**
- * TemplatePanel - 템플릿 목록 및 관리
+ * TemplatePanel
+ *
+ * @role 반복 작업 템플릿을 관리하고 오늘 할 일로 추가하는 패널 컴포넌트
+ * @input onTaskCreate (function) - 템플릿에서 작업 생성 시 콜백
+ * @output 템플릿 목록, 자동 생성 배지, 추가/편집/삭제 버튼을 포함한 UI
+ * @external_dependencies
+ *   - loadTemplates, deleteTemplate: 템플릿 Repository
+ *   - TemplateModal: 템플릿 추가/편집 모달 컴포넌트
+ *   - RESISTANCE_LABELS, TIME_BLOCKS: 도메인 타입 및 상수
+ *   - template.css: 스타일시트
  */
 
 import { useState, useEffect } from 'react';
@@ -13,6 +22,16 @@ interface TemplatePanelProps {
   onTaskCreate: (template: Template) => void;
 }
 
+/**
+ * 템플릿 패널 컴포넌트
+ *
+ * @param {TemplatePanelProps} props - onTaskCreate를 포함하는 props
+ * @returns {JSX.Element} 템플릿 패널 UI
+ * @sideEffects
+ *   - 컴포넌트 마운트 시 템플릿 목록 로드
+ *   - 템플릿 추가/수정/삭제 시 Firebase 동기화
+ *   - "오늘 추가" 버튼 클릭 시 onTaskCreate 콜백 호출
+ */
 export default function TemplatePanel({ onTaskCreate }: TemplatePanelProps) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);

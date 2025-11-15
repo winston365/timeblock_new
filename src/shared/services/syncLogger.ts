@@ -1,6 +1,13 @@
 /**
- * 동기화 로그 시스템
- * Dexie 및 Firebase 동기화 이벤트 추적
+ * Sync Logger Service
+ *
+ * @role Dexie 및 Firebase 동기화 이벤트를 추적하고 메모리에 저장합니다.
+ *       실시간 로그 구독 기능을 제공하여 UI에서 동기화 상태를 모니터링할 수 있습니다.
+ * @input SyncType ('dexie' | 'firebase'), SyncAction ('save' | 'load' | 'sync' | 'error'),
+ *        메시지, 데이터, 에러 객체
+ * @output SyncLogEntry 배열 (최대 100개 유지)
+ * @external_dependencies
+ *   - 없음: 순수 메모리 기반 로그 관리, 외부 의존성 없음
  */
 
 export type SyncType = 'dexie' | 'firebase';
@@ -22,7 +29,18 @@ let syncLogs: SyncLogEntry[] = [];
 let logListeners: Array<(logs: SyncLogEntry[]) => void> = [];
 
 /**
- * 로그 추가
+ * 동기화 로그 항목을 추가합니다.
+ *
+ * @param {SyncType} type - 동기화 타입 ('dexie' 또는 'firebase')
+ * @param {SyncAction} action - 동기화 액션 ('save', 'load', 'sync', 'error')
+ * @param {string} message - 로그 메시지
+ * @param {unknown} data - 로그와 함께 저장할 데이터 (선택적, 200자로 제한)
+ * @param {Error} error - 에러 객체 (선택적)
+ * @returns {void} 반환값 없음
+ * @throws 없음
+ * @sideEffects
+ *   - syncLogs 배열에 새 항목 추가 (최대 100개 유지)
+ *   - 모든 등록된 리스너에게 업데이트 알림
  */
 export function addSyncLog(
   type: SyncType,
@@ -53,14 +71,25 @@ export function addSyncLog(
 }
 
 /**
- * 모든 로그 가져오기
+ * 저장된 모든 동기화 로그를 가져옵니다.
+ *
+ * @returns {SyncLogEntry[]} 모든 로그 항목의 복사본 배열
+ * @throws 없음
+ * @sideEffects
+ *   - 없음: 읽기 전용 작업
  */
 export function getSyncLogs(): SyncLogEntry[] {
   return [...syncLogs];
 }
 
 /**
- * 로그 초기화
+ * 모든 동기화 로그를 삭제합니다.
+ *
+ * @returns {void} 반환값 없음
+ * @throws 없음
+ * @sideEffects
+ *   - syncLogs 배열 초기화
+ *   - 모든 등록된 리스너에게 업데이트 알림
  */
 export function clearSyncLogs(): void {
   syncLogs = [];
@@ -68,7 +97,13 @@ export function clearSyncLogs(): void {
 }
 
 /**
- * 로그 변경 구독
+ * 동기화 로그 변경사항을 구독합니다.
+ *
+ * @param {Function} callback - 로그 변경 시 호출될 콜백 함수
+ * @returns {Function} 구독 해제 함수
+ * @throws 없음
+ * @sideEffects
+ *   - logListeners 배열에 콜백 추가
  */
 export function subscribeSyncLogs(callback: (logs: SyncLogEntry[]) => void): () => void {
   logListeners.push(callback);
@@ -87,7 +122,15 @@ function notifyListeners(): void {
 }
 
 /**
- * 로그 필터링
+ * 특정 조건으로 동기화 로그를 필터링합니다.
+ *
+ * @param {SyncType} type - 필터링할 동기화 타입 (선택적)
+ * @param {SyncAction} action - 필터링할 액션 타입 (선택적)
+ * @param {number} since - 이 타임스탬프 이후의 로그만 포함 (선택적)
+ * @returns {SyncLogEntry[]} 필터링된 로그 항목 배열
+ * @throws 없음
+ * @sideEffects
+ *   - 없음: 읽기 전용 작업
  */
 export function filterSyncLogs(
   type?: SyncType,

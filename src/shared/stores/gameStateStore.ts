@@ -1,6 +1,13 @@
 /**
  * GameState Zustand Store
- * 게임 상태 전역 관리
+ *
+ * @role 게임 상태(XP, 레벨, 퀘스트)의 전역 상태 관리 및 자동 일일 초기화
+ * @input XP 획득/소비, 퀘스트 진행, 날짜 변경 감지
+ * @output 게임 상태, XP, 레벨, 퀘스트 목록 및 관리 함수
+ * @external_dependencies
+ *   - zustand: 전역 상태 관리 라이브러리
+ *   - repositories: 게임 상태, XP, 퀘스트 데이터 레포지토리
+ *   - utils: 날짜 유틸리티
  */
 
 import { create } from 'zustand';
@@ -30,6 +37,23 @@ interface GameStateStore {
   reset: () => void;
 }
 
+/**
+ * 게임 상태 Zustand 스토어
+ *
+ * @returns {GameStateStore} 게임 상태 및 관리 함수
+ * @throws {Error} XP 부족, 데이터 로드 실패 시
+ * @sideEffects
+ *   - localStorage/Firebase에 게임 상태 저장
+ *   - 날짜 변경 감지 시 자동 일일 초기화 (dailyXP, 퀘스트 리셋)
+ *   - XP 증감 및 레벨 업 처리
+ *
+ * @example
+ * ```tsx
+ * const { gameState, addXP, spendXP } = useGameStateStore();
+ * await addXP(50, 'block-1');
+ * await spendXP(15);
+ * ```
+ */
 export const useGameStateStore = create<GameStateStore>((set, get) => ({
   // 초기 상태
   gameState: null,
@@ -45,12 +69,9 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
       // 날짜가 바뀌었는지 확인
       const today = getLocalDate();
       if (data.lastLogin !== today) {
-        console.log(`[GameStateStore] Date changed: ${data.lastLogin} → ${today}, initializing new day...`);
         data = await initializeNewDayInRepo();
-        console.log('[GameStateStore] New day initialized');
       }
 
-      console.log('[GameStateStore] Loaded game state:', data);
       set({ gameState: data, loading: false });
     } catch (err) {
       console.error('[GameStateStore] Failed to load game state:', err);
@@ -108,7 +129,6 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
 
   // 수동 갱신 (강제 리로드)
   refresh: async () => {
-    console.log('[GameStateStore] 🔄 Refreshing game state');
     await get().loadData();
   },
 

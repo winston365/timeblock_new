@@ -1,6 +1,10 @@
 /**
- * src/features/gamification/LevelUpNotification.tsx
- * 레벨업 알림 모달
+ * LevelUpNotification
+ *
+ * @role 레벨업 시 표시되는 축하 알림 모달
+ * @input level (새로운 레벨), onClose (닫기 핸들러)
+ * @output 레벨업 애니메이션 모달
+ * @external_dependencies 없음
  */
 
 import './gamification.css';
@@ -10,6 +14,12 @@ interface LevelUpNotificationProps {
   onClose: () => void;
 }
 
+/**
+ * 레벨업 알림 모달
+ *
+ * @param {LevelUpNotificationProps} props - 컴포넌트 props
+ * @returns {JSX.Element} 레벨업 모달
+ */
 export default function LevelUpNotification({ level, onClose }: LevelUpNotificationProps) {
   return (
     <div className="level-up-overlay" onClick={onClose}>

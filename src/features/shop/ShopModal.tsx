@@ -1,5 +1,11 @@
 /**
- * ShopModal - 상점 아이템 추가/편집 모달
+ * ShopModal
+ *
+ * @role 상점 아이템을 추가하거나 편집하는 모달 컴포넌트
+ * @input item (ShopItem | null), onClose (function)
+ * @output 아이템 이름, 가격, 이미지 업로드 입력 필드 및 저장 버튼을 포함한 모달 UI
+ * @external_dependencies
+ *   - createShopItem, updateShopItem: 상점 아이템 Repository
  */
 
 import { useState, useEffect } from 'react';
@@ -11,6 +17,16 @@ interface ShopModalProps {
   onClose: (saved: boolean) => void;
 }
 
+/**
+ * 상점 아이템 추가/편집 모달 컴포넌트
+ *
+ * @param {ShopModalProps} props - item, onClose를 포함하는 props
+ * @returns {JSX.Element} 모달 UI
+ * @sideEffects
+ *   - ESC 키로 모달 닫기
+ *   - 이미지 파일을 Base64로 변환하여 저장
+ *   - 저장 시 Firebase 동기화
+ */
 export function ShopModal({ item, onClose }: ShopModalProps) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState(50);

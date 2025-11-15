@@ -1,9 +1,15 @@
 /**
- * Firebase 동기화 서비스 - Facade
- * R7: 기존 파일을 Facade 패턴으로 전환 (하위 호환성 유지)
+ * Firebase Synchronization Service - Facade
  *
- * 이 파일은 하위 호환성을 위한 facade입니다.
- * 실제 구현은 firebase/ 디렉토리의 모듈들에 있습니다.
+ * @role Firebase 동기화 기능에 대한 하위 호환성 인터페이스를 제공합니다.
+ *       레거시 코드를 위한 Facade 패턴으로, 실제 구현은 firebase/ 디렉토리 모듈에 위임합니다.
+ * @input DailyData, GameState, ChatHistory, DailyTokenUsage, 날짜 키
+ * @output Promise<void> (동기화 완료), 구독 해제 함수, Firebase 데이터 객체
+ * @external_dependencies
+ *   - firebase/database: Firebase Realtime Database SDK
+ *   - ./firebase/syncCore: 제네릭 동기화 코어 로직
+ *   - ./firebase/strategies: 데이터 타입별 동기화 전략
+ *   - ./firebase/firebaseClient: Firebase 클라이언트 관리
  */
 
 // ============================================================================
@@ -38,8 +44,16 @@ import type { DailyData, GameState, ChatHistory, DailyTokenUsage } from '@/share
 // ============================================================================
 
 /**
- * DailyData를 Firebase에 동기화
+ * DailyData를 Firebase에 동기화합니다.
+ *
  * @deprecated 새 코드에서는 syncToFirebase(dailyDataStrategy, data, key) 사용 권장
+ * @param {string} date - 날짜 키 (YYYY-MM-DD 형식)
+ * @param {DailyData} dailyData - 동기화할 일일 데이터
+ * @returns {Promise<void>} 동기화 완료 Promise
+ * @throws {Error} Firebase 초기화 실패 또는 네트워크 오류
+ * @sideEffects
+ *   - Firebase Realtime Database에 데이터 저장
+ *   - syncLogger에 동기화 로그 추가
  */
 export async function syncDailyDataToFirebase(
   date: string,
@@ -49,8 +63,16 @@ export async function syncDailyDataToFirebase(
 }
 
 /**
- * Firebase에서 DailyData 실시간 리스닝
+ * Firebase에서 DailyData 실시간 리스닝을 시작합니다.
+ *
  * @deprecated 새 코드에서는 listenToFirebase(dailyDataStrategy, onUpdate, key) 사용 권장
+ * @param {string} date - 날짜 키 (YYYY-MM-DD 형식)
+ * @param {Function} onUpdate - 데이터 업데이트 시 호출될 콜백
+ * @returns {Function} 리스닝 해제 함수
+ * @throws 없음 (에러는 내부적으로 처리)
+ * @sideEffects
+ *   - Firebase onValue 리스너 등록
+ *   - 다른 디바이스에서 업데이트 시 onUpdate 콜백 실행
  */
 export function listenToDailyDataFromFirebase(
   date: string,
@@ -60,8 +82,15 @@ export function listenToDailyDataFromFirebase(
 }
 
 /**
- * GameState를 Firebase에 동기화 (Delta-based Merge)
+ * GameState를 Firebase에 동기화합니다 (Delta-based Merge 전략 사용).
+ *
  * @deprecated 새 코드에서는 syncToFirebase(gameStateStrategy, data) 사용 권장
+ * @param {GameState} gameState - 동기화할 게임 상태
+ * @returns {Promise<void>} 동기화 완료 Promise
+ * @throws {Error} Firebase 초기화 실패 또는 네트워크 오류
+ * @sideEffects
+ *   - Firebase Realtime Database에 데이터 저장 (충돌 시 병합)
+ *   - syncLogger에 동기화 로그 추가
  */
 export async function syncGameStateToFirebase(gameState: GameState): Promise<void> {
   // GameState는 key 없이 root에 저장
@@ -69,8 +98,15 @@ export async function syncGameStateToFirebase(gameState: GameState): Promise<voi
 }
 
 /**
- * Firebase에서 GameState 실시간 리스닝
+ * Firebase에서 GameState 실시간 리스닝을 시작합니다.
+ *
  * @deprecated 새 코드에서는 listenToFirebase(gameStateStrategy, onUpdate) 사용 권장
+ * @param {Function} onUpdate - 게임 상태 업데이트 시 호출될 콜백
+ * @returns {Function} 리스닝 해제 함수
+ * @throws 없음 (에러는 내부적으로 처리)
+ * @sideEffects
+ *   - Firebase onValue 리스너 등록
+ *   - 다른 디바이스에서 업데이트 시 onUpdate 콜백 실행
  */
 export function listenToGameStateFromFirebase(
   onUpdate: (gameState: GameState) => void
@@ -79,8 +115,16 @@ export function listenToGameStateFromFirebase(
 }
 
 /**
- * ChatHistory를 Firebase에 동기화
+ * ChatHistory를 Firebase에 동기화합니다.
+ *
  * @deprecated 새 코드에서는 syncToFirebase(chatHistoryStrategy, data, key) 사용 권장
+ * @param {string} date - 날짜 키 (YYYY-MM-DD 형식)
+ * @param {ChatHistory} chatHistory - 동기화할 채팅 히스토리
+ * @returns {Promise<void>} 동기화 완료 Promise
+ * @throws {Error} Firebase 초기화 실패 또는 네트워크 오류
+ * @sideEffects
+ *   - Firebase Realtime Database에 데이터 저장
+ *   - syncLogger에 동기화 로그 추가
  */
 export async function syncChatHistoryToFirebase(
   date: string,
@@ -90,8 +134,16 @@ export async function syncChatHistoryToFirebase(
 }
 
 /**
- * Firebase에서 ChatHistory 실시간 리스닝
+ * Firebase에서 ChatHistory 실시간 리스닝을 시작합니다.
+ *
  * @deprecated 새 코드에서는 listenToFirebase(chatHistoryStrategy, onUpdate, key) 사용 권장
+ * @param {string} date - 날짜 키 (YYYY-MM-DD 형식)
+ * @param {Function} onUpdate - 채팅 히스토리 업데이트 시 호출될 콜백
+ * @returns {Function} 리스닝 해제 함수
+ * @throws 없음 (에러는 내부적으로 처리)
+ * @sideEffects
+ *   - Firebase onValue 리스너 등록
+ *   - 다른 디바이스에서 업데이트 시 onUpdate 콜백 실행
  */
 export function listenToChatHistoryFromFirebase(
   date: string,
@@ -101,8 +153,16 @@ export function listenToChatHistoryFromFirebase(
 }
 
 /**
- * DailyTokenUsage를 Firebase에 동기화
+ * DailyTokenUsage를 Firebase에 동기화합니다.
+ *
  * @deprecated 새 코드에서는 syncToFirebase(tokenUsageStrategy, data, key) 사용 권장
+ * @param {string} date - 날짜 키 (YYYY-MM-DD 형식)
+ * @param {DailyTokenUsage} tokenUsage - 동기화할 토큰 사용량 데이터
+ * @returns {Promise<void>} 동기화 완료 Promise
+ * @throws {Error} Firebase 초기화 실패 또는 네트워크 오류
+ * @sideEffects
+ *   - Firebase Realtime Database에 데이터 저장
+ *   - syncLogger에 동기화 로그 추가
  */
 export async function syncTokenUsageToFirebase(
   date: string,
@@ -112,8 +172,16 @@ export async function syncTokenUsageToFirebase(
 }
 
 /**
- * Firebase에서 TokenUsage 실시간 리스닝
+ * Firebase에서 TokenUsage 실시간 리스닝을 시작합니다.
+ *
  * @deprecated 새 코드에서는 listenToFirebase(tokenUsageStrategy, onUpdate, key) 사용 권장
+ * @param {string} date - 날짜 키 (YYYY-MM-DD 형식)
+ * @param {Function} onUpdate - 토큰 사용량 업데이트 시 호출될 콜백
+ * @returns {Function} 리스닝 해제 함수
+ * @throws 없음 (에러는 내부적으로 처리)
+ * @sideEffects
+ *   - Firebase onValue 리스너 등록
+ *   - 다른 디바이스에서 업데이트 시 onUpdate 콜백 실행
  */
 export function listenToTokenUsageFromFirebase(
   date: string,
@@ -123,7 +191,14 @@ export function listenToTokenUsageFromFirebase(
 }
 
 /**
- * Firebase에서 전체 데이터 가져오기 (초기 로드용)
+ * Firebase에서 전체 데이터를 가져옵니다 (초기 로드용).
+ *
+ * @returns {Promise<{dailyData: Record<string, DailyData>; gameState: GameState | null}>}
+ *          모든 DailyData와 GameState 객체
+ * @throws {Error} Firebase 초기화 실패 또는 데이터 읽기 오류
+ * @sideEffects
+ *   - Firebase Database에서 데이터 읽기
+ *   - 콘솔에 성공/실패 로그 출력
  */
 export async function fetchDataFromFirebase(): Promise<{
   dailyData: Record<string, DailyData>;
@@ -156,7 +231,6 @@ export async function fetchDataFromFirebase(): Promise<{
 
     const gameState = gameStateValue ? gameStateValue.data : null;
 
-    console.log('✅ Data fetched from Firebase');
     return { dailyData, gameState };
   } catch (error) {
     console.error('Failed to fetch data from Firebase:', error);
@@ -165,7 +239,17 @@ export async function fetchDataFromFirebase(): Promise<{
 }
 
 /**
- * Firebase 실시간 동기화 활성화
+ * Firebase 실시간 동기화를 활성화합니다.
+ * DailyData 컬렉션과 GameState를 실시간으로 감시합니다.
+ *
+ * @param {Function} onDailyDataUpdate - DailyData 업데이트 시 호출될 콜백 (날짜 키 전달)
+ * @param {Function} onGameStateUpdate - GameState 업데이트 시 호출될 콜백
+ * @returns {Function} 모든 리스너를 해제하는 함수
+ * @throws 없음 (에러는 내부적으로 처리)
+ * @sideEffects
+ *   - Firebase onValue 리스너 2개 등록 (dailyData, gameState)
+ *   - 다른 디바이스에서 변경 시 콜백 실행
+ *   - 콘솔에 활성화 로그 출력
  */
 export function enableFirebaseSync(
   onDailyDataUpdate: (date: string) => void,
@@ -202,7 +286,6 @@ export function enableFirebaseSync(
     }
   });
 
-  console.log('✅ Firebase sync enabled');
 
   return () => {
     off(dailyDataRef);

@@ -1,5 +1,10 @@
 /**
  * Dexie (IndexedDB) 클라이언트 설정
+ *
+ * @role IndexedDB를 Dexie로 관리, 앱의 모든 로컬 데이터 저장/조회 담당 (dailyData, gameState, templates, shopItems, waifuState, energyLevels, settings, chatHistory, dailyTokenUsage)
+ * @input 도메인 타입 (DailyData, GameState, Template 등)
+ * @output Dexie DB 인스턴스 및 헬퍼 함수
+ * @dependencies Dexie, domain 타입
  */
 
 import Dexie, { type Table } from 'dexie';
@@ -19,6 +24,18 @@ import type {
 // Database Schema
 // ============================================================================
 
+/**
+ * 타임블록 앱의 IndexedDB 스키마
+ * - dailyData: 일일 작업 및 블록 상태 (date를 primary key로)
+ * - gameState: 게임 상태 (단일 레코드, 'current' 키 사용)
+ * - templates: 작업 템플릿 (id를 primary key로)
+ * - shopItems: 상점 아이템 (id를 primary key로)
+ * - waifuState: 와이푸 상태 (단일 레코드, 'current' 키 사용)
+ * - energyLevels: 에너지 레벨 기록 (복합 id: date + timestamp)
+ * - settings: 앱 설정 (단일 레코드, 'current' 키 사용)
+ * - chatHistory: Gemini 채팅 히스토리 (date를 primary key로)
+ * - dailyTokenUsage: 일일 토큰 사용량 (date를 primary key로)
+ */
 export class TimeBlockDB extends Dexie {
   // 테이블 선언
   dailyData!: Table<DailyData & { date: string }, string>;
@@ -84,16 +101,16 @@ export const db = new TimeBlockDB();
 
 /**
  * DB 초기화 및 마이그레이션
+ * IndexedDB를 열고, localStorage에서 데이터 마이그레이션 수행
+ * @returns Promise<void>
  */
 export async function initializeDatabase(): Promise<void> {
   try {
     // IndexedDB 열기 시도
     await db.open();
-    console.log('✅ Dexie DB initialized successfully');
 
     // DB 상태 확인
     const info = await getDatabaseInfo();
-    console.log('📊 DB Status:', info);
 
     // localStorage에서 IndexedDB로 데이터 마이그레이션
     await migrateFromLocalStorage();
@@ -102,10 +119,8 @@ export async function initializeDatabase(): Promise<void> {
 
     // IndexedDB가 막혀있으면 재생성 시도
     try {
-      console.log('🔄 Attempting to recreate database...');
       await db.delete();
       await db.open();
-      console.log('✅ Database recreated successfully');
 
       // 재생성 후 마이그레이션
       await migrateFromLocalStorage();
@@ -118,10 +133,10 @@ export async function initializeDatabase(): Promise<void> {
 
 /**
  * localStorage에서 IndexedDB로 데이터 마이그레이션
+ * @returns Promise<void>
  */
 async function migrateFromLocalStorage(): Promise<void> {
   try {
-    console.log('🔄 Checking localStorage for migration...');
     let migratedCount = 0;
 
     // 1. dailyPlans 마이그레이션
@@ -151,7 +166,6 @@ async function migrateFromLocalStorage(): Promise<void> {
         });
 
         migratedCount++;
-        console.log(`✅ Migrated ${key} to IndexedDB`);
       } catch (parseError) {
         console.warn(`⚠️ Failed to parse ${key}:`, parseError);
       }
@@ -168,18 +182,11 @@ async function migrateFromLocalStorage(): Promise<void> {
             key: 'current',
             ...gameState,
           });
-          console.log('✅ Migrated gameState to IndexedDB');
           migratedCount++;
         } catch (parseError) {
           console.warn('⚠️ Failed to parse gameState:', parseError);
         }
       }
-    }
-
-    if (migratedCount > 0) {
-      console.log(`✅ Migration complete: ${migratedCount} items migrated`);
-    } else {
-      console.log('ℹ️ No migration needed');
     }
   } catch (error) {
     console.error('❌ Migration failed:', error);
@@ -188,49 +195,8 @@ async function migrateFromLocalStorage(): Promise<void> {
 }
 
 /**
- * 오래된 데이터 정리 (선택적)
- * @param daysToKeep 보관할 일 수 (기본: 365일)
- */
-export async function cleanupOldData(daysToKeep: number = 365): Promise<void> {
-  try {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-    const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
-
-    // dailyData 정리
-    const deletedDailyData = await db.dailyData
-      .where('date')
-      .below(cutoffDateStr)
-      .delete();
-
-    // energyLevels 정리
-    const deletedEnergyLevels = await db.energyLevels
-      .where('date')
-      .below(cutoffDateStr)
-      .delete();
-
-    console.log(`🗑️ Cleaned up old data: ${deletedDailyData} daily records, ${deletedEnergyLevels} energy records`);
-  } catch (error) {
-    console.error('❌ Failed to cleanup old data:', error);
-  }
-}
-
-/**
- * DB 전체 초기화 (개발용)
- */
-export async function resetDatabase(): Promise<void> {
-  try {
-    await db.delete();
-    console.log('🗑️ Database reset successfully');
-    await initializeDatabase();
-  } catch (error) {
-    console.error('❌ Failed to reset database:', error);
-    throw error;
-  }
-}
-
-/**
- * DB 상태 확인
+ * DB 상태 확인 (각 테이블의 레코드 수 반환)
+ * @returns DB 상태 정보
  */
 export async function getDatabaseInfo(): Promise<{
   dailyDataCount: number;

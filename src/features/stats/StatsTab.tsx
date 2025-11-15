@@ -1,6 +1,12 @@
 /**
- * src/features/stats/StatsTab.tsx
- * 통계 탭 - XP 히스토리 및 블록별 XP 차트
+ * StatsTab
+ *
+ * @role XP 히스토리 및 타임블록별 XP 통계를 차트로 표시하는 탭 컴포넌트
+ * @input 없음 (useGameState 훅으로 데이터 로드)
+ * @output 지난 5일 XP 차트, 오늘 블록별 XP 차트, 요약 통계
+ * @external_dependencies
+ *   - useGameState: 게임 상태 데이터 훅
+ *   - utils: 날짜 유틸리티
  */
 
 import { useGameState } from '@/shared/hooks';
@@ -8,6 +14,11 @@ import { TIME_BLOCKS } from '@/shared/types/domain';
 import { getLocalDate } from '@/shared/lib/utils';
 import './stats.css';
 
+/**
+ * 통계 탭
+ *
+ * @returns {JSX.Element} 통계 탭 UI
+ */
 export default function StatsTab() {
   const { gameState, loading } = useGameState();
 

@@ -1,5 +1,14 @@
 /**
- * ShopPanel - 상점 아이템 목록 및 구매
+ * ShopPanel
+ *
+ * @role XP로 구매할 수 있는 보상 아이템 목록을 표시하고 구매를 관리하는 상점 패널 컴포넌트
+ * @input onPurchaseSuccess (function, optional) - 구매 성공 시 콜백
+ * @output 상점 아이템 목록, 보유 XP 표시, 구매/편집/삭제 버튼을 포함한 UI
+ * @external_dependencies
+ *   - loadShopItems, deleteShopItem, purchaseShopItem: 상점 아이템 Repository
+ *   - useGameState: 게임 상태 훅 (보유 XP 확인)
+ *   - ShopModal: 아이템 추가/편집 모달 컴포넌트
+ *   - shop.css: 스타일시트
  */
 
 import { useState, useEffect } from 'react';
@@ -13,6 +22,16 @@ interface ShopPanelProps {
   onPurchaseSuccess?: (message: string, waifuMessage?: string) => void;
 }
 
+/**
+ * 상점 패널 컴포넌트
+ *
+ * @param {ShopPanelProps} props - onPurchaseSuccess를 포함하는 props
+ * @returns {JSX.Element} 상점 패널 UI
+ * @sideEffects
+ *   - 컴포넌트 마운트 시 상점 아이템 로드
+ *   - 구매 시 XP 차감 및 Firebase 동기화
+ *   - 구매 성공 시 와이푸 메시지 표시 (콜백 호출)
+ */
 export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);

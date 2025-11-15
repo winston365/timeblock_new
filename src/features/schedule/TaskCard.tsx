@@ -1,6 +1,11 @@
 /**
- * src/features/schedule/TaskCard.tsx
- * 작업 카드 컴포넌트
+ * TaskCard
+ *
+ * @role 개별 작업을 표시하고 인라인 편집(난이도, 시간) 및 완료/삭제 기능을 제공하는 카드 컴포넌트
+ * @input task (작업 데이터), 각종 핸들러 함수들, hideMetadata (메타데이터 숨김 옵션)
+ * @output 드래그 가능한 작업 카드 UI (체크박스, 제목, 난이도, 시간, XP, 메모)
+ * @external_dependencies
+ *   - utils: XP 계산 및 시간 포맷팅 함수
  */
 
 import { useState } from 'react';
@@ -18,6 +23,15 @@ interface TaskCardProps {
   hideMetadata?: boolean; // 인박스에서 난이도/XP 숨기기 옵션
 }
 
+/**
+ * 작업 카드 컴포넌트
+ *
+ * @param {TaskCardProps} props - 컴포넌트 props
+ * @returns {JSX.Element} 작업 카드 UI
+ * @sideEffects
+ *   - 드래그앤드롭으로 작업 이동
+ *   - 인라인 난이도/시간 변경 시 즉시 업데이트
+ */
 export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTask, onDragStart, hideMetadata = false }: TaskCardProps) {
   const [showResistancePicker, setShowResistancePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);

@@ -1,6 +1,13 @@
 /**
- * src/features/schedule/ScheduleView.tsx
- * 메인 타임블럭 스케줄러 화면
+ * ScheduleView
+ *
+ * @role 타임블록 기반 일일 스케줄러 메인 화면. 시간대별 작업 관리 및 현재 시간 인디케이터 표시
+ * @input 없음 (훅으로 데이터 로드)
+ * @output 타임블록 그리드, 현재 시간 인디케이터, 작업 모달
+ * @external_dependencies
+ *   - useDailyData: 일일 데이터 및 CRUD 훅
+ *   - TimeBlock: 개별 타임블록 컴포넌트
+ *   - TaskModal: 작업 추가/수정 모달
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -11,6 +18,16 @@ import TimeBlock from './TimeBlock';
 import TaskModal from './TaskModal';
 import './schedule.css';
 
+/**
+ * 타임블록 스케줄러 메인 화면
+ *
+ * @returns {JSX.Element} 스케줄 뷰
+ * @sideEffects
+ *   - 1분마다 현재 시간 업데이트
+ *   - 현재 시간 인디케이터 위치 계산 및 표시
+ *   - 지난 블록의 미완료 작업 자동 인박스 이동
+ *   - ResizeObserver로 블록 크기 변화 감지
+ */
 export default function ScheduleView() {
   const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion, toggleBlockLock } = useDailyData();
   const [currentHour, setCurrentHour] = useState(new Date().getHours());

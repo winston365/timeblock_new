@@ -1,6 +1,14 @@
 /**
- * GeminiChatModal - Gemini AI 챗봇 모달
- * 20개 메시지 히스토리, 토큰 사용량 추적, Firebase 동기화
+ * GeminiChatModal
+ *
+ * @role Gemini AI 챗봇 인터페이스. 최근 20개 메시지 히스토리 유지 및 토큰 사용량 추적
+ * @input isOpen (모달 표시 여부), onClose (모달 닫기 핸들러)
+ * @output 채팅 메시지 목록, 입력창, 토큰 사용량 통계
+ * @external_dependencies
+ *   - geminiApi: Gemini API 호출 및 페르소나 생성
+ *   - chatHistoryRepository: 채팅 히스토리 및 토큰 사용량 관리
+ *   - dailyDataRepository: 최근 5일 데이터 로드
+ *   - useDailyData, useGameState, useEnergyState, useWaifuState: 컨텍스트 데이터 훅
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -26,7 +34,11 @@ const PRICE_PER_MILLION_INPUT = 1.25; // US$ 1.25 per 1M input tokens
 const PRICE_PER_MILLION_OUTPUT = 10.0; // US$ 10.00 per 1M output tokens
 
 /**
- * 토큰 비용 계산 (USD)
+ * 토큰 비용 계산
+ *
+ * @param {number} promptTokens - 입력 토큰 수
+ * @param {number} candidatesTokens - 출력 토큰 수
+ * @returns {{ inputCost: number; outputCost: number; totalCost: number }} 입력/출력/총 비용 (USD)
  */
 function calculateTokenCost(promptTokens: number, candidatesTokens: number): { inputCost: number; outputCost: number; totalCost: number } {
   const inputCost = (promptTokens / 1_000_000) * PRICE_PER_MILLION_INPUT;
@@ -36,7 +48,10 @@ function calculateTokenCost(promptTokens: number, candidatesTokens: number): { i
 }
 
 /**
- * 비용을 포맷팅 (USD)
+ * 비용 포맷팅
+ *
+ * @param {number} cost - USD 비용
+ * @returns {string} 포맷팅된 비용 문자열
  */
 function formatCost(cost: number): string {
   if (cost < 0.01) {
@@ -50,6 +65,17 @@ interface GeminiChatModalProps {
   onClose: () => void;
 }
 
+/**
+ * Gemini AI 챗봇 모달
+ *
+ * @param {GeminiChatModalProps} props - 컴포넌트 props
+ * @returns {JSX.Element | null} 챗봇 모달 또는 null
+ * @sideEffects
+ *   - 채팅 히스토리 로드/저장
+ *   - 토큰 사용량 추적 및 저장
+ *   - Gemini API 호출
+ *   - 확장된 페르소나 컨텍스트 생성 (작업, XP, 에너지, 최근 5일 패턴)
+ */
 export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProps) {
   const { waifuState } = useWaifuState();
   const { dailyData } = useDailyData();
