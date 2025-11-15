@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>TimeBlock 데이터 진단 도구</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+    h1 { color: #4ec9b0; }
+    h2 { color: #ce9178; margin-top: 30px; }
+    pre { background: #2d2d2d; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    .success { color: #4ec9b0; }
+    .error { color: #f48771; }
+    .warning { color: #dcdcaa; }
+    button { background: #0e639c; color: white; border: none; padding: 10px 20px; margin: 5px; cursor: pointer; border-radius: 3px; }
+    button:hover { background: #1177bb; }
+    .section { margin: 20px 0; border: 1px solid #3e3e3e; padding: 15px; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>🔍 TimeBlock 데이터 진단 도구</h1>
+  <button onclick="diagnoseAll()">전체 진단 실행</button>
+  <button onclick="exportData()">데이터 백업</button>
+
+  <div class="section">
+    <h2>1. localStorage 확인</h2>
+    <pre id="localStorage-output">로딩 중...</pre>
+  </div>
+
+  <div class="section">
+    <h2>2. IndexedDB 확인</h2>
+    <pre id="indexedDB-output">로딩 중...</pre>
+  </div>
+
+  <div class="section">
+    <h2>3. Firebase 설정 확인</h2>
+    <pre id="firebase-output">로딩 중...</pre>
+  </div>
+
+  <div class="section">
+    <h2>4. 복구 가능한 데이터</h2>
+    <pre id="recovery-output">로딩 중...</pre>
+  </div>
+
+  <script>
+    async function checkLocalStorage() {
+      const output = document.getElementById('localStorage-output');
+      let html = '';
+
+      const allKeys = Object.keys(localStorage);
+      html += `총 ${allKeys.length}개의 키 발견\n\n`;
+
+      // 모든 키 표시
+      const relevantKeys = allKeys.filter(key =>
+        key.includes('daily') ||
+        key.includes('Daily') ||
+        key.includes('plan') ||
+        key.includes('Plan') ||
+        key.includes('game') ||
+        key.includes('Game') ||
+        key.includes('settings') ||
+        key.includes('Settings')
+      );
+
+      if (relevantKeys.length === 0) {
+        html += '<span class="error">❌ 관련 데이터 없음</span>\n\n';
+        html += '전체 키 목록:\n';
+        allKeys.forEach(key => {
+          html += `  - ${key}\n`;
+        });
+      } else {
+        html += '<span class="success">✅ 관련 데이터 발견:</span>\n\n';
+        relevantKeys.forEach(key => {
+          try {
+            const value = localStorage.getItem(key);
+            const parsed = JSON.parse(value);
+            html += `📦 ${key}:\n`;
+            if (parsed.tasks) {
+              html += `   └ 할일: ${parsed.tasks.length}개\n`;
+              parsed.tasks.forEach((task, idx) => {
+                html += `      ${idx+1}. ${task.text || task.title || '(제목없음)'}\n`;
+              });
+            } else {
+              html += `   └ ${JSON.stringify(parsed, null, 2)}\n`;
+            }
+            html += '\n';
+          } catch (e) {
+            html += `  ${key}: (파싱 실패)\n`;
+          }
+        });
+      }
+
+      output.innerHTML = html;
+    }
+
+    async function checkIndexedDB() {
+      const output = document.getElementById('indexedDB-output');
+      let html = '';
+
+      try {
+        const request = indexedDB.open('timeblock_db', 2);
+
+        request.onsuccess = async (event) => {
+          const db = event.target.result;
+          html += `<span class="success">✅ Database: ${db.name} (v${db.version})</span>\n`;
+          html += `Object Stores: ${Array.from(db.objectStoreNames).join(', ')}\n\n`;
+
+          // dailyData 확인
+          try {
+            const tx = db.transaction(['dailyData'], 'readonly');
+            const store = tx.objectStore('dailyData');
+            const all = store.getAll();
+
+            all.onsuccess = () => {
+              html += `📅 dailyData: ${all.result.length}개 레코드\n`;
+              all.result.forEach(item => {
+                html += `  - ${item.date}: ${item.tasks?.length || 0}개 할일\n`;
+                if (item.tasks && item.tasks.length > 0) {
+                  item.tasks.forEach((task, idx) => {
+                    html += `     ${idx+1}. ${task.text}\n`;
+                  });
+                }
+              });
+              html += '\n';
+
+              // gameState 확인
+              const tx2 = db.transaction(['gameState'], 'readonly');
+              const store2 = tx2.objectStore('gameState');
+              const gameAll = store2.getAll();
+
+              gameAll.onsuccess = () => {
+                html += `🎮 gameState: ${gameAll.result.length}개 레코드\n`;
+                if (gameAll.result.length > 0) {
+                  const gs = gameAll.result[0];
+                  html += `  Level: ${gs.level}, XP: ${gs.totalXP}\n`;
+                }
+
+                output.innerHTML = html;
+              };
+            };
+          } catch (e) {
+            html += `<span class="error">❌ Error: ${e.message}</span>\n`;
+            output.innerHTML = html;
+          }
+        };
+
+        request.onerror = () => {
+          output.innerHTML = '<span class="error">❌ IndexedDB 열기 실패</span>';
+        };
+      } catch (error) {
+        output.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+      }
+    }
+
+    async function checkFirebase() {
+      const output = document.getElementById('firebase-output');
+
+      const settings = localStorage.getItem('settings');
+      if (!settings) {
+        output.innerHTML = '<span class="error">❌ Firebase 설정 없음</span>';
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(settings);
+        if (parsed.firebaseConfig) {
+          output.innerHTML = '<span class="success">✅ Firebase 설정 있음</span>\n' +
+            JSON.stringify(parsed.firebaseConfig, null, 2);
+        } else {
+          output.innerHTML = '<span class="error">❌ Firebase 설정이 settings에 없음</span>';
+        }
+      } catch (e) {
+        output.innerHTML = `<span class="error">❌ 파싱 실패: ${e.message}</span>`;
+      }
+    }
+
+    async function checkRecovery() {
+      const output = document.getElementById('recovery-output');
+      let html = '<span class="warning">⚠️ 복구 가능한 데이터 검색 중...</span>\n\n';
+
+      // 다양한 가능한 키 형식 확인
+      const possiblePrefixes = [
+        'daily_plans_',
+        'dailyPlans_',
+        'daily-plans-',
+        'timeblock_',
+        'tasks_',
+      ];
+
+      let found = false;
+      possiblePrefixes.forEach(prefix => {
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith(prefix)) {
+            found = true;
+            html += `<span class="success">✅ 발견: ${key}</span>\n`;
+          }
+        });
+      });
+
+      if (!found) {
+        html += '<span class="error">❌ 복구 가능한 데이터 없음</span>\n';
+      }
+
+      output.innerHTML = html;
+    }
+
+    async function diagnoseAll() {
+      await checkLocalStorage();
+      await checkIndexedDB();
+      await checkFirebase();
+      await checkRecovery();
+    }
+
+    function exportData() {
+      const data = {
+        localStorage: {},
+        timestamp: new Date().toISOString(),
+      };
+
+      Object.keys(localStorage).forEach(key => {
+        data.localStorage[key] = localStorage.getItem(key);
+      });
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `timeblock-backup-${Date.now()}.json`;
+      a.click();
+
+      alert('데이터가 백업되었습니다!');
+    }
+
+    // 자동 실행
+    window.onload = diagnoseAll;
+  </script>
+</body>
+</html>
