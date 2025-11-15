@@ -48,8 +48,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
-  max-width: 1200px;
+  gap: var(--spacing-md);
+  max-width: 1400px;
   margin: 0 auto;
   width: 100%;
 }
@@ -86,10 +86,14 @@
   animation: expandContent 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 제안 2: 현재 블록 맥동 효과 */
+/* 제안 2: 현재 블록 맥동 효과 - 강화 */
 .time-block.current-block {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+  border: 2px solid var(--color-primary);
+  box-shadow:
+    0 0 0 3px rgba(79, 70, 229, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: scale(1.01);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .time-block.current-block .block-header {
@@ -461,15 +465,16 @@
    ============================================================================ */
 
 .task-card {
-  /* 제안 1: 배경 밝기 조정 (#1a1a1a → #242424) */
-  background: #242424;
-  border: 1px solid #333;
+  /* 제안 1: 배경 밝기 조정 (#242424 → #2a2a2a) */
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
   border-radius: 6px;
   padding: var(--spacing-sm);
   transition: all 0.2s;
 }
 
 .task-card:hover {
+  background: #2f2f2f;
   border-color: var(--color-primary);
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
 }
@@ -734,7 +739,7 @@
 /* 스케줄 모달 특화 스타일 */
 .schedule-modal .modal-content {
   width: 100%;
-  max-width: 560px;
+  max-width: 400px;
 }
 
 .modal-form {

@@ -259,6 +259,16 @@ export default function ScheduleView() {
     }
   };
 
+  // 작업 인라인 업데이트 (난이도, 시간 등)
+  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+    try {
+      await updateTask(taskId, updates);
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      alert('작업 수정에 실패했습니다.');
+    }
+  };
+
   // 블록 잠금 토글
   const handleToggleLock = async (blockId: string) => {
     if (!dailyData) return;
@@ -359,6 +369,7 @@ export default function ScheduleView() {
               onAddTask={() => handleAddTask(block.id as TimeBlockId)}
               onCreateTask={handleCreateTask}
               onEditTask={handleEditTask}
+              onUpdateTask={handleUpdateTask}
               onDeleteTask={handleDeleteTask}
               onToggleTask={handleToggleTask}
               onToggleLock={() => handleToggleLock(block.id)}

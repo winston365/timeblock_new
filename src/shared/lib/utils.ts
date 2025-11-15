@@ -177,11 +177,16 @@ export function isToday(task: Task): boolean {
 
 /**
  * 작업 완료 시 획득 XP 계산
+ * 난이도에 따라 XP 배율 적용 (쉬움 1.0배, 보통 1.3배, 어려움 1.6배)
  */
 export function calculateTaskXP(task: Task): number {
   // 실제 소요 시간이 있으면 그걸 사용, 없으면 조정된 시간 사용
   const duration = task.actualDuration > 0 ? task.actualDuration : task.adjustedDuration;
-  return Math.round(duration * XP_PER_MINUTE);
+  const baseXP = duration * XP_PER_MINUTE;
+
+  // 난이도에 따른 XP 배율 적용
+  const resistanceMultiplier = RESISTANCE_MULTIPLIERS[task.resistance];
+  return Math.round(baseXP * resistanceMultiplier);
 }
 
 /**

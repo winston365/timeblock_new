@@ -441,7 +441,7 @@ select:disabled,
   box-shadow:
     var(--modal-shadow),
     0 0 0 1px var(--modal-border);
-  max-width: 560px;
+  max-width: 400px;
   max-height: 90vh;
   animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;

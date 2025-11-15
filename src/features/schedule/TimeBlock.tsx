@@ -21,6 +21,7 @@ interface TimeBlockProps {
   onAddTask: () => void;
   onCreateTask?: (text: string, blockId: TimeBlockId) => Promise<void>;
   onEditTask: (task: Task) => void;
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void;
   onDeleteTask: (taskId: string) => void;
   onToggleTask: (taskId: string) => void;
   onToggleLock?: () => void;
@@ -35,6 +36,7 @@ export default function TimeBlock({
   onAddTask,
   onCreateTask,
   onEditTask,
+  onUpdateTask,
   onDeleteTask,
   onToggleTask,
   onToggleLock,
@@ -249,7 +251,7 @@ export default function TimeBlock({
                   onEdit={() => onEditTask(task)}
                   onDelete={() => onDeleteTask(task.id)}
                   onToggle={() => onToggleTask(task.id)}
-                  onUpdateTask={(updates) => onEditTask({ ...task, ...updates })}
+                  onUpdateTask={onUpdateTask ? (updates) => onUpdateTask(task.id, updates) : undefined}
                 />
               ))
             )}
