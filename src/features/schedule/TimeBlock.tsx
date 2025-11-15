@@ -163,6 +163,28 @@ export default function TimeBlock({
     return `활용률 ${utilization}% • ${statusText}`;
   };
 
+  // 상태 아이콘 가져오기
+  const getStatusIcon = (): string => {
+    const icons = {
+      comfortable: '🟢',
+      balanced: '🔵',
+      tight: '🟠',
+      critical: '🔴'
+    };
+    return icons[timeStatus];
+  };
+
+  // 상태 텍스트 가져오기
+  const getStatusText = (): string => {
+    const texts = {
+      comfortable: '여유',
+      balanced: '적정',
+      tight: '촉박',
+      critical: '위험'
+    };
+    return texts[timeStatus];
+  };
+
   // 인라인 입력 필드 포커스
   useEffect(() => {
     if (showInlineInput && inlineInputRef.current) {
@@ -280,6 +302,19 @@ export default function TimeBlock({
                   <span className="time-divider">·</span>
                   <span className="remaining-time">{remainingMinutes}m</span>
                 </span>
+              </div>
+
+              {/* 시간 구분 라벨 (계획/남은) */}
+              <div className="time-type-labels">
+                <span className="time-type-label planned">📋 계획</span>
+                <span className="time-type-divider">|</span>
+                <span className="time-type-label remaining">남은 ⏱️</span>
+              </div>
+
+              {/* 상태 배지 */}
+              <div className={`time-status-badge status-${timeStatus}`}>
+                <span className="status-icon">{getStatusIcon()}</span>
+                <span className="status-text">{getStatusText()}</span>
               </div>
             </div>
           )}

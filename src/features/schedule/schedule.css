@@ -202,9 +202,13 @@
 /* 래퍼 - SVG와 중앙 컨텐츠를 담는 컨테이너 */
 .time-circle-wrapper {
   position: relative;
-  width: 72px;  /* 64px -> 72px */
-  height: 72px;
+  width: 72px;
+  padding-top: 76px; /* 72px 원형 + 4px gap */
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
 }
 
 /* SVG 원형 프로그레스 바 */
@@ -212,8 +216,8 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 72px;
+  height: 72px;
   transform: rotate(-90deg); /* 12시 방향부터 시작 */
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
 }
@@ -236,8 +240,8 @@
 /* 중앙 시간 표시 원 */
 .time-circle-compact {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 36px;  /* 72px 원형의 중심 */
+  left: 36px;
   transform: translate(-50%, -50%);
   width: 64px;  /* 56px -> 64px */
   height: 64px;
@@ -279,6 +283,101 @@
   font-size: 0.8125rem; /* 12px -> 13px */
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+
+/* ============================================================================
+   시간 구분 라벨 (계획 | 남은)
+   ============================================================================ */
+
+.time-type-labels {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.625rem; /* 10px - 작고 컴팩트하게 */
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.time-type-label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.time-type-label.planned {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.time-type-label.remaining {
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 600;
+}
+
+.time-type-divider {
+  opacity: 0.4;
+  font-weight: 300;
+  margin: 0 2px;
+}
+
+/* ============================================================================
+   상태 배지 (여유/적정/촉박/위험)
+   ============================================================================ */
+
+.time-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 0.6875rem; /* 11px */
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.status-icon {
+  font-size: 0.75rem; /* 아이콘 조금 크게 */
+  line-height: 1;
+}
+
+.status-text {
+  letter-spacing: 0.02em;
+}
+
+/* 상태별 배지 색상 */
+.time-status-badge.status-comfortable {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.9), rgba(5, 150, 105, 0.9));
+  color: white;
+}
+
+.time-status-badge.status-balanced {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.9), rgba(79, 70, 229, 0.9));
+  color: white;
+}
+
+.time-status-badge.status-tight {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(217, 119, 6, 0.9));
+  color: white;
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+.time-status-badge.status-critical {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
+  color: white;
+  animation: badge-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%, 100% {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
 }
 
 /* ============================================================================
@@ -357,7 +456,7 @@
 
 /* 호버 효과 */
 .time-circle-wrapper:hover .time-circle-compact {
-  transform: translate(-50%, -50%) scale(1.08);
+  transform: translate(-50%, -50%) scale(1.06);
   z-index: 10;
 }
 
@@ -365,18 +464,22 @@
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
 }
 
-/* 상세 툴팁 */
+.time-circle-wrapper:hover .time-status-badge {
+  transform: scale(1.05);
+}
+
+/* 상세 툴팁 - 배지 아래에 표시 */
 .time-circle-wrapper::after {
   content: attr(data-tooltip);
   position: absolute;
   top: 100%;
   left: 50%;
   transform: translateX(-50%);
-  margin-top: 12px;
-  padding: 8px 12px;
+  margin-top: 8px;
+  padding: 6px 10px;
   background: rgba(0, 0, 0, 0.95);
   color: white;
-  font-size: 0.75rem;
+  font-size: 0.6875rem; /* 11px - 더 작게 */
   font-weight: 500;
   border-radius: 6px;
   white-space: nowrap;
@@ -393,7 +496,7 @@
   top: 100%;
   left: 50%;
   transform: translateX(-50%);
-  margin-top: 6px;
+  margin-top: 2px;
   width: 0;
   height: 0;
   border-left: 6px solid transparent;
@@ -1137,31 +1240,50 @@
 
   /* 모바일에서 원형 시간표 크기 조정 */
   .time-circle-wrapper {
-    width: 60px;  /* 52px -> 60px */
-    height: 60px;
+    width: 60px;
+    padding-top: 64px; /* 60px 원형 + 4px gap */
+    gap: 2px;
   }
 
   .circular-progress {
-    width: 60px;  /* 52px -> 60px */
+    width: 60px;
     height: 60px;
   }
 
   .time-circle-compact {
-    width: 54px;  /* 46px -> 54px */
+    top: 30px;  /* 60px 원형의 중심 */
+    left: 30px;
+    width: 54px;
     height: 54px;
   }
 
   .time-remaining {
-    font-size: 0.6875rem; /* 10px -> 11px */
+    font-size: 0.6875rem; /* 11px */
     gap: 2px;
   }
 
   .planned-time {
-    font-size: 0.6875rem;  /* 10px -> 11px */
+    font-size: 0.6875rem;  /* 11px */
   }
 
   .remaining-time {
-    font-size: 0.75rem; /* 11px -> 12px */
+    font-size: 0.75rem; /* 12px */
+  }
+
+  /* 모바일에서 라벨/배지 크기 조정 */
+  .time-type-labels {
+    font-size: 0.5625rem; /* 9px - 더 작게 */
+    gap: 3px;
+  }
+
+  .time-status-badge {
+    font-size: 0.625rem; /* 10px - 더 작게 */
+    padding: 2px 6px;
+    gap: 2px;
+  }
+
+  .status-icon {
+    font-size: 0.6875rem; /* 11px */
   }
 
   /* 모바일에서 통계 정보 래핑 */
@@ -1197,6 +1319,17 @@
     stroke-width: 4;
   }
 
+  /* 고대비 모드에서 라벨/배지 강조 */
+  .time-type-labels {
+    color: white;
+    font-weight: 700;
+  }
+
+  .time-status-badge {
+    border: 2px solid white;
+    font-weight: 800;
+  }
+
   .resistance-badge,
   .duration-badge,
   .xp-badge {
@@ -1216,9 +1349,15 @@
   }
 
   .time-circle-wrapper:hover .time-circle-compact,
-  .time-circle-wrapper:hover .circular-progress {
+  .time-circle-wrapper:hover .circular-progress,
+  .time-circle-wrapper:hover .time-status-badge {
     transform: none !important;
     filter: none !important;
+  }
+
+  /* 배지 애니메이션 비활성화 */
+  .time-status-badge {
+    animation: none !important;
   }
 
   .picker-dropdown,
