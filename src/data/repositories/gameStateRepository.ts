@@ -436,12 +436,14 @@ function generateDailyQuests(): Quest[] {
   const earnXPTarget = generateQuestTarget('earn_xp');
   const lockBlocksTarget = generateQuestTarget('lock_blocks');
   const perfectBlocksTarget = generateQuestTarget('perfect_blocks');
+  const prepareTasksTarget = 3; // 준비된 할일 목표: 3개
 
   // 각 퀘스트의 보상 계산
   const completeTasksReward = calculateQuestReward('complete_tasks');
   const earnXPReward = calculateQuestReward('earn_xp');
   const lockBlocksReward = calculateQuestReward('lock_blocks');
   const perfectBlocksReward = calculateQuestReward('perfect_blocks');
+  const prepareTasksReward = 150; // 준비된 할일은 고정 보상
 
   return [
     {
@@ -483,6 +485,16 @@ function generateDailyQuests(): Quest[] {
       progress: 0,
       completed: false,
       reward: perfectBlocksReward,
+    },
+    {
+      id: `quest-prepare-${prepareTasksTarget}-tasks`,
+      type: 'prepare_tasks',
+      title: `⭐ 준비된 할일 ${prepareTasksTarget}개 만들기`,
+      description: `방해물과 대처법을 모두 입력한 할일을 ${prepareTasksTarget}개 만드세요`,
+      target: prepareTasksTarget,
+      progress: 0,
+      completed: false,
+      reward: prepareTasksReward,
     },
   ];
 }

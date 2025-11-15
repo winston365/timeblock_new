@@ -1,14 +1,16 @@
 /**
  * TopToolbar - 상단 툴바
  *
- * @role 앱 상단에 위치하여 게임 상태, 에너지, XP 정보를 표시하고 주요 기능 버튼 제공
+ * @role 앱 상단에 위치하여 게임 상태, 에너지, XP 정보, 와이푸 호감도/기분을 표시하고 주요 기능 버튼 제공
  * @input gameState: 게임 상태 데이터, onOpenGeminiChat: AI 대화 열기, onOpenSyncLog: 로그 열기, onOpenEnergyTab: 에너지 탭 열기
  * @output 상단 툴바 UI (통계 표시 및 버튼)
- * @dependencies useEnergyState 훅
+ * @dependencies useEnergyState, useWaifuState 훅
  */
 
 import type { GameState } from '@/shared/types/domain';
 import { useEnergyState } from '@/shared/hooks';
+import { useWaifuState } from '@/shared/hooks';
+import { getAffectionColor } from '@/features/waifu/waifuImageUtils';
 
 interface TopToolbarProps {
   gameState: GameState | null;
@@ -24,6 +26,7 @@ interface TopToolbarProps {
  */
 export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSyncLog, onOpenEnergyTab }: TopToolbarProps) {
   const { currentEnergy } = useEnergyState();
+  const { waifuState, currentMood } = useWaifuState();
 
   return (
     <header className="top-toolbar" role="banner">
@@ -42,6 +45,31 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSyncLog,
           <span>🏆 보유 XP:</span>
           <span>{gameState?.availableXP ?? 0}</span>
         </div>
+
+        {/* 와이푸 호감도 */}
+        {waifuState && (
+          <div className="stat-item stat-item-waifu">
+            <span>💖 호감도:</span>
+            <div className="toolbar-affection-bar">
+              <div
+                className="toolbar-affection-fill"
+                style={{
+                  width: `${waifuState.affection}%`,
+                  backgroundColor: getAffectionColor(waifuState.affection)
+                }}
+              />
+            </div>
+            <span>{waifuState.affection}%</span>
+          </div>
+        )}
+
+        {/* 와이푸 기분 */}
+        {waifuState && currentMood && (
+          <div className="stat-item stat-item-mood">
+            <span>기분:</span>
+            <span className="toolbar-mood-icon" title={currentMood}>{currentMood}</span>
+          </div>
+        )}
       </div>
 
       <div className="toolbar-actions">

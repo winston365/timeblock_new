@@ -79,7 +79,7 @@ export interface DailyData {
  */
 export interface Quest {
   id: string;
-  type: 'complete_tasks' | 'earn_xp' | 'lock_blocks' | 'perfect_blocks';
+  type: 'complete_tasks' | 'earn_xp' | 'lock_blocks' | 'perfect_blocks' | 'prepare_tasks';
   title: string;
   description: string;
   target: number; // 목표값
@@ -122,6 +122,9 @@ export interface Template {
   resistance: Resistance;
   timeBlock: TimeBlockId;
   autoGenerate: boolean; // 매일 자동 생성 여부
+  preparation1?: string; // 준비 사항 1 (예상 방해물 또는 대처 환경)
+  preparation2?: string; // 준비 사항 2 (예상 방해물 또는 대처 환경)
+  preparation3?: string; // 준비 사항 3 (예상 방해물 또는 대처 환경)
 }
 
 /**

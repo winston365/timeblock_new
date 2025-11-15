@@ -32,6 +32,37 @@
   font-weight: 500;
 }
 
+/* 와이푸 호감도 바 (상단바용) */
+.stat-item-waifu {
+  gap: 6px;
+}
+
+.toolbar-affection-bar {
+  width: 60px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.toolbar-affection-fill {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+  border-radius: 4px;
+}
+
+/* 와이푸 기분 아이콘 (상단바용) */
+.stat-item-mood {
+  gap: 4px;
+}
+
+.toolbar-mood-icon {
+  font-size: 18px;
+  line-height: 1;
+  cursor: help;
+}
+
 .toolbar-actions {
   margin-left: auto;
   display: flex;

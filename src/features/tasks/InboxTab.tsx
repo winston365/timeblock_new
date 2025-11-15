@@ -13,6 +13,7 @@
 
 import { useState } from 'react';
 import { useDailyData } from '@/shared/hooks';
+import { useGameState } from '@/shared/hooks/useGameState';
 import type { Task } from '@/shared/types/domain';
 import TaskCard from '@/features/schedule/TaskCard';
 import TaskModal from '@/features/schedule/TaskModal';
@@ -28,6 +29,7 @@ import './tasks.css';
  */
 export default function InboxTab() {
   const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion } = useDailyData();
+  const { updateQuestProgress } = useGameState();
   const inboxTasks = dailyData?.tasks.filter(task => !task.timeBlock) ?? [];
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,6 +50,14 @@ export default function InboxTab() {
     try {
       if (editingTask) {
         await updateTask(editingTask.id, taskData);
+
+        // 수정 후에도 준비된 작업인지 확인 (이전에 준비되지 않았다면 퀘스트 진행)
+        const wasPrepared = !!(editingTask.preparation1 && editingTask.preparation2 && editingTask.preparation3);
+        const isNowPrepared = !!(taskData.preparation1 && taskData.preparation2 && taskData.preparation3);
+
+        if (!wasPrepared && isNowPrepared) {
+          await updateQuestProgress('prepare_tasks', 1);
+        }
       } else {
         const newTask: Task = {
           id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -61,8 +71,17 @@ export default function InboxTab() {
           actualDuration: 0,
           createdAt: new Date().toISOString(),
           completedAt: null,
+          preparation1: taskData.preparation1,
+          preparation2: taskData.preparation2,
+          preparation3: taskData.preparation3,
         };
         await addTask(newTask);
+
+        // 준비된 작업이면 퀘스트 진행
+        const isPrepared = !!(taskData.preparation1 && taskData.preparation2 && taskData.preparation3);
+        if (isPrepared) {
+          await updateQuestProgress('prepare_tasks', 1);
+        }
       }
       setIsModalOpen(false);
       setEditingTask(null);

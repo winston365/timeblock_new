@@ -63,6 +63,9 @@ export async function loadTemplates(): Promise<Template[]> {
  * @param {Resistance} resistance - 저항도 (low, medium, high)
  * @param {TimeBlockId} timeBlock - 타임블록 ID
  * @param {boolean} autoGenerate - 자동 생성 여부
+ * @param {string} preparation1 - 준비 사항 1
+ * @param {string} preparation2 - 준비 사항 2
+ * @param {string} preparation3 - 준비 사항 3
  * @returns {Promise<Template>} 생성된 템플릿
  * @throws {Error} IndexedDB 또는 localStorage 저장 실패 시
  * @sideEffects
@@ -76,7 +79,10 @@ export async function createTemplate(
   baseDuration: number,
   resistance: Resistance,
   timeBlock: TimeBlockId,
-  autoGenerate: boolean
+  autoGenerate: boolean,
+  preparation1?: string,
+  preparation2?: string,
+  preparation3?: string
 ): Promise<Template> {
   try {
     const template: Template = {
@@ -88,6 +94,9 @@ export async function createTemplate(
       resistance,
       timeBlock,
       autoGenerate,
+      preparation1,
+      preparation2,
+      preparation3,
     };
 
     // IndexedDB에 저장
@@ -213,6 +222,9 @@ export function createTaskFromTemplate(template: Template): Task {
     createdAt: now,
     completedAt: null,
     fromAutoTemplate: false,
+    preparation1: template.preparation1,
+    preparation2: template.preparation2,
+    preparation3: template.preparation3,
   };
 }
 

@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useDailyData } from '@/shared/hooks';
+import { useGameState } from '@/shared/hooks/useGameState';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
@@ -31,6 +32,7 @@ import './schedule.css';
  */
 export default function ScheduleView() {
   const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion, toggleBlockLock } = useDailyData();
+  const { updateQuestProgress } = useGameState();
   const { show: showWaifu } = useWaifuCompanionStore();
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   const [currentMinute, setCurrentMinute] = useState(new Date().getMinutes());
@@ -237,6 +239,14 @@ export default function ScheduleView() {
       if (editingTask) {
         // 수정
         await updateTask(editingTask.id, taskData);
+
+        // 수정 후에도 준비된 작업인지 확인 (이전에 준비되지 않았다면 퀘스트 진행)
+        const wasPrepared = !!(editingTask.preparation1 && editingTask.preparation2 && editingTask.preparation3);
+        const isNowPrepared = !!(taskData.preparation1 && taskData.preparation2 && taskData.preparation3);
+
+        if (!wasPrepared && isNowPrepared) {
+          await updateQuestProgress('prepare_tasks', 1);
+        }
       } else {
         // 추가
         const newTask: Task = {
@@ -251,8 +261,17 @@ export default function ScheduleView() {
           actualDuration: 0,
           createdAt: new Date().toISOString(),
           completedAt: null,
+          preparation1: taskData.preparation1,
+          preparation2: taskData.preparation2,
+          preparation3: taskData.preparation3,
         };
         await addTask(newTask);
+
+        // 준비된 작업이면 퀘스트 진행
+        const isPrepared = !!(taskData.preparation1 && taskData.preparation2 && taskData.preparation3);
+        if (isPrepared) {
+          await updateQuestProgress('prepare_tasks', 1);
+        }
       }
       handleCloseModal();
     } catch (error) {
