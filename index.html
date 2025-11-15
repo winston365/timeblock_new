@@ -10,9 +10,17 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      // 기본 우클릭 메뉴 비활성화
+      // 기본 우클릭 메뉴 비활성화 (커스텀 메뉴가 있는 영역 제외)
       document.addEventListener('contextmenu', (e) => {
-        // 모든 영역에서 브라우저 기본 메뉴 차단
+        // task-card 내부의 우클릭은 허용 (커스텀 메뉴를 위해)
+        if (e.target.closest('.task-card')) {
+          return; // TaskCard 컴포넌트가 자체적으로 처리
+        }
+        // context-menu 영역 클릭은 허용
+        if (e.target.closest('.context-menu')) {
+          return;
+        }
+        // 다른 모든 영역에서는 브라우저 기본 메뉴 차단
         e.preventDefault();
       });
     </script>
