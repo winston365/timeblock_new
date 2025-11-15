@@ -8,7 +8,7 @@
  *   - utils: XP 계산 및 시간 포맷팅 함수
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
 import { RESISTANCE_LABELS } from '@/shared/types/domain';
 import { formatDuration, calculateTaskXP } from '@/shared/lib/utils';
@@ -38,7 +38,6 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const [isDragging, setIsDragging] = useState(false);
   const [showMemo, setShowMemo] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-  const taskCardRef = useRef<HTMLDivElement>(null);
 
   // XP 계산
   const xp = calculateTaskXP(task);
@@ -83,24 +82,12 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     setIsDragging(false);
   };
 
-  // 네이티브 우클릭 핸들러 (확실한 동작을 위해)
-  useEffect(() => {
-    const cardElement = taskCardRef.current;
-    if (!cardElement) return;
-
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setContextMenu({ x: e.clientX, y: e.clientY });
-    };
-
-    // 네이티브 리스너로 등록
-    cardElement.addEventListener('contextmenu', handleContextMenu);
-
-    return () => {
-      cardElement.removeEventListener('contextmenu', handleContextMenu);
-    };
-  }, []);
+  // React 우클릭 핸들러 (stopPropagation으로 AppShell까지 전파 차단)
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // 이벤트가 AppShell까지 가지 않도록
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
 
   // 컨텍스트 메뉴 닫기
   useEffect(() => {
@@ -128,11 +115,11 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   return (
     <>
       <div
-        ref={taskCardRef}
         className={`task-card ${task.completed ? 'completed' : ''} ${isDragging ? 'dragging' : ''}`}
         draggable="true"
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onContextMenu={handleContextMenu}
       >
       <div className="task-main">
         <button
