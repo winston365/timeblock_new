@@ -17,7 +17,7 @@ import type { ShopItem } from '@/shared/types/domain';
 import { saveToStorage, getFromStorage } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
 import { loadGameState, spendXP } from './gameStateRepository';
-import { loadWaifuState, saveWaifuState } from './waifuRepository';
+import { increaseAffectionFromTask, saveWaifuState } from './waifuRepository';
 
 // ============================================================================
 // ShopItem CRUD
@@ -224,15 +224,15 @@ export async function purchaseShopItem(itemId: string): Promise<PurchaseResult> 
     const currentQuantity = item.quantity || 0;
     await updateShopItem(itemId, { quantity: currentQuantity + 1 });
 
-    // 5. 호감도 증가 (+10)
-    const waifuState = await loadWaifuState();
-    const newAffection = Math.min(waifuState.affection + 10, 100);
-    waifuState.affection = newAffection;
+    // 5. 호감도 재계산 (보유 XP 기반)
+    const waifuState = await increaseAffectionFromTask();
+
+    // 상호작용 횟수 증가
     waifuState.totalInteractions += 1;
     await saveWaifuState(waifuState);
 
     // 6. 와이푸 메시지 생성
-    const waifuMessage = generatePurchaseMessage(item.name, newAffection);
+    const waifuMessage = generatePurchaseMessage(item.name, waifuState.affection);
 
 
     return {
