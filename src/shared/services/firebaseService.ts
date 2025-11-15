@@ -38,6 +38,9 @@ import {
   tokenUsageStrategy,
 } from './firebase/strategies';
 import type { DailyData, GameState, ChatHistory, DailyTokenUsage } from '@/shared/types/domain';
+import { getFirebaseDatabase } from './firebase/firebaseClient';
+import { ref, onValue, off } from 'firebase/database';
+import { getDeviceId } from './firebase/syncUtils';
 
 // ============================================================================
 // Legacy Function Wrappers - 하위 호환성 유지
@@ -256,12 +259,8 @@ export function enableFirebaseSync(
   onGameStateUpdate: () => void
 ): () => void {
   // DailyData 전체 컬렉션 리스닝
-  const { getFirebaseDatabase } = require('./firebase/firebaseClient');
-  const { ref, onValue, off } = require('firebase/database');
-
   const db = getFirebaseDatabase();
   const userId = 'user';
-  const { getDeviceId } = require('./firebase/syncUtils');
   const deviceId = getDeviceId();
 
   const dailyDataRef = ref(db, `users/${userId}/dailyData`);
