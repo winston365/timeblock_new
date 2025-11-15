@@ -296,7 +296,23 @@ export async function addXP(amount: number, blockId?: string): Promise<GameState
     // XP 토스트 표시 (동적 import로 순환 참조 방지)
     if (typeof window !== 'undefined') {
       import('@/shared/hooks/useXPToast').then((module) => {
-        const message = amount === 15 ? '계획 잠금!' : amount === 40 ? '완벽한 블록 완료!' : '작업 완료!';
+        // XP 양에 따라 메시지 결정
+        let message = 'XP 획득!';
+        if (amount === 15) {
+          message = '계획 잠금!';
+        } else if (amount === 20) {
+          message = '⏱️ 타이머 보너스!';
+        } else if (amount === 40) {
+          message = '완벽한 블록 완료!';
+        } else if (amount === 100) {
+          message = '🎯 완벽한 달성!';
+        } else if (amount >= 50 && amount <= 200) {
+          message = '🎯 퀘스트 완료!';
+        } else if (amount < 15) {
+          message = '작업 완료!';
+        } else {
+          message = 'XP 획득!';
+        }
         module.useXPToastStore.getState().addToast(amount, message);
       }).catch(console.error);
 
@@ -615,18 +631,27 @@ export async function updateQuestProgress(questType: Quest['type'], amount: numb
       gameState.dailyTimerCount = (gameState.dailyTimerCount || 0) + amount;
     }
 
+    // 완료된 퀘스트들을 추적하여 XP 지급
+    const completedQuests: Quest[] = [];
+
     gameState.dailyQuests.forEach(quest => {
       if (quest.type === questType && !quest.completed) {
         quest.progress = Math.min(quest.progress + amount, quest.target);
 
-        if (quest.progress >= quest.target) {
+        if (quest.progress >= quest.target && !quest.completed) {
           quest.completed = true;
-          gameState.availableXP += quest.reward;
+          completedQuests.push(quest);
         }
       }
     });
 
     await saveGameState(gameState);
+
+    // 완료된 퀘스트들의 보상 XP를 addXP를 통해 지급 (토스트 메시지 표시)
+    for (const quest of completedQuests) {
+      await addXP(quest.reward);
+    }
+
     return gameState;
   } catch (error) {
     console.error('Failed to update quest progress:', error);
@@ -660,12 +685,16 @@ export async function claimQuestBonus(): Promise<GameState> {
 
     // 모든 퀘스트 완료 시 추가 보너스
     if (completedQuests.length === gameState.dailyQuests.length) {
-      gameState.availableXP += 100;
+      gameState.questBonusClaimed = true;
+      await saveGameState(gameState);
+
+      // addXP를 통해 보너스 지급 (토스트 메시지 표시)
+      await addXP(100);
+    } else {
+      gameState.questBonusClaimed = true;
+      await saveGameState(gameState);
     }
 
-    gameState.questBonusClaimed = true;
-
-    await saveGameState(gameState);
     return gameState;
   } catch (error) {
     console.error('Failed to claim quest bonus:', error);
