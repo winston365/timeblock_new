@@ -38,6 +38,9 @@ export interface Task {
   createdAt: string; // 생성 시각 (ISO 8601)
   completedAt: string | null; // 완료 시각 (ISO 8601)
   fromAutoTemplate?: boolean; // 자동생성 템플릿 여부
+  preparation1?: string; // 준비 사항 1 (예상 방해물 또는 대처 환경)
+  preparation2?: string; // 준비 사항 2 (예상 방해물 또는 대처 환경)
+  preparation3?: string; // 준비 사항 3 (예상 방해물 또는 대처 환경)
 }
 
 /**

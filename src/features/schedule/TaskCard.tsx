@@ -41,6 +41,9 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   // XP 계산
   const xp = calculateTaskXP(task);
 
+  // 준비된 할일인지 확인 (3개 모두 채워진 경우)
+  const isPrepared = !!(task.preparation1 && task.preparation2 && task.preparation3);
+
   // 심리적부담감 변경
   const handleResistanceChange = (resistance: Resistance) => {
     if (onUpdateTask) {
@@ -85,7 +88,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   return (
     <>
       <div
-        className={`task-card ${task.completed ? 'completed' : ''} ${isDragging ? 'dragging' : ''}`}
+        className={`task-card ${task.completed ? 'completed' : ''} ${isDragging ? 'dragging' : ''} ${isPrepared ? 'prepared' : ''}`}
         draggable="true"
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
@@ -103,7 +106,10 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
         <div className="task-details" onClick={() => task.memo && setShowMemo(!showMemo)}>
           {/* 작업명과 아이콘을 같은 행에 배치 */}
           <div className="task-header-row">
-            <div className="task-text">{task.text}</div>
+            <div className="task-text">
+              {isPrepared && <span className="prepared-icon" title="완벽하게 준비된 작업">⭐</span>}
+              {task.text}
+            </div>
 
             <div className="task-inline-badges">
               {/* 심리적부담감 - 클릭 가능 (hideMetadata가 false일 때만 표시) */}
