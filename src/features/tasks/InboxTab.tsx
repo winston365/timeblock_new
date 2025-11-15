@@ -71,9 +71,9 @@ export default function InboxTab() {
           actualDuration: 0,
           createdAt: new Date().toISOString(),
           completedAt: null,
-          preparation1: taskData.preparation1,
-          preparation2: taskData.preparation2,
-          preparation3: taskData.preparation3,
+          preparation1: taskData.preparation1 || '',
+          preparation2: taskData.preparation2 || '',
+          preparation3: taskData.preparation3 || '',
         };
         await addTask(newTask);
 
