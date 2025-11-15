@@ -50,9 +50,10 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
     }
   }, [task]);
 
-  // 자동 태그 파싱 함수
+  // 자동 태그 파싱 함수 (스페이스 입력 시에만 실행)
   const parseAndApplyTags = (inputText: string) => {
     let updatedText = inputText;
+    let hasChanges = false;
 
     // 시간 태그 감지 및 적용 (T5, T10, T15, T30, T60, T90)
     const timeTagMatch = inputText.match(/\b(T5|T10|T15|T30|T60|T90)\b/i);
@@ -69,9 +70,10 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
       const duration = durationMap[timeTag];
       if (duration !== undefined) {
         setBaseDuration(duration);
+        // 태그 제거
+        updatedText = updatedText.replace(/\b(T5|T10|T15|T30|T60|T90)\b/gi, '');
+        hasChanges = true;
       }
-      // 태그 제거
-      updatedText = updatedText.replace(/\b(T5|T10|T15|T30|T60|T90)\b/gi, '').trim();
     }
 
     // 난이도 태그 감지 및 적용 (D1, D2, D3)
@@ -86,22 +88,35 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
       const difficulty = difficultyMap[difficultyTag];
       if (difficulty !== undefined) {
         setResistance(difficulty);
+        // 태그 제거
+        updatedText = updatedText.replace(/\b(D1|D2|D3)\b/gi, '');
+        hasChanges = true;
       }
-      // 태그 제거
-      updatedText = updatedText.replace(/\b(D1|D2|D3)\b/gi, '').trim();
     }
 
-    // 공백 정리 (여러 개의 공백을 하나로)
-    updatedText = updatedText.replace(/\s+/g, ' ').trim();
+    // 태그가 제거된 경우에만 공백 정리
+    if (hasChanges) {
+      updatedText = updatedText.replace(/\s+/g, ' ').trim();
+    }
 
     return updatedText;
   };
 
-  // 텍스트 변경 핸들러 (자동 태그 파싱 포함)
+  // 텍스트 변경 핸들러 (스페이스 입력 시 태그 파싱)
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputText = e.target.value;
-    const parsedText = parseAndApplyTags(inputText);
-    setText(parsedText);
+
+    // 스페이스를 입력했는지 확인 (마지막 문자가 스페이스)
+    const isSpaceInput = inputText.length > text.length && inputText.endsWith(' ');
+
+    if (isSpaceInput) {
+      // 스페이스 입력 시 태그 파싱
+      const parsedText = parseAndApplyTags(inputText);
+      setText(parsedText);
+    } else {
+      // 일반 입력은 그대로 저장
+      setText(inputText);
+    }
   };
 
   // ESC 키로 모달 닫기

@@ -980,6 +980,24 @@
   line-height: 1.3;
 }
 
+.task-text-input {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid var(--color-primary);
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  outline: none;
+  width: 100%;
+  max-width: 300px;
+}
+
+.task-text-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(103, 128, 159, 0.1);
+}
+
 /* 인라인 배지 컨테이너 */
 .task-inline-badges {
   display: flex;
