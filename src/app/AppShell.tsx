@@ -5,7 +5,6 @@
 import { useState, useEffect } from 'react';
 import { useGameState } from '@/shared/hooks';
 import { initializeDatabase } from '@/data/db/dexieClient';
-import { addTask } from '@/data/repositories';
 import { createTaskFromTemplate } from '@/data/repositories/templateRepository';
 import { loadSettings } from '@/data/repositories/settingsRepository';
 import { getLocalDate } from '@/shared/lib/utils';
@@ -149,9 +148,9 @@ export default function AppShell() {
   const handleTaskCreateFromTemplate = async (template: Template) => {
     try {
       const task = createTaskFromTemplate(template);
-      await addTask(task);
+      const dailyDataStore = useDailyDataStore.getState();
+      await dailyDataStore.addTask(task);
       alert(`"${template.name}" 템플릿에서 작업이 추가되었습니다!`);
-      // dailyData hook이 자동으로 리렌더링됨
     } catch (error) {
       console.error('Failed to create task from template:', error);
       alert('작업 추가에 실패했습니다.');
@@ -169,8 +168,9 @@ export default function AppShell() {
   // 대량 작업 추가 핸들러
   const handleBulkAddTasks = async (tasks: Task[]) => {
     try {
+      const dailyDataStore = useDailyDataStore.getState();
       for (const task of tasks) {
-        await addTask(task);
+        await dailyDataStore.addTask(task);
       }
       console.log(`✅ ${tasks.length}개의 작업이 추가되었습니다`);
     } catch (error) {
