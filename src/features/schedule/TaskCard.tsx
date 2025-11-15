@@ -44,6 +44,8 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationXP, setCelebrationXP] = useState(0);
   const [timerBonus, setTimerBonus] = useState(0);
+  const [isEditingText, setIsEditingText] = useState(false);
+  const [editedText, setEditedText] = useState(task.text);
 
   // 게임 상태에서 퀘스트 업데이트 함수 가져오기
   const { updateQuestProgress } = useGameState();
@@ -138,6 +140,39 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     setShowCelebration(false);
   };
 
+  // 텍스트 편집 시작
+  const handleTextClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditingText(true);
+    setEditedText(task.text);
+  };
+
+  // 텍스트 편집 저장
+  const handleTextSave = () => {
+    const trimmedText = editedText.trim();
+    if (trimmedText && trimmedText !== task.text && onUpdateTask) {
+      onUpdateTask({ text: trimmedText });
+    }
+    setIsEditingText(false);
+  };
+
+  // 텍스트 편집 취소
+  const handleTextCancel = () => {
+    setEditedText(task.text);
+    setIsEditingText(false);
+  };
+
+  // 텍스트 입력 핸들러
+  const handleTextKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleTextSave();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleTextCancel();
+    }
+  };
+
 
   return (
     <>
@@ -157,12 +192,27 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
           {task.completed ? '✅' : '⬜'}
         </button>
 
-        <div className="task-details" onClick={() => task.memo && setShowMemo(!showMemo)}>
+        <div className="task-details" onClick={() => task.memo && !isEditingText && setShowMemo(!showMemo)}>
           {/* 작업명과 아이콘을 같은 행에 배치 */}
           <div className="task-header-row">
             <div className="task-text">
               {isPrepared && <span className="prepared-icon" title="완벽하게 준비된 작업">⭐</span>}
-              {task.text}
+              {isEditingText ? (
+                <input
+                  type="text"
+                  value={editedText}
+                  onChange={(e) => setEditedText(e.target.value)}
+                  onBlur={handleTextSave}
+                  onKeyDown={handleTextKeyDown}
+                  autoFocus
+                  className="task-text-input"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span onClick={handleTextClick} style={{ cursor: 'pointer' }} title="클릭하여 수정">
+                  {task.text}
+                </span>
+              )}
             </div>
 
             <div className="task-inline-badges">

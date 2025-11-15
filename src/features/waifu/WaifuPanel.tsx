@@ -13,7 +13,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWaifuState } from '@/shared/hooks';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
-import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier, getAffectionColor } from './waifuImageUtils';
+import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier } from './waifuImageUtils';
 import { loadSettings } from '@/data/repositories/settingsRepository';
 import type { WaifuMode } from '@/shared/types/domain';
 import baseImage from './base.png';
@@ -198,47 +198,12 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
 
         {/* 정보 카드들 */}
         <div className="waifu-stats" role="region" aria-label="와이푸 통계">
-          {/* 호감도 */}
-          <div className="waifu-stat-card">
-            <div className="stat-label" id="affection-label">호감도</div>
-            <div className="stat-value-row">
-              <div
-                className="affection-bar"
-                role="progressbar"
-                aria-labelledby="affection-label"
-                aria-valuenow={waifuState.affection}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuetext={`${waifuState.affection}%`}
-              >
-                <div
-                  className="affection-fill"
-                  style={{
-                    width: `${waifuState.affection}%`,
-                    backgroundColor: getAffectionColor(waifuState.affection)
-                  }}
-                />
-              </div>
-              <span className="stat-value" aria-hidden="true">
-                {waifuState.affection}%
-              </span>
-            </div>
-          </div>
-
           {/* 기분 */}
           <div className="waifu-stat-card">
             <div className="stat-label">기분</div>
             <div className="stat-value mood-value" role="status">
               <span className="mood-icon">{currentMood}</span>
               <span className="mood-description">{getMoodDescription(currentMood)}</span>
-            </div>
-          </div>
-
-          {/* 완료한 작업 수 */}
-          <div className="waifu-stat-card">
-            <div className="stat-label">오늘 완료한 작업</div>
-            <div className="stat-value tasks-value" role="status">
-              {waifuState.tasksCompletedToday}개
             </div>
           </div>
         </div>
