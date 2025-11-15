@@ -125,6 +125,32 @@ export default function TimeBlock({
 
   const remainingMinutes = getRemainingMinutes();
 
+  // 시간 상태 계산 (여유도 기반)
+  const getTimeStatus = (): 'comfortable' | 'balanced' | 'tight' | 'critical' => {
+    if (totalDuration === 0) return 'balanced';
+    const ratio = remainingMinutes / totalDuration;
+    if (ratio >= 1.5) return 'comfortable';      // 남은 시간이 1.5배 이상
+    if (ratio >= 0.9) return 'balanced';         // 남은 시간이 적정
+    if (ratio >= 0.6) return 'tight';            // 남은 시간이 부족
+    return 'critical';                           // 남은 시간이 매우 부족
+  };
+
+  const timeStatus = getTimeStatus();
+
+  // 프로그레스 바 계산 (0-100%)
+  const getProgressPercentage = (): number => {
+    if (totalDuration === 0) return 0;
+    const percentage = (totalDuration / remainingMinutes) * 100;
+    return Math.min(Math.max(percentage, 0), 100);
+  };
+
+  const progressPercentage = getProgressPercentage();
+
+  // SVG 원형 프로그레스 바 계산
+  const radius = 28; // 원의 반지름
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
+
   // 인라인 입력 필드 포커스
   useEffect(() => {
     if (showInlineInput && inlineInputRef.current) {
@@ -209,8 +235,41 @@ export default function TimeBlock({
         <div className="block-primary-info">
           {/* 원형 시간표 (현재 시간대 블록만) */}
           {isCurrentBlock && timeRemaining && (
-            <div className="time-circle-compact">
-              <span className="time-remaining">{totalDuration}m / {remainingMinutes}m</span>
+            <div className="time-circle-wrapper">
+              {/* SVG 원형 프로그레스 바 */}
+              <svg className="circular-progress" width="64" height="64">
+                {/* 배경 링 */}
+                <circle
+                  className="progress-ring"
+                  cx="32"
+                  cy="32"
+                  r={radius}
+                />
+                {/* 진행 링 */}
+                <circle
+                  className={`progress-ring-fill status-${timeStatus}`}
+                  cx="32"
+                  cy="32"
+                  r={radius}
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                />
+              </svg>
+
+              {/* 중앙 시간 표시 */}
+              <div
+                className={`time-circle-compact status-${timeStatus}`}
+                role="status"
+                aria-live="polite"
+                aria-label={`계획된 작업 시간 ${totalDuration}분, 남은 시간 ${remainingMinutes}분`}
+                title={`시간 활용률: ${Math.round(progressPercentage)}%`}
+              >
+                <span className="time-remaining">
+                  <span className="planned-time">{totalDuration}m</span>
+                  <span className="time-divider">·</span>
+                  <span className="remaining-time">{remainingMinutes}m</span>
+                </span>
+              </div>
             </div>
           )}
 
