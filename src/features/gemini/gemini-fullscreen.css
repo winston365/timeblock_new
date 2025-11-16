@@ -6,16 +6,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  /* 테마 통합: var() 사용 + 그라디언트 오버레이 */
-  background:
-    linear-gradient(135deg,
-      rgba(45, 53, 97, 0.95) 0%,
-      rgba(74, 88, 153, 0.9) 25%,
-      rgba(107, 91, 149, 0.85) 50%,
-      rgba(139, 90, 142, 0.9) 75%,
-      rgba(160, 86, 139, 0.95) 100%
-    ),
-    var(--color-bg-primary);
+  /* 다크모드 테마 색상 (그라디언트 제거) */
+  background: var(--color-bg-base);
   z-index: 1000;
   animation: fadeIn 0.3s ease-out;
 }
@@ -34,12 +26,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* 개선: 부드러운 오버레이, 깊이감 증가 */
-  background: linear-gradient(135deg,
-    rgba(45, 53, 97, 0.4) 0%,
-    rgba(107, 91, 149, 0.2) 50%,
-    rgba(160, 86, 139, 0.3) 100%
-  );
+  /* 단순한 다크모드 배경 (그라디언트 제거) */
+  background: var(--color-bg-surface);
   overflow: hidden;
 }
 
@@ -47,9 +35,8 @@
   max-width: 90%;
   max-height: 90vh;
   object-fit: contain;
-  /* 개선: 더 부드럽고 생동감 있는 그림자 */
-  filter: drop-shadow(0 20px 40px rgba(107, 91, 149, 0.5))
-          drop-shadow(0 10px 20px rgba(160, 86, 139, 0.3));
+  /* 단순한 그림자 */
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
   animation: fadeInScale 0.6s ease-out;
 }
 
@@ -79,15 +66,12 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  /* 테마 통합: 반투명 배경과 그라디언트 보더 */
-  background: linear-gradient(135deg,
-    rgba(107, 91, 149, 0.85),
-    rgba(139, 90, 142, 0.85)
-  );
+  /* 단순한 다크모드 배경 (그라디언트 제거) */
+  background: var(--color-bg-elevated);
   padding: 20px;
   border-radius: 12px;
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--color-border);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
@@ -110,13 +94,12 @@
 
 /* 우측: 채팅 섹션 */
 .fullscreen-chat-section {
-  background: var(--color-bg-primary);
+  background: var(--color-bg-base);
   display: flex;
   flex-direction: column;
   box-shadow: -10px 0 30px rgba(0, 0, 0, 0.3);
-  /* 테마 통합: 좌측 그라디언트 보더 */
-  border-left: 3px solid transparent;
-  border-image: linear-gradient(180deg, #6B5B95, #8B5A8E) 1;
+  /* 단순한 보더 (그라디언트 제거) */
+  border-left: 2px solid var(--color-border);
 }
 
 /* 헤더 */
@@ -125,21 +108,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px 30px;
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-surface);
   border-bottom: 2px solid var(--color-border);
-  /* 테마 통합: 그라디언트 언더라인 */
-  box-shadow: 0 2px 0 0 rgba(107, 91, 149, 0.2);
 }
 
 .fullscreen-chat-header h2 {
   font-size: 24px;
   margin: 0;
   color: var(--color-text);
-  /* 테마 강조: 그라디언트 텍스트 */
-  background: linear-gradient(135deg, #6B5B95, #8B5A8E);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   font-weight: 700;
 }
 
@@ -162,38 +138,35 @@
 }
 
 .btn-clear:hover {
-  background: var(--color-bg-primary);
-  border-color: #8B5A8E;
+  background: var(--color-bg-interactive);
+  border-color: var(--color-primary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(107, 91, 149, 0.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .btn-close-fullscreen {
   padding: 10px 18px;
-  /* 개선: 그라디언트로 세련되게 */
-  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  /* 단순한 단색 배경 (그라디언트 제거) */
+  background: var(--color-danger);
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-size: 18px;
   font-weight: bold;
-  /* 개선: 더 강한 그림자와 부드러운 전환 */
-  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4),
-              0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-close-fullscreen:hover {
-  background: linear-gradient(135deg, #ec5e4f, #d44638);
+  background: #dc2626;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(231, 76, 60, 0.5),
-              0 3px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .btn-close-fullscreen:active {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* 메시지 목록 */
@@ -219,22 +192,12 @@
 .welcome-icon {
   font-size: 80px;
   margin-bottom: 20px;
-  /* 테마 통합: 아이콘에 그라디언트 효과 */
-  background: linear-gradient(135deg, #6B5B95, #8B5A8E);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .chat-welcome h3 {
   font-size: 28px;
   margin-bottom: 10px;
   color: var(--color-text);
-  /* 테마 강조: 그라디언트 텍스트 */
-  background: linear-gradient(135deg, #6B5B95, #8B5A8E);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   font-weight: 700;
 }
 
@@ -253,26 +216,22 @@
 
 .example-btn {
   padding: 14px 20px;
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-surface);
   border: 2px solid var(--color-border);
   border-radius: 12px;
   cursor: pointer;
   font-size: 14px;
   text-align: left;
-  /* 개선: 부드러운 전환과 그림자 */
+  color: var(--color-text);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .example-btn:hover {
-  background: linear-gradient(135deg,
-    rgba(107, 91, 149, 0.1),
-    rgba(139, 90, 142, 0.1)
-  );
-  border-color: #8B5A8E;
+  background: var(--color-bg-elevated);
+  border-color: var(--color-primary);
   transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(107, 91, 149, 0.2),
-              0 3px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
 /* 메시지 */
@@ -295,39 +254,34 @@
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  /* 개선: 그라디언트 배경과 강한 그림자 */
-  background: linear-gradient(135deg, #6B5B95, #8B5A8E);
+  /* 단순한 배경 (그라디언트 제거) */
+  background: var(--color-bg-elevated);
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(107, 91, 149, 0.3),
-              0 2px 4px rgba(0, 0, 0, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 2px solid var(--color-border);
 }
 
 .fullscreen-message .message-bubble {
   max-width: 70%;
   padding: 16px 20px;
   border-radius: 18px;
-  background: var(--color-bg-secondary);
-  /* 개선: 더 깊고 부드러운 그림자, 미세한 테두리 */
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08),
-              0 2px 8px rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(107, 91, 149, 0.1);
+  background: var(--color-bg-surface);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--color-border);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .fullscreen-message .message-bubble:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12),
-              0 3px 10px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .fullscreen-message.user .message-bubble {
-  /* 개선: 그라디언트 배경으로 시각적 풍부함 증가 */
-  background: linear-gradient(135deg, #6B5B95, #8B5A8E);
+  /* 단순한 배경 (그라디언트 제거) */
+  background: var(--color-primary);
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 16px rgba(107, 91, 149, 0.4),
-              0 2px 8px rgba(160, 86, 139, 0.3);
+  border: 1px solid var(--color-primary-dark);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .fullscreen-message .message-text {
@@ -385,13 +339,11 @@
 /* 에러 메시지 */
 .chat-error {
   padding: 12px 16px;
-  /* 테마 통합: 에러 색상도 테마와 조화롭게 */
-  background: rgba(231, 76, 60, 0.1);
-  color: #e74c3c;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-danger);
   border-radius: 8px;
-  border: 1px solid rgba(231, 76, 60, 0.3);
+  border: 1px solid var(--color-danger);
   animation: shake 0.3s;
-  backdrop-filter: blur(4px);
 }
 
 /* 입력 영역 */
@@ -399,7 +351,7 @@
   display: flex;
   gap: 10px;
   padding: 20px 30px;
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-surface);
   border-top: 2px solid var(--color-border);
 }
 
@@ -409,19 +361,16 @@
   border: 2px solid var(--color-border);
   border-radius: 24px;
   font-size: 15px;
-  background: var(--color-bg-primary);
+  background: var(--color-bg-base);
   color: var(--color-text);
   outline: none;
-  /* 개선: 부드러운 전환 효과 */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .fullscreen-input:focus {
-  /* 개선: 그라디언트 테두리 효과 */
-  border-color: #8B5A8E;
-  box-shadow: 0 0 0 4px rgba(107, 91, 149, 0.15),
-              0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
   transform: translateY(-1px);
 }
 
@@ -432,31 +381,27 @@
 
 .btn-send-fullscreen {
   padding: 14px 28px;
-  /* 개선: 그라디언트 버튼 */
-  background: linear-gradient(135deg, #6B5B95, #8B5A8E);
+  /* 단순한 단색 배경 (그라디언트 제거) */
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 24px;
   cursor: pointer;
   font-size: 18px;
   font-weight: 600;
-  /* 개선: 더 강한 그림자와 부드러운 전환 */
-  box-shadow: 0 4px 12px rgba(107, 91, 149, 0.4),
-              0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-send-fullscreen:hover:not(:disabled) {
-  /* 개선: 밝아지는 효과와 더 강한 그림자 */
-  background: linear-gradient(135deg, #7A6AA4, #9A69A0);
+  background: var(--color-primary-dark);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(107, 91, 149, 0.5),
-              0 3px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .btn-send-fullscreen:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(107, 91, 149, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .btn-send-fullscreen:disabled {

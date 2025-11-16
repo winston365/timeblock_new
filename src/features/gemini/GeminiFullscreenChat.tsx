@@ -19,7 +19,7 @@ import {
   saveChatHistory,
   addTokenUsage
 } from '@/data/repositories/chatHistoryRepository';
-import { getWaifuImagePathWithFallback } from '@/features/waifu/waifuImageUtils';
+import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier } from '@/features/waifu/waifuImageUtils';
 import baseImage from '@/features/waifu/base.png';
 import type { GeminiChatMessage } from '@/shared/types/domain';
 import './gemini-fullscreen.css';
@@ -80,8 +80,10 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
         if (settings.waifuMode === 'normal') {
           setWaifuImagePath(baseImage);
         } else {
-          // 특성 모드일 경우 호감도에 따라 이미지 선택
-          const path = await getWaifuImagePathWithFallback(waifuState.affection, 1);
+          // 특성 모드일 경우 호감도에 따라 랜덤 이미지 선택
+          const tier = getAffectionTier(waifuState.affection);
+          const randomIndex = getRandomImageNumber(tier.name);
+          const path = await getWaifuImagePathWithFallback(waifuState.affection, randomIndex);
           setWaifuImagePath(path);
         }
       }
@@ -91,6 +93,22 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
       loadWaifuImage();
     }
   }, [isOpen, waifuState, settings]);
+
+  /**
+   * 와이푸 이미지를 현재 호감도 내에서 랜덤하게 변경합니다.
+   */
+  const changeWaifuImage = async () => {
+    if (!waifuState || !settings) return;
+
+    // 일반 모드는 이미지 변경 안 함
+    if (settings.waifuMode === 'normal') return;
+
+    // 특성 모드일 경우 호감도에 따라 새로운 랜덤 이미지 선택
+    const tier = getAffectionTier(waifuState.affection);
+    const randomIndex = getRandomImageNumber(tier.name);
+    const path = await getWaifuImagePathWithFallback(waifuState.affection, randomIndex);
+    setWaifuImagePath(path);
+  };
 
   // 메시지 목록 자동 스크롤
   useEffect(() => {
@@ -167,6 +185,9 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
       if (tokenUsage) {
         await addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens);
       }
+
+      // Gemini 답변 후 와이푸 이미지 변경
+      await changeWaifuImage();
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
       console.error('Gemini API 오류:', err);
