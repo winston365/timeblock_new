@@ -7,6 +7,7 @@
  * @external_dependencies
  *   - IndexedDB (db.templates): 메인 저장소
  *   - localStorage (STORAGE_KEYS.TEMPLATES): 백업 저장소
+ *   - Firebase: 실시간 동기화 (syncToFirebase)
  *   - @/shared/types/domain: Template, Task, TimeBlockId, Resistance 타입
  */
 
@@ -14,6 +15,10 @@ import { db } from '../db/dexieClient';
 import type { Template, Task, TimeBlockId, Resistance, RecurrenceType } from '@/shared/types/domain';
 import { saveToStorage, getFromStorage } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
+import { isFirebaseInitialized } from '@/shared/services/firebaseService';
+import { syncToFirebase } from '@/shared/services/firebase/syncCore';
+import { templateStrategy } from '@/shared/services/firebase/strategies';
+import { addSyncLog } from '@/shared/services/syncLogger';
 
 // ============================================================================
 // Template CRUD
@@ -92,6 +97,7 @@ export async function loadTemplates(): Promise<Template[]> {
  * @sideEffects
  *   - IndexedDB에 템플릿 저장
  *   - localStorage에 백업
+ *   - Firebase에 비동기 동기화
  */
 export async function createTemplate(
   name: string,
@@ -130,16 +136,30 @@ export async function createTemplate(
       isFavorite: isFavorite || false,
     };
 
-    // IndexedDB에 저장
+    // 1. IndexedDB에 저장
     await db.templates.put(template);
 
-    // localStorage에도 저장
+    // 2. localStorage에도 저장
     const templates = await loadTemplates();
     saveToStorage(STORAGE_KEYS.TEMPLATES, templates);
+
+    addSyncLog('dexie', 'save', 'Template created', {
+      id: template.id,
+      name: template.name,
+      autoGenerate: template.autoGenerate
+    });
+
+    // 3. Firebase에 비동기 동기화
+    if (isFirebaseInitialized()) {
+      syncToFirebase(templateStrategy, templates, 'all').catch(err => {
+        console.error('Firebase sync failed, but local save succeeded:', err);
+      });
+    }
 
     return template;
   } catch (error) {
     console.error('Failed to create template:', error);
+    addSyncLog('dexie', 'error', 'Failed to create template', undefined, error as Error);
     throw error;
   }
 }
@@ -154,6 +174,7 @@ export async function createTemplate(
  * @sideEffects
  *   - IndexedDB에서 템플릿 조회 및 업데이트
  *   - localStorage에 백업
+ *   - Firebase에 비동기 동기화
  */
 export async function updateTemplate(
   id: string,
@@ -176,16 +197,29 @@ export async function updateTemplate(
 
     const updatedTemplate = { ...template, ...sanitizedUpdates };
 
-    // IndexedDB에 저장
+    // 1. IndexedDB에 저장
     await db.templates.put(updatedTemplate);
 
-    // localStorage에도 저장
+    // 2. localStorage에도 저장
     const templates = await loadTemplates();
     saveToStorage(STORAGE_KEYS.TEMPLATES, templates);
+
+    addSyncLog('dexie', 'save', 'Template updated', {
+      id: updatedTemplate.id,
+      name: updatedTemplate.name
+    });
+
+    // 3. Firebase에 비동기 동기화
+    if (isFirebaseInitialized()) {
+      syncToFirebase(templateStrategy, templates, 'all').catch(err => {
+        console.error('Firebase sync failed, but local save succeeded:', err);
+      });
+    }
 
     return updatedTemplate;
   } catch (error) {
     console.error('Failed to update template:', error);
+    addSyncLog('dexie', 'error', 'Failed to update template', undefined, error as Error);
     throw error;
   }
 }
@@ -199,17 +233,29 @@ export async function updateTemplate(
  * @sideEffects
  *   - IndexedDB에서 템플릿 삭제
  *   - localStorage에 변경사항 반영
+ *   - Firebase에 비동기 동기화
  */
 export async function deleteTemplate(id: string): Promise<void> {
   try {
+    // 1. IndexedDB에서 삭제
     await db.templates.delete(id);
 
-    // localStorage에도 반영
+    // 2. localStorage에도 반영
     const templates = await loadTemplates();
     saveToStorage(STORAGE_KEYS.TEMPLATES, templates);
 
+    addSyncLog('dexie', 'save', 'Template deleted', { id });
+
+    // 3. Firebase에 비동기 동기화
+    if (isFirebaseInitialized()) {
+      syncToFirebase(templateStrategy, templates, 'all').catch(err => {
+        console.error('Firebase sync failed, but local delete succeeded:', err);
+      });
+    }
+
   } catch (error) {
     console.error('Failed to delete template:', error);
+    addSyncLog('dexie', 'error', 'Failed to delete template', undefined, error as Error);
     throw error;
   }
 }

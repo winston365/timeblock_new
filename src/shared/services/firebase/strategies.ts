@@ -13,7 +13,7 @@
 
 import type { SyncStrategy } from './syncCore';
 import { mergeGameState } from './conflictResolver';
-import type { DailyData, GameState, ChatHistory, DailyTokenUsage, EnergyLevel } from '@/shared/types/domain';
+import type { DailyData, GameState, ChatHistory, DailyTokenUsage, EnergyLevel, Template } from '@/shared/types/domain';
 
 // ============================================================================
 // DailyData 전략 (Last-Write-Wins)
@@ -64,4 +64,14 @@ export const energyLevelsStrategy: SyncStrategy<EnergyLevel[]> = {
   collection: 'energyLevels',
   getSuccessMessage: (data, key) =>
     `EnergyLevels synced: ${key} (${data.length} records)`,
+};
+
+// ============================================================================
+// Templates 전략 (Last-Write-Wins)
+// ============================================================================
+
+export const templateStrategy: SyncStrategy<Template[]> = {
+  collection: 'templates',
+  getSuccessMessage: (data) =>
+    `Templates synced (${data.length} templates, ${data.filter(t => t.autoGenerate).length} auto-generate)`,
 };
