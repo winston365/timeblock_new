@@ -14,6 +14,7 @@ import { calculateAdjustedDuration } from '@/shared/lib/utils';
 import { generateTaskBreakdown } from '@/shared/services/geminiApi';
 import { useWaifuState } from '@/shared/hooks';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { MemoModal } from './MemoModal';
 
 interface TaskModalProps {
   task: Task | null;
@@ -42,6 +43,7 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [memoRows, setMemoRows] = useState(2); // 자동 높이 조절용
+  const [showMemoModal, setShowMemoModal] = useState(false);
 
   const { waifuState } = useWaifuState();
   const { settings } = useSettingsStore();
@@ -241,6 +243,22 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
     }
   };
 
+  // 메모 모달 핸들러
+  const handleMemoDoubleClick = () => {
+    setShowMemoModal(true);
+  };
+
+  const handleMemoModalSave = (newMemo: string) => {
+    setMemo(newMemo);
+    // 줄 수 자동 조절
+    const lineCount = newMemo.split('\n').length;
+    setMemoRows(Math.min(Math.max(lineCount, 2), 6));
+  };
+
+  const handleMemoModalClose = () => {
+    setShowMemoModal(false);
+  };
+
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
       <div className="modal-content modal-content-wide">
@@ -280,13 +298,16 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
                 id="task-memo"
                 value={memo}
                 onChange={handleMemoChange}
-                placeholder="추가 메모 (선택사항)"
+                onDoubleClick={handleMemoDoubleClick}
+                placeholder="추가 메모 (선택사항) - 더블클릭하면 큰 창으로 편집"
                 rows={memoRows}
                 style={{
                   resize: 'vertical',
                   minHeight: '48px',
-                  maxHeight: '300px'
+                  maxHeight: '300px',
+                  cursor: 'text'
                 }}
+                title="더블클릭하면 큰 창에서 편집할 수 있습니다"
               />
               {/* AI 세분화 버튼 */}
               <button
@@ -436,6 +457,15 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
           </div>
         </form>
       </div>
+
+      {/* 메모 전용 모달 */}
+      {showMemoModal && (
+        <MemoModal
+          memo={memo}
+          onSave={handleMemoModalSave}
+          onClose={handleMemoModalClose}
+        />
+      )}
     </div>
   );
 }

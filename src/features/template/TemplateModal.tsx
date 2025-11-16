@@ -14,6 +14,7 @@ import type { Template, Resistance, TimeBlockId, RecurrenceType } from '@/shared
 import { createTemplate, updateTemplate } from '@/data/repositories';
 import { TIME_BLOCKS, RESISTANCE_LABELS } from '@/shared/types/domain';
 import { getTemplateCategories, addTemplateCategory } from '@/data/repositories/settingsRepository';
+import { MemoModal } from '@/features/schedule/MemoModal';
 import './template.css';
 
 interface TemplateModalProps {
@@ -51,6 +52,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const [newCategory, setNewCategory] = useState('');
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showMemoModal, setShowMemoModal] = useState(false);
 
   // 카테고리 목록 로드
   useEffect(() => {
@@ -204,6 +206,19 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
     }
   };
 
+  // 메모 모달 핸들러
+  const handleMemoDoubleClick = () => {
+    setShowMemoModal(true);
+  };
+
+  const handleMemoModalSave = (newMemo: string) => {
+    setMemo(newMemo);
+  };
+
+  const handleMemoModalClose = () => {
+    setShowMemoModal(false);
+  };
+
   return (
     <div className="modal-overlay" onClick={handleCancel}>
       <div className="modal-content modal-content-3page" onClick={e => e.stopPropagation()}>
@@ -276,8 +291,10 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                     id="template-memo"
                     value={memo}
                     onChange={e => setMemo(e.target.value)}
-                    placeholder="추가 메모..."
+                    onDoubleClick={handleMemoDoubleClick}
+                    placeholder="추가 메모... (더블클릭하면 큰 창으로 편집)"
                     rows={3}
+                    title="더블클릭하면 큰 창에서 편집할 수 있습니다"
                   />
                 </div>
 
@@ -591,6 +608,15 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           </div>
         </form>
       </div>
+
+      {/* 메모 전용 모달 */}
+      {showMemoModal && (
+        <MemoModal
+          memo={memo}
+          onSave={handleMemoModalSave}
+          onClose={handleMemoModalClose}
+        />
+      )}
     </div>
   );
 }

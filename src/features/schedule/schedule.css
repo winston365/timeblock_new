@@ -2300,3 +2300,54 @@
     transform: translateX(50px) rotate(360deg);
   }
 }
+
+/* ============================================
+   메모 전용 모달 스타일
+   ============================================ */
+.memo-modal-overlay {
+  z-index: 3000; /* TemplateModal(2000)보다 높게 */
+}
+
+.memo-modal-content {
+  max-width: 700px;
+  width: 90%;
+}
+
+.memo-modal-body {
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.memo-modal-textarea {
+  width: 100%;
+  min-height: 400px;
+  padding: var(--spacing-md);
+  font-size: 1rem;
+  line-height: 1.6;
+  background: var(--color-bg-base);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  resize: vertical;
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+}
+
+.memo-modal-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.memo-modal-textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.memo-hint {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+  text-align: center;
+}
