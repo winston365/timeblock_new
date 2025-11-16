@@ -422,7 +422,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
                     {getNextOccurrence(template) && (
                       <div className="template-next-occurrence">
                         <span className="next-occurrence-icon">📅</span>
-                        <span className="next-occurrence-text">다음: {getNextOccurrence(template)}</span>
+                        <span className="next-occurrence-text">다음주기: {getNextOccurrence(template)}</span>
                       </div>
                     )}
                   </div>
