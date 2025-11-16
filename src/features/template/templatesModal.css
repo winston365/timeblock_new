@@ -265,8 +265,8 @@
 
 .templates-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
-  gap: var(--grid-gap-lg);
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: var(--spacing-4); /* var(--grid-gap-lg) -> var(--spacing-4)로 간격 축소 */
   animation: fadeIn var(--transition-slow) var(--ease-out);
 }
 
@@ -313,11 +313,11 @@
 .template-card {
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: var(--spacing-lg);
+  border-radius: 10px;
+  padding: var(--spacing-4); /* var(--spacing-lg) -> var(--spacing-4)로 축소 */
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--spacing-3); /* var(--spacing-md) -> var(--spacing-3)로 축소 */
   transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
@@ -330,7 +330,7 @@
 
 /* 카드 헤더 */
 .template-card-header {
-  padding-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-2); /* var(--spacing-sm) -> var(--spacing-2)로 축소 */
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -343,7 +343,7 @@
 
 .template-card-title h3 {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 0.95rem; /* 1.125rem -> 0.95rem로 축소 */
   font-weight: 600;
   color: var(--color-text);
   flex: 1;
@@ -360,10 +360,10 @@
 }
 
 .template-card-badge {
-  padding: var(--spacing-1) var(--spacing-3);
+  padding: 2px var(--spacing-2); /* var(--spacing-1) var(--spacing-3) -> 2px var(--spacing-2)로 축소 */
   color: white;
   border-radius: var(--border-radius-full);
-  font-size: var(--font-size-xs);
+  font-size: 0.7rem; /* var(--font-size-xs) -> 0.7rem로 축소 */
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
   box-shadow: var(--shadow-sm);
@@ -389,15 +389,15 @@
 .template-card-body {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-2); /* var(--spacing-sm) -> var(--spacing-2)로 축소 */
   flex: 1;
 }
 
 .template-card-text {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: 0.85rem; /* 0.9375rem -> 0.85rem로 축소 */
   color: var(--color-text);
-  line-height: 1.5;
+  line-height: 1.4; /* 1.5 -> 1.4로 축소 */
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -409,12 +409,12 @@
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-xs);
-  padding: var(--spacing-sm);
+  padding: var(--spacing-2); /* var(--spacing-sm) -> var(--spacing-2)로 축소 */
   background: var(--color-bg-elevated);
-  border-radius: 8px;
-  font-size: 0.875rem;
+  border-radius: 6px;
+  font-size: 0.8rem; /* 0.875rem -> 0.8rem로 축소 */
   color: var(--color-text-secondary);
-  line-height: 1.4;
+  line-height: 1.3; /* 1.4 -> 1.3으로 축소 */
 }
 
 .template-card-memo-icon {
@@ -425,19 +425,19 @@
 .template-card-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-2); /* var(--spacing-sm) -> var(--spacing-2)로 축소 */
   margin-top: auto;
-  padding-top: var(--spacing-sm);
+  padding-top: var(--spacing-2); /* var(--spacing-sm) -> var(--spacing-2)로 축소 */
 }
 
 .template-meta-item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
+  gap: 3px; /* 4px -> 3px로 축소 */
+  padding: 3px 8px; /* 4px 10px -> 3px 8px로 축소 */
   background: var(--color-bg-elevated);
-  border-radius: 6px;
-  font-size: 0.8125rem;
+  border-radius: 5px;
+  font-size: 0.75rem; /* 0.8125rem -> 0.75rem로 축소 */
   color: var(--color-text-secondary);
   font-weight: 500;
 }
@@ -449,26 +449,26 @@
 /* 카드 액션 */
 .template-card-actions {
   display: flex;
-  gap: var(--spacing-sm);
-  padding-top: var(--spacing-sm);
+  gap: var(--spacing-2); /* var(--spacing-sm) -> var(--spacing-2)로 축소 */
+  padding-top: var(--spacing-3); /* var(--spacing-sm) -> var(--spacing-3)로 축소 */
   border-top: 1px solid var(--color-border);
 }
 
 .btn-template-card-add {
   flex: 1;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-2) var(--spacing-3); /* var(--spacing-sm) var(--spacing-md) -> var(--spacing-2) var(--spacing-3)로 축소 */
   background: var(--color-primary);
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  border-radius: 6px;
+  font-size: 0.8rem; /* 0.875rem -> 0.8rem로 축소 */
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .btn-template-card-add:hover {
@@ -487,13 +487,13 @@
 }
 
 .btn-template-card-action {
-  width: 36px;
-  height: 36px;
+  width: 30px; /* 36px -> 30px로 축소 */
+  height: 30px; /* 36px -> 30px로 축소 */
   padding: 0;
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-base);
-  font-size: 1rem;
+  font-size: 0.9rem; /* 1rem -> 0.9rem로 축소 */
   cursor: pointer;
   transition: all var(--transition-base) var(--ease-out);
   display: flex;

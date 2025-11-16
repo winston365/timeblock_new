@@ -231,7 +231,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
                   {/* 카드 헤더 */}
                   <div className="template-card-header">
                     <div className="template-card-title">
-                      <h3>{template.name}</h3>
+                      <h3>{template.text}</h3>
                       <div className="template-card-badges">
                         {template.autoGenerate && template.recurrenceType === 'daily' && (
                           <span className="template-card-badge badge-daily" title="매일 자동 생성">
@@ -254,7 +254,6 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
 
                   {/* 카드 바디 */}
                   <div className="template-card-body">
-                    <p className="template-card-text">{template.text}</p>
                     {template.memo && (
                       <div className="template-card-memo">
                         <span className="template-card-memo-icon">💭</span>
