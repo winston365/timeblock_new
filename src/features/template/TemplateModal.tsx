@@ -277,8 +277,8 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           onSubmit={handleSubmit}
           className="modal-body"
           onKeyDown={(e) => {
-            // Enter 키가 눌렸을 때 (Ctrl+Enter 제외) currentPage가 3이 아니면 submit 방지
-            if (e.key === 'Enter' && !e.ctrlKey && currentPage !== 3) {
+            // Enter 키가 눌렸을 때 (Ctrl+Enter, Shift+Enter 제외) currentPage가 3이 아니면 submit 방지
+            if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey && currentPage !== 3) {
               e.preventDefault();
             }
           }}

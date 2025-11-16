@@ -11,9 +11,10 @@
 import { useState, useEffect } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
 import { RESISTANCE_LABELS } from '@/shared/types/domain';
-import { formatDuration, calculateTaskXP, linkifyText } from '@/shared/lib/utils';
+import { formatDuration, calculateTaskXP } from '@/shared/lib/utils';
 import { TimerConfirmModal } from './TimerConfirmModal';
 import { CompletionCelebrationModal } from './CompletionCelebrationModal';
+import { MemoModal } from './MemoModal';
 import { useGameState } from '@/shared/hooks';
 import { addXP } from '@/data/repositories/gameStateRepository';
 
@@ -40,7 +41,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const [showResistancePicker, setShowResistancePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [showMemo, setShowMemo] = useState(false);
+  const [showMemoModal, setShowMemoModal] = useState(false);
   const [showTimerConfirm, setShowTimerConfirm] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationXP, setCelebrationXP] = useState(0);
@@ -150,6 +151,17 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     setShowCelebration(false);
   };
 
+  // 메모 모달 핸들러
+  const handleMemoModalSave = (newMemo: string) => {
+    if (onUpdateTask) {
+      onUpdateTask({ memo: newMemo });
+    }
+  };
+
+  const handleMemoModalClose = () => {
+    setShowMemoModal(false);
+  };
+
   // 텍스트 편집 시작
   const handleTextClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -234,7 +246,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
           {task.completed ? '✅' : '⬜'}
         </button>
 
-        <div className="task-details" onClick={() => task.memo && !isEditingText && setShowMemo(!showMemo)}>
+        <div className="task-details" onClick={() => task.memo && !isEditingText && setShowMemoModal(true)}>
           {/* 작업명과 아이콘을 같은 행에 배치 */}
           <div className="task-header-row">
             <div className="task-text">
@@ -307,7 +319,17 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
 
               {/* 메모 아이콘 */}
               {task.memo && (
-                <span className="memo-indicator" title="메모 있음">📝</span>
+                <button
+                  className="memo-indicator"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMemoModal(true);
+                  }}
+                  title="메모 보기 (클릭)"
+                  aria-label="메모 보기"
+                >
+                  📝
+                </button>
               )}
 
               {/* 타이머 아이콘 - 토글 */}
@@ -337,15 +359,6 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
               </button>
             </div>
           </div>
-
-          {/* 메모는 아래에 (클릭 시 표시) */}
-          {task.memo && showMemo && (
-            <div
-              className="task-memo"
-              onClick={(e) => e.stopPropagation()}
-              dangerouslySetInnerHTML={{ __html: `📝 ${linkifyText(task.memo)}` }}
-            />
-          )}
         </div>
       </div>
 
@@ -376,6 +389,15 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
           xpGained={celebrationXP}
           timerBonus={timerBonus}
           onClose={handleCelebrationClose}
+        />
+      )}
+
+      {/* 메모 모달 */}
+      {showMemoModal && (
+        <MemoModal
+          memo={task.memo}
+          onSave={handleMemoModalSave}
+          onClose={handleMemoModalClose}
         />
       )}
     </>
