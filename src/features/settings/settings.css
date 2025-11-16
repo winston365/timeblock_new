@@ -1,7 +1,7 @@
 /* 설정 모달 스타일 */
 
-.settings-modal {
-  width: 600px;
+.modal-content.settings-modal {
+  width: 600px !important;
   max-width: 95vw;
   max-height: 90vh;
   display: flex;
