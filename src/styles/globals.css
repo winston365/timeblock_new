@@ -1,10 +1,8 @@
 /* =========================
-   Tailwind CSS Directives
+   Tailwind CSS v4 Import
    ========================= */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* =========================
    전역 스타일 - 리셋 & 기본 설정
