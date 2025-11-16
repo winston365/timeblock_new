@@ -187,13 +187,15 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
     onClose(false);
   };
 
-  const handleNext = () => {
+  const handleNext = (e?: React.MouseEvent) => {
+    e?.preventDefault(); // form submit 방지
     if (currentPage < 3) {
       setCurrentPage(currentPage + 1);
     }
   };
 
-  const handlePrevious = () => {
+  const handlePrevious = (e?: React.MouseEvent) => {
+    e?.preventDefault(); // form submit 방지
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
@@ -271,7 +273,16 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-body">
+        <form
+          onSubmit={handleSubmit}
+          className="modal-body"
+          onKeyDown={(e) => {
+            // Enter 키가 눌렸을 때 (Ctrl+Enter 제외) currentPage가 3이 아니면 submit 방지
+            if (e.key === 'Enter' && !e.ctrlKey && currentPage !== 3) {
+              e.preventDefault();
+            }
+          }}
+        >
           <div className="modal-form-scroll-area modal-form-single-page">
             {/* 1페이지: 기본 정보 */}
             {currentPage === 1 && (
