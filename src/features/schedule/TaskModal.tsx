@@ -41,6 +41,7 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
   const [preparation3, setPreparation3] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [memoRows, setMemoRows] = useState(2); // 자동 높이 조절용
 
   const { waifuState } = useWaifuState();
   const { settings } = useSettingsStore();
@@ -55,6 +56,10 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
       setPreparation1(task.preparation1 || '');
       setPreparation2(task.preparation2 || '');
       setPreparation3(task.preparation3 || '');
+
+      // 메모 줄 수 계산
+      const lineCount = task.memo.split('\n').length;
+      setMemoRows(Math.min(Math.max(lineCount, 2), 6));
     }
   }, [task]);
 
@@ -127,6 +132,16 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
     }
   };
 
+  // 메모 변경 핸들러 (자동 높이 조절)
+  const handleMemoChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newMemo = e.target.value;
+    setMemo(newMemo);
+
+    // 줄 수 계산 (최소 2줄, 최대 6줄)
+    const lineCount = newMemo.split('\n').length;
+    setMemoRows(Math.min(Math.max(lineCount, 2), 6));
+  };
+
   // ESC 키로 모달 닫기
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -176,6 +191,10 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
         : breakdown;
 
       setMemo(newMemo);
+
+      // 메모 줄 수 자동 조절
+      const lineCount = newMemo.split('\n').length;
+      setMemoRows(Math.min(Math.max(lineCount, 2), 6));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'AI 세분화에 실패했습니다.';
       setAiError(errorMessage);
@@ -241,13 +260,25 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
             </div>
 
             <div className="form-group">
-              <label htmlFor="task-memo">메모</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label htmlFor="task-memo">메모</label>
+                {memo.split('\n').length > 6 && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                    {memo.split('\n').length}줄 (6줄 초과)
+                  </span>
+                )}
+              </div>
               <textarea
                 id="task-memo"
                 value={memo}
-                onChange={e => setMemo(e.target.value)}
+                onChange={handleMemoChange}
                 placeholder="추가 메모 (선택사항)"
-                rows={2}
+                rows={memoRows}
+                style={{
+                  resize: 'vertical',
+                  minHeight: '48px',
+                  maxHeight: '300px'
+                }}
               />
               {/* AI 세분화 버튼 */}
               <button
