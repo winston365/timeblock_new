@@ -190,6 +190,7 @@
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  padding: var(--spacing-md);
 }
 
 .modal-content {
@@ -197,9 +198,16 @@
   border-radius: 8px;
   max-width: 400px;
   width: 90%;
-  max-height: 85vh;
-  overflow-y: auto;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* 넓은 모달 (2컬럼 레이아웃용) */
+.modal-content-wide {
+  max-width: 900px;
+  width: 95%;
 }
 
 .modal-header {
@@ -236,17 +244,107 @@
 }
 
 .modal-body {
-  padding: var(--spacing-sm) var(--spacing-md);
-  flex: 1; /* 남은 공간 차지 */
-  overflow-y: auto; /* 내용이 많으면 스크롤 */
-  min-height: 0; /* flex 자식의 overflow 작동을 위해 필요 */
+  padding: var(--spacing-md);
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* 2컬럼 레이아웃 폼 */
+.modal-form-two-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md);
+}
+
+.form-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* 준비사항 섹션 스타일 */
+.preparation-section {
+  background: var(--color-bg-secondary, #f9f9f9);
+  padding: var(--spacing-md);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  height: 100%;
+}
+
+.preparation-header {
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--color-primary);
+}
+
+.preparation-title {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: 1rem;
+  color: var(--color-primary);
+}
+
+.preparation-description {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.preparation-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.preparation-input {
+  padding: 0.6rem !important;
+  font-size: 0.9rem !important;
+}
+
+.preparation-complete-badge {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #000;
+  text-align: center;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
 }
 
 .modal-actions {
   display: flex;
   gap: var(--spacing-sm);
   justify-content: flex-end;
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-secondary, #f9f9f9);
+}
+
+/* 전체 너비 액션 버튼 (2컬럼 레이아웃용) */
+.modal-actions-full {
+  grid-column: 1 / -1;
   margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 2px solid var(--color-border);
+}
+
+/* 반응형: 작은 화면에서 1컬럼으로 변경 */
+@media (max-width: 768px) {
+  .modal-form-two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-content-wide {
+    width: 100%;
+    max-height: 95vh;
+  }
+
+  .preparation-section {
+    margin-top: var(--spacing-md);
+  }
 }
 
 /* Form Styles */
