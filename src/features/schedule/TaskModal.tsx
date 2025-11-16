@@ -215,20 +215,20 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
   };
 
   return (
-    <div className="modal-overlay" onClick={handleOverlayClick}>
-      <div className="modal-content modal-content-wide">
-        <div className="modal-header">
-          <h3>{task ? '작업 수정' : '새 작업 추가'}</h3>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]" onClick={handleOverlayClick}>
+      <div className="bg-bg-surface rounded-lg shadow-xl max-w-[900px] w-[90vw] max-h-[90vh] flex flex-col">
+        <div className="flex justify-between items-center p-lg border-b border-border">
+          <h3 className="text-lg font-bold text-text">{task ? '작업 수정' : '새 작업 추가'}</h3>
+          <button className="text-2xl text-text-tertiary hover:text-text transition-colors bg-transparent border-none cursor-pointer" onClick={onClose}>
             ✕
           </button>
         </div>
 
-        <form className="modal-form modal-form-two-column" onSubmit={handleSubmit}>
+        <form className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-lg p-lg" onSubmit={handleSubmit}>
           {/* 왼쪽 컬럼: 기존 작업 정보 */}
-          <div className="form-column form-column-left">
-            <div className="form-group">
-              <label htmlFor="task-text">작업 제목 *</label>
+          <div className="flex flex-col gap-md">
+            <div className="flex flex-col gap-xs">
+              <label htmlFor="task-text" className="text-sm font-medium text-text-secondary">작업 제목 *</label>
               <input
                 id="task-text"
                 type="text"
@@ -237,68 +237,54 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
                 placeholder="무엇을 할까요? (예: T30 D2 보고서 작성)"
                 autoFocus
                 required
+                className="px-md py-sm border border-border rounded-md bg-bg-base text-text text-sm transition-all focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="task-memo">메모</label>
+            <div className="flex flex-col gap-xs">
+              <label htmlFor="task-memo" className="text-sm font-medium text-text-secondary">메모</label>
               <textarea
                 id="task-memo"
                 value={memo}
                 onChange={e => setMemo(e.target.value)}
                 placeholder="추가 메모 (선택사항)"
                 rows={2}
+                className="px-md py-sm border border-border rounded-md bg-bg-base text-text text-sm resize-y transition-all focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
               />
               {/* AI 세분화 버튼 */}
               <button
                 type="button"
-                className="btn-ai-breakdown"
                 onClick={handleAIBreakdown}
                 disabled={aiLoading || !text.trim()}
-                style={{
-                  marginTop: 'var(--spacing-2)',
-                  padding: '8px 12px',
-                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  cursor: aiLoading || !text.trim() ? 'not-allowed' : 'pointer',
-                  opacity: aiLoading || !text.trim() ? 0.6 : 1,
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
+                className={`
+                  mt-sm px-md py-sm rounded-md text-sm font-semibold border-none transition-all
+                  flex items-center justify-center gap-xs
+                  ${aiLoading || !text.trim() ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105 cursor-pointer'}
+                `}
+                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white' }}
               >
                 {aiLoading ? '⏳ AI 세분화 중...' : '✨ AI로 세분화하기'}
               </button>
               {aiError && (
-                <div
-                  style={{
-                    marginTop: 'var(--spacing-2)',
-                    padding: 'var(--spacing-2)',
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    borderRadius: '4px',
-                    fontSize: '0.8rem',
-                    color: 'var(--color-danger)',
-                  }}
-                >
+                <div className="mt-sm p-sm bg-danger/10 border border-danger/30 rounded text-xs text-danger">
                   ⚠️ {aiError}
                 </div>
               )}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="task-duration">예상 시간</label>
-              <div className="duration-buttons">
+            <div className="flex flex-col gap-xs">
+              <label htmlFor="task-duration" className="text-sm font-medium text-text-secondary">예상 시간</label>
+              <div className="grid grid-cols-4 gap-xs">
                 {[5, 10, 15, 30, 45, 60, 90, 120].map(duration => (
                   <button
                     key={duration}
                     type="button"
-                    className={`duration-btn ${baseDuration === duration ? 'active' : ''}`}
+                    className={`
+                      px-sm py-sm border rounded-md text-xs font-medium transition-all
+                      ${baseDuration === duration
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-bg-base text-text border-border hover:border-primary hover:bg-bg-elevated'}
+                    `}
                     onClick={() => setBaseDuration(duration)}
                   >
                     {duration < 60 ? `${duration}분` : duration === 60 ? '1시간' : duration === 90 ? '1시간 30분' : '2시간'}
@@ -307,12 +293,13 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
               </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="task-resistance">난이도</label>
+            <div className="flex flex-col gap-xs">
+              <label htmlFor="task-resistance" className="text-sm font-medium text-text-secondary">난이도</label>
               <select
                 id="task-resistance"
                 value={resistance}
                 onChange={e => setResistance(e.target.value as Resistance)}
+                className="px-md py-sm border border-border rounded-md bg-bg-base text-text text-sm cursor-pointer transition-all focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
               >
                 <option value="low">🟢 쉬움 (x1.0)</option>
                 <option value="medium">🟡 보통 (x1.3)</option>
@@ -320,24 +307,24 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
               </select>
             </div>
 
-            <div className="adjusted-duration-info">
-              조정된 예상 시간: <strong>{calculateAdjustedDuration(baseDuration, resistance)}분</strong>
+            <div className="px-md py-sm bg-bg-elevated border border-border rounded-md text-sm text-text-secondary">
+              조정된 예상 시간: <strong className="text-primary">{calculateAdjustedDuration(baseDuration, resistance)}분</strong>
             </div>
           </div>
 
           {/* 오른쪽 컬럼: 준비 사항 입력 */}
-          <div className="form-column form-column-right">
-            <div className="preparation-section">
-              <div className="preparation-header">
-                <h4 className="preparation-title">💡 작업 준비하기</h4>
-                <p className="preparation-description">
+          <div className="flex flex-col gap-md">
+            <div className="flex flex-col gap-sm p-md bg-bg-elevated/50 border border-border rounded-lg">
+              <div className="flex flex-col gap-xs mb-sm">
+                <h4 className="text-base font-semibold text-text">💡 작업 준비하기</h4>
+                <p className="text-xs text-text-secondary leading-relaxed">
                   방해물을 예상하고 대처 환경을 준비하면<br />
                   작업 성공률이 높아집니다
                 </p>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="preparation-1" className="preparation-label">
+              <div className="flex flex-col gap-xs">
+                <label htmlFor="preparation-1" className="text-sm font-medium text-text-secondary">
                   ⚠️ 예상되는 방해물 #1
                 </label>
                 <input
@@ -346,12 +333,12 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
                   value={preparation1}
                   onChange={e => setPreparation1(e.target.value)}
                   placeholder="예: 스마트폰 알림, 배고픔, 피로..."
-                  className="preparation-input"
+                  className="px-md py-sm border border-border rounded-md bg-bg-base text-text text-sm transition-all focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
                 />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="preparation-2" className="preparation-label">
+              <div className="flex flex-col gap-xs">
+                <label htmlFor="preparation-2" className="text-sm font-medium text-text-secondary">
                   ⚠️ 예상되는 방해물 #2
                 </label>
                 <input
@@ -360,12 +347,12 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
                   value={preparation2}
                   onChange={e => setPreparation2(e.target.value)}
                   placeholder="예: 불편한 자세, 소음, 다른 업무..."
-                  className="preparation-input"
+                  className="px-md py-sm border border-border rounded-md bg-bg-base text-text text-sm transition-all focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
                 />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="preparation-3" className="preparation-label">
+              <div className="flex flex-col gap-xs">
+                <label htmlFor="preparation-3" className="text-sm font-medium text-text-secondary">
                   ✅ 대처 환경/전략
                 </label>
                 <input
@@ -374,12 +361,12 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
                   value={preparation3}
                   onChange={e => setPreparation3(e.target.value)}
                   placeholder="예: 집중 모드 켜기, 간식 준비, 휴식 계획..."
-                  className="preparation-input"
+                  className="px-md py-sm border border-border rounded-md bg-bg-base text-text text-sm transition-all focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
                 />
               </div>
 
               {preparation1 && preparation2 && preparation3 && (
-                <div className="preparation-complete-badge">
+                <div className="mt-sm px-md py-sm bg-reward/20 text-reward rounded-md text-sm font-semibold text-center">
                   ⭐ 완벽하게 준비된 작업입니다!
                 </div>
               )}
@@ -387,11 +374,18 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
           </div>
 
           {/* 하단 액션 버튼 (전체 너비) */}
-          <div className="modal-actions modal-actions-full">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
+          <div className="col-span-full flex justify-end gap-sm pt-md border-t border-border">
+            <button
+              type="button"
+              className="px-lg py-sm border border-border rounded-md text-sm font-medium bg-bg-base text-text transition-all hover:bg-bg-elevated"
+              onClick={onClose}
+            >
               취소
             </button>
-            <button type="submit" className="btn btn-primary">
+            <button
+              type="submit"
+              className="px-lg py-sm bg-primary text-white rounded-md text-sm font-medium transition-all hover:bg-primary-dark hover:-translate-y-px hover:shadow-md"
+            >
               {task ? '수정' : '추가'}
             </button>
           </div>

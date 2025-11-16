@@ -78,45 +78,54 @@
   - `src/features/tasks/tasks.css` 삭제 ✓
   - `src/features/tasks/bulkAdd.css` 삭제 ✓
 
-**마이그레이션 통계**:
-- ✅ 삭제된 CSS 라인: **722줄**
-- ✅ 추가된 Tailwind 코드: **140줄**
-- ✅ 순 감소: **-582줄** (80% 코드 감소)
-- ✅ 완료된 컴포넌트: **5개**
-- ✅ 제거된 CSS 파일: **4개**
+### Week 2-3: Features/Schedule ✓ (2025-11-16 완료)
+
+- [x] **features/schedule/ScheduleView.tsx**
+  - `schedule.css` import 제거 ✓
+  - 전체 Tailwind 전환 완료 ✓
+  - 헤더, 타임블록 그리드, 현재 시간 인디케이터 ✓
+  - 코드 라인: 442줄 → 443줄
+
+- [x] **features/schedule/TimeBlock.tsx**
+  - 전체 Tailwind 전환 완료 ✓
+  - 원형 프로그레스 바 (SVG) ✓
+  - 시간 상태 배지 (pulse 애니메이션) ✓
+  - 드래그 오버 상태, 확장/축소 상태 ✓
+  - 코드 라인: 448줄 → 462줄
+
+- [x] **features/schedule/TaskCard.tsx**
+  - 전체 Tailwind 전환 완료 ✓
+  - 저항도/시간 인라인 피커 ✓
+  - 드래그 상태, 준비된 작업 표시 ✓
+  - 코드 라인: 320줄 → 322줄
+
+- [x] **features/schedule/TaskModal.tsx**
+  - 전체 Tailwind 전환 완료 ✓
+  - 2컬럼 레이아웃, 폼 그룹 ✓
+  - AI 세분화 버튼, 준비 섹션 ✓
+  - 코드 라인: 401줄 → 403줄
+
+- [x] **복잡한 애니메이션 globals.css로 이동**
+  - 원형 프로그레스 SVG 스타일 ✓
+  - 시간 상태 배지 pulse 애니메이션 ✓
+  - Active TimeBlock glow 효과 ✓
+  - Picker dropdown 스타일 ✓
+
+- [x] **CSS 파일 제거**
+  - `src/features/schedule/schedule.css` 삭제 ✓ (2135줄)
+
+**마이그레이션 통계 (누적)**:
+- ✅ 삭제된 CSS 라인: **2,857줄** (722 + 2,135)
+- ✅ 추가된 Tailwind/컴포넌트 코드: **~230줄**
+- ✅ 순 감소: **~2,627줄** (92% 코드 감소)
+- ✅ 완료된 컴포넌트: **9개** (5개 tasks + 4개 schedule)
+- ✅ 제거된 CSS 파일: **5개**
 
 ---
 
 ## 📋 남은 작업
 
-### ⏳ 다음 단계: Week 2-3 Features (예상 2-3일)
-
-#### 1. features/schedule/ (우선순위 높음)
-**예상 작업 시간**: 2일
-
-파일 목록:
-- `ScheduleView.tsx` - schedule.css 사용
-- `TimeBlock.tsx` - schedule.css 사용
-- `TaskCard.tsx` - schedule.css 사용
-- `TaskModal.tsx` - schedule.css 사용
-
-제거할 CSS:
-- `src/features/schedule/schedule.css` (복잡한 time-block 애니메이션 포함)
-
-**전환 패턴**:
-```tsx
-// Before
-<div className="time-block">
-  <div className="block-header">
-
-// After
-<div className="flex flex-col bg-bg-surface border border-border rounded-lg overflow-hidden transition-all duration-300">
-  <div className="flex items-center justify-between p-lg border-b border-border">
-```
-
-**주의사항**:
-- `time-block-animated` 등 복잡한 애니메이션은 `@layer components`로 정의 고려
-- 현재 블록 강조 효과 (`current-block`) 유지 필요
+### ⏳ 다음 단계: Week 3-4 Features (예상 2-3일)
 
 #### 2. features/gamification/ (우선순위 중간)
 **예상 작업 시간**: 1일
@@ -296,5 +305,5 @@ className="disabled:opacity-50 disabled:cursor-not-allowed"
 ---
 
 **최종 목표**: 18개 CSS 파일 → 0개 (globals.css 제외)
-**현재 진행률**: 4/18 (22%) ✓
-**예상 완료일**: 2025-11-20 (남은 작업 3-4일 예상)
+**현재 진행률**: 5/18 (28%) ✓
+**예상 완료일**: 2025-11-20 (남은 작업 2-3일 예상)
