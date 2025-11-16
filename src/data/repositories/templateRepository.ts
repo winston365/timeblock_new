@@ -11,7 +11,7 @@
  */
 
 import { db } from '../db/dexieClient';
-import type { Template, Task, TimeBlockId, Resistance } from '@/shared/types/domain';
+import type { Template, Task, TimeBlockId, Resistance, RecurrenceType } from '@/shared/types/domain';
 import { saveToStorage, getFromStorage } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
 
@@ -80,6 +80,9 @@ export async function loadTemplates(): Promise<Template[]> {
  * @param {string} preparation1 - 준비 사항 1
  * @param {string} preparation2 - 준비 사항 2
  * @param {string} preparation3 - 준비 사항 3
+ * @param {RecurrenceType} recurrenceType - 반복 주기 타입
+ * @param {number[]} weeklyDays - 매주 반복 요일 (0=일요일, ..., 6=토요일)
+ * @param {number} intervalDays - N일 주기
  * @returns {Promise<Template>} 생성된 템플릿
  * @throws {Error} IndexedDB 또는 localStorage 저장 실패 시
  * @sideEffects
@@ -96,7 +99,10 @@ export async function createTemplate(
   autoGenerate: boolean,
   preparation1?: string,
   preparation2?: string,
-  preparation3?: string
+  preparation3?: string,
+  recurrenceType: RecurrenceType = 'none',
+  weeklyDays?: number[],
+  intervalDays?: number
 ): Promise<Template> {
   try {
     const template: Template = {
@@ -108,6 +114,9 @@ export async function createTemplate(
       resistance,
       timeBlock,
       autoGenerate,
+      recurrenceType,
+      weeklyDays: weeklyDays || [],
+      intervalDays: intervalDays || 1,
       preparation1: preparation1 || '',
       preparation2: preparation2 || '',
       preparation3: preparation3 || '',
@@ -318,19 +327,76 @@ export async function getAutoGenerateTemplates(): Promise<Template[]> {
 }
 
 /**
+ * 템플릿이 오늘 생성되어야 하는지 확인
+ *
+ * @param {Template} template - 템플릿 객체
+ * @param {string} today - 오늘 날짜 (YYYY-MM-DD)
+ * @returns {boolean} 오늘 생성 여부
+ */
+function shouldGenerateToday(template: Template, today: string): boolean {
+  const { recurrenceType, weeklyDays, intervalDays, lastGeneratedDate } = template;
+
+  // 매일 생성
+  if (recurrenceType === 'daily') {
+    // 오늘 이미 생성했다면 스킵
+    return lastGeneratedDate !== today;
+  }
+
+  // 매주 특정 요일
+  if (recurrenceType === 'weekly' && weeklyDays && weeklyDays.length > 0) {
+    const dayOfWeek = new Date(today).getDay(); // 0=일요일, 1=월요일, ...
+    const shouldGenerate = weeklyDays.includes(dayOfWeek);
+
+    // 해당 요일이고 오늘 아직 생성하지 않았다면
+    return shouldGenerate && lastGeneratedDate !== today;
+  }
+
+  // N일 주기
+  if (recurrenceType === 'interval' && intervalDays) {
+    // 마지막 생성 날짜가 없으면 생성
+    if (!lastGeneratedDate) return true;
+
+    // 마지막 생성 날짜로부터 N일이 지났는지 확인
+    const lastDate = new Date(lastGeneratedDate);
+    const todayDate = new Date(today);
+    const daysDiff = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    return daysDiff >= intervalDays;
+  }
+
+  // recurrenceType이 'none'이면 생성하지 않음
+  return false;
+}
+
+/**
  * 자동 생성 템플릿에서 작업 생성 (매일 00시 실행)
  *
  * @returns {Promise<Task[]>} 생성된 작업 배열
  * @throws 없음
  * @sideEffects
  *   - IndexedDB에서 자동 생성 템플릿 조회
+ *   - 템플릿의 lastGeneratedDate 업데이트
  */
 export async function generateTasksFromAutoTemplates(): Promise<Task[]> {
   try {
     const autoTemplates = await getAutoGenerateTemplates();
-    const tasks = autoTemplates.map(template => createTaskFromAutoTemplate(template));
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const tasksToGenerate: Task[] = [];
 
-    return tasks;
+    for (const template of autoTemplates) {
+      // 주기에 따라 오늘 생성해야 하는지 확인
+      if (shouldGenerateToday(template, today)) {
+        const task = createTaskFromAutoTemplate(template);
+        tasksToGenerate.push(task);
+
+        // 템플릿의 lastGeneratedDate 업데이트
+        await updateTemplate(template.id, {
+          lastGeneratedDate: today
+        });
+      }
+    }
+
+    return tasksToGenerate;
   } catch (error) {
     console.error('Failed to generate tasks from auto-templates:', error);
     return [];

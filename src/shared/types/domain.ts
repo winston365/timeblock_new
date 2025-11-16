@@ -113,6 +113,11 @@ export interface GameState {
 // ============================================================================
 
 /**
+ * 템플릿 반복 주기 타입
+ */
+export type RecurrenceType = 'none' | 'daily' | 'weekly' | 'interval';
+
+/**
  * 작업 템플릿 (반복 작업용)
  */
 export interface Template {
@@ -123,7 +128,11 @@ export interface Template {
   baseDuration: number;
   resistance: Resistance;
   timeBlock: TimeBlockId;
-  autoGenerate: boolean; // 매일 자동 생성 여부
+  autoGenerate: boolean; // 자동 생성 여부 (recurrenceType이 'none'이 아닐 때)
+  recurrenceType: RecurrenceType; // 반복 주기 타입
+  weeklyDays?: number[]; // 매주 반복 요일 (0=일요일, 1=월요일, ..., 6=토요일)
+  intervalDays?: number; // N일 주기 (예: 3일마다)
+  lastGeneratedDate?: string; // 마지막 생성 날짜 (YYYY-MM-DD)
   preparation1?: string; // 준비 사항 1 (예상 방해물 또는 대처 환경)
   preparation2?: string; // 준비 사항 2 (예상 방해물 또는 대처 환경)
   preparation3?: string; // 준비 사항 3 (예상 방해물 또는 대처 환경)

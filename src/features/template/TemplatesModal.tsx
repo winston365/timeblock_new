@@ -3,16 +3,16 @@
  *
  * @role 반복 작업 템플릿을 관리하고 오늘 할 일로 추가하는 전체 화면 모달 컴포넌트
  * @input isOpen (모달 표시 여부), onClose (모달 닫기 핸들러), onTaskCreate (템플릿에서 작업 생성 시 콜백)
- * @output 템플릿 목록, 자동 생성 배지, 추가/편집/삭제 버튼을 포함한 모달 UI
+ * @output 템플릿 목록, 검색, 복제, 자동 생성 배지, 추가/편집/삭제 버튼을 포함한 모달 UI
  * @external_dependencies
- *   - loadTemplates, deleteTemplate: 템플릿 Repository
+ *   - loadTemplates, deleteTemplate, createTemplate: 템플릿 Repository
  *   - TemplateModal: 템플릿 추가/편집 모달 컴포넌트
  *   - RESISTANCE_LABELS, TIME_BLOCKS: 도메인 타입 및 상수
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Template } from '@/shared/types/domain';
-import { loadTemplates, deleteTemplate as deleteTemplateRepo } from '@/data/repositories';
+import { loadTemplates, deleteTemplate as deleteTemplateRepo, createTemplate } from '@/data/repositories';
 import { TemplateModal } from './TemplateModal';
 import { RESISTANCE_LABELS, TIME_BLOCKS } from '@/shared/types/domain';
 import './templatesModal.css';
@@ -37,6 +37,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -60,6 +61,18 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     const data = await loadTemplates();
     setTemplates(data);
   };
+
+  // 검색 필터링 (실시간)
+  const filteredTemplates = useMemo(() => {
+    if (!searchQuery.trim()) return templates;
+
+    const query = searchQuery.toLowerCase();
+    return templates.filter(template =>
+      template.name.toLowerCase().includes(query) ||
+      template.text.toLowerCase().includes(query) ||
+      template.memo.toLowerCase().includes(query)
+    );
+  }, [templates, searchQuery]);
 
   const handleAddTemplate = () => {
     setEditingTemplate(null);
@@ -102,6 +115,35 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     onTaskCreate(template);
   };
 
+  const handleCloneTemplate = async (template: Template) => {
+    try {
+      const clonedTemplate = await createTemplate(
+        `${template.name} (복사)`,
+        template.text,
+        template.memo,
+        template.baseDuration,
+        template.resistance,
+        template.timeBlock,
+        false, // 복제 시 자동 생성은 꺼둠
+        template.preparation1,
+        template.preparation2,
+        template.preparation3,
+        'none', // 복제 시 주기는 없음으로 설정
+        [],
+        1
+      );
+
+      // Optimistic UI 업데이트: 즉시 목록에 추가
+      setTemplates(prevTemplates => [...prevTemplates, clonedTemplate]);
+
+      // 성공 메시지
+      alert('✅ 템플릿이 복제되었습니다.');
+    } catch (error) {
+      console.error('Failed to clone template:', error);
+      alert('템플릿 복제에 실패했습니다.');
+    }
+  };
+
   const getTimeBlockLabel = (blockId: string | null): string => {
     if (!blockId) return '나중에';
     const block = TIME_BLOCKS.find(b => b.id === blockId);
@@ -115,7 +157,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
       <div className="modal-content templates-modal-content" onClick={(e) => e.stopPropagation()}>
         {/* 헤더 */}
         <div className="modal-header templates-modal-header">
-          <div>
+          <div className="templates-modal-header-left">
             <h2>📝 템플릿 관리</h2>
             <p className="modal-subtitle">반복 작업을 템플릿으로 저장하고 관리하세요</p>
           </div>
@@ -133,6 +175,35 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
           </div>
         </div>
 
+        {/* 검색 바 */}
+        {templates.length > 0 && (
+          <div className="templates-search-container">
+            <div className="templates-search-wrapper">
+              <span className="templates-search-icon">🔍</span>
+              <input
+                type="text"
+                className="templates-search-input"
+                placeholder="템플릿 이름, 할 일, 메모로 검색..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  className="templates-search-clear"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="검색어 지우기"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <div className="templates-search-meta">
+              {filteredTemplates.length}개의 템플릿
+              {searchQuery && ` (전체 ${templates.length}개 중)`}
+            </div>
+          </div>
+        )}
+
         {/* 템플릿 목록 */}
         <div className="templates-modal-body">
           {templates.length === 0 ? (
@@ -144,19 +215,40 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
                 첫 템플릿 만들기
               </button>
             </div>
+          ) : filteredTemplates.length === 0 ? (
+            <div className="templates-empty-state">
+              <div className="templates-empty-icon">🔍</div>
+              <h3>검색 결과가 없습니다</h3>
+              <p>"{searchQuery}"와 일치하는 템플릿이 없습니다.</p>
+              <button className="btn-secondary" onClick={() => setSearchQuery('')}>
+                검색어 지우기
+              </button>
+            </div>
           ) : (
             <div className="templates-grid">
-              {templates.map(template => (
+              {filteredTemplates.map(template => (
                 <div key={template.id} className="template-card">
                   {/* 카드 헤더 */}
                   <div className="template-card-header">
                     <div className="template-card-title">
                       <h3>{template.name}</h3>
-                      {template.autoGenerate && (
-                        <span className="template-card-badge" title="매일 자동 생성">
-                          🔄 자동
-                        </span>
-                      )}
+                      <div className="template-card-badges">
+                        {template.autoGenerate && template.recurrenceType === 'daily' && (
+                          <span className="template-card-badge badge-daily" title="매일 자동 생성">
+                            🔄 매일
+                          </span>
+                        )}
+                        {template.autoGenerate && template.recurrenceType === 'weekly' && template.weeklyDays && (
+                          <span className="template-card-badge badge-weekly" title={`매주 ${template.weeklyDays.map(d => ['일','월','화','수','목','금','토'][d]).join(', ')}요일`}>
+                            🔄 매주
+                          </span>
+                        )}
+                        {template.autoGenerate && template.recurrenceType === 'interval' && template.intervalDays && (
+                          <span className="template-card-badge badge-interval" title={`${template.intervalDays}일마다 자동 생성`}>
+                            🔄 {template.intervalDays}일마다
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -198,14 +290,21 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
                     </button>
                     <div className="template-card-secondary-actions">
                       <button
-                        className="btn-template-card-edit"
+                        className="btn-template-card-action"
+                        onClick={() => handleCloneTemplate(template)}
+                        title="템플릿 복제"
+                      >
+                        📋
+                      </button>
+                      <button
+                        className="btn-template-card-action"
                         onClick={() => handleEditTemplate(template)}
                         title="템플릿 편집"
                       >
                         ✏️
                       </button>
                       <button
-                        className="btn-template-card-delete"
+                        className="btn-template-card-action btn-template-card-delete"
                         onClick={() => handleDeleteTemplate(template.id)}
                         title="템플릿 삭제"
                       >

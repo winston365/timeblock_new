@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { Template, Resistance, TimeBlockId } from '@/shared/types/domain';
+import type { Template, Resistance, TimeBlockId, RecurrenceType } from '@/shared/types/domain';
 import { createTemplate, updateTemplate } from '@/data/repositories';
 import { TIME_BLOCKS, RESISTANCE_LABELS } from '@/shared/types/domain';
 
@@ -37,6 +37,9 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const [resistance, setResistance] = useState<Resistance>('low');
   const [timeBlock, setTimeBlock] = useState<TimeBlockId>(null);
   const [autoGenerate, setAutoGenerate] = useState(false);
+  const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('none');
+  const [weeklyDays, setWeeklyDays] = useState<number[]>([]);
+  const [intervalDays, setIntervalDays] = useState(1);
   const [preparation1, setPreparation1] = useState('');
   const [preparation2, setPreparation2] = useState('');
   const [preparation3, setPreparation3] = useState('');
@@ -52,6 +55,9 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
       setResistance(template.resistance);
       setTimeBlock(template.timeBlock);
       setAutoGenerate(template.autoGenerate);
+      setRecurrenceType(template.recurrenceType || 'none');
+      setWeeklyDays(template.weeklyDays || []);
+      setIntervalDays(template.intervalDays || 1);
       setPreparation1(template.preparation1 || '');
       setPreparation2(template.preparation2 || '');
       setPreparation3(template.preparation3 || '');
@@ -77,6 +83,18 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
       return;
     }
 
+    // 주기 검증
+    if (autoGenerate) {
+      if (recurrenceType === 'weekly' && weeklyDays.length === 0) {
+        alert('매주 반복을 선택했다면 요일을 최소 1개 이상 선택해주세요.');
+        return;
+      }
+      if (recurrenceType === 'interval' && intervalDays < 1) {
+        alert('주기는 1일 이상이어야 합니다.');
+        return;
+      }
+    }
+
     setIsSaving(true);
 
     try {
@@ -90,6 +108,9 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           resistance,
           timeBlock,
           autoGenerate,
+          recurrenceType,
+          weeklyDays,
+          intervalDays,
           preparation1: preparation1.trim(),
           preparation2: preparation2.trim(),
           preparation3: preparation3.trim(),
@@ -106,7 +127,10 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           autoGenerate,
           preparation1.trim(),
           preparation2.trim(),
-          preparation3.trim()
+          preparation3.trim(),
+          recurrenceType,
+          weeklyDays,
+          intervalDays
         );
       }
 
@@ -237,14 +261,83 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                 <input
                   type="checkbox"
                   checked={autoGenerate}
-                  onChange={e => setAutoGenerate(e.target.checked)}
+                  onChange={e => {
+                    setAutoGenerate(e.target.checked);
+                    if (!e.target.checked) {
+                      setRecurrenceType('none');
+                    }
+                  }}
                 />
-                <span>매일 자동으로 생성 🔄</span>
+                <span>자동으로 생성 🔄</span>
               </label>
               <p className="form-hint">
-                체크하면 매일 00시에 이 템플릿에서 자동으로 할 일이 생성됩니다.
+                체크하면 설정한 주기에 따라 자동으로 할 일이 생성됩니다.
               </p>
             </div>
+
+            {/* 주기 설정 (자동 생성 활성화 시에만 표시) */}
+            {autoGenerate && (
+              <div className="form-group recurrence-settings">
+                <label htmlFor="template-recurrence">반복 주기</label>
+                <select
+                  id="template-recurrence"
+                  value={recurrenceType}
+                  onChange={e => setRecurrenceType(e.target.value as RecurrenceType)}
+                  className="recurrence-type-select"
+                >
+                  <option value="daily">매일</option>
+                  <option value="weekly">매주 특정 요일</option>
+                  <option value="interval">N일마다</option>
+                </select>
+
+                {/* 매주 요일 선택 */}
+                {recurrenceType === 'weekly' && (
+                  <div className="weekly-days-selector">
+                    <label className="weekly-days-label">반복할 요일 선택</label>
+                    <div className="weekly-days-grid">
+                      {['일', '월', '화', '수', '목', '금', '토'].map((day, index) => (
+                        <label key={index} className={`day-checkbox ${weeklyDays.includes(index) ? 'checked' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={weeklyDays.includes(index)}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setWeeklyDays([...weeklyDays, index].sort());
+                              } else {
+                                setWeeklyDays(weeklyDays.filter(d => d !== index));
+                              }
+                            }}
+                          />
+                          <span className="day-label">{day}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* N일 주기 입력 */}
+                {recurrenceType === 'interval' && (
+                  <div className="interval-input-group">
+                    <label htmlFor="interval-days">반복 주기 (일)</label>
+                    <div className="interval-input-wrapper">
+                      <input
+                        id="interval-days"
+                        type="number"
+                        min="1"
+                        max="365"
+                        value={intervalDays}
+                        onChange={e => setIntervalDays(Number(e.target.value))}
+                        className="interval-input"
+                      />
+                      <span className="interval-unit">일마다 반복</span>
+                    </div>
+                    <p className="form-hint">
+                      예: 3일마다 반복 → 오늘 생성되면 3일 후 다시 생성됩니다.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 오른쪽 컬럼: 준비 사항 입력 */}
