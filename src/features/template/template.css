@@ -261,9 +261,9 @@
   padding: var(--spacing-5) var(--spacing-6);
   min-height: 0;
 
-  /* 2단 그리드 */
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* 2단 그리드 - !important로 강제 적용 */
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
   gap: var(--spacing-6);
   align-items: start;
 
