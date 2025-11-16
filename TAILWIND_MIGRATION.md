@@ -4,7 +4,7 @@
 
 ### Phase 1: 초기 설정 ✓ (2025-11-16)
 
-- [x] **Tailwind CSS 패키지 설치**
+- [x] **Tailwind CSS v4 패키지 설치**
   - `tailwindcss@4.1.17` 설치 완료
   - `postcss@8.5.6` 설치 완료
   - `autoprefixer@10.4.22` 설치 완료
@@ -16,18 +16,26 @@
   - 타이포그래피: `2xs` ~ `3xl` 폰트 크기
   - 애니메이션: `fadeIn`, `scaleIn`, `shimmer`, `bounce` 키프레임
 
-- [x] **postcss.config.js 생성**
-  - Tailwind 및 Autoprefixer 플러그인 설정
+- [x] **postcss.config.js 설정 (Tailwind v4 네이티브 방식)**
+  - ⚠️ **중요**: Tailwind v4는 PostCSS 플러그인을 사용하지 않음
+  - `@tailwindcss/postcss`는 **비공식** 커뮤니티 패키지 (사용 안 함)
+  - autoprefixer만 설정:
+    ```javascript
+    export default {
+      plugins: {
+        autoprefixer: {},
+      },
+    }
+    ```
 
-- [x] **globals.css에 Tailwind 디렉티브 추가**
-  - `@tailwind base;`
-  - `@tailwind components;`
-  - `@tailwind utilities;`
+- [x] **globals.css에 Tailwind v4 import 추가**
+  - `@import "tailwindcss";` (v4 공식 네이티브 방식)
+  - ❌ ~~`@tailwind base/components/utilities`~~ (v3 디렉티브, v4에서 사용 안 함)
   - 기존 CSS 변수 및 커스텀 스타일 모두 유지 (하이브리드 접근)
 
 - [x] **개발 서버 동작 확인**
-  - Vite 개발 서버 정상 실행 (368ms)
-  - Tailwind 컴파일 정상 동작
+  - Vite 개발 서버 정상 실행 (334ms)
+  - Tailwind v4 컴파일 정상 동작 ✓
 
 ### Phase 2.1-2.2: 유틸리티 클래스 ✓ (2025-11-16)
 
