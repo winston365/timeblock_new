@@ -10,6 +10,7 @@
   background: var(--color-bg-base);
   z-index: 1000;
   animation: fadeIn 0.3s ease-out;
+  overflow: hidden; /* 전체 오버레이 스크롤 방지 */
 }
 
 .gemini-fullscreen-container {
@@ -18,6 +19,7 @@
   height: 100vh;
   width: 100vw;
   overflow: hidden;
+  max-height: 100vh; /* 높이 제한 명확하게 */
 }
 
 /* 좌측: 와이푸 이미지 섹션 */
@@ -29,6 +31,8 @@
   /* 단순한 다크모드 배경 (그라디언트 제거) */
   background: var(--color-bg-surface);
   overflow: hidden;
+  height: 100vh; /* 높이 고정 */
+  max-height: 100vh; /* 최대 높이 제한 */
 }
 
 .fullscreen-waifu-image {
@@ -126,6 +130,9 @@
   box-shadow: -10px 0 30px rgba(0, 0, 0, 0.3);
   /* 단순한 보더 (그라디언트 제거) */
   border-left: 2px solid var(--color-border);
+  height: 100vh; /* 높이 고정 */
+  max-height: 100vh; /* 최대 높이 제한 */
+  overflow: hidden; /* 채팅 섹션 자체는 스크롤 안 됨 */
 }
 
 /* 헤더 */
@@ -195,14 +202,16 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* 메시지 목록 */
+/* 메시지 목록 - 이 영역만 스크롤됨 (와이푸 이미지는 고정) */
 .fullscreen-messages {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: auto; /* 메시지 영역만 세로 스크롤 */
+  overflow-x: hidden; /* 가로 스크롤 방지 */
   padding: 30px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-height: 0; /* flex 자식 요소가 부모 높이를 초과하지 않도록 */
 }
 
 .chat-welcome {
