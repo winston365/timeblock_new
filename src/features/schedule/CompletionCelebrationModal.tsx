@@ -9,6 +9,7 @@
  * @output 화려한 축하 UI와 애니메이션
  */
 
+import { createPortal } from 'react-dom';
 import type { Task } from '@/shared/types/domain';
 import './schedule.css';
 
@@ -31,7 +32,7 @@ export function CompletionCelebrationModal({
   timerBonus,
   onClose,
 }: CompletionCelebrationModalProps) {
-  return (
+  const modalContent = (
     <div className="modal-overlay celebration-overlay" onClick={onClose}>
       <div className="modal-content celebration-modal" onClick={e => e.stopPropagation()}>
         {/* 배경 애니메이션 효과 */}
@@ -94,4 +95,6 @@ export function CompletionCelebrationModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

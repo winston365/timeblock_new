@@ -6,6 +6,7 @@
  * @output 타이머 사용 여부 확인 UI
  */
 
+import { createPortal } from 'react-dom';
 import './schedule.css';
 
 interface TimerConfirmModalProps {
@@ -28,7 +29,7 @@ export function TimerConfirmModal({ taskName, onConfirm }: TimerConfirmModalProp
     onConfirm(false);
   };
 
-  return (
+  const modalContent = (
     <div className="modal-overlay timer-confirm-overlay" onClick={handleNo}>
       <div className="modal-content timer-confirm-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
@@ -66,4 +67,6 @@ export function TimerConfirmModal({ taskName, onConfirm }: TimerConfirmModalProp
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

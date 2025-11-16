@@ -119,10 +119,13 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     // 1. 먼저 완료 처리 (가장 중요)
     onToggle();
 
-    // 2. timerUsed 필드 업데이트
-    if (onUpdateTask) {
-      onUpdateTask({ timerUsed });
-    }
+    // 2. 완료 처리가 완전히 끝날 때까지 대기 후 timerUsed 업데이트
+    // race condition 방지를 위한 짧은 지연
+    setTimeout(() => {
+      if (onUpdateTask) {
+        onUpdateTask({ timerUsed, completed: true });
+      }
+    }, 100);
 
     // 3. 타이머를 사용한 경우에만 보너스 처리
     if (timerUsed) {
