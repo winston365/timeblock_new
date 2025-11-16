@@ -11,18 +11,11 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { usePersonaContext, useDailyData, useGameState, useEnergyState } from '@/shared/hooks';
+import { usePersonaContext } from '@/shared/hooks';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { callGeminiAPI, generateWaifuPersona } from '@/shared/services/geminiApi';
-import {
-  generateCurrentSituationContext,
-  collectCompletedTasksData,
-  collectXPData
-} from '@/shared/services/contextGenerator';
 import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
-import { TIME_BLOCKS } from '@/shared/types/domain';
-import type { Task } from '@/shared/types/domain';
 
 /**
  * 인사이트 출력 지시사항 (종합 분석)
@@ -108,9 +101,6 @@ function parseMarkdown(markdown: string): string {
  */
 export default function InsightPanel() {
   const personaContext = usePersonaContext();
-  const { dailyData } = useDailyData();
-  const { gameState } = useGameState();
-  const { currentEnergy } = useEnergyState();
   const { settings, loadData: loadSettingsData } = useSettingsStore();
   const { show: showWaifu } = useWaifuCompanionStore();
 
@@ -142,47 +132,15 @@ export default function InsightPanel() {
     setError(null);
 
     try {
-      // 데이터 수집 (1회만)
-      const completedTasksData = await collectCompletedTasksData();
-      const xpData = await collectXPData(gameState);
-
-      const now = new Date();
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
-      const currentBlock = TIME_BLOCKS.find(b => currentHour >= b.start && currentHour < b.end);
-      const currentBlockId = currentBlock?.id ?? null;
-      const currentBlockLabel = currentBlock?.label ?? '블록 외 시간';
-
-      // 블록 남은 시간 계산
-      const blockEndHour = currentBlock?.end ?? 24;
-      const minutesLeftInBlock = (blockEndHour - currentHour) * 60 - currentMinute;
-
-      const tasks: Task[] = dailyData?.tasks ?? [];
-      const inboxTasks = tasks.filter((t: Task) => !t.timeBlock && !t.completed);
-
-      // 페르소나 프롬프트 생성 (usePersonaContext 훅 사용)
+      // PersonaContext를 사용하여 시스템 프롬프트 생성
+      // generateWaifuPersona()는 이미 모든 현재 상황 데이터를 포함
       const personaPrompt = generateWaifuPersona(personaContext);
 
-      // 통합 데이터 컨텍스트 생성 (공통 함수 사용)
-      const situationContext = generateCurrentSituationContext({
-        completedTasksData,
-        xpData,
-        todayData: dailyData,
-        currentTime: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-        currentBlock: currentBlockLabel,
-        currentBlockId,
-        inboxTasks,
-        currentEnergy: currentEnergy ?? 0,
-        availableXP: gameState?.availableXP ?? 0,
-        dailyXP: gameState?.dailyXP ?? 0,
-        minutesLeftInBlock,
-      });
-
-      // 출력 지시사항 (종합 분석)
+      // 출력 지시사항 추가
       const instruction = getInsightInstruction();
 
-      // 최종 프롬프트: personaPrompt + 현재 상황 컨텍스트 + 출력 지시사항
-      const prompt = `${personaPrompt}\n\n${situationContext}\n\n${instruction}`;
+      // 최종 프롬프트: personaPrompt + 출력 지시사항
+      const prompt = `${personaPrompt}\n\n${instruction}`;
 
       // AI 호출
       const { text, tokenUsage } = await callGeminiAPI(prompt, [], settings.geminiApiKey);

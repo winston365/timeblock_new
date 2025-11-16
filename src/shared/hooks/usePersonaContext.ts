@@ -71,10 +71,10 @@ export function usePersonaContext(): PersonaContext | null {
         const lockedBlocksCount = Object.values(timeBlockStates).filter((s: TimeBlockState) => s.isLocked).length;
         const totalBlocksCount = TIME_BLOCKS.length;
 
-        // 최근 5일 데이터 로드
-        const recentDays = await getRecentDailyData(5);
+        // 최근 10일 데이터 로드 (더 풍부한 패턴 분석)
+        const recentDays = await getRecentDailyData(10);
 
-        // 최근 5일 시간대별 패턴 분석
+        // 최근 10일 시간대별 패턴 분석
         const recentBlockPatterns = TIME_BLOCKS.reduce((acc, block) => {
           acc[block.id] = recentDays.map(day => {
             const blockTasks = day.tasks.filter(t => t.timeBlock === block.id && t.completed);
