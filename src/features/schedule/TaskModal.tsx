@@ -147,6 +147,9 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
   // ESC 키로 모달 닫기, Ctrl+Enter로 저장
   useEffect(() => {
     const handleKeyboard = (e: KeyboardEvent) => {
+      // 메모 모달이 열려 있으면 부모 모달의 키보드 이벤트 무시
+      if (showMemoModal) return;
+
       if (e.key === 'Escape') {
         onClose();
       }
@@ -161,7 +164,7 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
     };
     window.addEventListener('keydown', handleKeyboard);
     return () => window.removeEventListener('keydown', handleKeyboard);
-  }, [onClose]);
+  }, [onClose, showMemoModal]);
 
   /**
    * AI 작업 세분화 핸들러

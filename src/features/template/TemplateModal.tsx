@@ -87,6 +87,9 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   // ESC 키로 모달 닫기, Ctrl+Enter로 저장 (3페이지에서만)
   useEffect(() => {
     const handleKeyboard = (e: KeyboardEvent) => {
+      // 메모 모달이 열려 있으면 부모 모달의 키보드 이벤트 무시
+      if (showMemoModal) return;
+
       if (e.key === 'Escape') {
         onClose(false);
       }
@@ -101,10 +104,15 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
     };
     window.addEventListener('keydown', handleKeyboard);
     return () => window.removeEventListener('keydown', handleKeyboard);
-  }, [onClose, currentPage]);
+  }, [onClose, currentPage, showMemoModal]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 3페이지가 아니면 저장하지 않음 (Enter 키로 인한 오작동 방지)
+    if (currentPage !== 3) {
+      return;
+    }
 
     if (!text.trim()) {
       alert('할 일을 입력해주세요.');
