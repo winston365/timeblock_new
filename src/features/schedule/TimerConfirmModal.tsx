@@ -29,7 +29,7 @@ export function TimerConfirmModal({ taskName, onConfirm }: TimerConfirmModalProp
   };
 
   return (
-    <div className="modal-overlay" onClick={handleNo}>
+    <div className="modal-overlay timer-confirm-overlay" onClick={handleNo}>
       <div className="modal-content timer-confirm-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>⏱️ 타이머 사용 확인</h2>

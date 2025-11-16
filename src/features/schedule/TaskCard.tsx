@@ -116,15 +116,15 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const handleTimerConfirm = async (timerUsed: boolean) => {
     setShowTimerConfirm(false);
 
-    // timerUsed 필드 업데이트
+    // 1. 먼저 완료 처리 (가장 중요)
+    onToggle();
+
+    // 2. timerUsed 필드 업데이트
     if (onUpdateTask) {
       onUpdateTask({ timerUsed });
     }
 
-    // 완료 처리
-    onToggle();
-
-    // 타이머 사용했으면 퀘스트 진행도 업데이트, XP 추가 및 축하 모달 표시
+    // 3. 타이머를 사용한 경우에만 보너스 처리
     if (timerUsed) {
       // 타이머 퀘스트 진행도 업데이트
       await updateQuestProgress('use_timer', 1);

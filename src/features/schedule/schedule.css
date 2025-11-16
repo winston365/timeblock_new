@@ -1952,6 +1952,15 @@
    타이머 확인 모달
    ============================================================================ */
 
+.timer-confirm-overlay {
+  z-index: 5000 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
 .timer-confirm-modal {
   max-width: 500px !important;
 }
@@ -2012,6 +2021,11 @@
 
 .celebration-overlay {
   z-index: 9999 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
   animation: fadeIn 0.3s ease-out;
 }
 
