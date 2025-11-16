@@ -130,6 +130,8 @@ export default {
       animation: {
         'fadeIn': 'fadeIn 0.2s ease-out',
         'scaleIn': 'scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'shimmer': 'shimmer 2s infinite',
+        'bounce': 'bounce 0.6s ease-in-out',
       },
 
       keyframes: {
@@ -140,6 +142,14 @@ export default {
         scaleIn: {
           from: { opacity: '0', transform: 'scale(0.9)' },
           to: { opacity: '1', transform: 'scale(1)' },
+        },
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+        bounce: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.2)' },
         },
       },
     },
