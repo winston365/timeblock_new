@@ -6,11 +6,9 @@
  * @output XP 아이콘, 메시지, 획득 XP를 표시하는 토스트 UI (3초 후 자동 사라짐)
  * @external_dependencies
  *   - React hooks (useState, useEffect): 상태 관리 및 타이머 관리
- *   - XPToast.css: 스타일시트 및 애니메이션
  */
 
 import { useEffect, useState } from 'react';
-import './XPToast.css';
 
 interface XPToastProps {
   xp: number;
@@ -41,14 +39,34 @@ export default function XPToast({ xp, message, onClose }: XPToastProps) {
   }, [onClose]);
 
   return (
-    <div className={`xp-toast ${isVisible ? 'visible' : 'hidden'}`}>
-      <div className="xp-toast-content">
-        <div className="xp-toast-icon">✨</div>
-        <div className="xp-toast-text">
-          <div className="xp-toast-title">
+    <div
+      className={`
+        fixed top-20 right-5 z-[9999]
+        rounded-xl shadow-xl
+        px-5 py-4 min-w-[280px]
+        transition-all duration-300 ease-out
+        ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-[400px]'}
+      `}
+      style={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      }}
+    >
+      <div className="flex items-center gap-3">
+        {/* Icon with bounce animation */}
+        <div className="text-[2rem] animate-bounce">✨</div>
+
+        {/* Text content */}
+        <div className="flex-1 text-white">
+          <div className="text-base font-semibold mb-1">
             {message || '축하합니다!'}
           </div>
-          <div className="xp-toast-xp">
+          <div
+            className="text-xl font-bold"
+            style={{
+              color: '#ffd700',
+              textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+            }}
+          >
             +{xp} XP
           </div>
         </div>
