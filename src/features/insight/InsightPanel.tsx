@@ -11,9 +11,9 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useWaifuState, useDailyData, useGameState, useEnergyState } from '@/shared/hooks';
-import { loadSettings } from '@/data/repositories/settingsRepository';
-import { callGeminiAPI, generateWaifuPersona, type PersonaContext } from '@/shared/services/geminiApi';
+import { usePersonaContext, useDailyData, useGameState, useEnergyState } from '@/shared/hooks';
+import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { callGeminiAPI, generateWaifuPersona } from '@/shared/services/geminiApi';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import { TIME_BLOCKS } from '@/shared/types/domain';
@@ -266,17 +266,16 @@ function parseMarkdown(markdown: string): string {
  * InsightPanel 컴포넌트
  */
 export default function InsightPanel() {
-  const { waifuState } = useWaifuState();
+  const personaContext = usePersonaContext();
   const { dailyData } = useDailyData();
   const { gameState } = useGameState();
   const { currentEnergy } = useEnergyState();
+  const { settings, loadData: loadSettingsData } = useSettingsStore();
 
   const [insight, setInsight] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [apiKey, setApiKey] = useState<string>('');
-  const [refreshInterval, setRefreshInterval] = useState<number>(15); // 분 단위
 
   // 초기 로드 추적용 ref
   const initialLoadRef = useRef(false);
@@ -288,8 +287,14 @@ export default function InsightPanel() {
    * 이유: 최신 상태를 항상 참조하기 위함 (deps 변경으로 인한 재생성 방지)
    */
   const generateInsight = async () => {
-    if (!apiKey) {
+    if (!settings?.geminiApiKey) {
       setError('Gemini API 키가 설정되지 않았습니다.');
+      setLoading(false);
+      return;
+    }
+
+    if (!personaContext) {
+      setError('PersonaContext를 로드하는 중입니다...');
       setLoading(false);
       return;
     }
@@ -303,87 +308,12 @@ export default function InsightPanel() {
       const xpData = await collectXPData(gameState);
 
       const now = new Date();
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
-      const currentBlock = TIME_BLOCKS.find(b => currentHour >= b.start && currentHour < b.end);
+      const currentBlock = TIME_BLOCKS.find(b => now.getHours() >= b.start && now.getHours() < b.end);
 
       const tasks = dailyData?.tasks ?? [];
-      const completedTasks = tasks.filter(t => t.completed);
       const inboxTasks = tasks.filter(t => !t.timeBlock && !t.completed);
 
-      // PersonaContext 생성 (GeminiChatModal과 동일)
-      const endOfDay = new Date(now);
-      endOfDay.setHours(23, 59, 59, 999);
-      const msLeftToday = endOfDay.getTime() - now.getTime();
-      const hoursLeftToday = Math.floor(msLeftToday / (1000 * 60 * 60));
-      const minutesLeftToday = Math.floor((msLeftToday % (1000 * 60 * 60)) / (1000 * 60));
-
-      const currentBlockId = currentBlock?.id ?? null;
-      const currentBlockLabel = currentBlock?.label ?? '블록 외 시간';
-      const currentBlockTasks = currentBlockId
-        ? tasks.filter(t => t.timeBlock === currentBlockId).map(t => ({ text: t.text, completed: t.completed }))
-        : [];
-      const lockedBlocksCount = Object.values(dailyData?.timeBlockStates ?? {}).filter(s => s.isLocked).length;
-      const totalBlocksCount = TIME_BLOCKS.length;
-
-      // 최근 5일 패턴
-      const recentDays = await getRecentDailyData(5);
-      const recentBlockPatterns = TIME_BLOCKS.reduce((acc, block) => {
-        acc[block.id] = recentDays.map(day => {
-          const blockTasks = day.tasks.filter(t => t.timeBlock === block.id && t.completed);
-          return {
-            date: day.date,
-            completedCount: blockTasks.length,
-            tasks: blockTasks.map(t => t.text)
-          };
-        });
-        return acc;
-      }, {} as Record<string, Array<{ date: string; completedCount: number; tasks: string[] }>>);
-
-      const affection = waifuState?.affection ?? 50;
-      let mood = '중립적';
-      if (affection < 20) mood = '냉담함';
-      else if (affection < 40) mood = '약간 경계';
-      else if (affection < 60) mood = '따뜻함';
-      else if (affection < 80) mood = '다정함';
-      else mood = '매우 애정 어림';
-
-      const personaContext: PersonaContext = {
-        affection,
-        level: gameState?.level ?? 1,
-        totalXP: gameState?.totalXP ?? 0,
-        dailyXP: gameState?.dailyXP ?? 0,
-        availableXP: gameState?.availableXP ?? 0,
-        tasksCompleted: completedTasks.length,
-        totalTasks: tasks.length,
-        inboxTasks: inboxTasks.map(t => ({
-          text: t.text,
-          resistance: t.resistance,
-          baseDuration: t.baseDuration
-        })),
-        recentTasks: tasks.slice(-5).map(t => ({
-          text: t.text,
-          completed: t.completed,
-          resistance: t.resistance
-        })),
-        currentHour,
-        currentMinute,
-        hoursLeftToday,
-        minutesLeftToday,
-        currentBlockId,
-        currentBlockLabel,
-        currentBlockTasks,
-        lockedBlocksCount,
-        totalBlocksCount,
-        currentEnergy: currentEnergy ?? 0,
-        energyRecordedAt: null,
-        xpHistory: gameState?.xpHistory ?? [],
-        timeBlockXPHistory: gameState?.timeBlockXPHistory ?? [],
-        recentBlockPatterns,
-        mood,
-      };
-
-      // 페르소나 프롬프트 생성
+      // 페르소나 프롬프트 생성 (usePersonaContext 훅 사용)
       const personaPrompt = generateWaifuPersona(personaContext);
 
       // 인사이트 프롬프트 생성
@@ -392,12 +322,13 @@ export default function InsightPanel() {
         xpData,
         todayData: dailyData,
         currentTime: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-        currentBlock: currentBlockLabel,
+        currentBlock: currentBlock?.label ?? '블록 외 시간',
         inboxTasks,
+        currentEnergy,
       });
 
       // AI 호출
-      const { text, tokenUsage } = await callGeminiAPI(prompt, [], apiKey);
+      const { text, tokenUsage } = await callGeminiAPI(prompt, [], settings.geminiApiKey);
 
       setInsight(text);
       setLastUpdated(new Date());
@@ -414,46 +345,33 @@ export default function InsightPanel() {
     }
   };
 
-  // API 키 로드 및 설정 로드
+  // 설정 로드
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const settings = await loadSettings();
-        setApiKey(settings.geminiApiKey || '');
-        setRefreshInterval(settings.autoMessageInterval || 15);
-      } catch (error) {
-        console.error('Failed to load settings:', error);
-      }
-    };
-
-    loadData();
-
-    // 5초마다 설정 다시 로드 (설정 변경 감지)
-    const settingsInterval = setInterval(loadData, 5000);
-    return () => clearInterval(settingsInterval);
-  }, []);
+    loadSettingsData();
+  }, [loadSettingsData]);
 
   // 초기 인사이트 생성 (한 번만)
   useEffect(() => {
-    if (apiKey && !initialLoadRef.current) {
+    if (settings?.geminiApiKey && !initialLoadRef.current) {
       initialLoadRef.current = true;
       // 초기 로드 시에는 인사이트를 생성하지 않음 (사용자가 새로고침 버튼 클릭 또는 자동 갱신 대기)
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey]); // generateInsight를 의존성에서 제거 (데이터 변경 시 재생성 방지)
+  }, [settings?.geminiApiKey]); // generateInsight를 의존성에서 제거 (데이터 변경 시 재생성 방지)
 
   // 자동 갱신 타이머 (설정된 주기에만 실행)
   useEffect(() => {
-    if (!apiKey) return;
+    if (!settings?.geminiApiKey) return;
 
+    const refreshInterval = settings.autoMessageInterval || 15;
     const interval = setInterval(() => {
       generateInsight();
     }, refreshInterval * 60 * 1000);
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey, refreshInterval]); // generateInsight를 의존성에서 제거 (데이터 변경 시 재생성 방지)
+  }, [settings?.geminiApiKey, settings?.autoMessageInterval]); // generateInsight를 의존성에서 제거 (데이터 변경 시 재생성 방지)
 
   // 마크다운 파싱 (성능 최적화: insight 변경 시에만 재계산)
   const parsedHtml = useMemo(() => {
@@ -504,9 +422,9 @@ export default function InsightPanel() {
         )}
       </div>
 
-      {lastUpdated && (
+      {lastUpdated && settings && (
         <div className="insight-footer">
-          마지막 업데이트: {lastUpdated.toLocaleTimeString('ko-KR')} • {refreshInterval}분마다 자동 갱신
+          마지막 업데이트: {lastUpdated.toLocaleTimeString('ko-KR')} • {settings.autoMessageInterval || 15}분마다 자동 갱신
         </div>
       )}
     </aside>

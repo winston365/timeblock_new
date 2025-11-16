@@ -12,8 +12,9 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { callGeminiAPI, generateWaifuPersona, type PersonaContext } from '@/shared/services/geminiApi';
-import { useWaifuState, useDailyData, useGameState, useEnergyState } from '@/shared/hooks';
+import { callGeminiAPI, generateWaifuPersona } from '@/shared/services/geminiApi';
+import { usePersonaContext } from '@/shared/hooks';
+import { useGameState } from '@/shared/hooks';
 import { loadSettings } from '@/data/repositories/settingsRepository';
 import {
   loadTodayChatHistory,
@@ -22,9 +23,7 @@ import {
   getRecentMessages,
   loadTodayTokenUsage
 } from '@/data/repositories/chatHistoryRepository';
-import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 import type { GeminiChatMessage, DailyTokenUsage } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
 import './gemini.css';
 
 const MAX_HISTORY_MESSAGES = 20;
@@ -77,10 +76,8 @@ interface GeminiChatModalProps {
  *   - 확장된 페르소나 컨텍스트 생성 (작업, XP, 에너지, 최근 5일 패턴)
  */
 export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProps) {
-  const { waifuState } = useWaifuState();
-  const { dailyData } = useDailyData();
+  const personaContext = usePersonaContext();
   const { gameState } = useGameState();
-  const { currentEnergy } = useEnergyState();
   const [messages, setMessages] = useState<GeminiChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -138,7 +135,7 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
   }, [isOpen, onClose]);
 
   const handleSend = async () => {
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || !personaContext) return;
 
     const userMessage: GeminiChatMessage = {
       id: `user-${Date.now()}`,
@@ -163,111 +160,7 @@ export default function GeminiChatModal({ isOpen, onClose }: GeminiChatModalProp
         text: msg.text,
       }));
 
-      // 페르소나 컨텍스트 준비 - 확장된 데이터 수집
-      const tasks = dailyData?.tasks || [];
-      const completedTasks = tasks.filter(t => t.completed);
-      const inboxTasks = tasks.filter(t => !t.timeBlock && !t.completed);
-
-      // 현재 시간 정보
-      const now = new Date();
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
-      const endOfDay = new Date(now);
-      endOfDay.setHours(23, 59, 59, 999);
-      const msLeftToday = endOfDay.getTime() - now.getTime();
-      const hoursLeftToday = Math.floor(msLeftToday / (1000 * 60 * 60));
-      const minutesLeftToday = Math.floor((msLeftToday % (1000 * 60 * 60)) / (1000 * 60));
-
-      // 현재 시간대 블록 찾기
-      const currentBlock = TIME_BLOCKS.find(block => currentHour >= block.start && currentHour < block.end);
-      const currentBlockId = currentBlock?.id ?? null;
-      const currentBlockLabel = currentBlock?.label ?? '블록 외 시간';
-      const currentBlockTasks = currentBlockId
-        ? tasks.filter(t => t.timeBlock === currentBlockId).map(t => ({ text: t.text, completed: t.completed }))
-        : [];
-
-      // 잠금 블록 수 계산
-      const lockedBlocksCount = Object.values(dailyData?.timeBlockStates || {}).filter(state => state.isLocked).length;
-      const totalBlocksCount = TIME_BLOCKS.length;
-
-      // 최근 5일 데이터 로드
-      const recentDays = await getRecentDailyData(5);
-
-      // 최근 5일 시간대별 패턴 분석
-      const recentBlockPatterns: Record<string, Array<{ date: string; completedCount: number; tasks: string[] }>> = {};
-      TIME_BLOCKS.forEach(block => {
-        recentBlockPatterns[block.id] = recentDays.map(day => {
-          const blockTasks = day.tasks.filter(t => t.timeBlock === block.id && t.completed);
-          return {
-            date: day.date,
-            completedCount: blockTasks.length,
-            tasks: blockTasks.map(t => t.text)
-          };
-        });
-      });
-
-      // 기분 계산 (호감도 기반)
-      const affection = waifuState?.affection ?? 50;
-      let mood = '중립적';
-      if (affection < 20) mood = '냉담함';
-      else if (affection < 40) mood = '약간 경계';
-      else if (affection < 60) mood = '따뜻함';
-      else if (affection < 80) mood = '다정함';
-      else mood = '매우 애정 어림';
-
-      const personaContext: PersonaContext = {
-        // 기본 정보
-        affection,
-        level: gameState?.level ?? 1,
-        totalXP: gameState?.totalXP ?? 0,
-        dailyXP: gameState?.dailyXP ?? 0,
-        availableXP: gameState?.availableXP ?? 0,
-
-        // 작업 정보
-        tasksCompleted: completedTasks.length,
-        totalTasks: tasks.length,
-        inboxTasks: inboxTasks.map(t => ({
-          text: t.text,
-          resistance: t.resistance,
-          baseDuration: t.baseDuration
-        })),
-        recentTasks: tasks.slice(-5).map(t => ({
-          text: t.text,
-          completed: t.completed,
-          resistance: t.resistance
-        })),
-
-        // 시간 정보
-        currentHour,
-        currentMinute,
-        hoursLeftToday,
-        minutesLeftToday,
-
-        // 타임블록 정보
-        currentBlockId,
-        currentBlockLabel,
-        currentBlockTasks,
-        lockedBlocksCount,
-        totalBlocksCount,
-
-        // 에너지 정보
-        currentEnergy: currentEnergy ?? 0,
-        energyRecordedAt: null,
-
-        // XP 히스토리
-        xpHistory: gameState?.xpHistory ?? [],
-
-        // 타임블록 XP 히스토리
-        timeBlockXPHistory: gameState?.timeBlockXPHistory ?? [],
-
-        // 최근 5일 패턴
-        recentBlockPatterns,
-
-        // 기분
-        mood,
-      };
-
-      // 시스템 프롬프트 생성
+      // 시스템 프롬프트 생성 (usePersonaContext 훅 사용)
       const systemPrompt = generateWaifuPersona(personaContext);
       const fullPrompt = messages.length === 0 ? `${systemPrompt}\n\n${userMessage.text}` : userMessage.text;
 

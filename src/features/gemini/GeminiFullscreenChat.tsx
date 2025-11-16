@@ -11,19 +11,17 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { callGeminiAPI, generateWaifuPersona, type PersonaContext } from '@/shared/services/geminiApi';
-import { useWaifuState, useDailyData, useGameState, useEnergyState } from '@/shared/hooks';
-import { loadSettings } from '@/data/repositories/settingsRepository';
+import { callGeminiAPI, generateWaifuPersona } from '@/shared/services/geminiApi';
+import { usePersonaContext, useWaifuState, useGameState } from '@/shared/hooks';
+import { useSettingsStore } from '@/shared/stores/settingsStore';
 import {
   loadTodayChatHistory,
   saveChatHistory,
   addTokenUsage
 } from '@/data/repositories/chatHistoryRepository';
-import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 import { getWaifuImagePathWithFallback } from '@/features/waifu/waifuImageUtils';
 import baseImage from '@/features/waifu/base.png';
-import type { GeminiChatMessage, WaifuMode } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
+import type { GeminiChatMessage } from '@/shared/types/domain';
 import './gemini-fullscreen.css';
 
 const MAX_HISTORY_MESSAGES = 20;
@@ -45,28 +43,23 @@ interface GeminiFullscreenChatProps {
  *   - 와이푸 이미지 로드
  */
 export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscreenChatProps) {
+  const personaContext = usePersonaContext();
   const { waifuState } = useWaifuState();
-  const { dailyData } = useDailyData();
   const { gameState } = useGameState();
-  const { currentEnergy } = useEnergyState();
+  const { settings, loadData: loadSettingsData } = useSettingsStore();
   const [messages, setMessages] = useState<GeminiChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState<string>('');
   const [waifuImagePath, setWaifuImagePath] = useState<string>('');
-  const [waifuMode, setWaifuMode] = useState<WaifuMode>('characteristic');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // API 키 및 채팅 히스토리 로드
+  // 설정 및 채팅 히스토리 로드
   useEffect(() => {
     const loadData = async () => {
       try {
-        const settings = await loadSettings();
-        setApiKey(settings.geminiApiKey || '');
-        setWaifuMode(settings.waifuMode);
-
+        await loadSettingsData();
         const history = await loadTodayChatHistory();
         setMessages(history);
       } catch (error) {
@@ -77,14 +70,14 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
     if (isOpen) {
       loadData();
     }
-  }, [isOpen]);
+  }, [isOpen, loadSettingsData]);
 
   // 와이푸 이미지 로드
   useEffect(() => {
     const loadWaifuImage = async () => {
-      if (waifuState) {
+      if (waifuState && settings) {
         // 일반 모드일 경우 base.png 사용
-        if (waifuMode === 'normal') {
+        if (settings.waifuMode === 'normal') {
           setWaifuImagePath(baseImage);
         } else {
           // 특성 모드일 경우 호감도에 따라 이미지 선택
@@ -97,7 +90,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
     if (isOpen) {
       loadWaifuImage();
     }
-  }, [isOpen, waifuState, waifuMode]);
+  }, [isOpen, waifuState, settings]);
 
   // 메시지 목록 자동 스크롤
   useEffect(() => {
@@ -127,7 +120,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
    * 메시지 전송 핸들러
    */
   const handleSend = async () => {
-    if (!input.trim() || loading || !apiKey) return;
+    if (!input.trim() || loading || !settings?.geminiApiKey || !personaContext) return;
 
     setLoading(true);
     setError(null);
@@ -152,89 +145,11 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
         text: msg.text,
       }));
 
-      // PersonaContext 생성 (GeminiChatModal과 동일)
-      const tasks = dailyData?.tasks ?? [];
-      const completedTasks = tasks.filter(t => t.completed);
-      const inboxTasks = tasks.filter(t => !t.timeBlock);
-
-      // 시간 정보
-      const now = new Date();
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
-      const hoursLeftToday = 24 - currentHour - 1;
-      const minutesLeftToday = 60 - currentMinute;
-
-      // 현재 시간대 블록 찾기
-      const currentBlock = TIME_BLOCKS.find(block => currentHour >= block.start && currentHour < block.end);
-      const currentBlockId = currentBlock?.id ?? null;
-      const currentBlockLabel = currentBlock?.label ?? '블록 외 시간';
-      const currentBlockTasks = currentBlockId
-        ? tasks.filter(t => t.timeBlock === currentBlockId).map(t => ({ text: t.text, completed: t.completed }))
-        : [];
-      const lockedBlocksCount = Object.values(dailyData?.timeBlockStates ?? {}).filter(s => s.isLocked).length;
-      const totalBlocksCount = TIME_BLOCKS.length;
-
-      // 최근 5일 패턴
-      const recentDays = await getRecentDailyData(5);
-      const recentBlockPatterns = TIME_BLOCKS.reduce((acc, block) => {
-        acc[block.id] = recentDays.map(day => {
-          const blockTasks = day.tasks.filter(t => t.timeBlock === block.id && t.completed);
-          return {
-            date: day.date,
-            completedCount: blockTasks.length,
-            tasks: blockTasks.map(t => t.text)
-          };
-        });
-        return acc;
-      }, {} as Record<string, Array<{ date: string; completedCount: number; tasks: string[] }>>);
-
-      const affection = waifuState?.affection ?? 50;
-      let mood = '중립적';
-      if (affection < 20) mood = '냉담함';
-      else if (affection < 40) mood = '약간 경계';
-      else if (affection < 60) mood = '따뜻함';
-      else if (affection < 80) mood = '다정함';
-      else mood = '매우 애정 어림';
-
-      const personaContext: PersonaContext = {
-        affection,
-        level: gameState?.level ?? 1,
-        totalXP: gameState?.totalXP ?? 0,
-        dailyXP: gameState?.dailyXP ?? 0,
-        availableXP: gameState?.availableXP ?? 0,
-        tasksCompleted: completedTasks.length,
-        totalTasks: tasks.length,
-        inboxTasks: inboxTasks.map(t => ({
-          text: t.text,
-          resistance: t.resistance,
-          baseDuration: t.baseDuration
-        })),
-        recentTasks: tasks.slice(-5).map(t => ({
-          text: t.text,
-          completed: t.completed,
-          resistance: t.resistance
-        })),
-        currentHour,
-        currentMinute,
-        hoursLeftToday,
-        minutesLeftToday,
-        currentBlockId,
-        currentBlockLabel,
-        currentBlockTasks,
-        lockedBlocksCount,
-        totalBlocksCount,
-        currentEnergy: currentEnergy ?? 0,
-        energyRecordedAt: null,
-        xpHistory: gameState?.xpHistory ?? [],
-        timeBlockXPHistory: gameState?.timeBlockXPHistory ?? [],
-        recentBlockPatterns,
-        mood,
-      };
-
+      // 시스템 프롬프트 생성 (usePersonaContext 훅 사용)
       const systemPrompt = generateWaifuPersona(personaContext);
       const fullPrompt = messages.length === 0 ? `${systemPrompt}\n\n${userMessage.text}` : userMessage.text;
 
-      const { text, tokenUsage } = await callGeminiAPI(fullPrompt, history, apiKey);
+      const { text, tokenUsage } = await callGeminiAPI(fullPrompt, history, settings.geminiApiKey);
 
       const modelMessage: GeminiChatMessage = {
         id: `model-${Date.now()}`,
