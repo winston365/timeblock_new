@@ -34,7 +34,6 @@ import WaifuPanel from '@/features/waifu/WaifuPanel';
 import GeminiFullscreenChat from '@/features/gemini/GeminiFullscreenChat';
 import BulkAddModal from '@/features/tasks/BulkAddModal';
 import SettingsModal from '@/features/settings/SettingsModal';
-import SyncLogModal from '@/features/settings/SyncLogModal';
 import InsightPanel from '@/features/insight/InsightPanel';
 
 /**
@@ -48,7 +47,6 @@ export default function AppShell() {
   const [showGeminiChat, setShowGeminiChat] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showSyncLog, setShowSyncLog] = useState(false);
 
   const { gameState, updateQuestProgress } = useGameState();
   const { toasts, removeToast } = useXPToastStore();
@@ -285,8 +283,7 @@ export default function AppShell() {
       <TopToolbar
         gameState={gameState}
         onOpenGeminiChat={() => setShowGeminiChat(true)}
-        onOpenSyncLog={() => setShowSyncLog(true)}
-        onOpenEnergyTab={() => setActiveTab('energy')}
+        onOpenSettings={() => setShowSettings(true)}
       />
 
       {/* 메인 레이아웃 */}
@@ -343,12 +340,6 @@ export default function AppShell() {
       <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
-      />
-
-      {/* 동기화 로그 모달 */}
-      <SyncLogModal
-        isOpen={showSyncLog}
-        onClose={() => setShowSyncLog(false)}
       />
 
       {/* 설정 아이콘 (오른쪽 아래) */}

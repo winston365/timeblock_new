@@ -2,7 +2,7 @@
  * TopToolbar - 상단 툴바
  *
  * @role 앱 상단에 위치하여 게임 상태, 에너지, XP 정보, 와이푸 호감도/기분을 표시하고 주요 기능 버튼 제공
- * @input gameState: 게임 상태 데이터, onOpenGeminiChat: AI 대화 열기, onOpenSyncLog: 로그 열기, onOpenEnergyTab: 에너지 탭 열기
+ * @input gameState: 게임 상태 데이터, onOpenGeminiChat: AI 대화 열기, onOpenSettings: 설정 열기, onCallWaifu: 와이푸 호출
  * @output 상단 툴바 UI (통계 표시 및 버튼)
  * @dependencies useEnergyState, useWaifuState 훅
  */
@@ -11,12 +11,12 @@ import type { GameState } from '@/shared/types/domain';
 import { useEnergyState } from '@/shared/hooks';
 import { useWaifuState } from '@/shared/hooks';
 import { getAffectionColor } from '@/features/waifu/waifuImageUtils';
+import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 
 interface TopToolbarProps {
   gameState: GameState | null;
   onOpenGeminiChat?: () => void;
-  onOpenSyncLog?: () => void;
-  onOpenEnergyTab?: () => void;
+  onOpenSettings?: () => void;
 }
 
 /**
@@ -24,9 +24,20 @@ interface TopToolbarProps {
  * @param props - TopToolbarProps
  * @returns 상단 툴바 UI
  */
-export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSyncLog, onOpenEnergyTab }: TopToolbarProps) {
+export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSettings }: TopToolbarProps) {
   const { currentEnergy } = useEnergyState();
   const { waifuState, currentMood } = useWaifuState();
+  const { show } = useWaifuCompanionStore();
+
+  const handleCallWaifu = () => {
+    // 와이푸를 10초간 표시
+    show('불렀어? 뭔데~');
+
+    // 10초 후 peeking으로 자동 전환 (show() 내부에서 3초로 설정되어 있으므로 타이머 재설정)
+    setTimeout(() => {
+      useWaifuCompanionStore.getState().peek();
+    }, 10000);
+  };
 
   return (
     <header className="top-toolbar" role="banner">
@@ -77,14 +88,14 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSyncLog,
       </div>
 
       <div className="toolbar-actions">
-        <button className="toolbar-btn" onClick={onOpenEnergyTab} title="에너지 탭으로 이동">
-          ⚡ 에너지 입력
+        <button className="toolbar-btn" onClick={handleCallWaifu} title="와이푸 호출">
+          👋 호출하기
         </button>
-        <button className="toolbar-btn" onClick={onOpenGeminiChat}>
+        <button className="toolbar-btn" onClick={onOpenGeminiChat} title="AI 대화">
           💬 AI 대화
         </button>
-        <button className="toolbar-btn" onClick={onOpenSyncLog} title="전체 로그">
-          📊 전체 로그
+        <button className="toolbar-btn" onClick={onOpenSettings} title="설정 및 로그">
+          ⚙️ 설정
         </button>
       </div>
     </header>
