@@ -212,6 +212,14 @@
   overflow: visible !important; /* globals.css의 overflow: hidden 덮어쓰기 */
 }
 
+/* 3페이지 모달 (페이지네이션용) */
+.modal-content-3page {
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: visible !important;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -254,6 +262,56 @@
   overflow: visible; /* hidden -> visible로 변경하여 스크롤 허용 */
 }
 
+/* ============================================================================
+   페이지 인디케이터 (3페이지 모달용)
+   ============================================================================ */
+
+.page-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-surface, #fafafa);
+}
+
+.page-dot {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-elevated, #e0e0e0);
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.page-dot:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+  transform: scale(1.1);
+}
+
+.page-dot.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.page-separator {
+  color: var(--color-text-tertiary, #999);
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
 /* 스크롤 가능한 폼 영역 (2단 그리드 레이아웃) */
 .modal-content.modal-content-wide .modal-body .modal-form-scroll-area {
   flex: 1;
@@ -275,6 +333,40 @@
   /* 항상 보이는 커스텀 스크롤바 */
   scrollbar-width: auto;
   scrollbar-color: rgba(99, 102, 241, 0.3) rgba(0, 0, 0, 0.05);
+}
+
+/* 단일 페이지 레이아웃 (3페이지 모달용) */
+.modal-form-single-page {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--spacing-5) var(--spacing-6);
+  min-height: 0;
+  max-height: 100%;
+  display: block !important; /* 그리드 제거 */
+
+  /* 부드러운 스크롤 */
+  scroll-behavior: smooth;
+
+  /* 커스텀 스크롤바 */
+  scrollbar-width: auto;
+  scrollbar-color: rgba(99, 102, 241, 0.3) rgba(0, 0, 0, 0.05);
+}
+
+.form-page {
+  width: 100%;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-content.modal-content-wide .modal-body .modal-form-scroll-area::-webkit-scrollbar {

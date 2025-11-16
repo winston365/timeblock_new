@@ -238,9 +238,9 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
                             🔄 매일
                           </span>
                         )}
-                        {template.autoGenerate && template.recurrenceType === 'weekly' && template.weeklyDays && (
+                        {template.autoGenerate && template.recurrenceType === 'weekly' && template.weeklyDays && template.weeklyDays.length > 0 && (
                           <span className="template-card-badge badge-weekly" title={`매주 ${template.weeklyDays.map(d => ['일','월','화','수','목','금','토'][d]).join(', ')}요일`}>
-                            🔄 매주
+                            🔄 매주 {template.weeklyDays.map(d => ['일','월','화','수','목','금','토'][d]).join('/')}
                           </span>
                         )}
                         {template.autoGenerate && template.recurrenceType === 'interval' && template.intervalDays && (

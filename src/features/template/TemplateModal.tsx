@@ -1,9 +1,9 @@
 /**
  * TemplateModal
  *
- * @role 템플릿을 추가하거나 편집하는 모달 컴포넌트
+ * @role 템플릿을 추가하거나 편집하는 모달 컴포넌트 (3페이지 구조)
  * @input template (Template | null), onClose (function)
- * @output 템플릿 이름, 할 일, 메모, 소요시간, 저항도, 시간대, 자동 생성 옵션 입력 필드 및 저장 버튼을 포함한 모달 UI
+ * @output 템플릿 정보 입력 필드 및 저장 버튼을 포함한 3페이지 모달 UI
  * @external_dependencies
  *   - createTemplate, updateTemplate: 템플릿 Repository
  *   - TIME_BLOCKS, RESISTANCE_LABELS: 도메인 타입 및 상수
@@ -21,7 +21,7 @@ interface TemplateModalProps {
 }
 
 /**
- * 템플릿 추가/편집 모달 컴포넌트
+ * 템플릿 추가/편집 모달 컴포넌트 (3페이지 구조)
  *
  * @param {TemplateModalProps} props - template, onClose를 포함하는 props
  * @returns {JSX.Element} 모달 UI
@@ -31,8 +31,8 @@ interface TemplateModalProps {
  *   - 자동 생성 옵션 체크 시 매일 00시에 자동으로 작업 생성
  */
 export function TemplateModal({ template, onClose }: TemplateModalProps) {
-  const [name, setName] = useState('');
-  const [text, setText] = useState('');
+  const [currentPage, setCurrentPage] = useState(1); // 페이지 상태
+  const [text, setText] = useState(''); // 템플릿 이름 제거, 할일만 사용
   const [memo, setMemo] = useState('');
   const [baseDuration, setBaseDuration] = useState(30);
   const [resistance, setResistance] = useState<Resistance>('low');
@@ -49,8 +49,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   // 편집 모드일 경우 초기값 설정
   useEffect(() => {
     if (template) {
-      setName(template.name);
-      setText(template.text);
+      setText(template.text); // name 대신 text만 사용
       setMemo(template.memo);
       setBaseDuration(template.baseDuration);
       setResistance(template.resistance);
@@ -79,8 +78,8 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim() || !text.trim()) {
-      alert('템플릿 이름과 할 일을 입력해주세요.');
+    if (!text.trim()) {
+      alert('할 일을 입력해주세요.');
       return;
     }
 
@@ -102,7 +101,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
       if (template) {
         // 수정
         await updateTemplate(template.id, {
-          name: name.trim(),
+          name: text.trim(), // text를 name으로 저장
           text: text.trim(),
           memo: memo.trim(),
           baseDuration,
@@ -119,7 +118,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
       } else {
         // 신규 생성
         await createTemplate(
-          name.trim(),
+          text.trim(), // text를 name으로 저장
           text.trim(),
           memo.trim(),
           baseDuration,
@@ -148,9 +147,21 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
     onClose(false);
   };
 
+  const handleNext = () => {
+    if (currentPage < 3) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   return (
     <div className="modal-overlay" onClick={handleCancel}>
-      <div className="modal-content modal-content-wide" onClick={e => e.stopPropagation()}>
+      <div className="modal-content modal-content-3page" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{template ? '템플릿 편집' : '템플릿 추가'}</h2>
           <button
@@ -162,266 +173,299 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           </button>
         </div>
 
+        {/* 페이지 인디케이터 */}
+        <div className="page-indicator">
+          <button
+            type="button"
+            className={`page-dot ${currentPage === 1 ? 'active' : ''}`}
+            onClick={() => setCurrentPage(1)}
+            aria-label="1페이지 - 기본 정보"
+          >
+            1
+          </button>
+          <span className="page-separator">·</span>
+          <button
+            type="button"
+            className={`page-dot ${currentPage === 2 ? 'active' : ''}`}
+            onClick={() => setCurrentPage(2)}
+            aria-label="2페이지 - 준비하기"
+          >
+            2
+          </button>
+          <span className="page-separator">·</span>
+          <button
+            type="button"
+            className={`page-dot ${currentPage === 3 ? 'active' : ''}`}
+            onClick={() => setCurrentPage(3)}
+            aria-label="3페이지 - 반복 설정"
+          >
+            3
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit} className="modal-body">
-          <div className="modal-form-scroll-area">
-            {/* 왼쪽 페이지: 기본 정보 */}
-            <div className="form-column form-column-left">
-              {/* 템플릿 이름 */}
-              <div className="form-group">
-                <label htmlFor="template-name">
-                  템플릿 이름 <span className="required">*</span>
-                </label>
-                <input
-                  id="template-name"
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="예: 아침 운동"
-                  required
-                  autoFocus
-                />
-              </div>
-
-              {/* 할 일 */}
-              <div className="form-group">
-                <label htmlFor="template-text">
-                  할 일 <span className="required">*</span>
-                </label>
-                <input
-                  id="template-text"
-                  type="text"
-                  value={text}
-                  onChange={e => setText(e.target.value)}
-                  placeholder="예: 스쿼트 30회, 플랭크 1분"
-                  required
-                />
-              </div>
-
-              {/* 메모 */}
-              <div className="form-group">
-                <label htmlFor="template-memo">메모 (선택)</label>
-                <textarea
-                  id="template-memo"
-                  value={memo}
-                  onChange={e => setMemo(e.target.value)}
-                  placeholder="추가 메모..."
-                  rows={2}
-                />
-              </div>
-
-              {/* 소요시간 */}
-              <div className="form-group">
-                <label htmlFor="template-duration">소요시간 (분)</label>
-                <input
-                  id="template-duration"
-                  type="number"
-                  value={baseDuration}
-                  onChange={e => setBaseDuration(Number(e.target.value))}
-                  min={1}
-                  max={480}
-                  required
-                />
-              </div>
-
-              {/* 저항도 */}
-              <div className="form-group">
-                <label htmlFor="template-resistance">심리적 거부감</label>
-                <select
-                  id="template-resistance"
-                  value={resistance}
-                  onChange={e => setResistance(e.target.value as Resistance)}
-                >
-                  <option value="low">{RESISTANCE_LABELS.low}</option>
-                  <option value="medium">{RESISTANCE_LABELS.medium}</option>
-                  <option value="high">{RESISTANCE_LABELS.high}</option>
-                </select>
-              </div>
-
-              {/* 시간대 배치 */}
-              <div className="form-group">
-                <label htmlFor="template-timeblock">시간대 배치</label>
-                <select
-                  id="template-timeblock"
-                  value={timeBlock || 'null'}
-                  onChange={e => {
-                    const value = e.target.value;
-                    setTimeBlock(value === 'null' ? null : (value as TimeBlockId));
-                  }}
-                >
-                  <option value="null">나중에 (인박스)</option>
-                  {TIME_BLOCKS.map(block => (
-                    <option key={block.id} value={block.id}>
-                      {block.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* 오른쪽 페이지: 주기 설정 + 준비사항 + 버튼 */}
-            <div className="form-column form-column-right">
-              {/* 자동 생성 */}
-              <div className="form-group form-group-checkbox">
-                <label>
+          <div className="modal-form-scroll-area modal-form-single-page">
+            {/* 1페이지: 기본 정보 */}
+            {currentPage === 1 && (
+              <div className="form-page">
+                {/* 할 일 */}
+                <div className="form-group">
+                  <label htmlFor="template-text">
+                    할 일 <span className="required">*</span>
+                  </label>
                   <input
-                    type="checkbox"
-                    checked={autoGenerate}
-                    onChange={e => {
-                      setAutoGenerate(e.target.checked);
-                      if (!e.target.checked) {
-                        setRecurrenceType('none');
-                      }
-                    }}
+                    id="template-text"
+                    type="text"
+                    value={text}
+                    onChange={e => setText(e.target.value)}
+                    placeholder="예: 스쿼트 30회, 플랭크 1분"
+                    required
+                    autoFocus
                   />
-                  <span>자동으로 생성 🔄</span>
-                </label>
-                <p className="form-hint">
-                  체크하면 설정한 주기에 따라 자동으로 할 일이 생성됩니다.
-                </p>
-              </div>
+                </div>
 
-              {/* 주기 설정 (자동 생성 활성화 시에만 표시) */}
-              {autoGenerate && (
-                <div className="form-group recurrence-settings">
-                  <label htmlFor="template-recurrence">반복 주기</label>
+                {/* 메모 */}
+                <div className="form-group">
+                  <label htmlFor="template-memo">메모 (선택)</label>
+                  <textarea
+                    id="template-memo"
+                    value={memo}
+                    onChange={e => setMemo(e.target.value)}
+                    placeholder="추가 메모..."
+                    rows={3}
+                  />
+                </div>
+
+                {/* 소요시간 */}
+                <div className="form-group">
+                  <label htmlFor="template-duration">소요시간 (분)</label>
+                  <input
+                    id="template-duration"
+                    type="number"
+                    value={baseDuration}
+                    onChange={e => setBaseDuration(Number(e.target.value))}
+                    min={1}
+                    max={480}
+                    required
+                  />
+                </div>
+
+                {/* 저항도 */}
+                <div className="form-group">
+                  <label htmlFor="template-resistance">심리적 거부감</label>
                   <select
-                    id="template-recurrence"
-                    value={recurrenceType}
-                    onChange={e => setRecurrenceType(e.target.value as RecurrenceType)}
-                    className="recurrence-type-select"
+                    id="template-resistance"
+                    value={resistance}
+                    onChange={e => setResistance(e.target.value as Resistance)}
                   >
-                    <option value="daily">매일</option>
-                    <option value="weekly">매주 특정 요일</option>
-                    <option value="interval">N일마다</option>
+                    <option value="low">{RESISTANCE_LABELS.low}</option>
+                    <option value="medium">{RESISTANCE_LABELS.medium}</option>
+                    <option value="high">{RESISTANCE_LABELS.high}</option>
                   </select>
+                </div>
 
-                  {/* 매주 요일 선택 */}
-                  {recurrenceType === 'weekly' && (
-                    <div className="weekly-days-selector">
-                      <label className="weekly-days-label">반복할 요일 선택</label>
-                      <div className="weekly-days-grid">
-                        {['일', '월', '화', '수', '목', '금', '토'].map((day, index) => (
-                          <label key={index} className={`day-checkbox ${weeklyDays.includes(index) ? 'checked' : ''}`}>
-                            <input
-                              type="checkbox"
-                              checked={weeklyDays.includes(index)}
-                              onChange={e => {
-                                if (e.target.checked) {
-                                  setWeeklyDays([...weeklyDays, index].sort());
-                                } else {
-                                  setWeeklyDays(weeklyDays.filter(d => d !== index));
-                                }
-                              }}
-                            />
-                            <span className="day-label">{day}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                {/* 시간대 배치 */}
+                <div className="form-group">
+                  <label htmlFor="template-timeblock">시간대 배치</label>
+                  <select
+                    id="template-timeblock"
+                    value={timeBlock || 'null'}
+                    onChange={e => {
+                      const value = e.target.value;
+                      setTimeBlock(value === 'null' ? null : (value as TimeBlockId));
+                    }}
+                  >
+                    <option value="null">나중에 (인박스)</option>
+                    {TIME_BLOCKS.map(block => (
+                      <option key={block.id} value={block.id}>
+                        {block.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
-                  {/* N일 주기 입력 */}
-                  {recurrenceType === 'interval' && (
-                    <div className="interval-input-group">
-                      <label htmlFor="interval-days">반복 주기 (일)</label>
-                      <div className="interval-input-wrapper">
-                        <input
-                          id="interval-days"
-                          type="number"
-                          min="1"
-                          max="365"
-                          value={intervalDays}
-                          onChange={e => setIntervalDays(Number(e.target.value))}
-                          className="interval-input"
-                        />
-                        <span className="interval-unit">일마다 반복</span>
-                      </div>
-                      <p className="form-hint">
-                        예: 3일마다 반복 → 오늘 생성되면 3일 후 다시 생성됩니다.
-                      </p>
+            {/* 2페이지: 템플릿 준비하기 */}
+            {currentPage === 2 && (
+              <div className="form-page">
+                <div className="form-section preparation-section">
+                  <div className="preparation-header">
+                    <h3 className="preparation-title">💡 템플릿 준비하기</h3>
+                    <p className="preparation-description">
+                      반복되는 작업의 방해물과 대처법을<br />
+                      템플릿에 미리 저장하세요
+                    </p>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="preparation-1" className="preparation-label">
+                      ⚠️ 예상되는 방해물 #1
+                    </label>
+                    <input
+                      id="preparation-1"
+                      type="text"
+                      value={preparation1}
+                      onChange={e => setPreparation1(e.target.value)}
+                      placeholder="예: 스마트폰 알림, 배고픔, 피로..."
+                      className="preparation-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="preparation-2" className="preparation-label">
+                      ⚠️ 예상되는 방해물 #2
+                    </label>
+                    <input
+                      id="preparation-2"
+                      type="text"
+                      value={preparation2}
+                      onChange={e => setPreparation2(e.target.value)}
+                      placeholder="예: 불편한 자세, 소음, 다른 업무..."
+                      className="preparation-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="preparation-3" className="preparation-label">
+                      ✅ 대처 환경/전략
+                    </label>
+                    <input
+                      id="preparation-3"
+                      type="text"
+                      value={preparation3}
+                      onChange={e => setPreparation3(e.target.value)}
+                      placeholder="예: 집중 모드 켜기, 간식 준비, 휴식 계획..."
+                      className="preparation-input"
+                    />
+                  </div>
+
+                  {preparation1 && preparation2 && preparation3 && (
+                    <div className="preparation-complete-badge">
+                      ⭐ 완벽하게 준비된 템플릿입니다!
                     </div>
                   )}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* 준비 사항 섹션 */}
-              <div className="form-section preparation-section">
-                <div className="preparation-header">
-                  <h4 className="preparation-title">💡 템플릿 준비하기</h4>
-                  <p className="preparation-description">
-                    반복되는 작업의 방해물과 대처법을<br />
-                    템플릿에 미리 저장하세요
+            {/* 3페이지: 반복 주기 설정 */}
+            {currentPage === 3 && (
+              <div className="form-page">
+                {/* 자동 생성 */}
+                <div className="form-group form-group-checkbox">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={autoGenerate}
+                      onChange={e => {
+                        setAutoGenerate(e.target.checked);
+                        if (!e.target.checked) {
+                          setRecurrenceType('none');
+                        }
+                      }}
+                    />
+                    <span>자동으로 생성 🔄</span>
+                  </label>
+                  <p className="form-hint">
+                    체크하면 설정한 주기에 따라 자동으로 할 일이 생성됩니다.
                   </p>
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="preparation-1" className="preparation-label">
-                    ⚠️ 예상되는 방해물 #1
-                  </label>
-                  <input
-                    id="preparation-1"
-                    type="text"
-                    value={preparation1}
-                    onChange={e => setPreparation1(e.target.value)}
-                    placeholder="예: 스마트폰 알림, 배고픔, 피로..."
-                    className="preparation-input"
-                  />
-                </div>
+                {/* 주기 설정 (자동 생성 활성화 시에만 표시) */}
+                {autoGenerate && (
+                  <div className="form-group recurrence-settings">
+                    <label htmlFor="template-recurrence">반복 주기</label>
+                    <select
+                      id="template-recurrence"
+                      value={recurrenceType}
+                      onChange={e => setRecurrenceType(e.target.value as RecurrenceType)}
+                      className="recurrence-type-select"
+                    >
+                      <option value="daily">매일</option>
+                      <option value="weekly">매주 특정 요일</option>
+                      <option value="interval">N일마다</option>
+                    </select>
 
-                <div className="form-group">
-                  <label htmlFor="preparation-2" className="preparation-label">
-                    ⚠️ 예상되는 방해물 #2
-                  </label>
-                  <input
-                    id="preparation-2"
-                    type="text"
-                    value={preparation2}
-                    onChange={e => setPreparation2(e.target.value)}
-                    placeholder="예: 불편한 자세, 소음, 다른 업무..."
-                    className="preparation-input"
-                  />
-                </div>
+                    {/* 매주 요일 선택 */}
+                    {recurrenceType === 'weekly' && (
+                      <div className="weekly-days-selector">
+                        <label className="weekly-days-label">반복할 요일 선택</label>
+                        <div className="weekly-days-grid">
+                          {['일', '월', '화', '수', '목', '금', '토'].map((day, index) => (
+                            <label key={index} className={`day-checkbox ${weeklyDays.includes(index) ? 'checked' : ''}`}>
+                              <input
+                                type="checkbox"
+                                checked={weeklyDays.includes(index)}
+                                onChange={e => {
+                                  if (e.target.checked) {
+                                    setWeeklyDays([...weeklyDays, index].sort());
+                                  } else {
+                                    setWeeklyDays(weeklyDays.filter(d => d !== index));
+                                  }
+                                }}
+                              />
+                              <span className="day-label">{day}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-                <div className="form-group">
-                  <label htmlFor="preparation-3" className="preparation-label">
-                    ✅ 대처 환경/전략
-                  </label>
-                  <input
-                    id="preparation-3"
-                    type="text"
-                    value={preparation3}
-                    onChange={e => setPreparation3(e.target.value)}
-                    placeholder="예: 집중 모드 켜기, 간식 준비, 휴식 계획..."
-                    className="preparation-input"
-                  />
-                </div>
-
-                {preparation1 && preparation2 && preparation3 && (
-                  <div className="preparation-complete-badge">
-                    ⭐ 완벽하게 준비된 템플릿입니다!
+                    {/* N일 주기 입력 */}
+                    {recurrenceType === 'interval' && (
+                      <div className="interval-input-group">
+                        <label htmlFor="interval-days">반복 주기 (일)</label>
+                        <div className="interval-input-wrapper">
+                          <input
+                            id="interval-days"
+                            type="number"
+                            min="1"
+                            max="365"
+                            value={intervalDays}
+                            onChange={e => setIntervalDays(Number(e.target.value))}
+                            className="interval-input"
+                          />
+                          <span className="interval-unit">일마다 반복</span>
+                        </div>
+                        <p className="form-hint">
+                          예: 3일마다 반복 → 오늘 생성되면 3일 후 다시 생성됩니다.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+            )}
+          </div>
 
-              {/* 오른쪽 컬럼 하단 버튼 */}
-              <div className="modal-actions modal-actions-column">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={handleCancel}
-                  disabled={isSaving}
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={isSaving}
-                >
-                  {isSaving ? '저장 중...' : template ? '수정' : '추가'}
-                </button>
-              </div>
-            </div>
+          {/* 하단 버튼 */}
+          <div className="modal-actions modal-actions-full">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={currentPage === 1 ? handleCancel : handlePrevious}
+              disabled={isSaving}
+            >
+              {currentPage === 1 ? '취소' : '이전'}
+            </button>
+            {currentPage < 3 ? (
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleNext}
+              >
+                다음
+              </button>
+            ) : (
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={isSaving}
+              >
+                {isSaving ? '저장 중...' : template ? '수정' : '추가'}
+              </button>
+            )}
           </div>
         </form>
       </div>
