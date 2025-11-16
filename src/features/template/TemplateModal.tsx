@@ -362,6 +362,9 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                         setAutoGenerate(e.target.checked);
                         if (!e.target.checked) {
                           setRecurrenceType('none');
+                        } else {
+                          // 자동 생성 체크 시 기본값을 'daily'로 설정
+                          setRecurrenceType('daily');
                         }
                       }}
                     />
