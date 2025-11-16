@@ -181,10 +181,25 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   /**
    * 다음 주기 날짜 계산
    */
+
+  /**
+   * 다음 주기 날짜 계산
+   */
   const getNextOccurrence = (template: Template): string | null => {
     if (!template.autoGenerate || template.recurrenceType === 'none') {
       return null;
     }
+
+  const koreanWeekdays = ['일', '월', '화', '수', '목', '금', '토'];
+
+  function formatAbsoluteDate(date: Date): string {
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const weekday = koreanWeekdays[date.getDay()];
+
+    return `${month}월 ${day}일 (${weekday})`;
+  }
+
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -205,41 +220,42 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
         return formatRelativeDate(nextDate);
       }
 
-      case 'weekly': {
-        if (!template.weeklyDays || template.weeklyDays.length === 0) {
-          return null;
-        }
-
-        // 오늘부터 7일 내 다음 요일 찾기
-        const currentDay = today.getDay();
-        const sortedDays = [...template.weeklyDays].sort((a, b) => a - b);
-
-        // 오늘 이후 가장 가까운 요일
-        let nextDay = sortedDays.find(day => day > currentDay);
-        let daysUntil: number;
-
-        if (nextDay !== undefined) {
-          daysUntil = nextDay - currentDay;
-        } else {
-          // 다음 주 첫 요일
-          nextDay = sortedDays[0];
-          daysUntil = 7 - currentDay + nextDay;
-        }
-
-        const nextDate = new Date(today);
-        nextDate.setDate(nextDate.getDate() + daysUntil);
-
-        // 마지막 생성일이 오늘이거나 미래면 다음 주기로
-        if (template.lastGeneratedDate) {
-          const lastGen = new Date(template.lastGeneratedDate);
-          lastGen.setHours(0, 0, 0, 0);
-          if (lastGen.getTime() >= today.getTime()) {
-            nextDate.setDate(nextDate.getDate() + 7);
+        case 'weekly': {
+          if (!template.weeklyDays || template.weeklyDays.length === 0) {
+            return null;
           }
+
+          const currentDay = today.getDay();
+          const sortedDays = [...template.weeklyDays].sort((a, b) => a - b);
+
+          let nextDay = sortedDays.find(day => day > currentDay);
+          let daysUntil: number;
+
+          if (nextDay !== undefined) {
+            daysUntil = nextDay - currentDay;
+          } else {
+            nextDay = sortedDays[0];
+            daysUntil = 7 - currentDay + nextDay;
+          }
+
+          const nextDate = new Date(today);
+          nextDate.setDate(nextDate.getDate() + daysUntil);
+
+          // 마지막 생성일이 오늘이거나 미래면 다음 주기로
+          if (template.lastGeneratedDate) {
+            const lastGen = new Date(template.lastGeneratedDate);
+            lastGen.setHours(0, 0, 0, 0);
+            if (lastGen.getTime() >= today.getTime()) {
+              nextDate.setDate(nextDate.getDate() + 7);
+
+              // 여기서 절대 날짜 출력
+              return formatAbsoluteDate(nextDate);
+            }
+          }
+
+          return formatRelativeDate(nextDate);
         }
 
-        return formatRelativeDate(nextDate);
-      }
 
       case 'interval': {
         if (!template.intervalDays) {
