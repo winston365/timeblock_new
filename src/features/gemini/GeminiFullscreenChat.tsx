@@ -12,8 +12,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { callGeminiAPI, generateWaifuPersona } from '@/shared/services/geminiApi';
-import { usePersonaContext, useWaifuState, useGameState } from '@/shared/hooks';
+import { useWaifuState, useGameState, useDailyData, useEnergyState } from '@/shared/hooks';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { buildPersonaContext } from '@/shared/lib/personaUtils';
 import {
   loadTodayChatHistory,
   saveChatHistory,
@@ -43,9 +44,10 @@ interface GeminiFullscreenChatProps {
  *   - 와이푸 이미지 로드
  */
 export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscreenChatProps) {
-  const personaContext = usePersonaContext();
-  const { waifuState } = useWaifuState();
+  const { dailyData } = useDailyData();
   const { gameState } = useGameState();
+  const { waifuState } = useWaifuState();
+  const { currentEnergy } = useEnergyState();
   const { settings, loadData: loadSettingsData } = useSettingsStore();
   const [messages, setMessages] = useState<GeminiChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -138,7 +140,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
    * 메시지 전송 핸들러
    */
   const handleSend = async () => {
-    if (!input.trim() || loading || !settings?.geminiApiKey || !personaContext) return;
+    if (!input.trim() || loading || !settings?.geminiApiKey) return;
 
     setLoading(true);
     setError(null);
@@ -163,7 +165,15 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
         text: msg.text,
       }));
 
-      // 시스템 프롬프트 생성 (usePersonaContext 훅 사용)
+      // PersonaContext 빌드 (메시지 전송 시점에만 실행 - 성능 최적화)
+      const personaContext = await buildPersonaContext({
+        dailyData,
+        gameState,
+        waifuState,
+        currentEnergy,
+      });
+
+      // 시스템 프롬프트 생성
       const systemPrompt = generateWaifuPersona(personaContext);
       const fullPrompt = messages.length === 0 ? `${systemPrompt}\n\n${userMessage.text}` : userMessage.text;
 

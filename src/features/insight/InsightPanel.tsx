@@ -11,9 +11,10 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { usePersonaContext } from '@/shared/hooks';
+import { useDailyData, useGameState, useWaifuState, useEnergyState } from '@/shared/hooks';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
+import { buildPersonaContext } from '@/shared/lib/personaUtils';
 import { callGeminiAPI, generateWaifuPersona } from '@/shared/services/geminiApi';
 import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
 
@@ -100,7 +101,10 @@ function parseMarkdown(markdown: string): string {
  * InsightPanel 컴포넌트
  */
 export default function InsightPanel() {
-  const personaContext = usePersonaContext();
+  const { dailyData } = useDailyData();
+  const { gameState } = useGameState();
+  const { waifuState } = useWaifuState();
+  const { currentEnergy } = useEnergyState();
   const { settings, loadData: loadSettingsData } = useSettingsStore();
   const { show: showWaifu } = useWaifuCompanionStore();
 
@@ -131,12 +135,6 @@ export default function InsightPanel() {
       return;
     }
 
-    if (!personaContext) {
-      // PersonaContext가 아직 로드 중이면 조용히 대기
-      console.log('PersonaContext not ready yet, waiting...');
-      return;
-    }
-
     // 기존 재시도 타이머 취소
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
@@ -152,6 +150,14 @@ export default function InsightPanel() {
     setError(null);
 
     try {
+      // PersonaContext 빌드 (인사이트 생성 시점에만 실행 - 성능 최적화)
+      const personaContext = await buildPersonaContext({
+        dailyData,
+        gameState,
+        waifuState,
+        currentEnergy,
+      });
+
       // PersonaContext를 사용하여 시스템 프롬프트 생성
       // generateWaifuPersona()는 이미 모든 현재 상황 데이터를 포함
       const personaPrompt = generateWaifuPersona(personaContext);
@@ -213,7 +219,7 @@ export default function InsightPanel() {
 
   // 초기 인사이트 생성 (설정된 시간 간격에 따라)
   useEffect(() => {
-    if (settings?.geminiApiKey && personaContext && !initialLoadRef.current) {
+    if (settings?.geminiApiKey && !initialLoadRef.current) {
       initialLoadRef.current = true;
 
       // 마지막 생성 시간 확인
@@ -252,7 +258,7 @@ export default function InsightPanel() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings?.geminiApiKey, personaContext]);
+  }, [settings?.geminiApiKey]);
 
   // 컴포넌트 언마운트 시 재시도 타이머 정리
   useEffect(() => {

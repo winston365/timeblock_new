@@ -1,6 +1,9 @@
 /**
  * usePersonaContext - PersonaContext 생성 커스텀 훅
  *
+ * @deprecated 성능 최적화를 위해 일반 함수 buildPersonaContext()로 대체됨
+ * @see {@link buildPersonaContext} in @/shared/lib/personaUtils
+ *
  * @role PersonaContext 데이터 수집 및 가공 로직을 중앙화하여 코드 중복 제거
  * @input 없음 (내부적으로 useDailyData, useGameState, useWaifuState, useEnergyState 사용)
  * @output PersonaContext 객체
@@ -8,6 +11,14 @@
  *   - useDailyData, useGameState, useWaifuState, useEnergyState: 상태 훅
  *   - getRecentDailyData: 최근 5일 데이터 로드
  *   - TIME_BLOCKS: 시간대 블록 상수
+ *
+ * @performance_issue
+ *   ⚠️ 이 훅은 dailyData, gameState, waifuState, currentEnergy 변경 시마다 재실행되어,
+ *   에너지 슬라이더 움직일 때마다 10일치 DB 조회와 패턴 분석을 수행합니다.
+ *
+ *   대신 buildPersonaContext() 함수를 사용하세요:
+ *   - AI 채팅/인사이트 생성 시점에만 호출
+ *   - 불필요한 재연산과 DB 조회 제거
  */
 
 import { useEffect, useState } from 'react';
