@@ -42,6 +42,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showUpcomingOnly, setShowUpcomingOnly] = useState(false); // 7일 이내 주기 필터
   const [categories, setCategories] = useState<string[]>([]);
 
   // ESC 키로 모달 닫기
@@ -87,6 +88,14 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
       filtered = filtered.filter(template => template.isFavorite);
     }
 
+    // 7일 이내 다음 주기 필터
+    if (showUpcomingOnly) {
+      filtered = filtered.filter(template => {
+        const daysUntil = getDaysUntilNextOccurrence(template);
+        return daysUntil !== null && daysUntil <= 7;
+      });
+    }
+
     // 검색 필터
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -98,7 +107,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     }
 
     return filtered;
-  }, [templates, searchQuery, selectedCategory, showFavoritesOnly]);
+  }, [templates, searchQuery, selectedCategory, showFavoritesOnly, showUpcomingOnly]);
 
   const handleAddTemplate = () => {
     setEditingTemplate(null);
@@ -180,12 +189,83 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   };
 
   /**
-   * 다음 주기 날짜 계산
+   * 다음 주기까지의 일수 계산 (필터링용)
+   * @returns 일수 (숫자) 또는 null (주기 없음)
    */
+  const getDaysUntilNextOccurrence = (template: Template): number | null => {
+    if (!template.autoGenerate || template.recurrenceType === 'none') {
+      return null;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const lastGenerated = template.lastGeneratedDate
+      ? new Date(template.lastGeneratedDate)
+      : new Date(today);
+    lastGenerated.setHours(0, 0, 0, 0);
+
+    let nextDate: Date;
+
+    switch (template.recurrenceType) {
+      case 'daily': {
+        nextDate = new Date(lastGenerated);
+        nextDate.setDate(nextDate.getDate() + 1);
+        break;
+      }
+
+      case 'weekly': {
+        if (!template.weeklyDays || template.weeklyDays.length === 0) {
+          return null;
+        }
+
+        const currentDay = today.getDay();
+        const sortedDays = [...template.weeklyDays].sort((a, b) => a - b);
+
+        let nextDay = sortedDays.find(day => day > currentDay);
+        let daysUntil: number;
+
+        if (nextDay !== undefined) {
+          daysUntil = nextDay - currentDay;
+        } else {
+          nextDay = sortedDays[0];
+          daysUntil = 7 - currentDay + nextDay;
+        }
+
+        nextDate = new Date(today);
+        nextDate.setDate(nextDate.getDate() + daysUntil);
+
+        // 마지막 생성일이 오늘 또는 미래 → 다음 주기로 밀기
+        if (template.lastGeneratedDate) {
+          const lastGen = new Date(template.lastGeneratedDate);
+          lastGen.setHours(0, 0, 0, 0);
+          if (lastGen.getTime() >= today.getTime()) {
+            nextDate.setDate(nextDate.getDate() + 7);
+          }
+        }
+        break;
+      }
+
+      case 'interval': {
+        if (!template.intervalDays) return null;
+        nextDate = new Date(lastGenerated);
+        nextDate.setDate(nextDate.getDate() + template.intervalDays);
+        break;
+      }
+
+      default:
+        return null;
+    }
+
+    const diffTime = nextDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays >= 0 ? diffDays : 0;
+  };
 
   /**
-   * 다음 주기 날짜 계산
-    */
+   * 다음 주기 날짜 계산 (표시용)
+   */
   const getNextOccurrence = (template: Template): string | null => {
     if (!template.autoGenerate || template.recurrenceType === 'none') {
       return null;
@@ -372,6 +452,15 @@ const formatRelativeDate = (date: Date): string => {
                 title="즐겨찾기만 표시"
               >
                 {showFavoritesOnly ? '⭐ 즐겨찾기' : '☆ 즐겨찾기'}
+              </button>
+
+              {/* 7일 이내 주기 토글 */}
+              <button
+                className={`filter-btn filter-btn-upcoming ${showUpcomingOnly ? 'active' : ''}`}
+                onClick={() => setShowUpcomingOnly(!showUpcomingOnly)}
+                title="7일 이내 다음 주기가 있는 템플릿만 표시"
+              >
+                {showUpcomingOnly ? '📅 7일 이내' : '📅 7일 이내'}
               </button>
 
               {/* 카테고리 필터 */}
