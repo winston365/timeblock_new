@@ -643,3 +643,31 @@ select:disabled,
 
   --gradient-brand: linear-gradient(135deg, #8b7355, #d4a574);
 }
+
+/* ============================================================================
+   메모 링크 스타일
+   ============================================================================ */
+
+.memo-link {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  word-break: break-all;
+}
+
+.memo-link:hover {
+  color: var(--color-primary-hover);
+  text-decoration-style: solid;
+  text-decoration-thickness: 2px;
+}
+
+.memo-link:visited {
+  color: var(--color-secondary);
+}
+
+.memo-link:active {
+  color: var(--color-primary-dark);
+}
