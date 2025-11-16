@@ -11,6 +11,9 @@
 import { useState, useEffect } from 'react';
 import type { Task, Resistance, TimeBlockId } from '@/shared/types/domain';
 import { calculateAdjustedDuration } from '@/shared/lib/utils';
+import { generateTaskBreakdown } from '@/shared/services/geminiApi';
+import { useWaifuState } from '@/shared/hooks';
+import { useSettingsStore } from '@/shared/stores/settingsStore';
 
 interface TaskModalProps {
   task: Task | null;
@@ -36,6 +39,11 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
   const [preparation1, setPreparation1] = useState('');
   const [preparation2, setPreparation2] = useState('');
   const [preparation3, setPreparation3] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const { waifuState } = useWaifuState();
+  const { settings } = useSettingsStore();
 
   // 기존 작업 데이터로 초기화
   useEffect(() => {
@@ -130,6 +138,53 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
     return () => window.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
+  /**
+   * AI 작업 세분화 핸들러
+   */
+  const handleAIBreakdown = async () => {
+    if (!text.trim()) {
+      alert('작업 제목을 먼저 입력해주세요.');
+      return;
+    }
+
+    if (!settings?.geminiApiKey) {
+      alert('Gemini API 키가 설정되지 않았습니다.\n우측 하단 ⚙️ 설정에서 API 키를 추가해주세요.');
+      return;
+    }
+
+    setAiLoading(true);
+    setAiError(null);
+
+    try {
+      const breakdown = await generateTaskBreakdown(
+        {
+          taskText: text.trim(),
+          memo: memo.trim(),
+          baseDuration,
+          resistance,
+          preparation1: preparation1.trim(),
+          preparation2: preparation2.trim(),
+          preparation3: preparation3.trim(),
+          affection: waifuState?.affection ?? 50,
+        },
+        settings.geminiApiKey
+      );
+
+      // 기존 메모가 있으면 줄바꿈 추가
+      const newMemo = memo.trim()
+        ? `${memo.trim()}\n\n--- AI 세분화 ---\n${breakdown}`
+        : breakdown;
+
+      setMemo(newMemo);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'AI 세분화에 실패했습니다.';
+      setAiError(errorMessage);
+      console.error('AI 세분화 오류:', err);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -194,6 +249,46 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
                 placeholder="추가 메모 (선택사항)"
                 rows={2}
               />
+              {/* AI 세분화 버튼 */}
+              <button
+                type="button"
+                className="btn-ai-breakdown"
+                onClick={handleAIBreakdown}
+                disabled={aiLoading || !text.trim()}
+                style={{
+                  marginTop: 'var(--spacing-2)',
+                  padding: '8px 12px',
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  cursor: aiLoading || !text.trim() ? 'not-allowed' : 'pointer',
+                  opacity: aiLoading || !text.trim() ? 0.6 : 1,
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                {aiLoading ? '⏳ AI 세분화 중...' : '✨ AI로 세분화하기'}
+              </button>
+              {aiError && (
+                <div
+                  style={{
+                    marginTop: 'var(--spacing-2)',
+                    padding: 'var(--spacing-2)',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: '4px',
+                    fontSize: '0.8rem',
+                    color: 'var(--color-danger)',
+                  }}
+                >
+                  ⚠️ {aiError}
+                </div>
+              )}
             </div>
 
             <div className="form-group">

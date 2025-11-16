@@ -38,6 +38,32 @@
   /* 단순한 그림자 */
   filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
   animation: fadeInScale 0.6s ease-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 대화 턴 시각화: 듣고 있음 (사용자 입력 시) */
+.fullscreen-waifu-image.waifu-turn-listening {
+  opacity: 0.7;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3)) blur(2px);
+}
+
+/* 대화 턴 시각화: 말하고 있음 (AI 응답 시) */
+.fullscreen-waifu-image.waifu-turn-speaking {
+  opacity: 1;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+  animation: speakingAnimation 0.5s ease-out;
+}
+
+@keyframes speakingAnimation {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .fullscreen-waifu-placeholder {

@@ -54,6 +54,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [waifuImagePath, setWaifuImagePath] = useState<string>('');
+  const [waifuTurnState, setWaifuTurnState] = useState<'idle' | 'listening' | 'speaking'>('idle');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -144,6 +145,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
 
     setLoading(true);
     setError(null);
+    setWaifuTurnState('listening'); // 사용자 입력 시 "듣고 있음" 상태
 
     try {
       const userMessage: GeminiChatMessage = {
@@ -196,10 +198,17 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
         await addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens);
       }
 
-      // Gemini 답변 후 와이푸 이미지 변경
+      // Gemini 답변 후 와이푸 이미지 변경 및 "말하고 있음" 상태
+      setWaifuTurnState('speaking');
       await changeWaifuImage();
+
+      // 0.5초 후 idle 상태로 복귀
+      setTimeout(() => {
+        setWaifuTurnState('idle');
+      }, 500);
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
+      setWaifuTurnState('idle'); // 에러 시 idle로 복귀
       console.error('Gemini API 오류:', err);
     } finally {
       setLoading(false);
@@ -240,7 +249,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
             <img
               src={waifuImagePath}
               alt={`와이푸 (호감도 ${waifuState?.affection}%)`}
-              className="fullscreen-waifu-image"
+              className={`fullscreen-waifu-image waifu-turn-${waifuTurnState}`}
             />
           ) : (
             <div className="fullscreen-waifu-placeholder">
