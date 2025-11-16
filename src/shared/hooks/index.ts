@@ -10,7 +10,6 @@
  *   - useWaifuState: 와이푸 상태 관리 훅
  *   - useEnergyState: 에너지 상태 관리 훅
  *   - useKeyboardNavigation: 키보드 네비게이션 훅
- *   - usePersonaContext: PersonaContext 생성 훅
  */
 
 export * from './useDailyData';
@@ -18,4 +17,5 @@ export * from './useGameState';
 export * from './useWaifuState';
 export * from './useEnergyState';
 export * from './useKeyboardNavigation';
-export * from './usePersonaContext';
+// DEPRECATED: usePersonaContext는 성능 최적화를 위해 buildPersonaContext()로 대체됨
+// export * from './usePersonaContext';
