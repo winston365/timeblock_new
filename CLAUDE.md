@@ -12,56 +12,188 @@ npm run preview          # Preview production build
 npm run lint             # Run ESLint
 ```
 
+### Development Setup
+
+**Prerequisites**:
+- Node.js (ES2020+ support required)
+- npm or compatible package manager
+
+**Environment Variables**:
+- **No `.env` file required** - Application works without environment variables
+- Firebase configuration is hardcoded (gitignored at `src/data/firebase/config.ts`)
+- Gemini API keys expected to be configured via UI (stored in IndexedDB)
+
+**First-Time Setup**:
+1. `npm install` - Install all dependencies
+2. `npm run dev` - Start development server (typically http://localhost:5173)
+3. Open browser to local dev URL
+4. Configure API keys via Settings modal (if using Gemini/Firebase features)
+
+**Build Output**:
+- TypeScript compilation first (`tsc`), then Vite bundling
+- Output directory: `dist/` (gitignored)
+- Entry point: `index.html` → `src/main.tsx`
+- Assets copied from `public/` to `dist/` as-is
+
 ## Architecture Overview
 
 ### Tech Stack
-- **Frontend**: React 18 + TypeScript 5.4
-- **Build Tool**: Vite 7.2 (with `@` alias for `/src`)
-- **State Management**: Zustand 5.0 (stores in `src/shared/stores/`)
-- **Local Database**: Dexie 4.0 (IndexedDB wrapper)
-- **Cloud Sync**: Firebase Realtime Database 10.7
+- **Frontend**: React 18.3.1 + TypeScript 5.4.5
+- **Build Tool**: Vite 7.2.2 (with `@` alias for `/src`)
+- **State Management**: Zustand 5.0.8 (stores in `src/shared/stores/`)
+- **Local Database**: Dexie 4.0.0 (IndexedDB wrapper) + dexie-react-hooks 1.1.7
+- **Cloud Sync**: Firebase Realtime Database 10.7.1
 - **AI Integration**: Google Gemini 2.5 Flash API
+
+### Build Configuration
+
+**Vite** (`vite.config.ts`):
+- Plugin: `@vitejs/plugin-react` 4.3.0
+- Path alias: `@` → `./src` (absolute imports)
+- Entry point: `src/main.tsx`
+
+**TypeScript** (`tsconfig.json`):
+- Target: ES2020, Module: ESNext
+- Module resolution: `bundler` (Vite-optimized)
+- Strict mode enabled: `strict`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`
+- JSX: `react-jsx` (automatic runtime)
+- Path mapping: `@/*` → `./src/*`
+- Asset type declarations: `vite-env.d.ts` (PNG, JPG, SVG, WEBP support)
+
+**Linting**:
+- ESLint 8.57.0 with TypeScript plugin 7.0.0
+- React Hooks plugin 4.6.0 + React Refresh plugin 0.4.5
+- Run via: `npm run lint`
+- No `.eslintrc` config file (inline or default configuration)
 
 ### Directory Structure
 
 ```
-src/
-├── app/                    # Application shell and layout
-│   ├── AppShell.tsx        # Main app container
-│   └── components/         # Layout components (TopToolbar, LeftSidebar, etc.)
+/
+├── index.html                     # HTML entry point (Vite SPA)
+├── package.json                   # Dependencies and npm scripts
+├── vite.config.ts                 # Vite build configuration
+├── tsconfig.json                  # TypeScript compiler config
+├── tsconfig.node.json             # TypeScript config for build tools
+├── .gitignore                     # Git ignore rules (includes .env, Firebase config)
 │
-├── features/               # Feature modules (domain-driven organization)
-│   ├── gemini/             # Gemini AI chat integration
-│   ├── waifu/              # Waifu companion system with affection mechanics
-│   ├── insight/            # AI-generated insights
-│   ├── schedule/           # Time block scheduling (5-hour blocks: 5-8, 8-11, 11-14, 14-17, 17-19, 19-24)
-│   ├── tasks/              # Task management (inbox, completion tracking)
-│   ├── gamification/       # XP, leveling, quests
-│   ├── energy/             # Energy tracking system
-│   ├── settings/           # User settings and configuration
-│   ├── shop/               # XP shop for rewards
-│   ├── stats/              # Statistics and analytics
-│   └── template/           # Recurring task templates
+├── public/                        # Static assets (copied as-is to dist)
+│   └── assets/waifu/poses/        # Waifu character images (production)
+│       ├── hyeeun_*.png           # Global emotion poses
+│       ├── hostile/               # Affection tier 1 poses
+│       ├── wary/                  # Affection tier 2 poses
+│       ├── indifferent/           # Affection tier 3 poses
+│       ├── interested/            # Affection tier 4 poses
+│       ├── affectionate/          # Affection tier 5 poses
+│       └── loving/                # Affection tier 6 poses
 │
-├── data/                   # Data layer
-│   ├── db/
-│   │   └── dexieClient.ts  # IndexedDB schema (9 tables)
-│   └── repositories/       # Repository pattern for data access
-│       ├── dailyDataRepository.ts
-│       ├── gameStateRepository.ts
-│       ├── waifuRepository.ts
-│       ├── chatHistoryRepository.ts
-│       └── ...
-│
-└── shared/                 # Shared resources
-    ├── services/           # External service integrations
-    │   ├── geminiApi.ts    # Gemini API client
-    │   └── firebase/       # Firebase sync infrastructure
-    ├── stores/             # Zustand state stores
-    ├── hooks/              # Custom React hooks
-    ├── types/
-    │   └── domain.ts       # Core domain type definitions
-    └── components/         # Reusable UI components
+└── src/                           # Source code
+    ├── main.tsx                   # React app entry point + theme initialization
+    ├── App.tsx                    # Root component (renders AppShell)
+    ├── vite-env.d.ts              # Vite environment + image asset type declarations
+    │
+    ├── styles/                    # Global CSS architecture
+    │   ├── design-system.css      # Typography & spacing system (CSS variables)
+    │   ├── globals.css            # Color tokens, resets, utility classes
+    │   └── layout.css             # Layout-specific styles
+    │
+    ├── app/                       # Application shell and layout
+    │   ├── AppShell.tsx           # Main app container (daily reset logic)
+    │   └── components/            # Layout components
+    │       ├── TopToolbar.tsx     # Top navigation bar
+    │       ├── LeftSidebar.tsx    # Left navigation sidebar
+    │       ├── RightPanel.tsx     # Right panel (quests, shop, waifu)
+    │       └── CenterContent.tsx  # Main content area
+    │
+    ├── features/                  # Feature modules (domain-driven organization)
+    │   ├── gemini/                # Gemini AI chat integration
+    │   │   └── GeminiFullscreenChat.tsx  # Visual novel-style chat UI
+    │   ├── waifu/                 # Waifu companion system
+    │   │   ├── WaifuPanel.tsx     # Waifu display panel
+    │   │   ├── waifuImageUtils.ts # Image selection & fallback logic
+    │   │   └── poses/             # Development waifu images
+    │   ├── insight/               # AI-generated insights
+    │   │   └── InsightPanel.tsx   # Auto-refreshing insight display
+    │   ├── schedule/              # Time block scheduling
+    │   │   ├── ScheduleView.tsx   # Drag-and-drop schedule interface
+    │   │   ├── TimeBlock.tsx      # Individual time block component
+    │   │   ├── TaskCard.tsx       # Task card with resistance indicators
+    │   │   ├── TaskModal.tsx      # Task creation/edit modal
+    │   │   ├── TimerConfirmModal.tsx        # Focus timer confirmation
+    │   │   └── CompletionCelebrationModal.tsx  # Block completion celebration
+    │   ├── tasks/                 # Task management
+    │   │   ├── InboxTab.tsx       # Unscheduled task inbox
+    │   │   ├── CompletedTab.tsx   # Completed tasks view
+    │   │   └── BulkAddModal.tsx   # Bulk task addition
+    │   ├── gamification/          # XP, leveling, quests
+    │   │   ├── QuestsPanel.tsx    # Daily quests display
+    │   │   └── LevelUpNotification.tsx  # Level-up celebration
+    │   ├── energy/                # Energy tracking system
+    │   │   └── EnergyTab.tsx      # Energy level visualization
+    │   ├── settings/              # User settings
+    │   │   ├── SettingsModal.tsx  # Settings configuration UI
+    │   │   └── SyncLogModal.tsx   # Firebase sync log viewer
+    │   ├── shop/                  # XP shop for rewards
+    │   │   ├── ShopPanel.tsx      # Shop display
+    │   │   └── ShopModal.tsx      # Shop purchase interface
+    │   ├── stats/                 # Statistics and analytics
+    │   │   └── StatsTab.tsx       # Statistics dashboard
+    │   └── template/              # Recurring task templates
+    │       ├── TemplatePanel.tsx  # Template quick actions
+    │       ├── TemplatesModal.tsx # Template management UI
+    │       └── TemplateModal.tsx  # Template creation/edit
+    │
+    ├── data/                      # Data layer
+    │   ├── db/
+    │   │   └── dexieClient.ts     # IndexedDB schema (9 tables, version 2)
+    │   └── repositories/          # Repository pattern for data access
+    │       ├── dailyDataRepository.ts    # Tasks & time block states
+    │       ├── gameStateRepository.ts    # XP, level, quests
+    │       ├── waifuRepository.ts        # Waifu affection state
+    │       ├── chatHistoryRepository.ts  # Gemini chat messages
+    │       ├── templateRepository.ts     # Task templates
+    │       ├── shopRepository.ts         # Shop items
+    │       ├── energyRepository.ts       # Energy tracking data
+    │       ├── settingsRepository.ts     # User settings
+    │       └── index.ts                  # Repository exports
+    │
+    └── shared/                    # Shared resources
+        ├── services/              # External service integrations
+        │   ├── geminiApi.ts       # Gemini API client (fetch-based)
+        │   ├── firebaseService.ts # Legacy Firebase service
+        │   ├── syncLogger.ts      # Sync operation logger
+        │   └── firebase/          # Firebase sync infrastructure
+        │       ├── firebaseClient.ts      # Firebase initialization
+        │       ├── syncCore.ts            # Core sync engine
+        │       ├── strategies.ts          # Merge strategies
+        │       ├── conflictResolver.ts    # Conflict resolution logic
+        │       ├── syncUtils.ts           # Sync utilities
+        │       └── firebaseDebug.ts       # Debug logging
+        ├── stores/                # Zustand state stores
+        │   ├── dailyDataStore.ts  # Daily tasks & blocks state
+        │   ├── gameStateStore.ts  # Gamification state
+        │   ├── waifuCompanionStore.ts  # Waifu companion state
+        │   └── settingsStore.ts   # App settings state
+        ├── hooks/                 # Custom React hooks
+        │   ├── useDailyData.ts    # Daily data state hook
+        │   ├── useGameState.ts    # Game state hook
+        │   ├── useWaifuState.ts   # Waifu state hook
+        │   ├── useEnergyState.ts  # Energy tracking hook
+        │   ├── usePersonaContext.ts    # Persona context builder
+        │   ├── useXPToast.ts      # XP notification hook
+        │   ├── useKeyboardNavigation.ts  # Keyboard shortcuts
+        │   └── index.ts           # Hook exports
+        ├── components/            # Reusable UI components
+        │   ├── XPBar.tsx          # XP progress bar
+        │   └── XPToast.tsx        # XP gain toast notification
+        ├── types/
+        │   └── domain.ts          # Core domain type definitions
+        ├── lib/                   # Utility libraries
+        │   ├── constants.ts       # App constants (time blocks, etc.)
+        │   ├── utils.ts           # General utilities (linkifyText, etc.)
+        │   └── personaUtils.ts    # Persona generation utilities
+        └── utils/
+            └── gamification.ts    # XP calculation utilities
 ```
 
 ## Key Architectural Patterns
@@ -84,7 +216,31 @@ All data access goes through repositories in `src/data/repositories/`. Each repo
 User Action → Repository (IndexedDB write + Firebase sync) → Store update → UI re-render
 ```
 
-### 4. Firebase Sync Architecture
+**Key Principles**:
+- **Local-first**: IndexedDB is source of truth, UI reads from local DB
+- **Optimistic updates**: UI updates immediately from IndexedDB
+- **Background sync**: Firebase sync happens asynchronously after local write
+- **Conflict resolution**: Merge strategies handle concurrent updates
+
+### 4. Module Organization
+
+**Feature-First Structure**:
+- Each feature module is self-contained with its UI components
+- Shared business logic goes in `src/shared/` (hooks, stores, services)
+- Data access abstracted through repositories (never direct Dexie calls from UI)
+
+**Import Path Convention**:
+- Use `@/` alias for absolute imports: `import { X } from '@/shared/hooks'`
+- Relative imports discouraged (harder to refactor)
+- All repository/store imports should use absolute paths
+
+**Component Organization**:
+- Top-level feature components in `src/features/{feature}/`
+- Layout components in `src/app/components/`
+- Reusable shared components in `src/shared/components/`
+- No component nesting beyond 2 levels deep in folders
+
+### 5. Firebase Sync Architecture
 - Located in `src/shared/services/firebase/`
 - **syncCore.ts**: Core sync engine with conflict resolution
 - **strategies.ts**: Merge strategies (client-wins, server-wins, last-write-wins)
@@ -98,6 +254,56 @@ User Action → Repository (IndexedDB write + Firebase sync) → Store update �
 - `tokenUsage`: Daily API token usage (per date)
 - `energyLevels`: Energy tracking data (per date)
 - `templates`: Task templates (all templates as array, key: 'all')
+
+## Code Conventions & Standards
+
+### File Naming
+- **Components**: PascalCase with `.tsx` extension (e.g., `TaskCard.tsx`, `AppShell.tsx`)
+- **Utilities/Services**: camelCase with `.ts` extension (e.g., `geminiApi.ts`, `waifuImageUtils.ts`)
+- **Stores**: camelCase with `Store` suffix (e.g., `gameStateStore.ts`)
+- **Hooks**: camelCase with `use` prefix (e.g., `useGameState.ts`)
+- **Repositories**: camelCase with `Repository` suffix (e.g., `dailyDataRepository.ts`)
+- **Types**: `domain.ts` for core domain types (avoid `types.ts` or `index.ts` for types)
+
+### Code Documentation
+- **JSDoc comments** used extensively for functions and components
+- Standard format:
+  ```typescript
+  /**
+   * Brief description
+   *
+   * @role Purpose in the system
+   * @input Parameter description
+   * @output Return value description
+   * @dependencies External dependencies
+   */
+  ```
+- All files include header comment with `@role` annotation
+- Example from `main.tsx`:
+  ```typescript
+  /**
+   * 앱 엔트리 포인트
+   *
+   * @role React 앱을 초기화하고 DOM에 마운트
+   * @input 없음
+   * @output React 앱 렌더링
+   * @dependencies React, ReactDOM, App 컴포넌트, 글로벌 스타일
+   */
+  ```
+
+### TypeScript Conventions
+- Strict mode enabled - all type errors must be resolved
+- Prefer `interface` over `type` for object shapes (domain types)
+- Use `type` for unions, intersections, and utility types
+- Avoid `any` - use `unknown` and type guards instead
+- All React components typed with explicit return types
+
+### React Patterns
+- Functional components only (no class components)
+- Hooks for all stateful logic
+- Custom hooks for reusable logic (prefixed with `use`)
+- `React.StrictMode` enabled in production
+- Zustand for global state, local `useState` for component-specific state
 
 ## Domain Model
 
@@ -166,10 +372,28 @@ Persona characteristics:
 - Tone varies by affection level
 
 ### Waifu Image System
-- 6 affection tiers with distinct emotion sets
-- Images stored: `src/features/waifu/poses/` (dev) + `public/assets/waifu/poses/` (prod)
-- Filename format: `hyeeun_{emotion}.png` (e.g., `hyeeun_happy.png`, `hyeeun_blushing shyly.png`)
-- `waifuImageUtils.ts`: Handles image selection, fallback, and random selection within tier
+- **6 affection tiers** with distinct emotion sets:
+  1. `hostile` (0-16 affection)
+  2. `wary` (17-33 affection)
+  3. `indifferent` (34-50 affection)
+  4. `interested` (51-66 affection)
+  5. `affectionate` (67-83 affection)
+  6. `loving` (84-100 affection)
+- **Image storage**:
+  - Development: `src/features/waifu/poses/{tier}/hyeeun_{emotion}.png`
+  - Production: `public/assets/waifu/poses/{tier}/hyeeun_{emotion}.png`
+  - Global fallbacks: `public/assets/waifu/poses/hyeeun_{emotion}.png` (no tier subfolder)
+- **Filename format**: `hyeeun_{emotion}.png`
+  - Examples: `hyeeun_happy.png`, `hyeeun_blushing shyly.png`, `hyeeun_neutral.png`
+  - Spaces in emotion names are allowed (e.g., "blushing shyly")
+- **Image utility**: `waifuImageUtils.ts`
+  - `getWaifuImage(tier, emotion)`: Get specific image path
+  - `getRandomWaifuImage(tier)`: Random selection within tier
+  - Automatic fallback chain: tier-specific → global → placeholder
+- **Asset handling**:
+  - Vite type declarations in `vite-env.d.ts` (PNG, JPG, JPEG, GIF, SVG, WEBP)
+  - Images imported as strings (bundled URLs)
+  - Public assets served at `/assets/` path
 
 ## Important Implementation Details
 
@@ -194,11 +418,37 @@ Persona characteristics:
 - Archives completed tasks to history
 - Clears time block locks
 
-### CSS Theming
-Global variables in `src/styles/globals.css`:
-- Dark mode palette: `--color-bg-base`, `--color-bg-surface`, `--color-bg-elevated`
-- Semantic colors: `--color-primary`, `--color-danger`, `--color-success`, etc.
-- Typography scale: `--text-2xs` through `--text-3xl`
+### CSS Architecture & Theming
+
+**Three-Layer CSS System** (no Tailwind/PostCSS):
+
+1. **`design-system.css`** - Design tokens and scales
+   - Typography system: 1.25 ratio scale (12px → 48px)
+   - Font families: Apple system fonts + Noto Sans KR
+   - Font weights: 300 (light) → 800 (extrabold)
+   - Line heights: tight (1.25) → loose (2.0)
+   - Letter spacing: tighter (-0.05em) → widest (0.1em)
+   - Spacing system: 8px base grid (0.25rem → 20rem)
+   - Border radius: sm (4px) → 2xl (24px)
+
+2. **`globals.css`** - Theme colors, resets, utilities
+   - Dark mode color palette (CSS custom properties):
+     - Primary: `#6366f1` (indigo)
+     - Backgrounds: `--color-bg-base` (#0a0e1a), `--color-bg-surface` (#1a2030), `--color-bg-elevated` (#2d3950)
+     - Text: `--color-text-primary` → `--color-text-tertiary`
+     - Semantic: success, warning, danger, reward (gold)
+   - Global resets: box-sizing, margins, padding
+   - Utility classes: `.memo-link` (URL linkification styling)
+   - Modal z-index hierarchy (1000 → 9999)
+
+3. **`layout.css`** - Layout-specific styles
+   - Grid/flexbox layouts for app shell
+   - Component-specific positioning
+
+**Theme Initialization**:
+- Theme loaded from `localStorage.getItem('theme')` in `main.tsx`
+- Applied via `document.documentElement.setAttribute('data-theme', savedTheme)`
+- Allows for future light/dark mode switching
 
 ### URL Linkification in Memos
 - **Utility**: `linkifyText()` in `src/shared/lib/utils.ts`
