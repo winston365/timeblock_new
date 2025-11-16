@@ -113,56 +113,133 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     }
   },
 
-  // Task 추가
+  // Task 추가 (Optimistic Update 패턴)
   addTask: async (task: Task) => {
-    const { currentDate, loadData } = get();
+    const { currentDate, dailyData, loadData } = get();
 
+    if (!dailyData) {
+      console.error('[DailyDataStore] No dailyData available');
+      return;
+    }
+
+    // ✅ Optimistic Update: UI 즉시 업데이트
+    const optimisticData = {
+      ...dailyData,
+      tasks: [...dailyData.tasks, task],
+      updatedAt: Date.now(),
+    };
+    set({ dailyData: optimisticData });
+
+    // ✅ 백그라운드에서 DB 저장
     try {
       await addTaskToRepo(task, currentDate);
-      await loadData(currentDate, true); // 강제 리로드
     } catch (err) {
-      console.error('[DailyDataStore] Failed to add task:', err);
+      console.error('[DailyDataStore] Failed to add task, rolling back:', err);
+      // ❌ 실패 시 롤백 (DB에서 최신 데이터 다시 로드)
+      await loadData(currentDate, true);
       set({ error: err as Error });
       throw err;
     }
   },
 
-  // Task 업데이트
+  // Task 업데이트 (Optimistic Update 패턴)
   updateTask: async (taskId: string, updates: Partial<Task>) => {
-    const { currentDate, loadData } = get();
+    const { currentDate, dailyData } = get();
 
+    if (!dailyData) {
+      console.error('[DailyDataStore] No dailyData available');
+      return;
+    }
+
+    // 원본 데이터 백업 (롤백용)
+    const originalTasks = dailyData.tasks;
+
+    // ✅ Optimistic Update: UI 즉시 업데이트
+    const optimisticTasks = dailyData.tasks.map(task =>
+      task.id === taskId ? { ...task, ...updates } : task
+    );
+    set({
+      dailyData: {
+        ...dailyData,
+        tasks: optimisticTasks,
+        updatedAt: Date.now(),
+      },
+    });
+
+    // ✅ 백그라운드에서 DB 저장
     try {
       await updateTaskInRepo(taskId, updates, currentDate);
-      await loadData(currentDate, true); // 강제 리로드
     } catch (err) {
-      console.error('[DailyDataStore] Failed to update task:', err);
-      set({ error: err as Error });
+      console.error('[DailyDataStore] Failed to update task, rolling back:', err);
+      // ❌ 실패 시 롤백
+      set({
+        dailyData: {
+          ...dailyData,
+          tasks: originalTasks,
+          updatedAt: Date.now(),
+        },
+        error: err as Error,
+      });
       throw err;
     }
   },
 
-  // Task 삭제
+  // Task 삭제 (Optimistic Update 패턴)
   deleteTask: async (taskId: string) => {
-    const { currentDate, loadData } = get();
+    const { currentDate, dailyData } = get();
 
+    if (!dailyData) {
+      console.error('[DailyDataStore] No dailyData available');
+      return;
+    }
+
+    // 원본 데이터 백업 (롤백용)
+    const originalTasks = dailyData.tasks;
+
+    // ✅ Optimistic Update: UI 즉시 업데이트
+    const optimisticTasks = dailyData.tasks.filter(task => task.id !== taskId);
+    set({
+      dailyData: {
+        ...dailyData,
+        tasks: optimisticTasks,
+        updatedAt: Date.now(),
+      },
+    });
+
+    // ✅ 백그라운드에서 DB 삭제
     try {
       await deleteTaskFromRepo(taskId, currentDate);
-      await loadData(currentDate, true); // 강제 리로드
     } catch (err) {
-      console.error('[DailyDataStore] Failed to delete task:', err);
-      set({ error: err as Error });
+      console.error('[DailyDataStore] Failed to delete task, rolling back:', err);
+      // ❌ 실패 시 롤백
+      set({
+        dailyData: {
+          ...dailyData,
+          tasks: originalTasks,
+          updatedAt: Date.now(),
+        },
+        error: err as Error,
+      });
       throw err;
     }
   },
 
-  // Task 완료 토글
+  // Task 완료 토글 (Optimistic Update 패턴)
   toggleTaskCompletion: async (taskId: string) => {
-    const { currentDate, loadData } = get();
+    const { currentDate, dailyData } = get();
+
+    if (!dailyData) {
+      console.error('[DailyDataStore] No dailyData available');
+      return;
+    }
+
+    // 원본 데이터 백업 (롤백용) - try 블록 밖에서 선언
+    const originalTasks = dailyData.tasks;
+    const originalBlockStates = dailyData.timeBlockStates;
 
     try {
       // 현재 task 상태 확인
-      const currentData = await loadDailyData(currentDate);
-      const task = currentData.tasks.find(t => t.id === taskId);
+      const task = dailyData.tasks.find(t => t.id === taskId);
 
       if (!task) {
         throw new Error(`Task not found: ${taskId}`);
@@ -170,7 +247,21 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
       const wasCompleted = task.completed;
 
-      // Task 완료 토글
+      // ✅ Optimistic Update: Task 완료 상태 즉시 변경
+      const optimisticTasks = dailyData.tasks.map(t =>
+        t.id === taskId
+          ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : null }
+          : t
+      );
+      set({
+        dailyData: {
+          ...dailyData,
+          tasks: optimisticTasks,
+          updatedAt: Date.now(),
+        },
+      });
+
+      // ✅ 백그라운드에서 DB 업데이트 및 XP/퀘스트 처리
       const updatedTask = await toggleTaskInRepo(taskId, currentDate);
 
       // 완료 -> 미완료가 아니라, 미완료 -> 완료로 변경된 경우에만 XP & 퀘스트 & 와이푸 호감도 업데이트
@@ -191,9 +282,9 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
         // 잠금된 블록의 모든 작업이 완료되었는지 체크
         if (updatedTask.timeBlock) {
-          const updatedData = await loadDailyData(currentDate);
-          const blockState = updatedData.timeBlockStates[updatedTask.timeBlock];
-          const blockTasks = updatedData.tasks.filter(t => t.timeBlock === updatedTask.timeBlock);
+          // ✅ Optimistic data 사용 (DB 재조회 불필요)
+          const blockState = dailyData.timeBlockStates[updatedTask.timeBlock];
+          const blockTasks = optimisticTasks.filter(t => t.timeBlock === updatedTask.timeBlock);
           const allCompleted = blockTasks.length > 0 && blockTasks.every(t => t.completed);
 
           // 잠금된 블록이고 모든 작업이 완료되었으면 +40XP
@@ -207,6 +298,22 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
             );
             await updateQuestProgress('perfect_blocks', 1);
             waifuMessage = `완벽해! ${updatedTask.timeBlock} 블록 완성! 🎉 (+40XP 보너스!)`;
+
+            // ✅ 블록 상태도 optimistic update
+            set({
+              dailyData: {
+                ...dailyData,
+                tasks: optimisticTasks,
+                timeBlockStates: {
+                  ...dailyData.timeBlockStates,
+                  [updatedTask.timeBlock]: {
+                    ...blockState,
+                    isPerfect: true,
+                  },
+                },
+                updatedAt: Date.now(),
+              },
+            });
           }
         }
 
@@ -215,36 +322,85 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         waifuStore.show(waifuMessage);
       }
 
-      await loadData(currentDate, true); // 강제 리로드
+      // ✅ DB 재조회 제거 - optimistic update로 UI 이미 업데이트됨
     } catch (err) {
-      console.error('[DailyDataStore] Failed to toggle task completion:', err);
-      set({ error: err as Error });
+      console.error('[DailyDataStore] Failed to toggle task completion, rolling back:', err);
+      // ❌ 실패 시 롤백
+      set({
+        dailyData: {
+          ...dailyData,
+          tasks: originalTasks,
+          timeBlockStates: originalBlockStates,
+          updatedAt: Date.now(),
+        },
+        error: err as Error,
+      });
       throw err;
     }
   },
 
-  // 블록 상태 업데이트
+  // 블록 상태 업데이트 (Optimistic Update 패턴)
   updateBlockState: async (blockId: string, updates: Partial<TimeBlockState>) => {
-    const { currentDate, loadData } = get();
+    const { currentDate, dailyData } = get();
 
+    if (!dailyData) {
+      console.error('[DailyDataStore] No dailyData available');
+      return;
+    }
+
+    // 원본 데이터 백업 (롤백용)
+    const originalBlockStates = dailyData.timeBlockStates;
+
+    // ✅ Optimistic Update: 블록 상태 즉시 변경
+    const currentBlockState = dailyData.timeBlockStates[blockId] || {
+      isLocked: false,
+      isPerfect: false,
+      isFailed: false,
+    };
+    set({
+      dailyData: {
+        ...dailyData,
+        timeBlockStates: {
+          ...dailyData.timeBlockStates,
+          [blockId]: { ...currentBlockState, ...updates },
+        },
+        updatedAt: Date.now(),
+      },
+    });
+
+    // ✅ 백그라운드에서 DB 저장
     try {
       await updateBlockStateInRepo(blockId, updates, currentDate);
-      await loadData(currentDate, true); // 강제 리로드
     } catch (err) {
-      console.error('[DailyDataStore] Failed to update block state:', err);
-      set({ error: err as Error });
+      console.error('[DailyDataStore] Failed to update block state, rolling back:', err);
+      // ❌ 실패 시 롤백
+      set({
+        dailyData: {
+          ...dailyData,
+          timeBlockStates: originalBlockStates,
+          updatedAt: Date.now(),
+        },
+        error: err as Error,
+      });
       throw err;
     }
   },
 
-  // 블록 잠금 토글 (XP 관리 포함)
+  // 블록 잠금 토글 (XP 관리 포함, Optimistic Update 패턴)
   toggleBlockLock: async (blockId: string) => {
-    const { currentDate, loadData } = get();
+    const { currentDate, dailyData } = get();
+
+    if (!dailyData) {
+      console.error('[DailyDataStore] No dailyData available');
+      return;
+    }
+
+    // 원본 데이터 백업 (롤백용) - try 블록 밖에서 선언
+    const originalBlockStates = dailyData.timeBlockStates;
 
     try {
-      const currentData = await loadDailyData(currentDate);
-      const blockState = currentData.timeBlockStates[blockId];
-      const blockTasks = currentData.tasks.filter((t) => t.timeBlock === blockId);
+      const blockState = dailyData.timeBlockStates[blockId];
+      const blockTasks = dailyData.tasks.filter((t) => t.timeBlock === blockId);
 
       if (!blockState) {
         throw new Error(`Block state not found: ${blockId}`);
@@ -264,15 +420,21 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
           return; // 사용자가 취소하면 아무것도 하지 않음
         }
 
-        // 40 XP 소모
-        await spendXP(40);
+        // ✅ Optimistic Update: 블록 잠금 즉시 해제
+        set({
+          dailyData: {
+            ...dailyData,
+            timeBlockStates: {
+              ...dailyData.timeBlockStates,
+              [blockId]: { ...blockState, isLocked: false },
+            },
+            updatedAt: Date.now(),
+          },
+        });
 
-        // 블록 상태 업데이트 (잠금 해제)
-        await updateBlockStateInRepo(
-          blockId,
-          { isLocked: false },
-          currentDate
-        );
+        // ✅ 백그라운드에서 XP 소모 및 DB 저장
+        await spendXP(40);
+        await updateBlockStateInRepo(blockId, { isLocked: false }, currentDate);
       }
       // 해제 -> 잠금 (베팅)
       else {
@@ -281,20 +443,36 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
           throw new Error('작업이 없는 블록은 잠금할 수 없습니다.');
         }
 
-        // 잠금 설정 시 15 XP 소모 (베팅)
+        // ✅ Optimistic Update: 블록 즉시 잠금
+        set({
+          dailyData: {
+            ...dailyData,
+            timeBlockStates: {
+              ...dailyData.timeBlockStates,
+              [blockId]: { ...blockState, isLocked: true },
+            },
+            updatedAt: Date.now(),
+          },
+        });
+
+        // ✅ 백그라운드에서 XP 소모 및 DB 저장
         await spendXP(15);
-
-        // 블록 잠금
         await updateBlockStateInRepo(blockId, { isLocked: true }, currentDate);
-
-        // 퀘스트 업데이트
         await updateQuestProgress('lock_blocks', 1);
       }
 
-      await loadData(currentDate, true); // 강제 리로드
+      // ✅ DB 재조회 제거
     } catch (err) {
-      console.error('[DailyDataStore] Failed to toggle block lock:', err);
-      set({ error: err as Error });
+      console.error('[DailyDataStore] Failed to toggle block lock, rolling back:', err);
+      // ❌ 실패 시 롤백
+      set({
+        dailyData: {
+          ...dailyData,
+          timeBlockStates: originalBlockStates,
+          updatedAt: Date.now(),
+        },
+        error: err as Error,
+      });
       throw err;
     }
   },
