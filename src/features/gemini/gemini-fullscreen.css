@@ -6,14 +6,16 @@
   left: 0;
   right: 0;
   bottom: 0;
-  /* 개선된 그라디언트: 청록-보라 계열, 부드럽고 현대적 */
-  background: linear-gradient(135deg,
-    #2D3561 0%,      /* 딥 미드나잇 블루 */
-    #4A5899 25%,     /* 스모키 퍼플블루 */
-    #6B5B95 50%,     /* 로열 아메시스트 */
-    #8B5A8E 75%,     /* 트와일라잇 퍼플 */
-    #A0568B 100%     /* 더스키 로즈퍼플 */
-  );
+  /* 테마 통합: var() 사용 + 그라디언트 오버레이 */
+  background:
+    linear-gradient(135deg,
+      rgba(45, 53, 97, 0.95) 0%,
+      rgba(74, 88, 153, 0.9) 25%,
+      rgba(107, 91, 149, 0.85) 50%,
+      rgba(139, 90, 142, 0.9) 75%,
+      rgba(160, 86, 139, 0.95) 100%
+    ),
+    var(--color-bg-primary);
   z-index: 1000;
   animation: fadeIn 0.3s ease-out;
 }
@@ -77,10 +79,16 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: rgba(0, 0, 0, 0.5);
+  /* 테마 통합: 반투명 배경과 그라디언트 보더 */
+  background: linear-gradient(135deg,
+    rgba(107, 91, 149, 0.85),
+    rgba(139, 90, 142, 0.85)
+  );
   padding: 20px;
   border-radius: 12px;
   backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 .info-item {
@@ -106,6 +114,9 @@
   display: flex;
   flex-direction: column;
   box-shadow: -10px 0 30px rgba(0, 0, 0, 0.3);
+  /* 테마 통합: 좌측 그라디언트 보더 */
+  border-left: 3px solid transparent;
+  border-image: linear-gradient(180deg, #6B5B95, #8B5A8E) 1;
 }
 
 /* 헤더 */
@@ -116,12 +127,20 @@
   padding: 20px 30px;
   background: var(--color-bg-secondary);
   border-bottom: 2px solid var(--color-border);
+  /* 테마 통합: 그라디언트 언더라인 */
+  box-shadow: 0 2px 0 0 rgba(107, 91, 149, 0.2);
 }
 
 .fullscreen-chat-header h2 {
   font-size: 24px;
   margin: 0;
   color: var(--color-text);
+  /* 테마 강조: 그라디언트 텍스트 */
+  background: linear-gradient(135deg, #6B5B95, #8B5A8E);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
 }
 
 .header-actions {
@@ -132,15 +151,21 @@
 .btn-clear {
   padding: 8px 16px;
   background: var(--color-bg-tertiary);
-  border: none;
-  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
-  transition: all 0.2s;
+  font-weight: 500;
+  color: var(--color-text);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .btn-clear:hover {
-  background: var(--color-border);
+  background: var(--color-bg-primary);
+  border-color: #8B5A8E;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(107, 91, 149, 0.15);
 }
 
 .btn-close-fullscreen {
@@ -194,12 +219,23 @@
 .welcome-icon {
   font-size: 80px;
   margin-bottom: 20px;
+  /* 테마 통합: 아이콘에 그라디언트 효과 */
+  background: linear-gradient(135deg, #6B5B95, #8B5A8E);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .chat-welcome h3 {
   font-size: 28px;
   margin-bottom: 10px;
   color: var(--color-text);
+  /* 테마 강조: 그라디언트 텍스트 */
+  background: linear-gradient(135deg, #6B5B95, #8B5A8E);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
 }
 
 .chat-welcome p {
@@ -349,11 +385,13 @@
 /* 에러 메시지 */
 .chat-error {
   padding: 12px 16px;
-  background: #fee;
-  color: #c00;
+  /* 테마 통합: 에러 색상도 테마와 조화롭게 */
+  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
   border-radius: 8px;
-  border: 1px solid #fcc;
+  border: 1px solid rgba(231, 76, 60, 0.3);
   animation: shake 0.3s;
+  backdrop-filter: blur(4px);
 }
 
 /* 입력 영역 */

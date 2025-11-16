@@ -108,6 +108,8 @@ export default function InsightPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(0); // 남은 시간 (초)
+  const [totalTime, setTotalTime] = useState<number>(0); // 전체 시간 (초)
 
   // 초기 로드 추적용 ref
   const initialLoadRef = useRef(false);
@@ -183,11 +185,30 @@ export default function InsightPanel() {
     if (!settings?.geminiApiKey) return;
 
     const refreshInterval = settings.autoMessageInterval || 15;
-    const interval = setInterval(() => {
+    const totalSeconds = refreshInterval * 60;
+    setTotalTime(totalSeconds);
+    setTimeLeft(totalSeconds);
+
+    // 타이머 카운트다운 (1초마다)
+    const countdownInterval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          return totalSeconds; // 리셋
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // AI 호출 인터벌
+    const aiInterval = setInterval(() => {
       generateInsight();
+      setTimeLeft(totalSeconds); // 타이머 리셋
     }, refreshInterval * 60 * 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(countdownInterval);
+      clearInterval(aiInterval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.geminiApiKey, settings?.autoMessageInterval]);
 
@@ -197,18 +218,32 @@ export default function InsightPanel() {
     return parseMarkdown(insight);
   }, [insight]);
 
+  // 프로그레스 퍼센트 계산
+  const progress = totalTime > 0 ? ((totalTime - timeLeft) / totalTime) * 100 : 0;
+
   return (
     <aside className="insight-panel" role="complementary" aria-label="오늘의 인사이트">
       <div className="insight-panel-header">
-        <h3>💡 오늘의 인사이트</h3>
-        <button
-          className="insight-refresh-btn"
-          onClick={generateInsight}
-          disabled={loading}
-          aria-label="인사이트 새로고침"
-        >
-          🔄
-        </button>
+        <div className="insight-header-top">
+          <h3>💡 오늘의 인사이트</h3>
+          <button
+            className="insight-refresh-btn"
+            onClick={generateInsight}
+            disabled={loading}
+            aria-label="인사이트 새로고침"
+          >
+            🔄
+          </button>
+        </div>
+        {/* 타이머 프로그레스 바 */}
+        {totalTime > 0 && !loading && (
+          <div className="insight-timer-container">
+            <div className="insight-timer-progress" style={{ width: `${progress}%` }} />
+            <span className="insight-timer-text">
+              다음 갱신까지 {Math.floor(timeLeft / 60)}분 {timeLeft % 60}초
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="insight-content">
