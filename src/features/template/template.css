@@ -244,13 +244,51 @@
 }
 
 .modal-body {
-  padding: var(--spacing-md);
+  padding: 0;
   flex: 1;
-  overflow-y: auto;
-  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* flexbox 스크롤 핵심 */
+  overflow: hidden;
 }
 
-/* 2컬럼 레이아웃 폼 */
+/* 스크롤 가능한 폼 영역 (2단 그리드) */
+.modal-form-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-6);
+  padding: var(--spacing-5);
+  min-height: 0;
+
+  /* 부드러운 스크롤 */
+  scroll-behavior: smooth;
+
+  /* 커스텀 스크롤바 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.modal-form-scroll-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-form-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-form-scroll-area::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.modal-form-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* 2컬럼 레이아웃 폼 (deprecated - 하위 호환성) */
 .modal-form-two-column {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -323,27 +361,49 @@
   background: var(--color-bg-secondary, #f9f9f9);
 }
 
-/* 전체 너비 액션 버튼 (2컬럼 레이아웃용) */
+/* 전체 너비 액션 버튼 (하단 고정) */
 .modal-actions-full {
-  grid-column: 1 / -1;
-  margin-top: var(--spacing-md);
-  padding-top: var(--spacing-md);
+  flex-shrink: 0; /* 버튼 영역 고정 */
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: flex-end;
+  padding: var(--spacing-4) var(--spacing-5);
   border-top: 2px solid var(--color-border);
+  background: var(--color-bg-elevated, #fafafa);
+
+  /* 약간의 그림자로 분리감 강조 */
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
 }
 
 /* 반응형: 작은 화면에서 1컬럼으로 변경 */
 @media (max-width: 768px) {
+  .modal-form-scroll-area {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-4);
+    padding: var(--spacing-4);
+  }
+
   .modal-form-two-column {
     grid-template-columns: 1fr;
   }
 
   .modal-content-wide {
     width: 100%;
-    max-height: 95vh;
+    max-height: 100vh;
+    border-radius: 0;
   }
 
   .preparation-section {
-    margin-top: var(--spacing-md);
+    margin-top: 0;
+  }
+
+  .modal-actions-full {
+    padding: var(--spacing-3) var(--spacing-4);
+    gap: var(--spacing-2);
+  }
+
+  .modal-actions-full button {
+    flex: 1; /* 모바일에서 버튼 전체 너비 */
   }
 }
 
@@ -455,11 +515,18 @@
    ============================================================================ */
 
 .recurrence-settings {
-  padding: var(--spacing-4);
-  background: var(--color-bg-elevated, #f5f5f5);
-  border: 2px solid var(--color-border);
+  padding: var(--spacing-5);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.03), rgba(139, 92, 246, 0.03));
+  border: 2px solid rgba(99, 102, 241, 0.2);
   border-radius: var(--border-radius-lg);
-  margin-top: var(--spacing-3);
+  margin-top: var(--spacing-4);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.05);
+  transition: all var(--transition-base) var(--ease-out);
+}
+
+.recurrence-settings:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
 }
 
 .recurrence-type-select {
@@ -540,12 +607,17 @@
 .day-checkbox.checked {
   border-color: var(--color-primary);
   background: linear-gradient(135deg, var(--color-primary), #8b5cf6);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  transform: translateY(-2px);
 }
 
 .day-checkbox.checked .day-label {
   color: white;
   font-weight: var(--font-weight-bold);
+}
+
+.day-checkbox:active {
+  transform: scale(0.95);
 }
 
 /* N일 주기 입력 */
@@ -585,8 +657,24 @@
   color: var(--color-text-secondary);
 }
 
+/* 태블릿 최적화 */
+@media (max-width: 1024px) {
+  .recurrence-settings {
+    padding: var(--spacing-4);
+  }
+
+  .weekly-days-grid {
+    gap: var(--spacing-2);
+  }
+}
+
 /* 모바일 최적화 */
 @media (max-width: 640px) {
+  .recurrence-settings {
+    padding: var(--spacing-3);
+    margin-top: var(--spacing-3);
+  }
+
   .weekly-days-grid {
     grid-template-columns: repeat(7, 1fr);
     gap: var(--spacing-1);
@@ -594,6 +682,7 @@
 
   .day-checkbox {
     padding: var(--spacing-2);
+    min-height: 40px; /* 터치 영역 확보 */
   }
 
   .day-label {
@@ -602,10 +691,17 @@
 
   .interval-input-wrapper {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+    gap: var(--spacing-2);
   }
 
   .interval-input {
     width: 100%;
+    font-size: var(--font-size-xl);
+    padding: var(--spacing-4);
+  }
+
+  .interval-unit {
+    text-align: center;
   }
 }

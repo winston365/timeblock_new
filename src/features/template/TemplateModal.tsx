@@ -161,9 +161,10 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-body modal-form-two-column">
-          {/* 왼쪽 컬럼: 템플릿 정보 */}
-          <div className="form-column form-column-left">
+        <form onSubmit={handleSubmit} className="modal-body">
+          <div className="modal-form-scroll-area">
+            {/* 왼쪽 컬럼: 템플릿 정보 */}
+            <div className="form-column form-column-left">
             {/* 템플릿 이름 */}
             <div className="form-group">
               <label htmlFor="template-name">
@@ -338,10 +339,10 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                 )}
               </div>
             )}
-          </div>
+            </div>
 
-          {/* 오른쪽 컬럼: 준비 사항 입력 */}
-          <div className="form-column form-column-right">
+            {/* 오른쪽 컬럼: 준비 사항 입력 */}
+            <div className="form-column form-column-right">
             <div className="preparation-section">
               <div className="preparation-header">
                 <h4 className="preparation-title">💡 템플릿 준비하기</h4>
@@ -398,6 +399,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                   ⭐ 완벽하게 준비된 템플릿입니다!
                 </div>
               )}
+            </div>
             </div>
           </div>
 
