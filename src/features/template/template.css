@@ -253,19 +253,25 @@
   overflow: hidden;
 }
 
-/* 스크롤 가능한 폼 영역 (1단 레이아웃 - 명확한 스크롤) */
+/* 스크롤 가능한 폼 영역 (2단 그리드 레이아웃) */
 .modal-form-scroll-area {
   flex: 1;
-  overflow-y: scroll; /* scroll로 변경 - 항상 스크롤바 표시 */
+  overflow-y: scroll; /* 항상 스크롤바 표시 */
   overflow-x: hidden;
   padding: var(--spacing-5) var(--spacing-6);
   min-height: 0;
+
+  /* 2단 그리드 */
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-6);
+  align-items: start;
 
   /* 부드러운 스크롤 */
   scroll-behavior: smooth;
 
   /* 항상 보이는 커스텀 스크롤바 */
-  scrollbar-width: auto; /* thin -> auto로 변경 (더 명확하게) */
+  scrollbar-width: auto;
   scrollbar-color: rgba(99, 102, 241, 0.3) rgba(0, 0, 0, 0.05);
 }
 
@@ -308,7 +314,17 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-3);
-  width: 100%; /* 전체 너비 사용 */
+}
+
+.form-column-left {
+  /* 왼쪽 페이지: 기본 정보 */
+}
+
+.form-column-right {
+  /* 오른쪽 페이지: 주기 + 준비사항 + 버튼 */
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
 }
 
 /* 섹션 구분 */
@@ -404,10 +420,20 @@
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
 }
 
+/* 컬럼 내 액션 버튼 (오른쪽 컬럼 하단) */
+.modal-actions-column {
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: flex-end;
+  padding-top: var(--spacing-5);
+  margin-top: var(--spacing-4);
+  border-top: 2px solid var(--color-border);
+}
+
 /* 반응형: 작은 화면에서 1컬럼으로 변경 */
 @media (max-width: 768px) {
   .modal-form-scroll-area {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr; /* 1단으로 변경 */
     gap: var(--spacing-4);
     padding: var(--spacing-4);
   }
@@ -432,6 +458,14 @@
   }
 
   .modal-actions-full button {
+    flex: 1; /* 모바일에서 버튼 전체 너비 */
+  }
+
+  .modal-actions-column {
+    padding: var(--spacing-3) 0;
+  }
+
+  .modal-actions-column button {
     flex: 1; /* 모바일에서 버튼 전체 너비 */
   }
 }
