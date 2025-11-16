@@ -306,7 +306,7 @@ const formatRelativeDate = (date: Date): string => {
   const day = targetDate.getDate();
   const weekday = ['일', '월', '화', '수', '목', '금', '토'][targetDate.getDay()];
 
-  return `${month}월 ${day}일 (${weekday})`;
+  return `${month}월 ${day}일(${weekday})`;
 };
 
 
