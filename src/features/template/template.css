@@ -209,6 +209,7 @@
   max-width: 800px; /* 600px -> 800px로 증가하여 2단 레이아웃에 충분한 공간 확보 */
   width: 90%;
   max-height: 90vh; /* 일관성을 위해 90vh 유지 */
+  overflow: visible !important; /* globals.css의 overflow: hidden 덮어쓰기 */
 }
 
 .modal-header {
@@ -254,7 +255,7 @@
 }
 
 /* 스크롤 가능한 폼 영역 (2단 그리드 레이아웃) */
-.modal-content-wide .modal-form-scroll-area {
+.modal-content.modal-content-wide .modal-body .modal-form-scroll-area {
   flex: 1;
   overflow-y: auto; /* scroll -> auto로 변경하여 필요시에만 스크롤바 표시 */
   overflow-x: hidden;
@@ -276,29 +277,29 @@
   scrollbar-color: rgba(99, 102, 241, 0.3) rgba(0, 0, 0, 0.05);
 }
 
-.modal-content-wide .modal-form-scroll-area::-webkit-scrollbar {
+.modal-content.modal-content-wide .modal-body .modal-form-scroll-area::-webkit-scrollbar {
   width: 12px; /* 8px -> 12px로 더 명확하게 */
 }
 
-.modal-content-wide .modal-form-scroll-area::-webkit-scrollbar-track {
+.modal-content.modal-content-wide .modal-body .modal-form-scroll-area::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.03);
   border-radius: 6px;
   margin: 4px 0;
 }
 
-.modal-content-wide .modal-form-scroll-area::-webkit-scrollbar-thumb {
+.modal-content.modal-content-wide .modal-body .modal-form-scroll-area::-webkit-scrollbar-thumb {
   background: rgba(99, 102, 241, 0.3);
   border-radius: 6px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
-.modal-content-wide .modal-form-scroll-area::-webkit-scrollbar-thumb:hover {
+.modal-content.modal-content-wide .modal-body .modal-form-scroll-area::-webkit-scrollbar-thumb:hover {
   background: rgba(99, 102, 241, 0.5);
   background-clip: content-box;
 }
 
-.modal-content-wide .modal-form-scroll-area::-webkit-scrollbar-thumb:active {
+.modal-content.modal-content-wide .modal-body .modal-form-scroll-area::-webkit-scrollbar-thumb:active {
   background: rgba(99, 102, 241, 0.7);
   background-clip: content-box;
 }
@@ -432,8 +433,8 @@
 }
 
 /* 반응형: 작은 화면에서 1컬럼으로 변경 */
-@media (max-width: 768px) {
-  .modal-content-wide .modal-form-scroll-area {
+@media (max-width: 640px) {
+  .modal-content.modal-content-wide .modal-body .modal-form-scroll-area {
     grid-template-columns: 1fr !important; /* 1단으로 변경 */
     gap: var(--spacing-4) !important;
     padding: var(--spacing-4);

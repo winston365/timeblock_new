@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 import type { Template, Resistance, TimeBlockId, RecurrenceType } from '@/shared/types/domain';
 import { createTemplate, updateTemplate } from '@/data/repositories';
 import { TIME_BLOCKS, RESISTANCE_LABELS } from '@/shared/types/domain';
+import './template.css';
 
 interface TemplateModalProps {
   template: Template | null; // null이면 신규 생성
