@@ -74,6 +74,81 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     setCategories(cats);
   };
 
+  /**
+   * 다음 주기까지의 일수 계산 (필터링용)
+   * @returns 일수 (숫자) 또는 null (주기 없음)
+   */
+  const getDaysUntilNextOccurrence = (template: Template): number | null => {
+    if (!template.autoGenerate || template.recurrenceType === 'none') {
+      return null;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const lastGenerated = template.lastGeneratedDate
+      ? new Date(template.lastGeneratedDate)
+      : new Date(today);
+    lastGenerated.setHours(0, 0, 0, 0);
+
+    let nextDate: Date;
+
+    switch (template.recurrenceType) {
+      case 'daily': {
+        nextDate = new Date(lastGenerated);
+        nextDate.setDate(nextDate.getDate() + 1);
+        break;
+      }
+
+      case 'weekly': {
+        if (!template.weeklyDays || template.weeklyDays.length === 0) {
+          return null;
+        }
+
+        const currentDay = today.getDay();
+        const sortedDays = [...template.weeklyDays].sort((a, b) => a - b);
+
+        let nextDay = sortedDays.find(day => day > currentDay);
+        let daysUntil: number;
+
+        if (nextDay !== undefined) {
+          daysUntil = nextDay - currentDay;
+        } else {
+          nextDay = sortedDays[0];
+          daysUntil = 7 - currentDay + nextDay;
+        }
+
+        nextDate = new Date(today);
+        nextDate.setDate(nextDate.getDate() + daysUntil);
+
+        // 마지막 생성일이 오늘 또는 미래 → 다음 주기로 밀기
+        if (template.lastGeneratedDate) {
+          const lastGen = new Date(template.lastGeneratedDate);
+          lastGen.setHours(0, 0, 0, 0);
+          if (lastGen.getTime() >= today.getTime()) {
+            nextDate.setDate(nextDate.getDate() + 7);
+          }
+        }
+        break;
+      }
+
+      case 'interval': {
+        if (!template.intervalDays) return null;
+        nextDate = new Date(lastGenerated);
+        nextDate.setDate(nextDate.getDate() + template.intervalDays);
+        break;
+      }
+
+      default:
+        return null;
+    }
+
+    const diffTime = nextDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays >= 0 ? diffDays : 0;
+  };
+
   // 검색 및 카테고리/즐겨찾기 필터링
   const filteredTemplates = useMemo(() => {
     let filtered = templates;
@@ -186,81 +261,6 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     if (!blockId) return '나중에';
     const block = TIME_BLOCKS.find(b => b.id === blockId);
     return block ? block.label : '나중에';
-  };
-
-  /**
-   * 다음 주기까지의 일수 계산 (필터링용)
-   * @returns 일수 (숫자) 또는 null (주기 없음)
-   */
-  const getDaysUntilNextOccurrence = (template: Template): number | null => {
-    if (!template.autoGenerate || template.recurrenceType === 'none') {
-      return null;
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const lastGenerated = template.lastGeneratedDate
-      ? new Date(template.lastGeneratedDate)
-      : new Date(today);
-    lastGenerated.setHours(0, 0, 0, 0);
-
-    let nextDate: Date;
-
-    switch (template.recurrenceType) {
-      case 'daily': {
-        nextDate = new Date(lastGenerated);
-        nextDate.setDate(nextDate.getDate() + 1);
-        break;
-      }
-
-      case 'weekly': {
-        if (!template.weeklyDays || template.weeklyDays.length === 0) {
-          return null;
-        }
-
-        const currentDay = today.getDay();
-        const sortedDays = [...template.weeklyDays].sort((a, b) => a - b);
-
-        let nextDay = sortedDays.find(day => day > currentDay);
-        let daysUntil: number;
-
-        if (nextDay !== undefined) {
-          daysUntil = nextDay - currentDay;
-        } else {
-          nextDay = sortedDays[0];
-          daysUntil = 7 - currentDay + nextDay;
-        }
-
-        nextDate = new Date(today);
-        nextDate.setDate(nextDate.getDate() + daysUntil);
-
-        // 마지막 생성일이 오늘 또는 미래 → 다음 주기로 밀기
-        if (template.lastGeneratedDate) {
-          const lastGen = new Date(template.lastGeneratedDate);
-          lastGen.setHours(0, 0, 0, 0);
-          if (lastGen.getTime() >= today.getTime()) {
-            nextDate.setDate(nextDate.getDate() + 7);
-          }
-        }
-        break;
-      }
-
-      case 'interval': {
-        if (!template.intervalDays) return null;
-        nextDate = new Date(lastGenerated);
-        nextDate.setDate(nextDate.getDate() + template.intervalDays);
-        break;
-      }
-
-      default:
-        return null;
-    }
-
-    const diffTime = nextDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays >= 0 ? diffDays : 0;
   };
 
   /**
