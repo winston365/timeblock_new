@@ -91,6 +91,14 @@ User Action → Repository (IndexedDB write + Firebase sync) → Store update �
 - **Dual-write pattern**: Local-first with background cloud sync
 - Each repository calls `syncToFirebase()` after local writes
 
+**Synced Collections**:
+- `dailyData`: Tasks and time block states (per date)
+- `gameState`: XP, level, quests (single record)
+- `chatHistory`: Gemini chat messages (per date)
+- `tokenUsage`: Daily API token usage (per date)
+- `energyLevels`: Energy tracking data (per date)
+- `templates`: Task templates (all templates as array, key: 'all')
+
 ## Domain Model
 
 ### Core Entities (see `src/shared/types/domain.ts`)
@@ -192,6 +200,24 @@ Global variables in `src/styles/globals.css`:
 - Semantic colors: `--color-primary`, `--color-danger`, `--color-success`, etc.
 - Typography scale: `--text-2xs` through `--text-3xl`
 
+### URL Linkification in Memos
+- **Utility**: `linkifyText()` in `src/shared/lib/utils.ts`
+- Automatically converts URLs in task/template memos to clickable links
+- Supports patterns: `http://`, `https://`, `www.` (auto-prepends http://)
+- Security: Opens in new tab with `rel="noopener noreferrer"`
+- Styling: `.memo-link` class in `globals.css`
+  - Dotted underline (default) → Solid underline (hover)
+  - Uses theme primary color
+  - Visited links use secondary color
+
+### Modal z-index Hierarchy
+- Standard modals: `z-index: 1000` (`.modal-overlay`)
+- Settings modal: `z-index: 1000` with width enforcement (`600px !important`)
+- Templates modal: `z-index: 2000` (`.templates-modal-overlay`)
+- Celebration modal: `z-index: 9999 !important` (`.celebration-overlay`)
+  - Highest priority to ensure visibility over all UI elements
+  - Prevents clipping inside time block containers
+
 ## Feature-Specific Notes
 
 ### FullscreenChat (Gemini)
@@ -211,3 +237,19 @@ Global variables in `src/styles/globals.css`:
 - Auto-generation controlled by `autoGenerate` boolean
 - Last generated date tracking prevents duplicates
 - Templates can be favorited and categorized
+- **Next Occurrence Display**: Template cards show next occurrence date
+  - Calculated from `lastGeneratedDate` and `recurrenceType`
+  - Korean relative dates: 오늘, 내일, 모레, N일 후, M/D
+  - Logic in `TemplatesModal.tsx`: `getNextOccurrence()` and `formatRelativeDate()`
+- **Firebase Sync**: All template CRUD operations sync to Firebase
+  - Collection: 'templates', Key: 'all' (entire array)
+  - Strategy: Last-Write-Wins (templateStrategy)
+
+### InsightPanel (AI-generated insights)
+- **Auto-refresh interval**: Configurable in settings (default: 15 minutes)
+- **Smart regeneration**: Respects time intervals using localStorage
+  - `lastInsightGenerationTime`: Tracks last generation timestamp
+  - `lastInsightText`: Stores last insight for display on reload
+  - Skips regeneration if interval hasn't passed (prevents unnecessary API calls)
+- **Retry logic**: 3 automatic retries with 10-second intervals on API errors
+- **Progress indicator**: Visual timer shows time until next refresh
