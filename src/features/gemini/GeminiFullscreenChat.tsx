@@ -161,7 +161,8 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
       setInput('');
 
       // 최근 메시지 가져오기 (API 컨텍스트용)
-      const recentMessages = updatedMessages.slice(-MAX_HISTORY_MESSAGES);
+      // 현재 메시지는 제외하고 이전 메시지들만 히스토리로 전달
+      const recentMessages = messages.slice(-MAX_HISTORY_MESSAGES);
       const history = recentMessages.map((msg) => ({
         role: msg.role,
         text: msg.text,
