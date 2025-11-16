@@ -8,7 +8,7 @@
  *   - utils: XP 계산 및 시간 포맷팅 함수
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
 import { RESISTANCE_LABELS } from '@/shared/types/domain';
 import { formatDuration, calculateTaskXP, linkifyText } from '@/shared/lib/utils';
@@ -48,6 +48,8 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const [isEditingText, setIsEditingText] = useState(false);
   const [editedText, setEditedText] = useState(task.text);
   const [timerIconActive, setTimerIconActive] = useState(false); // 타이머 아이콘 상태 (▶️ ↔ ⏰)
+  const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0); // 초 단위
 
   // 게임 상태에서 퀘스트 업데이트 함수 가져오기
   const { updateQuestProgress } = useGameState();
@@ -82,7 +84,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     setShowDurationPicker(false);
   };
 
-  const durationOptions = [15, 30, 45, 60, 90, 120, 180];
+  const durationOptions = [5, 10, 15, 30, 45, 60];
 
   // 드래그 핸들러
   const handleDragStart = (e: React.DragEvent) => {
@@ -176,6 +178,38 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
       e.preventDefault();
       handleTextCancel();
     }
+  };
+
+  // 타이머 토글 핸들러
+  const handleTimerToggle = () => {
+    if (!timerIconActive) {
+      // 타이머 시작
+      setTimerStartTime(Date.now());
+      setElapsedTime(0);
+    } else {
+      // 타이머 정지
+      setTimerStartTime(null);
+    }
+    setTimerIconActive(!timerIconActive);
+  };
+
+  // 타이머 경과 시간 업데이트
+  useEffect(() => {
+    if (!timerIconActive || timerStartTime === null) return;
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - timerStartTime) / 1000);
+      setElapsedTime(elapsed);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timerIconActive, timerStartTime]);
+
+  // 경과 시간 포맷팅 (MM:SS)
+  const formatElapsedTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
 
@@ -275,12 +309,12 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
 
               {/* 타이머 아이콘 - 토글 */}
               <button
-                className="timer-icon-btn"
+                className={`timer-icon-btn ${timerIconActive ? 'active' : ''}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setTimerIconActive(!timerIconActive);
+                  handleTimerToggle();
                 }}
-                title={timerIconActive ? "타이머 활성화됨" : "타이머 시작"}
+                title={timerIconActive ? `타이머 진행 중: ${formatElapsedTime(elapsedTime)}` : "타이머 시작"}
                 aria-label="타이머 토글"
               >
                 {timerIconActive ? '⏰' : '▶️'}
@@ -311,6 +345,17 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
           )}
         </div>
       </div>
+
+      {/* 타이머 진행 바 - 하단에 표시 */}
+      {timerIconActive && (
+        <div className="task-timer-progress-bar" onClick={(e) => e.stopPropagation()}>
+          <div className="timer-progress-content">
+            <span className="timer-progress-label">⏰ 타이머 진행 중</span>
+            <span className="timer-progress-time">{formatElapsedTime(elapsedTime)}</span>
+          </div>
+          <div className="timer-progress-bar-fill"></div>
+        </div>
+      )}
       </div>
 
       {/* 타이머 확인 모달 */}
