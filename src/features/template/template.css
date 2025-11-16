@@ -206,9 +206,9 @@
 
 /* 넓은 모달 (2컬럼 레이아웃용) */
 .modal-content-wide {
-  max-width: 600px;
+  max-width: 800px; /* 600px -> 800px로 증가하여 2단 레이아웃에 충분한 공간 확보 */
   width: 90%;
-  max-height: 95vh; /* 90vh -> 95vh로 증가 */
+  max-height: 90vh; /* 일관성을 위해 90vh 유지 */
 }
 
 .modal-header {
@@ -250,16 +250,17 @@
   display: flex;
   flex-direction: column;
   min-height: 0; /* flexbox 스크롤 핵심 */
-  overflow: hidden;
+  overflow: visible; /* hidden -> visible로 변경하여 스크롤 허용 */
 }
 
 /* 스크롤 가능한 폼 영역 (2단 그리드 레이아웃) */
 .modal-content-wide .modal-form-scroll-area {
   flex: 1;
-  overflow-y: scroll; /* 항상 스크롤바 표시 */
+  overflow-y: auto; /* scroll -> auto로 변경하여 필요시에만 스크롤바 표시 */
   overflow-x: hidden;
   padding: var(--spacing-5) var(--spacing-6);
   min-height: 0;
+  max-height: 100%; /* 부모 높이를 넘지 않도록 제한 */
 
   /* 2단 그리드 - 특정성 높여서 강제 적용 */
   display: grid !important;

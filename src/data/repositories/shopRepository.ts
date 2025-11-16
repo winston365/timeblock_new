@@ -17,7 +17,7 @@ import type { ShopItem } from '@/shared/types/domain';
 import { saveToStorage, getFromStorage } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
 import { loadGameState, spendXP } from './gameStateRepository';
-import { increaseAffectionFromTask, saveWaifuState } from './waifuRepository';
+import { increaseAffectionFromTask, saveWaifuState, loadWaifuState } from './waifuRepository';
 
 // ============================================================================
 // ShopItem CRUD
