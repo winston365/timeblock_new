@@ -312,3 +312,28 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
     timeout = setTimeout(() => func.apply(this, args), wait);
   };
 }
+
+// ============================================================================
+// URL 링크화
+// ============================================================================
+
+/**
+ * 텍스트 내의 URL을 클릭 가능한 링크로 변환
+ *
+ * @param text 변환할 텍스트
+ * @returns HTML 문자열 (URL이 <a> 태그로 변환됨)
+ */
+export function linkifyText(text: string): string {
+  if (!text) return '';
+
+  // URL 정규식 (http, https, www 지원)
+  const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)/gi;
+
+  return text.replace(urlRegex, (url) => {
+    // www로 시작하는 경우 http:// 추가
+    const href = url.startsWith('www.') ? `http://${url}` : url;
+
+    // 새 탭에서 열리고, 보안을 위해 noopener noreferrer 추가
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="memo-link">${url}</a>`;
+  });
+}

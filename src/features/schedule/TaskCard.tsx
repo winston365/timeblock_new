@@ -11,7 +11,7 @@
 import { useState } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
 import { RESISTANCE_LABELS } from '@/shared/types/domain';
-import { formatDuration, calculateTaskXP } from '@/shared/lib/utils';
+import { formatDuration, calculateTaskXP, linkifyText } from '@/shared/lib/utils';
 import { TimerConfirmModal } from './TimerConfirmModal';
 import { CompletionCelebrationModal } from './CompletionCelebrationModal';
 import { useGameState } from '@/shared/hooks';
@@ -289,7 +289,11 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
 
           {/* 메모는 아래에 (클릭 시 표시) */}
           {task.memo && showMemo && (
-            <div className="task-memo" onClick={(e) => e.stopPropagation()}>📝 {task.memo}</div>
+            <div
+              className="task-memo"
+              onClick={(e) => e.stopPropagation()}
+              dangerouslySetInnerHTML={{ __html: `📝 ${linkifyText(task.memo)}` }}
+            />
           )}
         </div>
       </div>

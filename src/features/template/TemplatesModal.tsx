@@ -16,6 +16,7 @@ import { loadTemplates, deleteTemplate as deleteTemplateRepo, createTemplate } f
 import { getTemplateCategories } from '@/data/repositories/settingsRepository';
 import { TemplateModal } from './TemplateModal';
 import { RESISTANCE_LABELS, TIME_BLOCKS } from '@/shared/types/domain';
+import { linkifyText } from '@/shared/lib/utils';
 import './templatesModal.css';
 
 interface TemplatesModalProps {
@@ -458,7 +459,7 @@ const formatRelativeDate = (date: Date): string => {
                     {template.memo && (
                       <div className="template-card-memo">
                         <span className="template-card-memo-icon">💭</span>
-                        <span>{template.memo}</span>
+                        <span dangerouslySetInnerHTML={{ __html: linkifyText(template.memo) }} />
                       </div>
                     )}
 
