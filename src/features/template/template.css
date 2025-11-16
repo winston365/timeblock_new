@@ -206,7 +206,7 @@
 
 /* 넓은 모달 (2컬럼 레이아웃용) */
 .modal-content-wide {
-  max-width: 800px;
+  max-width: 600px;
   width: 90%;
   max-height: 95vh; /* 90vh -> 95vh로 증가 */
 }
