@@ -21,9 +21,11 @@ import { exposeDebugToWindow } from '@/shared/services/firebase/firebaseDebug';
 import type { Template, Task } from '@/shared/types/domain';
 import { useXPToastStore } from '@/shared/hooks/useXPToast';
 import XPToast from '@/shared/components/XPToast';
+import SyncErrorToast from '@/shared/components/SyncErrorToast';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
+import { setErrorCallback, retryNow } from '@/shared/services/firebase/syncRetryQueue';
 
 // 임시로 컴포넌트를 직접 import (나중에 features에서 가져올 것)
 import TopToolbar from './components/TopToolbar';
@@ -41,6 +43,14 @@ import TemplatesModal from '@/features/template/TemplatesModal';
  * 앱 셸 컴포넌트 - 전체 앱 레이아웃 및 초기화
  * @returns 앱 전체 UI
  */
+interface SyncErrorToastData {
+  id: string;
+  collection: string;
+  message: string;
+  canRetry: boolean;
+  retryId?: string;
+}
+
 export default function AppShell() {
   const [dbInitialized, setDbInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<'today' | 'stats' | 'energy' | 'completed' | 'inbox'>('today');
@@ -49,10 +59,44 @@ export default function AppShell() {
   const [showBulkAdd, setShowBulkAdd] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [syncErrorToasts, setSyncErrorToasts] = useState<SyncErrorToastData[]>([]);
 
   const { gameState, updateQuestProgress } = useGameState();
   const { toasts, removeToast } = useXPToastStore();
   const { visibility } = useWaifuCompanionStore();
+
+  // 동기화 에러 콜백 설정
+  useEffect(() => {
+    setErrorCallback((collection, message, canRetry) => {
+      const toastId = `sync-error-${Date.now()}-${Math.random()}`;
+      setSyncErrorToasts((prev: SyncErrorToastData[]) => [
+        ...prev,
+        {
+          id: toastId,
+          collection,
+          message,
+          canRetry,
+          retryId: canRetry ? `${collection}-retry-${Date.now()}` : undefined,
+        },
+      ]);
+    });
+  }, []);
+
+  // 동기화 에러 토스트 제거
+  const removeSyncErrorToast = (id: string) => {
+    setSyncErrorToasts((prev: SyncErrorToastData[]) => prev.filter((toast: SyncErrorToastData) => toast.id !== id));
+  };
+
+  // 동기화 재시도 핸들러
+  const handleSyncRetry = async (retryId: string | undefined) => {
+    if (!retryId) return;
+
+    try {
+      await retryNow(retryId);
+    } catch (error) {
+      console.error('Failed to retry sync:', error);
+    }
+  };
 
   // DB 초기화 및 Firebase 설정
   useEffect(() => {
@@ -368,6 +412,17 @@ export default function AppShell() {
           message={toast.message}
           onClose={() => removeToast(toast.id)}
         />
+      ))}
+
+      {/* 동기화 에러 토스트 */}
+      {syncErrorToasts.map((toast: SyncErrorToastData, index: number) => (
+        <div key={toast.id} style={{ top: `${80 + index * 100}px` }}>
+          <SyncErrorToast
+            message={toast.message}
+            onClose={() => removeSyncErrorToast(toast.id)}
+            onRetry={toast.canRetry ? () => handleSyncRetry(toast.retryId) : undefined}
+          />
+        </div>
       ))}
     </div>
   );

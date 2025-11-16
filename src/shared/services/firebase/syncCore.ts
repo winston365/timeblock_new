@@ -19,6 +19,7 @@ import { resolveConflictLWW } from './conflictResolver';
 import { getDataHash, getServerTimestamp, getDeviceId, getFirebasePath } from './syncUtils';
 import { getFirebaseDatabase } from './firebaseClient';
 import { addSyncLog } from '../syncLogger';
+import { addToRetryQueue } from './syncRetryQueue';
 
 // ============================================================================
 // Types
@@ -126,6 +127,18 @@ export async function syncToFirebase<T>(
   } catch (error) {
     console.error(`Failed to sync ${strategy.collection} to Firebase:`, error);
     addSyncLog('firebase', 'error', `Failed to sync ${strategy.collection}`, undefined, error as Error);
+
+    // 재시도 큐에 추가
+    const retryId = `${strategy.collection}-${key || 'root'}-${Date.now()}`;
+    addToRetryQueue(
+      retryId,
+      strategy,
+      data,
+      key,
+      () => syncToFirebase(strategy, data, key),
+      3 // 최대 3회 재시도
+    );
+
     // 에러 발생해도 throw하지 않음 (로컬은 정상 작동)
   }
 }

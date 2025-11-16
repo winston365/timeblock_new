@@ -9,7 +9,7 @@
  *   - utils: XP 계산 함수
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import type { Task, TimeBlockState, TimeBlockId } from '@/shared/types/domain';
 import { calculateTaskXP } from '@/shared/lib/utils';
 import TaskCard from './TaskCard';
@@ -45,7 +45,7 @@ interface TimeBlockProps {
  *   - 인라인 입력으로 작업 생성
  *   - 잠금 상태 변경 시 XP 차감/보상
  */
-export default function TimeBlock({
+const TimeBlock = memo(function TimeBlock({
   block,
   tasks,
   state,
@@ -450,4 +450,6 @@ export default function TimeBlock({
       )}
     </div>
   );
-}
+});
+
+export default TimeBlock;

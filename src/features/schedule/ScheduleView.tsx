@@ -18,6 +18,7 @@ import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import TimeBlock from './TimeBlock';
 import TaskModal from './TaskModal';
+import CurrentTimeIndicator from './CurrentTimeIndicator';
 import './schedule.css';
 
 /**
@@ -35,24 +36,20 @@ export default function ScheduleView() {
   const { updateQuestProgress } = useGameState();
   const { show: showWaifu } = useWaifuCompanionStore();
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
-  const [currentMinute, setCurrentMinute] = useState(new Date().getMinutes());
-  const [indicatorPosition, setIndicatorPosition] = useState<number | null>(null);
   const scheduleRef = useRef<HTMLDivElement>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<TimeBlockId>(null);
 
-  // 1분 단위로 현재 시간 업데이트
+  // 1시간 단위로 현재 시간 업데이트 (블록 활성화 상태용)
   useEffect(() => {
     const updateTime = () => {
-      const now = new Date();
-      setCurrentHour(now.getHours());
-      setCurrentMinute(now.getMinutes());
+      setCurrentHour(new Date().getHours());
     };
 
     updateTime(); // 초기 실행
-    const interval = setInterval(updateTime, 60 * 1000); // 1분
+    const interval = setInterval(updateTime, 60 * 1000); // 1분 (시간 변경 감지)
 
     return () => clearInterval(interval);
   }, []);
@@ -65,72 +62,6 @@ export default function ScheduleView() {
   };
 
   const currentBlockId = getCurrentBlockId();
-
-  // 현재 시간 인디케이터 위치 계산
-  useEffect(() => {
-    const calculateIndicatorPosition = () => {
-      if (!scheduleRef.current) return null;
-
-      const now = new Date();
-      const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
-
-      // 현재 시간대 블록 찾기
-      const currentBlock = TIME_BLOCKS.find(
-        b => currentTotalMinutes >= b.start * 60 && currentTotalMinutes < b.end * 60
-      );
-
-      if (!currentBlock) {
-        setIndicatorPosition(null);
-        return;
-      }
-
-      // 현재 블록의 DOM 요소 찾기
-      const blockElement = scheduleRef.current.querySelector(
-        `.time-block[data-block-id="${currentBlock.id}"]`
-      ) as HTMLElement;
-
-      if (!blockElement) {
-        setIndicatorPosition(null);
-        return;
-      }
-
-      // 블록 시작/종료 시간 (분 단위)
-      const blockStartMinutes = currentBlock.start * 60;
-      const blockEndMinutes = currentBlock.end * 60;
-
-      // 블록 내 경과 시간 비율
-      const elapsedMinutes = currentTotalMinutes - blockStartMinutes;
-      const totalBlockMinutes = blockEndMinutes - blockStartMinutes;
-      const progressRatio = elapsedMinutes / totalBlockMinutes;
-
-      // 블록의 위치와 높이
-      const scheduleTop = scheduleRef.current.getBoundingClientRect().top;
-      const blockTop = blockElement.getBoundingClientRect().top;
-      const blockHeight = blockElement.offsetHeight;
-
-      // 스케줄 영역 기준 상대 위치
-      const relativeBlockTop = blockTop - scheduleTop;
-
-      // 최종 인디케이터 위치 (스케줄 영역 상단 기준)
-      const position = relativeBlockTop + (blockHeight * progressRatio);
-
-      setIndicatorPosition(position);
-    };
-
-    calculateIndicatorPosition();
-
-    // ResizeObserver로 블록 크기 변화 감지
-    const resizeObserver = new ResizeObserver(() => {
-      calculateIndicatorPosition();
-    });
-
-    if (scheduleRef.current) {
-      const blocks = scheduleRef.current.querySelectorAll('.time-block');
-      blocks.forEach(block => resizeObserver.observe(block));
-    }
-
-    return () => resizeObserver.disconnect();
-  }, [currentHour, currentMinute, dailyData]);
 
   // 활성 블록 강조 표시 업데이트
   useEffect(() => {
@@ -371,13 +302,6 @@ export default function ScheduleView() {
     );
   }
 
-  // 현재 시간 포맷팅 (HH:MM)
-  const formatCurrentTime = () => {
-    const hour = currentHour.toString().padStart(2, '0');
-    const minute = currentMinute.toString().padStart(2, '0');
-    return `${hour}:${minute}`;
-  };
-
   return (
     <div className="schedule-view">
       <div className="schedule-header">
@@ -390,19 +314,8 @@ export default function ScheduleView() {
 
       <div className="timeblocks-grid" ref={scheduleRef}>
         {/* 현재 시간 인디케이터 */}
-        {indicatorPosition !== null && (
-          <div
-            className="global-time-indicator"
-            style={{
-              top: `${indicatorPosition}px`,
-            }}
-          >
-            <div className="time-indicator-line" />
-            <div className="time-indicator-label">
-              <span className="time-text">{formatCurrentTime()}</span>
-            </div>
-          </div>
-        )}
+        <CurrentTimeIndicator scheduleRef={scheduleRef} dailyData={dailyData} />
+
         {TIME_BLOCKS.map(block => {
           const blockTasks = dailyData.tasks.filter(task => task.timeBlock === block.id);
           const blockState = dailyData.timeBlockStates[block.id];

@@ -11,7 +11,7 @@
  */
 
 export type SyncType = 'dexie' | 'firebase';
-export type SyncAction = 'save' | 'load' | 'sync' | 'error';
+export type SyncAction = 'save' | 'load' | 'sync' | 'error' | 'retry' | 'info';
 
 export interface SyncLogEntry {
   id: string;
