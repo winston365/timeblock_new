@@ -136,6 +136,8 @@ export interface Template {
   preparation1?: string; // 준비 사항 1 (예상 방해물 또는 대처 환경)
   preparation2?: string; // 준비 사항 2 (예상 방해물 또는 대처 환경)
   preparation3?: string; // 준비 사항 3 (예상 방해물 또는 대처 환경)
+  category?: string; // 사용자 정의 카테고리
+  isFavorite?: boolean; // 즐겨찾기 여부
 }
 
 /**
@@ -266,6 +268,7 @@ export interface Settings {
   autoMessageInterval: number; // 자동 메시지 간격 (분)
   autoMessageEnabled: boolean; // 자동 메시지 활성화 여부
   waifuMode: WaifuMode; // 와이푸 모드 (일반/특성)
+  templateCategories?: string[]; // 템플릿 카테고리 목록
 }
 
 // ============================================================================

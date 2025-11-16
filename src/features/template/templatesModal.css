@@ -601,3 +601,175 @@
     box-shadow: 0 6px 16px rgba(99, 102, 241, 0.6);
   }
 }
+
+/* ============================================================================
+   필터 UI
+   ============================================================================ */
+
+.templates-filters {
+  display: flex;
+  gap: var(--spacing-3);
+  align-items: center;
+  margin-top: var(--spacing-3);
+}
+
+.filter-btn {
+  padding: var(--spacing-2) var(--spacing-4);
+  background: var(--color-bg-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius-full);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+  border-color: var(--color-primary);
+  background: var(--color-bg-elevated);
+  transform: translateY(-1px);
+}
+
+.filter-btn.active {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border-color: #f59e0b;
+  color: white;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.category-filter-select {
+  padding: var(--spacing-2) var(--spacing-4);
+  background: var(--color-bg-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius-full);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.category-filter-select:hover {
+  border-color: var(--color-primary);
+  background: var(--color-bg-elevated);
+}
+
+.category-filter-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* ============================================================================
+   즐겨찾기 버튼 (카드 내)
+   ============================================================================ */
+
+.btn-favorite-card {
+  position: absolute;
+  top: var(--spacing-3);
+  right: var(--spacing-3);
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--color-bg-elevated);
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.btn-favorite-card:hover {
+  background: #fffbeb;
+  border-color: #fbbf24;
+  transform: scale(1.1);
+}
+
+.btn-favorite-card.active {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border-color: #f59e0b;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.btn-favorite-card:active {
+  transform: scale(0.95);
+}
+
+/* ============================================================================
+   카테고리 배지
+   ============================================================================ */
+
+.template-card-badge.badge-category {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+}
+
+/* ============================================================================
+   호버 미리보기 툴팁
+   ============================================================================ */
+
+.template-card {
+  position: relative;
+}
+
+.template-card-tooltip {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: var(--spacing-2);
+  padding: var(--spacing-4);
+  background: white;
+  border: 2px solid var(--color-primary);
+  border-radius: var(--border-radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.template-card:hover .template-card-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.tooltip-header {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-3);
+  padding-bottom: var(--spacing-2);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.tooltip-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  margin-bottom: var(--spacing-2);
+}
+
+.tooltip-item:last-child {
+  margin-bottom: 0;
+}
+
+.tooltip-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.tooltip-item span:last-child {
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  line-height: 1.4;
+}

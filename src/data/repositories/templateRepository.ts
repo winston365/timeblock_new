@@ -34,12 +34,14 @@ export async function loadTemplates(): Promise<Template[]> {
     const templates = await db.templates.toArray();
 
     if (templates.length > 0) {
-      // preparation 필드의 undefined를 빈 문자열로 정제
+      // preparation 필드의 undefined를 빈 문자열로 정제, category와 isFavorite 기본값 설정
       return templates.map(template => ({
         ...template,
         preparation1: template.preparation1 ?? '',
         preparation2: template.preparation2 ?? '',
         preparation3: template.preparation3 ?? '',
+        category: template.category ?? '',
+        isFavorite: template.isFavorite ?? false,
       }));
     }
 
@@ -83,6 +85,8 @@ export async function loadTemplates(): Promise<Template[]> {
  * @param {RecurrenceType} recurrenceType - 반복 주기 타입
  * @param {number[]} weeklyDays - 매주 반복 요일 (0=일요일, ..., 6=토요일)
  * @param {number} intervalDays - N일 주기
+ * @param {string} category - 카테고리
+ * @param {boolean} isFavorite - 즐겨찾기 여부
  * @returns {Promise<Template>} 생성된 템플릿
  * @throws {Error} IndexedDB 또는 localStorage 저장 실패 시
  * @sideEffects
@@ -102,7 +106,9 @@ export async function createTemplate(
   preparation3?: string,
   recurrenceType: RecurrenceType = 'none',
   weeklyDays?: number[],
-  intervalDays?: number
+  intervalDays?: number,
+  category?: string,
+  isFavorite?: boolean
 ): Promise<Template> {
   try {
     const template: Template = {
@@ -120,6 +126,8 @@ export async function createTemplate(
       preparation1: preparation1 || '',
       preparation2: preparation2 || '',
       preparation3: preparation3 || '',
+      category: category || '',
+      isFavorite: isFavorite || false,
     };
 
     // IndexedDB에 저장

@@ -12,7 +12,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { Template } from '@/shared/types/domain';
-import { loadTemplates, deleteTemplate as deleteTemplateRepo, createTemplate } from '@/data/repositories';
+import { loadTemplates, deleteTemplate as deleteTemplateRepo, createTemplate, updateTemplate } from '@/data/repositories';
+import { getTemplateCategories } from '@/data/repositories/settingsRepository';
 import { TemplateModal } from './TemplateModal';
 import { RESISTANCE_LABELS, TIME_BLOCKS } from '@/shared/types/domain';
 import './templatesModal.css';
@@ -38,6 +39,9 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -50,10 +54,11 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, isTemplateModalOpen, onClose]);
 
-  // 템플릿 로드
+  // 템플릿 및 카테고리 로드
   useEffect(() => {
     if (isOpen) {
       loadTemplatesData();
+      loadCategoriesData();
     }
   }, [isOpen]);
 
@@ -62,17 +67,37 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     setTemplates(data);
   };
 
-  // 검색 필터링 (실시간)
-  const filteredTemplates = useMemo(() => {
-    if (!searchQuery.trim()) return templates;
+  const loadCategoriesData = async () => {
+    const cats = await getTemplateCategories();
+    setCategories(cats);
+  };
 
-    const query = searchQuery.toLowerCase();
-    return templates.filter(template =>
-      template.name.toLowerCase().includes(query) ||
-      template.text.toLowerCase().includes(query) ||
-      template.memo.toLowerCase().includes(query)
-    );
-  }, [templates, searchQuery]);
+  // 검색 및 카테고리/즐겨찾기 필터링
+  const filteredTemplates = useMemo(() => {
+    let filtered = templates;
+
+    // 카테고리 필터
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(template => template.category === selectedCategory);
+    }
+
+    // 즐겨찾기 필터
+    if (showFavoritesOnly) {
+      filtered = filtered.filter(template => template.isFavorite);
+    }
+
+    // 검색 필터
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(template =>
+        template.name.toLowerCase().includes(query) ||
+        template.text.toLowerCase().includes(query) ||
+        template.memo.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [templates, searchQuery, selectedCategory, showFavoritesOnly]);
 
   const handleAddTemplate = () => {
     setEditingTemplate(null);
@@ -115,6 +140,18 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     onTaskCreate(template);
   };
 
+  const handleToggleFavorite = async (template: Template) => {
+    try {
+      await updateTemplate(template.id, {
+        isFavorite: !template.isFavorite,
+      });
+      await loadTemplatesData();
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      alert('즐겨찾기 변경에 실패했습니다.');
+    }
+  };
+
   const handleCloneTemplate = async (template: Template) => {
     try {
       const clonedTemplate = await createTemplate(
@@ -130,7 +167,9 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
         template.preparation3,
         'none', // 복제 시 주기는 없음으로 설정
         [],
-        1
+        1,
+        template.category, // 카테고리 복사
+        false // 복제 시 즐겨찾기는 해제
       );
 
       // Optimistic UI 업데이트: 즉시 목록에 추가
@@ -201,6 +240,32 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
               {filteredTemplates.length}개의 템플릿
               {searchQuery && ` (전체 ${templates.length}개 중)`}
             </div>
+
+            {/* 필터 버튼 */}
+            <div className="templates-filters">
+              {/* 즐겨찾기 토글 */}
+              <button
+                className={`filter-btn ${showFavoritesOnly ? 'active' : ''}`}
+                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                title="즐겨찾기만 표시"
+              >
+                {showFavoritesOnly ? '⭐ 즐겨찾기' : '☆ 즐겨찾기'}
+              </button>
+
+              {/* 카테고리 필터 */}
+              <select
+                className="category-filter-select"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+              >
+                <option value="all">전체 카테고리</option>
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
 
@@ -228,11 +293,25 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
             <div className="templates-grid">
               {filteredTemplates.map(template => (
                 <div key={template.id} className="template-card">
+                  {/* 즐겨찾기 버튼 */}
+                  <button
+                    className={`btn-favorite-card ${template.isFavorite ? 'active' : ''}`}
+                    onClick={() => handleToggleFavorite(template)}
+                    title={template.isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+                  >
+                    {template.isFavorite ? '⭐' : '☆'}
+                  </button>
+
                   {/* 카드 헤더 */}
                   <div className="template-card-header">
                     <div className="template-card-title">
                       <h3>{template.text}</h3>
                       <div className="template-card-badges">
+                        {template.category && (
+                          <span className="template-card-badge badge-category" title={`카테고리: ${template.category}`}>
+                            🏷️ {template.category}
+                          </span>
+                        )}
                         {template.autoGenerate && template.recurrenceType === 'daily' && (
                           <span className="template-card-badge badge-daily" title="매일 자동 생성">
                             🔄 매일
@@ -251,6 +330,31 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
                       </div>
                     </div>
                   </div>
+
+                  {/* 호버 미리보기 툴팁 */}
+                  {(template.preparation1 || template.preparation2 || template.preparation3) && (
+                    <div className="template-card-tooltip">
+                      <div className="tooltip-header">💡 템플릿 준비사항</div>
+                      {template.preparation1 && (
+                        <div className="tooltip-item">
+                          <span className="tooltip-label">⚠️ 방해물 #1:</span>
+                          <span>{template.preparation1}</span>
+                        </div>
+                      )}
+                      {template.preparation2 && (
+                        <div className="tooltip-item">
+                          <span className="tooltip-label">⚠️ 방해물 #2:</span>
+                          <span>{template.preparation2}</span>
+                        </div>
+                      )}
+                      {template.preparation3 && (
+                        <div className="tooltip-item">
+                          <span className="tooltip-label">✅ 대처 전략:</span>
+                          <span>{template.preparation3}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* 카드 바디 */}
                   <div className="template-card-body">

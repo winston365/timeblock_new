@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 import type { Template, Resistance, TimeBlockId, RecurrenceType } from '@/shared/types/domain';
 import { createTemplate, updateTemplate } from '@/data/repositories';
 import { TIME_BLOCKS, RESISTANCE_LABELS } from '@/shared/types/domain';
+import { getTemplateCategories, addTemplateCategory } from '@/data/repositories/settingsRepository';
 import './template.css';
 
 interface TemplateModalProps {
@@ -44,7 +45,22 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const [preparation1, setPreparation1] = useState('');
   const [preparation2, setPreparation2] = useState('');
   const [preparation3, setPreparation3] = useState('');
+  const [category, setCategory] = useState('');
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [newCategory, setNewCategory] = useState('');
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // 카테고리 목록 로드
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    const cats = await getTemplateCategories();
+    setCategories(cats);
+  };
 
   // 편집 모드일 경우 초기값 설정
   useEffect(() => {
@@ -61,6 +77,8 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
       setPreparation1(template.preparation1 || '');
       setPreparation2(template.preparation2 || '');
       setPreparation3(template.preparation3 || '');
+      setCategory(template.category || '');
+      setIsFavorite(template.isFavorite || false);
     }
   }, [template]);
 
@@ -114,6 +132,8 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           preparation1: preparation1.trim(),
           preparation2: preparation2.trim(),
           preparation3: preparation3.trim(),
+          category: category.trim(),
+          isFavorite,
         });
       } else {
         // 신규 생성
@@ -130,7 +150,9 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           preparation3.trim(),
           recurrenceType,
           weeklyDays,
-          intervalDays
+          intervalDays,
+          category.trim(),
+          isFavorite
         );
       }
 
@@ -156,6 +178,21 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const handlePrevious = () => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleAddNewCategory = async () => {
+    if (!newCategory.trim()) return;
+
+    try {
+      await addTemplateCategory(newCategory.trim());
+      await loadCategories();
+      setCategory(newCategory.trim());
+      setNewCategory('');
+      setShowNewCategoryInput(false);
+    } catch (error) {
+      console.error('Failed to add category:', error);
+      alert('카테고리 추가에 실패했습니다.');
     }
   };
 
@@ -282,6 +319,80 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                {/* 카테고리 */}
+                <div className="form-group">
+                  <label htmlFor="template-category">카테고리 (선택)</label>
+                  <select
+                    id="template-category"
+                    value={category}
+                    onChange={e => {
+                      const value = e.target.value;
+                      if (value === '__new__') {
+                        setShowNewCategoryInput(true);
+                      } else {
+                        setCategory(value);
+                      }
+                    }}
+                  >
+                    <option value="">카테고리 없음</option>
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                    <option value="__new__">+ 새 카테고리 추가</option>
+                  </select>
+                </div>
+
+                {/* 새 카테고리 입력 */}
+                {showNewCategoryInput && (
+                  <div className="form-group new-category-group">
+                    <label htmlFor="new-category">새 카테고리 이름</label>
+                    <div className="new-category-input-wrapper">
+                      <input
+                        id="new-category"
+                        type="text"
+                        value={newCategory}
+                        onChange={e => setNewCategory(e.target.value)}
+                        placeholder="예: 운동, 독서, 업무..."
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        className="btn-add-category"
+                        onClick={handleAddNewCategory}
+                      >
+                        추가
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-cancel-category"
+                        onClick={() => {
+                          setShowNewCategoryInput(false);
+                          setNewCategory('');
+                        }}
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 즐겨찾기 */}
+                <div className="form-group form-group-checkbox">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={isFavorite}
+                      onChange={e => setIsFavorite(e.target.checked)}
+                    />
+                    <span>⭐ 즐겨찾기에 추가</span>
+                  </label>
+                  <p className="form-hint">
+                    즐겨찾는 템플릿을 빠르게 찾을 수 있습니다.
+                  </p>
                 </div>
               </div>
             )}

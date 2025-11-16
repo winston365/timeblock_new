@@ -32,6 +32,7 @@ export function createInitialSettings(): Settings {
     autoMessageInterval: DEFAULT_AUTO_MESSAGE_INTERVAL,
     autoMessageEnabled: true,
     waifuMode: 'characteristic', // 기본값: 특성 모드
+    templateCategories: ['업무', '건강', '공부', '취미'], // 기본 카테고리
   };
 }
 
@@ -51,11 +52,23 @@ export async function loadSettings(): Promise<Settings> {
     const data = await db.settings.get('current');
 
     if (data) {
-      // 기존 사용자를 위한 마이그레이션: waifuMode가 없으면 기본값 설정
+      // 기존 사용자를 위한 마이그레이션
+      let needsSave = false;
+
       if (!data.waifuMode) {
         data.waifuMode = 'characteristic';
+        needsSave = true;
+      }
+
+      if (!data.templateCategories) {
+        data.templateCategories = ['업무', '건강', '공부', '취미'];
+        needsSave = true;
+      }
+
+      if (needsSave) {
         await saveSettings(data);
       }
+
       return data;
     }
 
@@ -172,4 +185,61 @@ export async function updateAutoMessageSettings(enabled: boolean, interval?: num
     updates.autoMessageInterval = interval;
   }
   await updateSettings(updates);
+}
+
+// ============================================================================
+// Template Category Management
+// ============================================================================
+
+/**
+ * 템플릿 카테고리 목록 가져오기
+ *
+ * @returns {Promise<string[]>} 카테고리 목록
+ * @throws 없음
+ * @sideEffects
+ *   - loadSettings 호출
+ */
+export async function getTemplateCategories(): Promise<string[]> {
+  const settings = await loadSettings();
+  return settings.templateCategories || [];
+}
+
+/**
+ * 템플릿 카테고리 추가
+ *
+ * @param {string} category - 추가할 카테고리 이름
+ * @returns {Promise<string[]>} 업데이트된 카테고리 목록
+ * @throws {Error} 설정 업데이트 실패 시
+ * @sideEffects
+ *   - updateSettings 호출하여 카테고리 추가
+ */
+export async function addTemplateCategory(category: string): Promise<string[]> {
+  const settings = await loadSettings();
+  const categories = settings.templateCategories || [];
+
+  // 중복 체크
+  if (!categories.includes(category)) {
+    categories.push(category);
+    await updateSettings({ templateCategories: categories });
+  }
+
+  return categories;
+}
+
+/**
+ * 템플릿 카테고리 삭제
+ *
+ * @param {string} category - 삭제할 카테고리 이름
+ * @returns {Promise<string[]>} 업데이트된 카테고리 목록
+ * @throws {Error} 설정 업데이트 실패 시
+ * @sideEffects
+ *   - updateSettings 호출하여 카테고리 삭제
+ */
+export async function removeTemplateCategory(category: string): Promise<string[]> {
+  const settings = await loadSettings();
+  const categories = settings.templateCategories || [];
+  const updatedCategories = categories.filter(c => c !== category);
+
+  await updateSettings({ templateCategories: updatedCategories });
+  return updatedCategories;
 }
