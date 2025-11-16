@@ -97,71 +97,99 @@ async function collectXPData(gameState: any): Promise<XPDataPoint[]> {
 }
 
 /**
- * AI 인사이트 생성 프롬프트 - 종합 분석 모드
+ * 통합 데이터 컨텍스트 생성
+ * - 모든 모드에서 동일한 데이터 제공
+ * - 가장 다양하고 많은 정보 포함
  */
-function generateComprehensivePrompt(
-  personaPrompt: string,
-  data: {
-    completedTasksData: CompletedTaskData[];
-    xpData: XPDataPoint[];
-    todayData: DailyData | null;
-    currentTime: string;
-    currentBlock: string;
-    inboxTasks: Task[];
-    currentEnergy: number;
-    availableXP: number;
-  }
-): string {
+function generateUnifiedContext(data: {
+  completedTasksData: CompletedTaskData[];
+  xpData: XPDataPoint[];
+  todayData: DailyData | null;
+  currentTime: string;
+  currentBlock: string;
+  currentBlockId: string | null;
+  inboxTasks: Task[];
+  currentEnergy: number;
+  availableXP: number;
+  dailyXP: number;
+  minutesLeftInBlock: number;
+}): string {
   const {
     completedTasksData,
     xpData,
     todayData,
     currentTime,
     currentBlock,
+    currentBlockId,
     inboxTasks,
     currentEnergy,
     availableXP,
+    dailyXP,
+    minutesLeftInBlock,
   } = data;
 
-  return `${personaPrompt}
+  // 현재 타임블럭 미완료 작업
+  const currentBlockTasks = todayData?.tasks.filter(t => !t.completed && t.timeBlock === currentBlockId) ?? [];
+  const completedToday = todayData?.tasks.filter(t => t.completed) ?? [];
+  const remainingToday = todayData?.tasks.filter(t => !t.completed && t.timeBlock) ?? [];
 
-## 📊 추가 데이터 (과거 10일)
+  return `
+## 📊 현재 상황 (통합 데이터)
 
-### 오늘 진행 상황
-- 완료한 작업: ${todayData?.tasks.filter(t => t.completed).length ?? 0}개
-- 남은 작업: ${todayData?.tasks.filter(t => !t.completed && t.timeBlock).length ?? 0}개
-- 인박스 작업: ${inboxTasks.length}개
+### 🕐 시간 정보
+- **현재 시간**: ${currentTime}
+- **현재 블록**: ${currentBlock}
+- **블록 남은 시간**: ${Math.floor(minutesLeftInBlock / 60)}시간 ${minutesLeftInBlock % 60}분
+- **현재 에너지**: ${currentEnergy}
 
-${(todayData?.tasks.filter(t => t.completed).length ?? 0) > 0 ? `
+### 📈 XP 및 호감도
+- **보유 XP**: ${availableXP} / ${AFFECTION_XP_TARGET} (호감도 ${Math.min(Math.round((availableXP / AFFECTION_XP_TARGET) * 100), 100)}%)
+- **오늘 획득 XP**: ${dailyXP}
+
+### ✅ 오늘 진행 상황
+- **완료한 작업**: ${completedToday.length}개
+- **남은 작업**: ${remainingToday.length}개
+- **인박스 작업**: ${inboxTasks.length}개
+
+${completedToday.length > 0 ? `
 #### 오늘 완료한 작업
 ${TIME_BLOCKS.map(block => {
-  const blockTasks = todayData?.tasks.filter(t => t.completed && t.timeBlock === block.id) ?? [];
+  const blockTasks = completedToday.filter(t => t.timeBlock === block.id);
   if (blockTasks.length === 0) return '';
   return `- ${block.label}: ${blockTasks.map(t => t.text).join(', ')}`;
 }).filter(Boolean).join('\n')}
 ` : ''}
 
-${(todayData?.tasks.filter(t => !t.completed && t.timeBlock === currentBlock).length ?? 0) > 0 ? `
-#### 현재 시간대 미완료 작업
-${todayData?.tasks.filter(t => !t.completed && t.timeBlock === currentBlock).map(t => `- ${t.text} (${t.baseDuration}분, ${t.resistance})`).join('\n')}
-` : ''}
+### 📋 현재 타임블록 미완료 작업
+${currentBlockTasks.length > 0 ? currentBlockTasks.map(t =>
+  `- ${t.text} (${t.baseDuration}분, ${t.resistance === 'low' ? '쉬움' : t.resistance === 'medium' ? '보통' : '어려움'})`
+).join('\n') : '현재 블록에 미완료 작업 없음'}
 
-${inboxTasks.length > 0 ? `
-#### 인박스 작업 (계획 필요)
-${inboxTasks.slice(0, 5).map(t => `- ${t.text} (${t.baseDuration}분, ${t.resistance})`).join('\n')}
-${inboxTasks.length > 5 ? `... 외 ${inboxTasks.length - 5}개` : ''}
-` : ''}
+### 📥 인박스 작업 (계획 필요)
+${inboxTasks.length > 0 ? inboxTasks.map(t =>
+  `- ${t.text} (${t.baseDuration}분, ${t.resistance === 'low' ? '쉬움' : t.resistance === 'medium' ? '보통' : '어려움'})`
+).join('\n') : '인박스 작업 없음'}
 
-### 과거 10일 완료 작업 패턴
+### 📊 과거 10일 완료 작업 패턴
 ${completedTasksData.length > 0 ? completedTasksData.slice(-20).map(d =>
   `- ${d.date} ${d.timeBlock}: ${d.tasks.length}개 완료 (총 ${d.tasks.reduce((sum, t) => sum + t.xp, 0)} XP)`
 ).join('\n') : '아직 데이터 없음'}
 
-### 과거 10일 XP 획득 추이
+### 📈 과거 10일 XP 획득 추이
 ${xpData.length > 0 ? xpData.map(d =>
   `- ${d.date}: ${d.dailyXP} XP`
 ).join('\n') : '아직 데이터 없음'}
+`;
+}
 
+/**
+ * 모드별 출력 지시사항
+ * - 톤/스타일은 personaPrompt에 이미 포함되어 있으므로 제외
+ * - 출력 형식만 지정
+ */
+function getModeInstruction(mode: InsightMode): string {
+  if (mode === 'comprehensive') {
+    return `
 ---
 
 ## 💡 오늘의 인사이트 작성 (종합 분석)
@@ -169,108 +197,45 @@ ${xpData.length > 0 ? xpData.map(d =>
 위 데이터를 기반으로 **오늘의 인사이트**를 작성해줘. 다음 요구사항을 따라줘:
 
 ### 🔍 분석 시 고려사항
+1. **에너지 레벨 고려**
+   - 에너지 높음(70+): 어려운 작업, 집중 필요 작업 추천
+   - 에너지 중간(40-70): 중요도 높은 작업, 계획된 작업 추천
+   - 에너지 낮음(0-40): 간단한 작업, 정리 작업, 휴식 추천
 
-#### 1️⃣ 에너지 레벨 고려
-- **현재 에너지**: ${currentEnergy}
-- 에너지 높음(70+): 어려운 작업, 집중 필요 작업 추천
-- 에너지 중간(40-70): 중요도 높은 작업, 계획된 작업 추천
-- 에너지 낮음(0-40): 간단한 작업, 정리 작업, 휴식 추천
+2. **시간대별 맥락 고려**
+   - 새벽(0-6시): 충분한 휴식 권장, 내일 계획 준비
+   - 오전(6-12시): 집중력 높은 시간, 중요 작업 우선
+   - 오후(12-18시): 점심 후 에너지 관리, 협업 작업 적합
+   - 저녁(18-21시): 마무리 작업, 내일 준비, 회고
+   - 밤(21시 이후): 취침 준비, 충분한 수면으로 내일을 준비
 
-#### 2️⃣ 시간대별 맥락 고려
-- **현재 시간**: ${currentTime}
-- **현재 블록**: ${currentBlock}
-- **권장 수면 시간**: 21시 취침 준비, 06시 기상 (충분한 휴식으로 생산성 향상)
-- 새벽(0-6시): 충분한 휴식 권장, 내일 계획 준비
-- 오전(6-12시): 집중력 높은 시간, 중요 작업 우선
-- 오후(12-18시): 점심 후 에너지 관리, 협업 작업 적합
-- 저녁(18-21시): 마무리 작업, 내일 준비, 회고
-- 밤(21시 이후): 취침 준비, 충분한 수면으로 내일을 준비
+3. **작업 목록 분석**
+   - 현재 블록 미완료 작업 우선 확인
+   - 인박스 작업 중 긴급/중요 작업 식별
+   - 저항도(resistance) 고려한 순서 제안
+   - 남은 시간 대비 완료 가능성 평가
 
-#### 3️⃣ 작업 목록 분석
-- 현재 블록 미완료 작업 우선 확인
-- 인박스 작업 중 긴급/중요 작업 식별
-- 저항도(resistance) 고려한 순서 제안
-- 남은 시간 대비 완료 가능성 평가
-
-#### 4️⃣ 목표 및 계획 평가
-- **XP 목표**: 보유 XP ${availableXP}/${AFFECTION_XP_TARGET} (호감도 ${Math.min(Math.round((availableXP / AFFECTION_XP_TARGET) * 100), 100)}%)
-- 잠긴 블록 수 → 계획 실행력 평가
-- 과거 패턴과 오늘 비교 → 개선점 제시
+4. **목표 및 계획 평가**
+   - 잠긴 블록 수 → 계획 실행력 평가
+   - 과거 패턴과 오늘 비교 → 개선점 제시
 
 ### 📝 형식 요구사항
-- **마크다운 형식** 사용 (제목, 굵게, 리스트 등)
-- **구조화된 형식**:
+- **마크다운 형식** 사용
+- **구조**:
   1. **## 🎯 오늘의 패턴 분석** - 과거 데이터 + 시간대/에너지 고려 (2-3줄)
   2. **## 💪 지금 할 일** - 현재 상황 최적화된 구체적 작업 추천 (1-2개, 이유 포함)
   3. **## ✨ 동기부여** - 진행도 인정 + 격려 (1-2줄)
-
-### 💬 톤 & 스타일
-- 친근한 반말체
-- 이모지 적절히 사용
-- **구체적이고 실용적인 조언** (추상적인 말 지양)
-- 현재 상황에 맞는 맞춤형 제안
 
 ### 📏 길이
 - **총 300-500자**
 - 각 섹션마다 충분히 설명
 
-위 형식으로 **현재 상황에 맞춤화된** 인사이트를 마크다운으로 작성해줘!`;
-}
-
-/**
- * AI 인사이트 생성 프롬프트 - 추천 작업 모드
- */
-function generateTasksPrompt(
-  personaPrompt: string,
-  data: {
-    todayData: DailyData | null;
-    currentTime: string;
-    currentBlock: string;
-    currentBlockId: string | null;
-    inboxTasks: Task[];
-    currentEnergy: number;
+위 형식으로 **현재 상황에 맞춤화된** 인사이트를 마크다운으로 작성해줘!
+`;
   }
-): string {
-  const {
-    todayData,
-    currentTime,
-    currentBlock,
-    currentBlockId,
-    inboxTasks,
-    currentEnergy,
-  } = data;
 
-  // 현재 타임블럭의 미완료 작업
-  const currentBlockTasks = todayData?.tasks.filter(t => !t.completed && t.timeBlock === currentBlockId) ?? [];
-
-  // 현재 시간 기준 블록 종료까지 남은 시간 계산
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  const currentBlockInfo = TIME_BLOCKS.find(block => block.id === currentBlockId);
-  const blockEndHour = currentBlockInfo?.end ?? 24;
-  const minutesLeftInBlock = (blockEndHour - currentHour) * 60 - currentMinute;
-
-  return `${personaPrompt}
-
-## 📋 작업 추천 요청
-
-### 현재 상황
-- **현재 시간**: ${currentTime}
-- **현재 블록**: ${currentBlock}
-- **블록 남은 시간**: ${Math.floor(minutesLeftInBlock / 60)}시간 ${minutesLeftInBlock % 60}분
-- **현재 에너지**: ${currentEnergy}
-
-### 현재 타임블록 미완료 작업
-${currentBlockTasks.length > 0 ? currentBlockTasks.map(t =>
-  `- ${t.text} (${t.baseDuration}분, ${t.resistance === 'low' ? '쉬움' : t.resistance === 'medium' ? '보통' : '어려움'})`
-).join('\n') : '현재 블록에 미완료 작업 없음'}
-
-### 인박스 작업 (계획 필요)
-${inboxTasks.length > 0 ? inboxTasks.map(t =>
-  `- ${t.text} (${t.baseDuration}분, ${t.resistance === 'low' ? '쉬움' : t.resistance === 'medium' ? '보통' : '어려움'})`
-).join('\n') : '인박스 작업 없음'}
-
+  if (mode === 'tasks') {
+    return `
 ---
 
 ## ✅ 지금 할 작업 추천
@@ -279,7 +244,7 @@ ${inboxTasks.length > 0 ? inboxTasks.map(t =>
 
 ### 📋 추천 규칙
 1. **현재 타임블럭 미완료 작업 우선**: 계획된 작업을 먼저 처리
-2. **남은 시간 체크**: 블록에 남은 시간(${minutesLeftInBlock}분)을 고려
+2. **남은 시간 체크**: 블록 남은 시간을 고려
 3. **난이도 분할**: 작업이 '보통' 또는 '어려움'이고 30분 이상이면 → 쉬운 단계로 나눠서 제안
    - 예: "프로젝트 기획서 작성 (60분, 어려움)" → "1단계: 목차 구성 (15분), 2단계: 배경 조사 (15분), 3단계: 초안 작성 (30분)"
 4. **에너지 고려**:
@@ -294,61 +259,15 @@ ${inboxTasks.length > 0 ? inboxTasks.map(t =>
   2. **## 👍 다음 할 일 (우선순위 2)** - 두 번째 작업, 이유 설명
   3. **(선택) 분할 제안**: 작업이 어렵거나 길면 구체적인 단계별 분할 제안
 
-### 💬 톤 & 스타일
-- 친근한 반말체
-- 이모지 적절히 사용
-- **구체적이고 실행 가능한 조언**
-
 ### 📏 길이
 - **총 200-400자**
 
-위 형식으로 **지금 할 작업**을 추천해줘!`;
-}
-
-/**
- * AI 인사이트 생성 프롬프트 - 동기부여 모드
- */
-function generateMotivationPrompt(
-  personaPrompt: string,
-  data: {
-    completedTasksData: CompletedTaskData[];
-    xpData: XPDataPoint[];
-    todayData: DailyData | null;
-    availableXP: number;
-    dailyXP: number;
+위 형식으로 **지금 할 작업**을 추천해줘!
+`;
   }
-): string {
-  const {
-    completedTasksData,
-    xpData,
-    todayData,
-    availableXP,
-    dailyXP,
-  } = data;
 
-  return `${personaPrompt}
-
-## 🎉 동기부여 요청
-
-### 오늘 진행 상황
-- **완료한 작업**: ${todayData?.tasks.filter(t => t.completed).length ?? 0}개
-- **오늘 획득 XP**: ${dailyXP} XP
-- **보유 XP**: ${availableXP} XP (호감도 ${Math.min(Math.round((availableXP / AFFECTION_XP_TARGET) * 100), 100)}%)
-
-${(todayData?.tasks.filter(t => t.completed).length ?? 0) > 0 ? `
-### 오늘 완료한 작업
-${todayData?.tasks.filter(t => t.completed).map(t => `- ${t.text}`).join('\n')}
-` : ''}
-
-### 과거 10일 XP 획득 추이
-${xpData.length > 0 ? xpData.map(d =>
-  `- ${d.date}: ${d.dailyXP} XP`
-).join('\n') : '아직 데이터 없음'}
-
-### 과거 10일 완료 작업 요약
-- 총 ${completedTasksData.reduce((sum, d) => sum + d.tasks.length, 0)}개 작업 완료
-- 총 ${completedTasksData.reduce((sum, d) => sum + d.tasks.reduce((s, t) => s + t.xp, 0), 0)} XP 획득
-
+  // motivation
+  return `
 ---
 
 ## 💪 동기부여 메시지 작성
@@ -362,16 +281,15 @@ ${xpData.length > 0 ? xpData.map(d =>
   2. **## 🎯 목표까지** - 호감도 목표(100%) 달성까지 필요한 XP, 현재 진행률 격려 (1-2줄)
   3. **## 💪 계속 가자!** - 응원 메시지 (1줄)
 
-### 💬 톤 & 스타일
-- **매우 친근하고 따뜻한 반말체**
-- 이모지 적극 사용
+### 💬 강조사항
 - **구체적인 숫자를 언급**하며 성취감 강조
 - 긍정적이고 힘이 나는 메시지
 
 ### 📏 길이
 - **총 150-300자**
 
-위 형식으로 **동기부여 메시지**를 작성해줘!`;
+위 형식으로 **동기부여 메시지**를 작성해줘!
+`;
 }
 
 /**
@@ -444,13 +362,20 @@ export default function InsightPanel() {
     setError(null);
 
     try {
-      // 데이터 수집
+      // 데이터 수집 (1회만)
       const completedTasksData = await collectCompletedTasksData();
       const xpData = await collectXPData(gameState);
 
       const now = new Date();
       const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
       const currentBlock = TIME_BLOCKS.find(b => currentHour >= b.start && currentHour < b.end);
+      const currentBlockId = currentBlock?.id ?? null;
+      const currentBlockLabel = currentBlock?.label ?? '블록 외 시간';
+
+      // 블록 남은 시간 계산
+      const blockEndHour = currentBlock?.end ?? 24;
+      const minutesLeftInBlock = (blockEndHour - currentHour) * 60 - currentMinute;
 
       const tasks: Task[] = dailyData?.tasks ?? [];
       const inboxTasks = tasks.filter((t: Task) => !t.timeBlock && !t.completed);
@@ -458,38 +383,26 @@ export default function InsightPanel() {
       // 페르소나 프롬프트 생성 (usePersonaContext 훅 사용)
       const personaPrompt = generateWaifuPersona(personaContext);
 
-      // 모드별 프롬프트 생성
-      let prompt: string;
+      // 통합 데이터 컨텍스트 생성 (모든 데이터 포함)
+      const unifiedContext = generateUnifiedContext({
+        completedTasksData,
+        xpData,
+        todayData: dailyData,
+        currentTime: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+        currentBlock: currentBlockLabel,
+        currentBlockId,
+        inboxTasks,
+        currentEnergy: currentEnergy ?? 0,
+        availableXP: gameState?.availableXP ?? 0,
+        dailyXP: gameState?.dailyXP ?? 0,
+        minutesLeftInBlock,
+      });
 
-      if (insightMode === 'comprehensive') {
-        prompt = generateComprehensivePrompt(personaPrompt, {
-          completedTasksData,
-          xpData,
-          todayData: dailyData,
-          currentTime: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-          currentBlock: currentBlock?.label ?? '블록 외 시간',
-          inboxTasks,
-          currentEnergy: currentEnergy ?? 0,
-          availableXP: gameState?.availableXP ?? 0,
-        });
-      } else if (insightMode === 'tasks') {
-        prompt = generateTasksPrompt(personaPrompt, {
-          todayData: dailyData,
-          currentTime: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-          currentBlock: currentBlock?.label ?? '블록 외 시간',
-          currentBlockId: currentBlock?.id ?? null,
-          inboxTasks,
-          currentEnergy: currentEnergy ?? 0,
-        });
-      } else {
-        prompt = generateMotivationPrompt(personaPrompt, {
-          completedTasksData,
-          xpData,
-          todayData: dailyData,
-          availableXP: gameState?.availableXP ?? 0,
-          dailyXP: gameState?.dailyXP ?? 0,
-        });
-      }
+      // 모드별 출력 지시사항 (간결함, 톤/스타일 없음)
+      const modeInstruction = getModeInstruction(insightMode);
+
+      // 최종 프롬프트: personaPrompt + 통합 컨텍스트 + 모드별 지시사항
+      const prompt = `${personaPrompt}\n\n${unifiedContext}\n\n${modeInstruction}`;
 
       // AI 호출
       const { text, tokenUsage } = await callGeminiAPI(prompt, [], settings.geminiApiKey);
