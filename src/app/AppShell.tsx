@@ -35,6 +35,7 @@ import GeminiFullscreenChat from '@/features/gemini/GeminiFullscreenChat';
 import BulkAddModal from '@/features/tasks/BulkAddModal';
 import SettingsModal from '@/features/settings/SettingsModal';
 import InsightPanel from '@/features/insight/InsightPanel';
+import TemplatesModal from '@/features/template/TemplatesModal';
 
 /**
  * 앱 셸 컴포넌트 - 전체 앱 레이아웃 및 초기화
@@ -43,10 +44,11 @@ import InsightPanel from '@/features/insight/InsightPanel';
 export default function AppShell() {
   const [dbInitialized, setDbInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<'today' | 'stats' | 'energy' | 'completed' | 'inbox'>('today');
-  const [rightPanelTab, setRightPanelTab] = useState<'quest' | 'template' | 'shop'>('quest');
+  const [rightPanelTab, setRightPanelTab] = useState<'quest' | 'shop'>('quest');
   const [showGeminiChat, setShowGeminiChat] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   const { gameState, updateQuestProgress } = useGameState();
   const { toasts, removeToast } = useXPToastStore();
@@ -283,6 +285,7 @@ export default function AppShell() {
       <TopToolbar
         gameState={gameState}
         onOpenGeminiChat={() => setShowGeminiChat(true)}
+        onOpenTemplates={() => setShowTemplates(true)}
       />
 
       {/* 메인 레이아웃 */}
@@ -306,7 +309,6 @@ export default function AppShell() {
         <RightPanel
           activeTab={rightPanelTab}
           onTabChange={setRightPanelTab}
-          onTaskCreateFromTemplate={handleTaskCreateFromTemplate}
           onShopPurchaseSuccess={handleShopPurchaseSuccess}
         />
       </main>
@@ -339,6 +341,13 @@ export default function AppShell() {
       <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
+      />
+
+      {/* 템플릿 모달 */}
+      <TemplatesModal
+        isOpen={showTemplates}
+        onClose={() => setShowTemplates(false)}
+        onTaskCreate={handleTaskCreateFromTemplate}
       />
 
       {/* 설정 아이콘 (오른쪽 아래) */}

@@ -12,10 +12,12 @@ import { useEnergyState } from '@/shared/hooks';
 import { useWaifuState } from '@/shared/hooks';
 import { getAffectionColor } from '@/features/waifu/waifuImageUtils';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
+import { getDialogueFromAffection } from '@/data/repositories/waifuRepository';
 
 interface TopToolbarProps {
   gameState: GameState | null;
   onOpenGeminiChat?: () => void;
+  onOpenTemplates?: () => void;
 }
 
 /**
@@ -23,14 +25,19 @@ interface TopToolbarProps {
  * @param props - TopToolbarProps
  * @returns 상단 툴바 UI
  */
-export default function TopToolbar({ gameState, onOpenGeminiChat }: TopToolbarProps) {
+export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplates }: TopToolbarProps) {
   const { currentEnergy } = useEnergyState();
   const { waifuState, currentMood } = useWaifuState();
   const { show } = useWaifuCompanionStore();
 
   const handleCallWaifu = () => {
-    // 와이푸를 10초간 표시
-    show('불렀어? 뭔데~');
+    // 호감도에 따른 대사 생성
+    if (waifuState) {
+      const dialogue = getDialogueFromAffection(waifuState.affection, waifuState.tasksCompletedToday);
+      show(dialogue);
+    } else {
+      show('뭔데~');
+    }
 
     // 10초 후 peeking으로 자동 전환 (show() 내부에서 3초로 설정되어 있으므로 타이머 재설정)
     setTimeout(() => {
@@ -89,6 +96,9 @@ export default function TopToolbar({ gameState, onOpenGeminiChat }: TopToolbarPr
       <div className="toolbar-actions">
         <button className="toolbar-btn" onClick={handleCallWaifu} title="와이푸 호출">
           👋 호출하기
+        </button>
+        <button className="toolbar-btn" onClick={onOpenTemplates} title="템플릿 관리">
+          📝 템플릿
         </button>
         <button className="toolbar-btn" onClick={onOpenGeminiChat} title="AI 대화">
           💬 AI 대화
