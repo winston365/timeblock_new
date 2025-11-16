@@ -6,6 +6,7 @@
  * @output 타이머 사용 여부 확인 UI
  */
 
+import './schedule.css';
 
 interface TimerConfirmModalProps {
   taskName: string;

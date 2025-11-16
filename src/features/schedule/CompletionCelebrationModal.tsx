@@ -10,6 +10,7 @@
  */
 
 import type { Task } from '@/shared/types/domain';
+import './schedule.css';
 
 interface CompletionCelebrationModalProps {
   task: Task;

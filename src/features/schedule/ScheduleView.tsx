@@ -18,6 +18,7 @@ import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import TimeBlock from './TimeBlock';
 import TaskModal from './TaskModal';
+import './schedule.css';
 
 /**
  * 타임블록 스케줄러 메인 화면
@@ -356,16 +357,16 @@ export default function ScheduleView() {
   // 첫 로딩 시에만 로딩 메시지 표시 (데이터 업데이트 시에는 UI 유지)
   if (loading && !dailyData) {
     return (
-      <div className="flex flex-col h-full p-lg">
-        <div className="flex justify-center items-center flex-1 text-text-secondary text-base">데이터 로딩 중...</div>
+      <div className="schedule-view">
+        <div className="loading-message">데이터 로딩 중...</div>
       </div>
     );
   }
 
   if (!dailyData) {
     return (
-      <div className="flex flex-col h-full p-lg">
-        <div className="flex justify-center items-center flex-1 text-danger text-base">데이터를 불러올 수 없습니다.</div>
+      <div className="schedule-view">
+        <div className="error-message">데이터를 불러올 수 없습니다.</div>
       </div>
     );
   }
@@ -378,27 +379,27 @@ export default function ScheduleView() {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex justify-between items-center p-lg border-b border-border bg-bg-surface">
-        <h2 className="text-xl font-bold text-text">📅 오늘의 타임블럭</h2>
-        <div className="flex gap-md items-center text-sm text-text-secondary">
+    <div className="schedule-view">
+      <div className="schedule-header">
+        <h2>📅 오늘의 타임블럭</h2>
+        <div className="schedule-stats">
           <span>전체 {dailyData.tasks.length}개</span>
           <span>완료 {dailyData.tasks.filter(t => t.completed).length}개</span>
         </div>
       </div>
 
-      <div className="relative flex flex-col gap-md p-lg overflow-y-auto" ref={scheduleRef}>
+      <div className="timeblocks-grid" ref={scheduleRef}>
         {/* 현재 시간 인디케이터 */}
         {indicatorPosition !== null && (
           <div
-            className="absolute left-0 right-0 z-50 flex items-center pointer-events-none"
+            className="global-time-indicator"
             style={{
               top: `${indicatorPosition}px`,
             }}
           >
-            <div className="flex-1 h-0.5 bg-primary shadow-lg shadow-primary/50" />
-            <div className="px-sm py-xs bg-primary text-white text-xs font-semibold rounded-full ml-sm shadow-md">
-              <span>{formatCurrentTime()}</span>
+            <div className="time-indicator-line" />
+            <div className="time-indicator-label">
+              <span className="time-text">{formatCurrentTime()}</span>
             </div>
           </div>
         )}

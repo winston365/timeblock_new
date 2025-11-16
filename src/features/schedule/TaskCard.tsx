@@ -181,31 +181,26 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   return (
     <>
       <div
-        className={`
-          flex gap-sm p-sm bg-bg-base border rounded-md transition-all cursor-move
-          ${task.completed ? 'opacity-60 line-through' : ''}
-          ${isDragging ? 'opacity-50 scale-95' : 'hover:shadow-sm hover:border-primary/50'}
-          ${isPrepared ? 'border-l-4 border-l-reward' : 'border-border'}
-        `}
+        className={`task-card ${task.completed ? 'completed' : ''} ${isDragging ? 'dragging' : ''} ${isPrepared ? 'prepared' : ''}`}
         draggable="true"
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDoubleClick={onEdit}
       >
-      <div className="flex gap-sm flex-1 items-start">
+      <div className="task-main">
         <button
-          className="flex-shrink-0 w-6 h-6 text-lg bg-transparent border-none cursor-pointer transition-transform hover:scale-110"
+          className="task-checkbox"
           onClick={handleToggleClick}
           aria-label={task.completed ? '완료 취소' : '완료'}
         >
           {task.completed ? '✅' : '⬜'}
         </button>
 
-        <div className="flex-1 min-w-0" onClick={() => task.memo && !isEditingText && setShowMemo(!showMemo)}>
+        <div className="task-details" onClick={() => task.memo && !isEditingText && setShowMemo(!showMemo)}>
           {/* 작업명과 아이콘을 같은 행에 배치 */}
-          <div className="flex justify-between items-start gap-sm mb-xs">
-            <div className="flex-1 text-sm font-medium text-text break-words">
-              {isPrepared && <span className="mr-1" title="완벽하게 준비된 작업">⭐</span>}
+          <div className="task-header-row">
+            <div className="task-text">
+              {isPrepared && <span className="prepared-icon" title="완벽하게 준비된 작업">⭐</span>}
               {isEditingText ? (
                 <input
                   type="text"
@@ -214,26 +209,22 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
                   onBlur={handleTextSave}
                   onKeyDown={handleTextKeyDown}
                   autoFocus
-                  className="w-full px-sm py-xs border border-primary rounded bg-bg-base text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="task-text-input"
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (
-                <span onClick={handleTextClick} className="cursor-pointer hover:text-primary transition-colors" title="클릭하여 수정">
+                <span onClick={handleTextClick} style={{ cursor: 'pointer' }} title="클릭하여 수정">
                   {task.text}
                 </span>
               )}
             </div>
 
-            <div className="flex items-center gap-xs flex-shrink-0 flex-wrap">
+            <div className="task-inline-badges">
               {/* 심리적부담감 - 클릭 가능 (hideMetadata가 false일 때만 표시) */}
               {!hideMetadata && (
-                <div className="relative">
+                <div className="task-meta-item">
                   <button
-                    className={`
-                      px-1.5 py-0.5 rounded text-2xs font-semibold cursor-pointer transition-all hover:scale-105
-                      ${task.resistance === 'low' ? 'bg-success/20 text-success' :
-                        task.resistance === 'medium' ? 'bg-warning/20 text-warning' : 'bg-danger/20 text-danger'}
-                    `}
+                    className={`resistance-badge ${task.resistance} clickable`}
                     onClick={() => setShowResistancePicker(!showResistancePicker)}
                     title="클릭하여 변경"
                   >
@@ -241,7 +232,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
                   </button>
 
                   {showResistancePicker && (
-                    <div className="picker-dropdown">
+                    <div className="picker-dropdown resistance-picker">
                       <button onClick={() => handleResistanceChange('low')}>🟢 쉬움</button>
                       <button onClick={() => handleResistanceChange('medium')}>🟡 보통</button>
                       <button onClick={() => handleResistanceChange('high')}>🔴 어려움</button>
@@ -251,9 +242,9 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
               )}
 
               {/* 소요시간 - 클릭 가능 */}
-              <div className="relative">
+              <div className="task-meta-item">
                 <button
-                  className="px-1.5 py-0.5 bg-bg-elevated text-text-secondary rounded text-2xs font-semibold cursor-pointer transition-all hover:bg-bg-interactive hover:scale-105"
+                  className="duration-badge clickable"
                   onClick={() => setShowDurationPicker(!showDurationPicker)}
                   title="클릭하여 변경"
                 >
@@ -261,7 +252,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
                 </button>
 
                 {showDurationPicker && (
-                  <div className="picker-dropdown">
+                  <div className="picker-dropdown duration-picker">
                     {durationOptions.map(duration => (
                       <button key={duration} onClick={() => handleDurationChange(duration)}>
                         {duration}분
@@ -273,17 +264,17 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
 
               {/* XP 범위 (hideMetadata가 false일 때만 표시) */}
               {!hideMetadata && (
-                <span className="px-1.5 py-0.5 bg-primary/20 text-primary rounded text-2xs font-semibold">~{xp} XP</span>
+                <span className="xp-badge">~{xp} XP</span>
               )}
 
               {/* 메모 아이콘 */}
               {task.memo && (
-                <span className="text-base" title="메모 있음">📝</span>
+                <span className="memo-indicator" title="메모 있음">📝</span>
               )}
 
               {/* 삭제 버튼 */}
               <button
-                className="text-base text-text-tertiary hover:text-danger transition-colors cursor-pointer bg-transparent border-none"
+                className="task-delete-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete();
@@ -299,7 +290,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
           {/* 메모는 아래에 (클릭 시 표시) */}
           {task.memo && showMemo && (
             <div
-              className="mt-xs p-sm bg-bg-surface border border-border rounded text-xs text-text-secondary leading-relaxed"
+              className="task-memo"
               onClick={(e) => e.stopPropagation()}
               dangerouslySetInnerHTML={{ __html: `📝 ${linkifyText(task.memo)}` }}
             />

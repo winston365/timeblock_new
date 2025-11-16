@@ -17,6 +17,7 @@ import { useGameState } from '@/shared/hooks/useGameState';
 import type { Task } from '@/shared/types/domain';
 import TaskCard from '@/features/schedule/TaskCard';
 import TaskModal from '@/features/schedule/TaskModal';
+import './tasks.css';
 
 /**
  * 인박스 탭 컴포넌트
@@ -135,40 +136,31 @@ export default function InboxTab() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center p-xl text-text-secondary">로딩 중...</div>;
+    return <div className="tab-loading">로딩 중...</div>;
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex justify-between items-center p-md border-b border-border">
-        <h3 className="text-base font-semibold text-text">📥 인박스</h3>
-        <button
-          className="px-md py-xs bg-primary text-white rounded-md text-sm font-medium hover:bg-primary-dark transition-all"
-          onClick={handleAddTask}
-        >
+    <div className="inbox-tab">
+      <div className="tab-header">
+        <h3>📥 인박스</h3>
+        <button className="add-btn" onClick={handleAddTask}>
           ➕ 추가
         </button>
       </div>
 
-      {/* Content */}
       <div
-        className={`
-          p-md overflow-y-auto transition-all
-          ${isDragOver ? 'bg-primary/10 border-2 border-dashed border-primary' : ''}
-        `}
-        style={{ maxHeight: 'calc(100vh - 200px)' }}
+        className={`tab-content ${isDragOver ? 'drag-over' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         {inboxTasks.length === 0 ? (
-          <div className="text-center p-xl text-text-secondary">
-            <p className="text-[2rem] mb-sm">📭 인박스가 비어있습니다</p>
-            <p className="text-sm text-text-tertiary">할 일을 추가하거나 블록에서 이동하세요</p>
+          <div className="empty-state">
+            <p>📭 인박스가 비어있습니다</p>
+            <p className="empty-hint">할 일을 추가하거나 블록에서 이동하세요</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-sm">
+          <div className="task-list-vertical">
             {inboxTasks.map(task => (
               <TaskCard
                 key={task.id}

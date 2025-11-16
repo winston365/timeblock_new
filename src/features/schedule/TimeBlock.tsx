@@ -297,22 +297,17 @@ export default function TimeBlock({
 
   return (
     <div
-      className={`
-        flex flex-col bg-bg-surface border rounded-lg overflow-hidden transition-all duration-300
-        ${isCurrentBlock ? 'border-primary border-2 active-block' : 'border-border'}
-        ${isPastBlock ? 'opacity-70' : ''}
-        ${isDragOver ? 'border-primary border-2 border-dashed bg-primary/10' : ''}
-      `}
+      className={`time-block ${isCurrentBlock ? 'current-block' : ''} ${isPastBlock ? 'past-block' : ''} ${isExpanded ? 'expanded' : 'collapsed'} ${isDragOver ? 'drag-over' : ''}`}
       data-block-id={block.id}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <div className="flex justify-between items-center p-md border-b border-border cursor-pointer hover:bg-bg-elevated transition-colors" onClick={() => setIsExpanded(!isExpanded)}>
-        <div className="flex items-center gap-md flex-1">
+      <div className="block-header" onClick={() => setIsExpanded(!isExpanded)}>
+        <div className="block-primary-info">
           {/* 원형 시간표 (현재 시간대 블록만) */}
           {isCurrentBlock && timeRemaining && (
-            <div className="relative flex-shrink-0" data-tooltip={getTooltipText()}>
+            <div className="time-circle-wrapper" data-tooltip={getTooltipText()}>
               {/* SVG 원형 프로그레스 바 */}
               <svg className="circular-progress" width="72" height="72">
                 {/* 배경 링 */}
@@ -335,23 +330,23 @@ export default function TimeBlock({
 
               {/* 중앙 시간 표시 */}
               <div
-                className={`absolute inset-0 flex flex-col items-center justify-center`}
+                className={`time-circle-compact status-${timeStatus}`}
                 role="status"
                 aria-live="polite"
                 aria-label={`미완료 작업 시간 ${pendingDuration}분, 남은 시간 ${remainingMinutes}분`}
               >
-                <span className="flex items-center gap-1 text-xs font-bold">
-                  <span className="text-text-secondary">{formatMinutesToHM(pendingDuration)}</span>
-                  <span className="text-text-tertiary">·</span>
-                  <span className="text-primary">{formatMinutesToHM(remainingMinutes)}</span>
+                <span className="time-remaining">
+                  <span className="planned-time">{formatMinutesToHM(pendingDuration)}</span>
+                  <span className="time-divider">·</span>
+                  <span className="remaining-time">{formatMinutesToHM(remainingMinutes)}</span>
                 </span>
               </div>
 
               {/* 시간 구분 라벨 (계획/남은) */}
-              <div className="absolute -top-5 left-0 right-0 flex items-center justify-center gap-1 text-2xs text-text-tertiary">
-                <span>📋 계획</span>
-                <span>|</span>
-                <span>남은 ⏱️</span>
+              <div className="time-type-labels">
+                <span className="time-type-label planned">📋 계획</span>
+                <span className="time-type-divider">|</span>
+                <span className="time-type-label remaining">남은 ⏱️</span>
               </div>
 
               {/* 상태 배지 */}
@@ -362,31 +357,27 @@ export default function TimeBlock({
             </div>
           )}
 
-          <div className="flex flex-col gap-xs flex-1">
-            <span className="text-2xl font-bold text-text">{block.start.toString().padStart(2, '0')}-{block.end.toString().padStart(2, '0')}</span>
-            <div className="flex flex-wrap gap-xs items-center text-xs text-text-secondary">
+          <div className="block-time-group">
+            <span className="block-time-range-large">{block.start.toString().padStart(2, '0')}-{block.end.toString().padStart(2, '0')}</span>
+            <div className="block-stats-inline">
               {state?.isLocked ? (
-                <span className="text-reward font-semibold">✨ 40 XP 보너스 도전 중!</span>
+                <span className="stat-compact locked-bonus">✨ 40 XP 보너스 도전 중!</span>
               ) : (
                 <>
-                  <span>📋 {tasks.length}</span>
-                  <span>⏱️ {completedDuration}/{totalDuration}m</span>
-                  {maxXP > 0 && <span>✨ ~{maxXP}XP</span>}
-                  {!isPastBlock && <span className="text-warning animate-pulse">⚠️ 잠금 필요</span>}
+                  <span className="stat-compact">📋 {tasks.length}</span>
+                  <span className="stat-compact">⏱️ {completedDuration}/{totalDuration}m</span>
+                  {maxXP > 0 && <span className="stat-compact">✨ ~{maxXP}XP</span>}
+                  {!isPastBlock && <span className="stat-compact lock-warning">⚠️ 잠금 필요</span>}
                 </>
               )}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-sm">
+        <div className="block-actions">
           {/* 잠금 아이콘 */}
           <button
-            className={`
-              px-sm py-xs text-lg bg-transparent border-none cursor-pointer transition-all
-              ${!state?.isLocked && !isPastBlock ? 'text-warning hover:scale-110' : 'text-text-tertiary'}
-              ${isPastBlock ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}
-            `}
+            className={`action-btn-sm ${!state?.isLocked && !isPastBlock ? 'lock-needed' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
               if (!isPastBlock) {
@@ -408,19 +399,15 @@ export default function TimeBlock({
       </div>
 
       {state?.isPerfect && (
-        <div className="px-md py-xs bg-success/20 text-success text-xs font-semibold text-center border-b border-success/30">
-          ✨ 완벽한 계획!
-        </div>
+        <div className="block-badge perfect">✨ 완벽한 계획!</div>
       )}
       {state?.isFailed && (
-        <div className="px-md py-xs bg-danger/20 text-danger text-xs font-semibold text-center border-b border-danger/30">
-          ❌ 계획 실패
-        </div>
+        <div className="block-badge failed">❌ 계획 실패</div>
       )}
 
-      <div className="h-1 bg-bg-elevated overflow-hidden">
+      <div className="block-progress">
         <div
-          className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
+          className="block-progress-bar"
           style={{
             width: totalDuration > 0 ? `${(completedDuration / totalDuration) * 100}%` : '0%',
           }}
@@ -428,8 +415,8 @@ export default function TimeBlock({
       </div>
 
       {isExpanded && (
-        <div className="p-md" onClick={handleBlockContentClick}>
-          <div className="flex flex-col gap-sm">
+        <div className="block-content" onClick={handleBlockContentClick}>
+          <div className="task-list">
             {tasks.map(task => (
               <TaskCard
                 key={task.id}
@@ -442,7 +429,7 @@ export default function TimeBlock({
             ))}
 
             {/* 인라인 입력 필드 - 항상 표시 */}
-            <div className="mt-sm">
+            <div className="inline-task-input">
               <input
                 ref={inlineInputRef}
                 type="text"
@@ -450,7 +437,7 @@ export default function TimeBlock({
                 onChange={(e) => setInlineInputValue(e.target.value)}
                 onKeyDown={handleInlineInputKeyDown}
                 placeholder="할 일을 입력하고 Enter를 누르세요 (기본: 15분, 🟢 쉬움)"
-                className="w-full px-md py-sm border border-border rounded-md bg-bg-base text-text text-sm placeholder:text-text-tertiary transition-all focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                className="inline-input-field"
               />
             </div>
           </div>

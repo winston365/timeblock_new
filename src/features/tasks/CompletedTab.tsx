@@ -16,6 +16,7 @@ import { useCompletedTasks } from '@/shared/hooks';
 import { formatTime, calculateTaskXP } from '@/shared/lib/utils';
 import { toggleTaskCompletion as toggleTaskCompletionRepo } from '@/data/repositories';
 import type { Task } from '@/shared/types/domain';
+import './tasks.css';
 
 /**
  * 완료 탭 컴포넌트
@@ -64,31 +65,27 @@ export default function CompletedTab() {
   const totalXP = completedTasks.reduce((sum, task) => sum + calculateTaskXP(task), 0);
 
   if (loading) {
-    return <div className="flex justify-center items-center p-xl text-text-secondary">로딩 중...</div>;
+    return <div className="tab-loading">로딩 중...</div>;
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex justify-between items-center p-md border-b border-border">
-        <h3 className="text-base font-semibold text-text">✅ 완료</h3>
-        <div className="flex gap-sm items-center text-sm">
+    <div className="completed-tab">
+      <div className="tab-header">
+        <h3>✅ 완료</h3>
+        <div className="completed-stats">
           <span>{completedTasks.length}개</span>
-          <span className="px-2 py-0.5 bg-primary text-white rounded font-semibold">
-            +{totalXP} XP
-          </span>
+          <span className="xp-badge">+{totalXP} XP</span>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-md overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+      <div className="tab-content">
         {completedTasks.length === 0 ? (
-          <div className="text-center p-xl text-text-secondary">
-            <p className="text-[2rem] mb-sm">📝 완료된 작업이 없습니다</p>
-            <p className="text-sm text-text-tertiary">작업을 완료하면 여기에 표시됩니다</p>
+          <div className="empty-state">
+            <p>📝 완료된 작업이 없습니다</p>
+            <p className="empty-hint">작업을 완료하면 여기에 표시됩니다</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-sm">
+          <div className="completed-list">
             {sortedTasks.map(task => {
               const xp = calculateTaskXP(task);
               const completedTime = task.completedAt
@@ -96,25 +93,23 @@ export default function CompletedTab() {
                 : '-';
 
               return (
-                <div key={task.id} className="flex gap-sm p-sm bg-bg-base border border-border rounded-md items-start">
+                <div key={task.id} className="completed-item">
                   <button
-                    className="flex-shrink-0 w-6 h-6 text-base bg-transparent border-none cursor-pointer transition-transform hover:scale-110"
+                    className="completed-checkbox"
                     onClick={() => handleToggleTask(task)}
                     title="완료 취소"
                   >
                     ✅
                   </button>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-text-secondary line-through mb-xs break-words">
-                      {task.text}
-                    </div>
-                    <div className="flex flex-wrap gap-xs text-xs text-text-tertiary">
-                      <span>🕐 {completedTime}</span>
+                  <div className="completed-details">
+                    <div className="completed-text">{task.text}</div>
+                    <div className="completed-meta">
+                      <span className="completed-time">🕐 {completedTime}</span>
                       {task.timeBlock && (
-                        <span>📍 {task.timeBlock}</span>
+                        <span className="completed-block">📍 {task.timeBlock}</span>
                       )}
-                      <span className="text-primary font-semibold">+{xp} XP</span>
+                      <span className="completed-xp">+{xp} XP</span>
                     </div>
                   </div>
                 </div>
