@@ -206,8 +206,9 @@
 
 /* 넓은 모달 (2컬럼 레이아웃용) */
 .modal-content-wide {
-  max-width: 900px;
-  width: 95%;
+  max-width: 800px;
+  width: 90%;
+  max-height: 95vh; /* 90vh -> 95vh로 증가 */
 }
 
 .modal-header {
@@ -252,40 +253,47 @@
   overflow: hidden;
 }
 
-/* 스크롤 가능한 폼 영역 (2단 그리드) */
+/* 스크롤 가능한 폼 영역 (1단 레이아웃 - 명확한 스크롤) */
 .modal-form-scroll-area {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: scroll; /* scroll로 변경 - 항상 스크롤바 표시 */
   overflow-x: hidden;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-6);
-  padding: var(--spacing-5);
+  padding: var(--spacing-5) var(--spacing-6);
   min-height: 0;
 
   /* 부드러운 스크롤 */
   scroll-behavior: smooth;
 
-  /* 커스텀 스크롤바 */
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
+  /* 항상 보이는 커스텀 스크롤바 */
+  scrollbar-width: auto; /* thin -> auto로 변경 (더 명확하게) */
+  scrollbar-color: rgba(99, 102, 241, 0.3) rgba(0, 0, 0, 0.05);
 }
 
 .modal-form-scroll-area::-webkit-scrollbar {
-  width: 8px;
+  width: 12px; /* 8px -> 12px로 더 명확하게 */
 }
 
 .modal-form-scroll-area::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 6px;
+  margin: 4px 0;
 }
 
 .modal-form-scroll-area::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 .modal-form-scroll-area::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-secondary);
+  background: rgba(99, 102, 241, 0.5);
+  background-clip: content-box;
+}
+
+.modal-form-scroll-area::-webkit-scrollbar-thumb:active {
+  background: rgba(99, 102, 241, 0.7);
+  background-clip: content-box;
 }
 
 /* 2컬럼 레이아웃 폼 (deprecated - 하위 호환성) */
@@ -299,16 +307,37 @@
 .form-column {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-3);
+  width: 100%; /* 전체 너비 사용 */
+}
+
+/* 섹션 구분 */
+.form-section {
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-lg);
+  background: var(--color-bg-surface, #fafafa);
+  border: 1px solid var(--color-border);
+}
+
+.form-section-title {
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  padding-bottom: var(--spacing-2);
+  border-bottom: 2px solid var(--color-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
 }
 
 /* 준비사항 섹션 스타일 */
 .preparation-section {
-  background: var(--color-bg-secondary, #f9f9f9);
-  padding: var(--spacing-md);
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.05), rgba(255, 152, 0, 0.05));
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid rgba(255, 193, 7, 0.2);
+  margin-top: var(--spacing-4);
 }
 
 .preparation-header {
@@ -409,14 +438,15 @@
 
 /* Form Styles */
 .form-group {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-4); /* md -> 4로 조정 */
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 0.3rem;
-  font-weight: 500;
-  font-size: 0.9rem;
+  margin-bottom: var(--spacing-2);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
 }
 
 .form-group .required {
