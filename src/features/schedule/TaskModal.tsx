@@ -142,15 +142,23 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
     setMemoRows(Math.min(Math.max(lineCount, 2), 6));
   };
 
-  // ESC 키로 모달 닫기
+  // ESC 키로 모달 닫기, Ctrl+Enter로 저장
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
+    const handleKeyboard = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
       }
+      if (e.key === 'Enter' && e.ctrlKey) {
+        e.preventDefault();
+        // 폼 제출 트리거
+        const form = document.querySelector('.modal-form') as HTMLFormElement;
+        if (form) {
+          form.requestSubmit();
+        }
+      }
     };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+    window.addEventListener('keydown', handleKeyboard);
+    return () => window.removeEventListener('keydown', handleKeyboard);
   }, [onClose]);
 
   /**

@@ -82,16 +82,24 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
     }
   }, [template]);
 
-  // ESC 키로 모달 닫기
+  // ESC 키로 모달 닫기, Ctrl+Enter로 저장 (3페이지에서만)
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
+    const handleKeyboard = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose(false);
       }
+      if (e.key === 'Enter' && e.ctrlKey && currentPage === 3) {
+        e.preventDefault();
+        // 폼 제출 트리거
+        const form = document.querySelector('.modal-body') as HTMLFormElement;
+        if (form) {
+          form.requestSubmit();
+        }
+      }
     };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
+    window.addEventListener('keydown', handleKeyboard);
+    return () => window.removeEventListener('keydown', handleKeyboard);
+  }, [onClose, currentPage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
