@@ -13,6 +13,12 @@ import App from './App.tsx'
 import './styles/globals.css'
 import './styles/layout.css'
 
+// 테마 초기화: localStorage에서 테마를 읽어와서 적용
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme) {
+  document.documentElement.setAttribute('data-theme', savedTheme);
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />

@@ -283,7 +283,6 @@ export default function AppShell() {
       <TopToolbar
         gameState={gameState}
         onOpenGeminiChat={() => setShowGeminiChat(true)}
-        onOpenSettings={() => setShowSettings(true)}
       />
 
       {/* 메인 레이아웃 */}

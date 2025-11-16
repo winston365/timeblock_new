@@ -16,7 +16,6 @@ import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 interface TopToolbarProps {
   gameState: GameState | null;
   onOpenGeminiChat?: () => void;
-  onOpenSettings?: () => void;
 }
 
 /**
@@ -24,7 +23,7 @@ interface TopToolbarProps {
  * @param props - TopToolbarProps
  * @returns 상단 툴바 UI
  */
-export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSettings }: TopToolbarProps) {
+export default function TopToolbar({ gameState, onOpenGeminiChat }: TopToolbarProps) {
   const { currentEnergy } = useEnergyState();
   const { waifuState, currentMood } = useWaifuState();
   const { show } = useWaifuCompanionStore();
@@ -93,9 +92,6 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenSettings
         </button>
         <button className="toolbar-btn" onClick={onOpenGeminiChat} title="AI 대화">
           💬 AI 대화
-        </button>
-        <button className="toolbar-btn" onClick={onOpenSettings} title="설정 및 로그">
-          ⚙️ 설정
         </button>
       </div>
     </header>
