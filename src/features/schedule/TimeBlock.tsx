@@ -361,7 +361,12 @@ export default function TimeBlock({
             <span className="block-time-range-large">{block.start.toString().padStart(2, '0')}-{block.end.toString().padStart(2, '0')}</span>
             <div className="block-stats-inline">
               {state?.isLocked ? (
-                <span className="stat-compact locked-bonus">✨ 40 XP 보너스 도전 중!</span>
+                // 잠긴 블록: 과거 블록이면서 미완료 작업이 있으면 "계획 실패"
+                isPastBlock && tasks.some(t => !t.completed) ? (
+                  <span className="stat-compact failed-plan">❌ 계획 실패</span>
+                ) : (
+                  <span className="stat-compact locked-bonus">✨ 40 XP 보너스 도전 중!</span>
+                )
               ) : (
                 <>
                   <span className="stat-compact">📋 {tasks.length}</span>

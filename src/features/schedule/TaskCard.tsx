@@ -47,6 +47,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const [timerBonus, setTimerBonus] = useState(0);
   const [isEditingText, setIsEditingText] = useState(false);
   const [editedText, setEditedText] = useState(task.text);
+  const [timerIconActive, setTimerIconActive] = useState(false); // 타이머 아이콘 상태 (▶️ ↔ ⏰)
 
   // 게임 상태에서 퀘스트 업데이트 함수 가져오기
   const { updateQuestProgress } = useGameState();
@@ -271,6 +272,19 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
               {task.memo && (
                 <span className="memo-indicator" title="메모 있음">📝</span>
               )}
+
+              {/* 타이머 아이콘 - 토글 */}
+              <button
+                className="timer-icon-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTimerIconActive(!timerIconActive);
+                }}
+                title={timerIconActive ? "타이머 활성화됨" : "타이머 시작"}
+                aria-label="타이머 토글"
+              >
+                {timerIconActive ? '⏰' : '▶️'}
+              </button>
 
               {/* 삭제 버튼 */}
               <button

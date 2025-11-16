@@ -1087,6 +1087,26 @@
   transform: scale(1.2);
 }
 
+/* 타이머 아이콘 버튼 */
+.timer-icon-btn {
+  font-size: 0.85rem;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: all 0.2s;
+  background: none;
+  border: none;
+  padding: 0 4px;
+}
+
+.timer-icon-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+.timer-icon-btn:active {
+  transform: scale(0.95);
+}
+
 /* Picker Dropdown - 좌우로 배치 */
 .picker-dropdown {
   position: absolute;
@@ -1751,6 +1771,22 @@
   50% {
     opacity: 0.85;
     text-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+  }
+}
+
+/* 계획 실패 텍스트 */
+.stat-compact.failed-plan {
+  color: var(--color-danger);
+  font-weight: 700;
+  animation: failedPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes failedPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
   }
 }
 
