@@ -117,6 +117,10 @@ export default function InsightPanel() {
   // 재시도 타이머 ref
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // localStorage 키
+  const LAST_INSIGHT_TIME_KEY = 'lastInsightGenerationTime';
+  const LAST_INSIGHT_TEXT_KEY = 'lastInsightText';
+
   /**
    * 인사이트 생성 함수 (재시도 로직 포함)
    */
@@ -161,9 +165,14 @@ export default function InsightPanel() {
       // AI 호출
       const { text, tokenUsage } = await callGeminiAPI(prompt, [], settings.geminiApiKey);
 
+      const now = new Date();
       setInsight(text);
-      setLastUpdated(new Date());
+      setLastUpdated(now);
       setRetryCount(0); // 성공 시 재시도 카운트 리셋
+
+      // 마지막 생성 시간과 텍스트를 localStorage에 저장
+      localStorage.setItem(LAST_INSIGHT_TIME_KEY, now.toISOString());
+      localStorage.setItem(LAST_INSIGHT_TEXT_KEY, text);
 
       // 와이푸 컴패니언 연동 - 인사이트 생성 성공 시 와이푸가 배달
       showWaifu(`💡 새로운 인사이트가 도착했어요!`);
@@ -202,11 +211,45 @@ export default function InsightPanel() {
     loadSettingsData();
   }, [loadSettingsData]);
 
-  // 초기 인사이트 생성 (personaContext가 준비되면 자동 생성)
+  // 초기 인사이트 생성 (설정된 시간 간격에 따라)
   useEffect(() => {
     if (settings?.geminiApiKey && personaContext && !initialLoadRef.current) {
       initialLoadRef.current = true;
-      generateInsight(false);
+
+      // 마지막 생성 시간 확인
+      const lastTimeStr = localStorage.getItem(LAST_INSIGHT_TIME_KEY);
+      const refreshInterval = (settings.autoMessageInterval || 15) * 60 * 1000; // ms
+
+      if (lastTimeStr) {
+        const lastTime = new Date(lastTimeStr);
+        const now = new Date();
+        const timeSinceLastGeneration = now.getTime() - lastTime.getTime();
+
+        // 설정된 간격이 지났으면 생성
+        if (timeSinceLastGeneration >= refreshInterval) {
+          console.log('Auto-generating insight (interval passed)');
+          generateInsight(false);
+        } else {
+          // 간격이 안 지났으면 기존 인사이트 표시 (있다면)
+          console.log('Skipping auto-generation (interval not passed yet)');
+          setLoading(false);
+
+          // 기존 인사이트 텍스트 불러오기
+          const lastInsightText = localStorage.getItem(LAST_INSIGHT_TEXT_KEY);
+          if (lastInsightText) {
+            setInsight(lastInsightText);
+            setLastUpdated(lastTime);
+          }
+
+          // 남은 시간 계산하여 타이머 설정
+          const remainingTime = Math.ceil((refreshInterval - timeSinceLastGeneration) / 1000);
+          setTimeLeft(remainingTime);
+        }
+      } else {
+        // 처음 실행하는 경우 즉시 생성
+        console.log('First time insight generation');
+        generateInsight(false);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.geminiApiKey, personaContext]);
