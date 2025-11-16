@@ -125,8 +125,8 @@ export default function InsightPanel() {
     }
 
     if (!personaContext) {
-      setError('PersonaContext를 로드하는 중입니다...');
-      setLoading(false);
+      // PersonaContext가 아직 로드 중이면 조용히 대기
+      console.log('PersonaContext not ready yet, waiting...');
       return;
     }
 
@@ -170,15 +170,14 @@ export default function InsightPanel() {
     loadSettingsData();
   }, [loadSettingsData]);
 
-  // 초기 인사이트 생성 (한 번만)
+  // 초기 인사이트 생성 (personaContext가 준비되면 자동 생성)
   useEffect(() => {
-    if (settings?.geminiApiKey && !initialLoadRef.current) {
+    if (settings?.geminiApiKey && personaContext && !initialLoadRef.current) {
       initialLoadRef.current = true;
-      // 초기 로드 시에는 인사이트를 생성하지 않음 (사용자가 새로고침 버튼 클릭 또는 자동 갱신 대기)
-      setLoading(false);
+      generateInsight();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings?.geminiApiKey]);
+  }, [settings?.geminiApiKey, personaContext]);
 
   // 자동 갱신 타이머 (설정된 주기에만 실행)
   useEffect(() => {
