@@ -110,14 +110,17 @@ export default function InsightPanel() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0); // 남은 시간 (초)
   const [totalTime, setTotalTime] = useState<number>(0); // 전체 시간 (초)
+  const [retryCount, setRetryCount] = useState<number>(0); // 재시도 횟수
 
   // 초기 로드 추적용 ref
   const initialLoadRef = useRef(false);
+  // 재시도 타이머 ref
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
-   * 인사이트 생성 함수
+   * 인사이트 생성 함수 (재시도 로직 포함)
    */
-  const generateInsight = async () => {
+  const generateInsight = async (isRetry = false) => {
     if (!settings?.geminiApiKey) {
       setError('Gemini API 키가 설정되지 않았습니다.');
       setLoading(false);
@@ -128,6 +131,17 @@ export default function InsightPanel() {
       // PersonaContext가 아직 로드 중이면 조용히 대기
       console.log('PersonaContext not ready yet, waiting...');
       return;
+    }
+
+    // 기존 재시도 타이머 취소
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+
+    // 재시도가 아닌 경우 (수동 새로고침) 재시도 카운트 리셋
+    if (!isRetry) {
+      setRetryCount(0);
     }
 
     setLoading(true);
@@ -149,6 +163,7 @@ export default function InsightPanel() {
 
       setInsight(text);
       setLastUpdated(new Date());
+      setRetryCount(0); // 성공 시 재시도 카운트 리셋
 
       // 와이푸 컴패니언 연동 - 인사이트 생성 성공 시 와이푸가 배달
       showWaifu(`💡 새로운 인사이트가 도착했어요!`);
@@ -158,8 +173,25 @@ export default function InsightPanel() {
         await addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '인사이트 생성 실패');
+      const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류';
       console.error('Insight generation error:', err);
+
+      // 재시도 로직 (최대 3번)
+      if (retryCount < 3) {
+        const nextRetryCount = retryCount + 1;
+        setRetryCount(nextRetryCount);
+        setError(`⚠️ 오류 발생: ${errorMessage}\n\n10초 후 재시도합니다... (${nextRetryCount}/3)`);
+
+        // 10초 후 재시도
+        retryTimeoutRef.current = setTimeout(() => {
+          console.log(`Retrying insight generation... (${nextRetryCount}/3)`);
+          generateInsight(true);
+        }, 10000);
+      } else {
+        // 3번 모두 실패
+        setError(`❌ 인사이트 생성 실패 (3회 재시도 완료)\n\n오류 내용: ${errorMessage}\n\n새로고침 버튼을 눌러 다시 시도하거나, API 키와 네트워크 연결을 확인해주세요.`);
+        setRetryCount(0); // 재시도 카운트 리셋
+      }
     } finally {
       setLoading(false);
     }
@@ -174,10 +206,19 @@ export default function InsightPanel() {
   useEffect(() => {
     if (settings?.geminiApiKey && personaContext && !initialLoadRef.current) {
       initialLoadRef.current = true;
-      generateInsight();
+      generateInsight(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.geminiApiKey, personaContext]);
+
+  // 컴포넌트 언마운트 시 재시도 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // 자동 갱신 타이머 (설정된 주기에만 실행)
   useEffect(() => {
@@ -200,7 +241,7 @@ export default function InsightPanel() {
 
     // AI 호출 인터벌
     const aiInterval = setInterval(() => {
-      generateInsight();
+      generateInsight(false);
       setTimeLeft(totalSeconds); // 타이머 리셋
     }, refreshInterval * 60 * 1000);
 
@@ -227,7 +268,7 @@ export default function InsightPanel() {
           <h3>💡 오늘의 인사이트</h3>
           <button
             className="insight-refresh-btn"
-            onClick={generateInsight}
+            onClick={() => generateInsight(false)}
             disabled={loading}
             aria-label="인사이트 새로고침"
           >
@@ -254,8 +295,8 @@ export default function InsightPanel() {
         )}
 
         {error && !loading && (
-          <div className="insight-error">
-            ⚠️ {error}
+          <div className="insight-error" style={{ whiteSpace: 'pre-line' }}>
+            {error}
           </div>
         )}
 
