@@ -124,9 +124,23 @@ export function calculateAdjustedDuration(baseDuration: number, resistance: Resi
 }
 
 /**
- * 고유 ID 생성 (타임스탬프 + 랜덤)
+ * 고유 ID 생성 (UUID v4 기반)
+ *
+ * @param {string} prefix - ID 접두사 (기본값: 'task')
+ * @returns {string} 고유한 ID (예: 'task-550e8400-e29b-41d4-a716-446655440000')
+ * @sideEffects 없음 (순수 함수)
+ *
+ * @note crypto.randomUUID()를 사용하여 RFC 4122 표준을 따르는 UUID v4 생성
+ *       충돌 확률은 사실상 0에 가까움 (2^122)
  */
 export function generateId(prefix: string = 'task'): string {
+  // 브라우저 환경에서 crypto.randomUUID() 지원 확인
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+
+  // 폴백: Date.now() + random (레거시 환경용)
+  console.warn('crypto.randomUUID() not available, using fallback ID generation');
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 

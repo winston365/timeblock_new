@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { useDailyData } from '@/shared/hooks';
 import { useGameState } from '@/shared/hooks/useGameState';
 import type { Task } from '@/shared/types/domain';
+import { generateId } from '@/shared/lib/utils';
 import TaskCard from '@/features/schedule/TaskCard';
 import TaskModal from '@/features/schedule/TaskModal';
 import './tasks.css';
@@ -60,7 +61,7 @@ export default function InboxTab() {
         }
       } else {
         const newTask: Task = {
-          id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: generateId('task'),
           text: taskData.text || '',
           memo: taskData.memo || '',
           baseDuration: taskData.baseDuration || 30,

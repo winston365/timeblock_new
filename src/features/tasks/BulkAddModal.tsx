@@ -12,6 +12,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Task, TimeBlockId, Resistance } from '@/shared/types/domain';
 import { TIME_BLOCKS, RESISTANCE_MULTIPLIERS } from '@/shared/types/domain';
+import { generateId } from '@/shared/lib/utils';
 import './bulkAdd.css';
 
 interface BulkAddModalProps {
@@ -169,7 +170,7 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
         const adjustedDuration = Math.round(baseDuration * multiplier);
 
         return {
-          id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: generateId('task'),
           text: parsed.text,
           memo: parsed.memo || '',
           baseDuration,

@@ -13,7 +13,7 @@
 
 import { db } from '../db/dexieClient';
 import type { Template, Task, TimeBlockId, Resistance, RecurrenceType } from '@/shared/types/domain';
-import { saveToStorage, getFromStorage } from '@/shared/lib/utils';
+import { saveToStorage, getFromStorage, generateId } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
 import { isFirebaseInitialized } from '@/shared/services/firebaseService';
 import { syncToFirebase } from '@/shared/services/firebase/syncCore';
@@ -307,7 +307,7 @@ export function createTaskFromTemplate(template: Template): Task {
   const adjustedDuration = Math.round(template.baseDuration * getResistanceMultiplier(template.resistance));
 
   return {
-    id: `task-${Date.now()}`,
+    id: generateId('task'),
     text: template.text,
     memo: template.memo,
     baseDuration: template.baseDuration,

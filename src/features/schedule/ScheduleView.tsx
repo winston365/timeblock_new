@@ -16,6 +16,7 @@ import { useGameState } from '@/shared/hooks/useGameState';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
+import { generateId } from '@/shared/lib/utils';
 import TimeBlock from './TimeBlock';
 import TaskModal from './TaskModal';
 import CurrentTimeIndicator from './CurrentTimeIndicator';
@@ -128,7 +129,7 @@ export default function ScheduleView() {
   const handleCreateTask = async (text: string, blockId: TimeBlockId) => {
     try {
       const newTask: Task = {
-        id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: generateId('task'),
         text: text.trim(),
         memo: '',
         baseDuration: 15,  // 30분 -> 15분으로 변경
@@ -181,7 +182,7 @@ export default function ScheduleView() {
       } else {
         // 추가
         const newTask: Task = {
-          id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: generateId('task'),
           text: taskData.text || '',
           memo: taskData.memo || '',
           baseDuration: taskData.baseDuration || 30,

@@ -343,7 +343,7 @@ export async function updateBlockState(
  * @param {string} blockId - 블록 ID
  * @param {string} [date] - 날짜 (기본값: 오늘)
  * @returns {Promise<boolean>} 토글 후 잠금 상태
- * @throws {Error} 블록 상태가 존재하지 않거나 저장 실패 시
+ * @throws {Error} 블록 상태가 존재하지 않거나, 빈 블록을 잠그려 할 때, 또는 저장 실패 시
  * @sideEffects
  *   - 블록의 isLocked 상태 토글
  *   - loadDailyData 및 saveDailyData 호출
@@ -355,6 +355,15 @@ export async function toggleBlockLock(blockId: string, date: string = getLocalDa
 
     if (!blockState) {
       throw new Error(`Block state not found: ${blockId}`);
+    }
+
+    // 잠금하려는 경우: 블록에 작업이 있는지 검증
+    if (!blockState.isLocked) {
+      const blockTasks = dailyData.tasks.filter(task => task.timeBlock === blockId);
+
+      if (blockTasks.length === 0) {
+        throw new Error('빈 블록은 잠글 수 없습니다. 작업을 먼저 추가해주세요.');
+      }
     }
 
     blockState.isLocked = !blockState.isLocked;
