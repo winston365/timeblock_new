@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { Template } from '@/shared/types/domain';
-import { loadTemplates, deleteTemplate as deleteTemplateRepo, createTemplate, updateTemplate } from '@/data/repositories';
+import { loadTemplates, deleteTemplate as deleteTemplateRepo, createTemplate } from '@/data/repositories';
 import { getTemplateCategories } from '@/data/repositories/settingsRepository';
 import { TemplateModal } from './TemplateModal';
 import { RESISTANCE_LABELS, TIME_BLOCKS } from '@/shared/types/domain';
@@ -140,17 +140,6 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     onTaskCreate(template);
   };
 
-  const handleToggleFavorite = async (template: Template) => {
-    try {
-      await updateTemplate(template.id, {
-        isFavorite: !template.isFavorite,
-      });
-      await loadTemplatesData();
-    } catch (error) {
-      console.error('Failed to toggle favorite:', error);
-      alert('즐겨찾기 변경에 실패했습니다.');
-    }
-  };
 
   const handleCloneTemplate = async (template: Template) => {
     try {
@@ -293,15 +282,6 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
             <div className="templates-grid">
               {filteredTemplates.map(template => (
                 <div key={template.id} className="template-card">
-                  {/* 즐겨찾기 버튼 */}
-                  <button
-                    className={`btn-favorite-card ${template.isFavorite ? 'active' : ''}`}
-                    onClick={() => handleToggleFavorite(template)}
-                    title={template.isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
-                  >
-                    {template.isFavorite ? '⭐' : '☆'}
-                  </button>
-
                   {/* 카드 헤더 */}
                   <div className="template-card-header">
                     <div className="template-card-title">
@@ -330,31 +310,6 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
                       </div>
                     </div>
                   </div>
-
-                  {/* 호버 미리보기 툴팁 */}
-                  {(template.preparation1 || template.preparation2 || template.preparation3) && (
-                    <div className="template-card-tooltip">
-                      <div className="tooltip-header">💡 템플릿 준비사항</div>
-                      {template.preparation1 && (
-                        <div className="tooltip-item">
-                          <span className="tooltip-label">⚠️ 방해물 #1:</span>
-                          <span>{template.preparation1}</span>
-                        </div>
-                      )}
-                      {template.preparation2 && (
-                        <div className="tooltip-item">
-                          <span className="tooltip-label">⚠️ 방해물 #2:</span>
-                          <span>{template.preparation2}</span>
-                        </div>
-                      )}
-                      {template.preparation3 && (
-                        <div className="tooltip-item">
-                          <span className="tooltip-label">✅ 대처 전략:</span>
-                          <span>{template.preparation3}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   {/* 카드 바디 */}
                   <div className="template-card-body">
