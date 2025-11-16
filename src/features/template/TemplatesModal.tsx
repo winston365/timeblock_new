@@ -178,6 +178,112 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     return block ? block.label : '나중에';
   };
 
+  /**
+   * 다음 주기 날짜 계산
+   */
+  const getNextOccurrence = (template: Template): string | null => {
+    if (!template.autoGenerate || template.recurrenceType === 'none') {
+      return null;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const lastGenerated = template.lastGeneratedDate
+      ? new Date(template.lastGeneratedDate)
+      : new Date(today);
+    lastGenerated.setHours(0, 0, 0, 0);
+
+    switch (template.recurrenceType) {
+      case 'daily': {
+        // 마지막 생성일이 오늘이면 내일, 아니면 오늘
+        const nextDate = new Date(lastGenerated);
+        nextDate.setDate(nextDate.getDate() + 1);
+        if (nextDate <= today) {
+          return '오늘';
+        }
+        return formatRelativeDate(nextDate);
+      }
+
+      case 'weekly': {
+        if (!template.weeklyDays || template.weeklyDays.length === 0) {
+          return null;
+        }
+
+        // 오늘부터 7일 내 다음 요일 찾기
+        const currentDay = today.getDay();
+        const sortedDays = [...template.weeklyDays].sort((a, b) => a - b);
+
+        // 오늘 이후 가장 가까운 요일
+        let nextDay = sortedDays.find(day => day > currentDay);
+        let daysUntil: number;
+
+        if (nextDay !== undefined) {
+          daysUntil = nextDay - currentDay;
+        } else {
+          // 다음 주 첫 요일
+          nextDay = sortedDays[0];
+          daysUntil = 7 - currentDay + nextDay;
+        }
+
+        const nextDate = new Date(today);
+        nextDate.setDate(nextDate.getDate() + daysUntil);
+
+        // 마지막 생성일이 오늘이거나 미래면 다음 주기로
+        if (template.lastGeneratedDate) {
+          const lastGen = new Date(template.lastGeneratedDate);
+          lastGen.setHours(0, 0, 0, 0);
+          if (lastGen.getTime() >= today.getTime()) {
+            nextDate.setDate(nextDate.getDate() + 7);
+          }
+        }
+
+        return formatRelativeDate(nextDate);
+      }
+
+      case 'interval': {
+        if (!template.intervalDays) {
+          return null;
+        }
+
+        const nextDate = new Date(lastGenerated);
+        nextDate.setDate(nextDate.getDate() + template.intervalDays);
+
+        if (nextDate <= today) {
+          return '오늘';
+        }
+        return formatRelativeDate(nextDate);
+      }
+
+      default:
+        return null;
+    }
+  };
+
+  /**
+   * 상대 날짜 포맷 (오늘, 내일, N일 후)
+   */
+  const formatRelativeDate = (date: Date): string => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+
+    const diffTime = targetDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return '오늘';
+    if (diffDays === 1) return '내일';
+    if (diffDays === 2) return '모레';
+    if (diffDays < 7) return `${diffDays}일 후`;
+
+    // 1주일 이상이면 날짜 표시
+    const month = targetDate.getMonth() + 1;
+    const day = targetDate.getDate();
+    return `${month}/${day}`;
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -284,31 +390,41 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
                 <div key={template.id} className="template-card">
                   {/* 카드 헤더 */}
                   <div className="template-card-header">
-                    <div className="template-card-title">
-                      <h3>{template.text}</h3>
-                      <div className="template-card-badges">
-                        {template.category && (
-                          <span className="template-card-badge badge-category" title={`카테고리: ${template.category}`}>
-                            🏷️ {template.category}
-                          </span>
-                        )}
-                        {template.autoGenerate && template.recurrenceType === 'daily' && (
-                          <span className="template-card-badge badge-daily" title="매일 자동 생성">
-                            🔄 매일
-                          </span>
-                        )}
-                        {template.autoGenerate && template.recurrenceType === 'weekly' && template.weeklyDays && template.weeklyDays.length > 0 && (
-                          <span className="template-card-badge badge-weekly" title={`매주 ${template.weeklyDays.map(d => ['일','월','화','수','목','금','토'][d]).join(', ')}요일`}>
-                            🔄 매주 {template.weeklyDays.map(d => ['일','월','화','수','목','금','토'][d]).join('/')}
-                          </span>
-                        )}
-                        {template.autoGenerate && template.recurrenceType === 'interval' && template.intervalDays && (
-                          <span className="template-card-badge badge-interval" title={`${template.intervalDays}일마다 자동 생성`}>
-                            🔄 {template.intervalDays}일마다
-                          </span>
-                        )}
-                      </div>
+                    <div className="template-card-title-row">
+                      <h3 className="template-card-title">{template.text}</h3>
+                      {template.isFavorite && (
+                        <span className="template-favorite-icon" title="즐겨찾기">⭐</span>
+                      )}
                     </div>
+                    <div className="template-card-badges">
+                      {template.category && (
+                        <span className="template-card-badge badge-category" title={`카테고리: ${template.category}`}>
+                          🏷️ {template.category}
+                        </span>
+                      )}
+                      {template.autoGenerate && template.recurrenceType === 'daily' && (
+                        <span className="template-card-badge badge-daily" title="매일 자동 생성">
+                          🔄 매일
+                        </span>
+                      )}
+                      {template.autoGenerate && template.recurrenceType === 'weekly' && template.weeklyDays && template.weeklyDays.length > 0 && (
+                        <span className="template-card-badge badge-weekly" title={`매주 ${template.weeklyDays.map(d => ['일','월','화','수','목','금','토'][d]).join(', ')}요일`}>
+                          🔄 매주 {template.weeklyDays.map(d => ['일','월','화','수','목','금','토'][d]).join('/')}
+                        </span>
+                      )}
+                      {template.autoGenerate && template.recurrenceType === 'interval' && template.intervalDays && (
+                        <span className="template-card-badge badge-interval" title={`${template.intervalDays}일마다 자동 생성`}>
+                          🔄 {template.intervalDays}일마다
+                        </span>
+                      )}
+                    </div>
+                    {/* 다음 주기 표시 */}
+                    {getNextOccurrence(template) && (
+                      <div className="template-next-occurrence">
+                        <span className="next-occurrence-icon">📅</span>
+                        <span className="next-occurrence-text">다음: {getNextOccurrence(template)}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* 카드 바디 */}
