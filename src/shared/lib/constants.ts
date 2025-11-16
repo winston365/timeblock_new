@@ -27,6 +27,7 @@ export const AFFECTION_PER_TASK = 2; // 작업 완료 시 호감도 증가
 export const AFFECTION_IDLE_DECAY_RATE = 0.5; // 시간당 호감도 감소
 export const AFFECTION_MIN = 0;
 export const AFFECTION_MAX = 100;
+export const AFFECTION_XP_TARGET = 400; // 호감도 100%를 위한 필요 보유 XP (400 XP = 100%)
 
 // 와이푸 호감도 구간
 export const AFFECTION_TIERS = {

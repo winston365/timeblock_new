@@ -13,19 +13,18 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { usePersonaContext, useDailyData, useGameState, useEnergyState } from '@/shared/hooks';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { callGeminiAPI, generateWaifuPersona } from '@/shared/services/geminiApi';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import { TIME_BLOCKS } from '@/shared/types/domain';
-import type { DailyData } from '@/shared/types/domain';
+import { AFFECTION_XP_TARGET } from '@/shared/lib/constants';
+import type { DailyData, Task } from '@/shared/types/domain';
 
-// TODO: 에너지 히스토리 기능 추가 시 사용
-// interface EnergyDataPoint {
-//   date: string;
-//   timeBlock: string;
-//   energy: number;
-//   timestamp: string;
-// }
+/**
+ * 인사이트 모드
+ */
+export type InsightMode = 'comprehensive' | 'tasks' | 'motivation';
 
 interface CompletedTaskData {
   date: string;
@@ -38,9 +37,6 @@ interface XPDataPoint {
   totalXP: number;
   dailyXP: number;
 }
-
-// TODO: 에너지 히스토리 데이터 수집 함수 필요시 추가
-// async function collectEnergyData(): Promise<EnergyDataPoint[]> { ... }
 
 /**
  * 과거 10일간 완료한 작업 데이터 수집
@@ -78,7 +74,7 @@ async function collectCompletedTasksData(): Promise<CompletedTaskData[]> {
 /**
  * 간단한 XP 계산 (resistance 고려)
  */
-function calculateTaskXP(task: any): number {
+function calculateTaskXP(task: Task): number {
   const multipliers: Record<string, number> = { low: 1.0, medium: 1.3, high: 1.6 };
   const baseXP = Math.ceil((task.baseDuration / 30) * 25);
   const resistance = task.resistance as keyof typeof multipliers;
@@ -101,9 +97,9 @@ async function collectXPData(gameState: any): Promise<XPDataPoint[]> {
 }
 
 /**
- * AI 인사이트 생성 프롬프트
+ * AI 인사이트 생성 프롬프트 - 종합 분석 모드
  */
-function generateInsightPrompt(
+function generateComprehensivePrompt(
   personaPrompt: string,
   data: {
     completedTasksData: CompletedTaskData[];
@@ -111,8 +107,9 @@ function generateInsightPrompt(
     todayData: DailyData | null;
     currentTime: string;
     currentBlock: string;
-    inboxTasks: any[];
-    currentEnergy?: number;
+    inboxTasks: Task[];
+    currentEnergy: number;
+    availableXP: number;
   }
 ): string {
   const {
@@ -122,7 +119,8 @@ function generateInsightPrompt(
     currentTime,
     currentBlock,
     inboxTasks,
-    currentEnergy = 0,
+    currentEnergy,
+    availableXP,
   } = data;
 
   return `${personaPrompt}
@@ -145,12 +143,12 @@ ${TIME_BLOCKS.map(block => {
 
 ${(todayData?.tasks.filter(t => !t.completed && t.timeBlock === currentBlock).length ?? 0) > 0 ? `
 #### 현재 시간대 미완료 작업
-${todayData?.tasks.filter(t => !t.completed && t.timeBlock === currentBlock).map(t => `- ${t.text}`).join('\n')}
+${todayData?.tasks.filter(t => !t.completed && t.timeBlock === currentBlock).map(t => `- ${t.text} (${t.baseDuration}분, ${t.resistance})`).join('\n')}
 ` : ''}
 
 ${inboxTasks.length > 0 ? `
 #### 인박스 작업 (계획 필요)
-${inboxTasks.slice(0, 5).map(t => `- ${t.text}`).join('\n')}
+${inboxTasks.slice(0, 5).map(t => `- ${t.text} (${t.baseDuration}분, ${t.resistance})`).join('\n')}
 ${inboxTasks.length > 5 ? `... 외 ${inboxTasks.length - 5}개` : ''}
 ` : ''}
 
@@ -166,7 +164,7 @@ ${xpData.length > 0 ? xpData.map(d =>
 
 ---
 
-## 💡 오늘의 인사이트 작성
+## 💡 오늘의 인사이트 작성 (종합 분석)
 
 위 데이터를 기반으로 **오늘의 인사이트**를 작성해줘. 다음 요구사항을 따라줘:
 
@@ -195,7 +193,7 @@ ${xpData.length > 0 ? xpData.map(d =>
 - 남은 시간 대비 완료 가능성 평가
 
 #### 4️⃣ 목표 및 계획 평가
-- 오늘 XP 목표 대비 진행도 확인
+- **XP 목표**: 보유 XP ${availableXP}/${AFFECTION_XP_TARGET} (호감도 ${Math.min(Math.round((availableXP / AFFECTION_XP_TARGET) * 100), 100)}%)
 - 잠긴 블록 수 → 계획 실행력 평가
 - 과거 패턴과 오늘 비교 → 개선점 제시
 
@@ -216,20 +214,164 @@ ${xpData.length > 0 ? xpData.map(d =>
 - **총 300-500자**
 - 각 섹션마다 충분히 설명
 
-### 예시:
-\`\`\`
-## 🎯 오늘의 패턴 분석
-지난 10일 보니까 **오후 2-5시**에 평균 3개 작업 완료하며 가장 집중력이 좋았어! 그런데 오전 시간대는 좀 비어있네. 지금은 오전 10시, 에너지도 ${75}로 높으니까 집중력 필요한 작업 시작하기 딱 좋아.
-
-## 💪 지금 할 일
-- **우선순위 1**: 인박스 '프로젝트 기획서' (저항도: 높음) → 에너지 높을 때 끝내야 나중에 편해!
-- **우선순위 2**: 현재 블록 '회의 자료 준비' → 30분이면 완료 가능, XP +25 획득
-
-## ✨ 동기부여
-벌써 오늘 ${120} XP 모았네! 🎉 이 속도면 레벨업까지 얼마 안 남았어. 조금만 더 힘내자! 💪
-\`\`\`
-
 위 형식으로 **현재 상황에 맞춤화된** 인사이트를 마크다운으로 작성해줘!`;
+}
+
+/**
+ * AI 인사이트 생성 프롬프트 - 추천 작업 모드
+ */
+function generateTasksPrompt(
+  personaPrompt: string,
+  data: {
+    todayData: DailyData | null;
+    currentTime: string;
+    currentBlock: string;
+    currentBlockId: string | null;
+    inboxTasks: Task[];
+    currentEnergy: number;
+  }
+): string {
+  const {
+    todayData,
+    currentTime,
+    currentBlock,
+    currentBlockId,
+    inboxTasks,
+    currentEnergy,
+  } = data;
+
+  // 현재 타임블럭의 미완료 작업
+  const currentBlockTasks = todayData?.tasks.filter(t => !t.completed && t.timeBlock === currentBlockId) ?? [];
+
+  // 현재 시간 기준 블록 종료까지 남은 시간 계산
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const currentBlockInfo = TIME_BLOCKS.find(block => block.id === currentBlockId);
+  const blockEndHour = currentBlockInfo?.end ?? 24;
+  const minutesLeftInBlock = (blockEndHour - currentHour) * 60 - currentMinute;
+
+  return `${personaPrompt}
+
+## 📋 작업 추천 요청
+
+### 현재 상황
+- **현재 시간**: ${currentTime}
+- **현재 블록**: ${currentBlock}
+- **블록 남은 시간**: ${Math.floor(minutesLeftInBlock / 60)}시간 ${minutesLeftInBlock % 60}분
+- **현재 에너지**: ${currentEnergy}
+
+### 현재 타임블록 미완료 작업
+${currentBlockTasks.length > 0 ? currentBlockTasks.map(t =>
+  `- ${t.text} (${t.baseDuration}분, ${t.resistance === 'low' ? '쉬움' : t.resistance === 'medium' ? '보통' : '어려움'})`
+).join('\n') : '현재 블록에 미완료 작업 없음'}
+
+### 인박스 작업 (계획 필요)
+${inboxTasks.length > 0 ? inboxTasks.map(t =>
+  `- ${t.text} (${t.baseDuration}분, ${t.resistance === 'low' ? '쉬움' : t.resistance === 'medium' ? '보통' : '어려움'})`
+).join('\n') : '인박스 작업 없음'}
+
+---
+
+## ✅ 지금 할 작업 추천
+
+위 상황을 고려하여 **지금 당장 할 작업**을 추천해줘. 다음 규칙을 따라줘:
+
+### 📋 추천 규칙
+1. **현재 타임블럭 미완료 작업 우선**: 계획된 작업을 먼저 처리
+2. **남은 시간 체크**: 블록에 남은 시간(${minutesLeftInBlock}분)을 고려
+3. **난이도 분할**: 작업이 '보통' 또는 '어려움'이고 30분 이상이면 → 쉬운 단계로 나눠서 제안
+   - 예: "프로젝트 기획서 작성 (60분, 어려움)" → "1단계: 목차 구성 (15분), 2단계: 배경 조사 (15분), 3단계: 초안 작성 (30분)"
+4. **에너지 고려**:
+   - 에너지 높음(70+): 어려운 작업 추천
+   - 에너지 중간(40-70): 보통 난이도 작업 추천
+   - 에너지 낮음(0-40): 쉬운 작업, 정리 작업, 휴식 추천
+
+### 📝 형식 요구사항
+- **마크다운 형식**
+- **구조**:
+  1. **## 💪 지금 할 일 (우선순위 1)** - 가장 먼저 할 작업, 이유 설명
+  2. **## 👍 다음 할 일 (우선순위 2)** - 두 번째 작업, 이유 설명
+  3. **(선택) 분할 제안**: 작업이 어렵거나 길면 구체적인 단계별 분할 제안
+
+### 💬 톤 & 스타일
+- 친근한 반말체
+- 이모지 적절히 사용
+- **구체적이고 실행 가능한 조언**
+
+### 📏 길이
+- **총 200-400자**
+
+위 형식으로 **지금 할 작업**을 추천해줘!`;
+}
+
+/**
+ * AI 인사이트 생성 프롬프트 - 동기부여 모드
+ */
+function generateMotivationPrompt(
+  personaPrompt: string,
+  data: {
+    completedTasksData: CompletedTaskData[];
+    xpData: XPDataPoint[];
+    todayData: DailyData | null;
+    availableXP: number;
+    dailyXP: number;
+  }
+): string {
+  const {
+    completedTasksData,
+    xpData,
+    todayData,
+    availableXP,
+    dailyXP,
+  } = data;
+
+  return `${personaPrompt}
+
+## 🎉 동기부여 요청
+
+### 오늘 진행 상황
+- **완료한 작업**: ${todayData?.tasks.filter(t => t.completed).length ?? 0}개
+- **오늘 획득 XP**: ${dailyXP} XP
+- **보유 XP**: ${availableXP} XP (호감도 ${Math.min(Math.round((availableXP / AFFECTION_XP_TARGET) * 100), 100)}%)
+
+${(todayData?.tasks.filter(t => t.completed).length ?? 0) > 0 ? `
+### 오늘 완료한 작업
+${todayData?.tasks.filter(t => t.completed).map(t => `- ${t.text}`).join('\n')}
+` : ''}
+
+### 과거 10일 XP 획득 추이
+${xpData.length > 0 ? xpData.map(d =>
+  `- ${d.date}: ${d.dailyXP} XP`
+).join('\n') : '아직 데이터 없음'}
+
+### 과거 10일 완료 작업 요약
+- 총 ${completedTasksData.reduce((sum, d) => sum + d.tasks.length, 0)}개 작업 완료
+- 총 ${completedTasksData.reduce((sum, d) => sum + d.tasks.reduce((s, t) => s + t.xp, 0), 0)} XP 획득
+
+---
+
+## 💪 동기부여 메시지 작성
+
+위 데이터를 보고 **동기부여와 격려 메시지**를 작성해줘. 다음 요구사항을 따라줘:
+
+### 📝 형식 요구사항
+- **마크다운 형식**
+- **구조**:
+  1. **## ✨ 잘하고 있어!** - 진행도 인정, 칭찬 (2-3줄)
+  2. **## 🎯 목표까지** - 호감도 목표(100%) 달성까지 필요한 XP, 현재 진행률 격려 (1-2줄)
+  3. **## 💪 계속 가자!** - 응원 메시지 (1줄)
+
+### 💬 톤 & 스타일
+- **매우 친근하고 따뜻한 반말체**
+- 이모지 적극 사용
+- **구체적인 숫자를 언급**하며 성취감 강조
+- 긍정적이고 힘이 나는 메시지
+
+### 📏 길이
+- **총 150-300자**
+
+위 형식으로 **동기부여 메시지**를 작성해줘!`;
 }
 
 /**
@@ -271,20 +413,19 @@ export default function InsightPanel() {
   const { gameState } = useGameState();
   const { currentEnergy } = useEnergyState();
   const { settings, loadData: loadSettingsData } = useSettingsStore();
+  const { show: showWaifu } = useWaifuCompanionStore();
 
   const [insight, setInsight] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [insightMode, setInsightMode] = useState<InsightMode>('comprehensive');
 
   // 초기 로드 추적용 ref
   const initialLoadRef = useRef(false);
 
   /**
    * 인사이트 생성 함수
-   *
-   * ⚠️ 주의: 이 함수는 useCallback으로 감싸지 않음
-   * 이유: 최신 상태를 항상 참조하기 위함 (deps 변경으로 인한 재생성 방지)
    */
   const generateInsight = async () => {
     if (!settings?.geminiApiKey) {
@@ -308,30 +449,57 @@ export default function InsightPanel() {
       const xpData = await collectXPData(gameState);
 
       const now = new Date();
-      const currentBlock = TIME_BLOCKS.find(b => now.getHours() >= b.start && now.getHours() < b.end);
+      const currentHour = now.getHours();
+      const currentBlock = TIME_BLOCKS.find(b => currentHour >= b.start && currentHour < b.end);
 
-      const tasks = dailyData?.tasks ?? [];
-      const inboxTasks = tasks.filter(t => !t.timeBlock && !t.completed);
+      const tasks: Task[] = dailyData?.tasks ?? [];
+      const inboxTasks = tasks.filter((t: Task) => !t.timeBlock && !t.completed);
 
       // 페르소나 프롬프트 생성 (usePersonaContext 훅 사용)
       const personaPrompt = generateWaifuPersona(personaContext);
 
-      // 인사이트 프롬프트 생성
-      const prompt = generateInsightPrompt(personaPrompt, {
-        completedTasksData,
-        xpData,
-        todayData: dailyData,
-        currentTime: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-        currentBlock: currentBlock?.label ?? '블록 외 시간',
-        inboxTasks,
-        currentEnergy,
-      });
+      // 모드별 프롬프트 생성
+      let prompt: string;
+
+      if (insightMode === 'comprehensive') {
+        prompt = generateComprehensivePrompt(personaPrompt, {
+          completedTasksData,
+          xpData,
+          todayData: dailyData,
+          currentTime: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+          currentBlock: currentBlock?.label ?? '블록 외 시간',
+          inboxTasks,
+          currentEnergy: currentEnergy ?? 0,
+          availableXP: gameState?.availableXP ?? 0,
+        });
+      } else if (insightMode === 'tasks') {
+        prompt = generateTasksPrompt(personaPrompt, {
+          todayData: dailyData,
+          currentTime: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+          currentBlock: currentBlock?.label ?? '블록 외 시간',
+          currentBlockId: currentBlock?.id ?? null,
+          inboxTasks,
+          currentEnergy: currentEnergy ?? 0,
+        });
+      } else {
+        prompt = generateMotivationPrompt(personaPrompt, {
+          completedTasksData,
+          xpData,
+          todayData: dailyData,
+          availableXP: gameState?.availableXP ?? 0,
+          dailyXP: gameState?.dailyXP ?? 0,
+        });
+      }
 
       // AI 호출
       const { text, tokenUsage } = await callGeminiAPI(prompt, [], settings.geminiApiKey);
 
       setInsight(text);
       setLastUpdated(new Date());
+
+      // 와이푸 컴패니언 연동 - 인사이트 생성 성공 시 와이푸가 배달
+      const modeLabel = insightMode === 'comprehensive' ? '종합 분석' : insightMode === 'tasks' ? '추천 작업' : '동기부여';
+      showWaifu(`💡 새로운 ${modeLabel} 인사이트가 도착했어요!`);
 
       // 토큰 사용량 저장 (전체 로그에 기록)
       if (tokenUsage) {
@@ -358,7 +526,7 @@ export default function InsightPanel() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings?.geminiApiKey]); // generateInsight를 의존성에서 제거 (데이터 변경 시 재생성 방지)
+  }, [settings?.geminiApiKey]);
 
   // 자동 갱신 타이머 (설정된 주기에만 실행)
   useEffect(() => {
@@ -371,7 +539,7 @@ export default function InsightPanel() {
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings?.geminiApiKey, settings?.autoMessageInterval]); // generateInsight를 의존성에서 제거 (데이터 변경 시 재생성 방지)
+  }, [settings?.geminiApiKey, settings?.autoMessageInterval, insightMode]);
 
   // 마크다운 파싱 (성능 최적화: insight 변경 시에만 재계산)
   const parsedHtml = useMemo(() => {
@@ -383,14 +551,40 @@ export default function InsightPanel() {
     <aside className="insight-panel" role="complementary" aria-label="오늘의 인사이트">
       <div className="insight-panel-header">
         <h3>💡 오늘의 인사이트</h3>
-        <button
-          className="insight-refresh-btn"
-          onClick={generateInsight}
-          disabled={loading}
-          aria-label="인사이트 새로고침"
-        >
-          🔄
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* 모드 전환 탭 */}
+          <div className="insight-mode-tabs">
+            <button
+              className={`insight-mode-tab ${insightMode === 'comprehensive' ? 'active' : ''}`}
+              onClick={() => setInsightMode('comprehensive')}
+              title="종합 분석 모드"
+            >
+              💡 종합
+            </button>
+            <button
+              className={`insight-mode-tab ${insightMode === 'tasks' ? 'active' : ''}`}
+              onClick={() => setInsightMode('tasks')}
+              title="추천 작업 모드"
+            >
+              ✅ 작업
+            </button>
+            <button
+              className={`insight-mode-tab ${insightMode === 'motivation' ? 'active' : ''}`}
+              onClick={() => setInsightMode('motivation')}
+              title="동기부여 모드"
+            >
+              💪 격려
+            </button>
+          </div>
+          <button
+            className="insight-refresh-btn"
+            onClick={generateInsight}
+            disabled={loading}
+            aria-label="인사이트 새로고침"
+          >
+            🔄
+          </button>
+        </div>
       </div>
 
       <div className="insight-content">
