@@ -25,6 +25,7 @@ interface TaskCardProps {
   onToggle: () => void;
   onUpdateTask?: (updates: Partial<Task>) => void;
   onDragStart?: (taskId: string) => void;
+  onDragEnd?: () => void;
   hideMetadata?: boolean; // 인박스에서 난이도/XP 숨기기 옵션
 }
 
@@ -37,7 +38,7 @@ interface TaskCardProps {
  *   - 드래그앤드롭으로 작업 이동
  *   - 인라인 난이도/시간 변경 시 즉시 업데이트
  */
-export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTask, onDragStart, hideMetadata = false }: TaskCardProps) {
+export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTask, onDragStart, onDragEnd, hideMetadata = false }: TaskCardProps) {
   const [showResistancePicker, setShowResistancePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -99,6 +100,9 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
 
   const handleDragEnd = () => {
     setIsDragging(false);
+    if (onDragEnd) {
+      onDragEnd();
+    }
   };
 
   // 작업 완료 체크 핸들러

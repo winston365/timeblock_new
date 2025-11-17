@@ -60,13 +60,6 @@ export default function InboxTab() {
 
   useEffect(() => {
     refreshInboxTasks();
-
-    // 주기적 자동 새로고침 (2초마다) - 드래그앤드롭 후 UI 동기화
-    const intervalId = setInterval(() => {
-      refreshInboxTasks();
-    }, 2000);
-
-    return () => clearInterval(intervalId);
   }, []);
 
   const handleAddTask = () => {
@@ -163,8 +156,17 @@ export default function InboxTab() {
     const taskId = e.dataTransfer.getData('text/plain');
     if (!taskId) return;
 
-    // 타임블록에서 인박스로 이동 로직은 ScheduleView에서 처리
-    // 여기서는 아무것도 하지 않음 (드래그 수신만)
+    try {
+      // updateTask를 사용해서 작업을 인박스로 이동 (timeBlock을 null로 설정)
+      const { updateTask } = await import('@/data/repositories/dailyDataRepository');
+      await updateTask(taskId, { timeBlock: null });
+
+      // 즉시 새로고침
+      await refreshInboxTasks();
+    } catch (error) {
+      console.error('Failed to move task to inbox:', error);
+      alert('작업을 인박스로 이동하는데 실패했습니다.');
+    }
   };
 
   if (loading) {
@@ -203,6 +205,10 @@ export default function InboxTab() {
                 onUpdateTask={async (updates) => {
                   await updateInboxTask(task.id, updates);
                   await refreshInboxTasks();
+                }}
+                onDragEnd={() => {
+                  // Refresh after drag ends to remove task if it was moved to a time block
+                  setTimeout(() => refreshInboxTasks(), 100);
                 }}
                 hideMetadata={true}
               />
