@@ -8,53 +8,45 @@
   "files": [
     "dist/**/*",
     "dist-electron/**/*",
+    {
+      "from": "public/assets",
+      "to": "assets",
+      "filter": ["**/*"]
+    },
     "package.json"
   ],
-  "publish": {
-    "provider": "github",
-    "owner": "winston365",
-    "repo": "timeblock_new",
-    "releaseType": "release"
-  },
+
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "winston365",
+      "repo": "timeblock_new",
+      "releaseType": "release"
+    }
+  ],
+
   "win": {
     "target": ["nsis"],
     "icon": "electron/resources/icon.ico",
-    "artifactName": "${productName}-${version}-Setup.${ext}",
-    "publish": ["github"]
+    "artifactName": "${productName}-${version}-Setup.${ext}"
   },
+
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true
   },
+
   "mac": {
     "target": ["dmg"],
     "icon": "electron/resources/icon.icns",
     "category": "public.app-category.productivity"
   },
+
   "linux": {
     "target": ["AppImage"],
     "icon": "electron/resources/icon.png",
     "category": "Utility"
-  },
-  "publish": [
-  {
-      "provider": "github",
-      "owner": "winston365",
-      "repo": "timeblock_new"
   }
-  ,
-  {
-  "files": [
-    "dist/**/*",
-    "dist-electron/**/*",
-    {
-      "from": "public/assets",
-      "to": "assets",
-      "filter": ["**/*"]
-    }
-]
-  }
-  ] 
 }
