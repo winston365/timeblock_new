@@ -12,7 +12,7 @@
  */
 
 import type { SyncStrategy } from './syncCore';
-import { mergeGameState } from './conflictResolver';
+import { mergeGameState, mergeTaskArray } from './conflictResolver';
 import type { DailyData, DailyGoal, GameState, ChatHistory, DailyTokenUsage, EnergyLevel, Template, Task, ShopItem } from '@/shared/types/domain';
 
 // ============================================================================
@@ -77,11 +77,12 @@ export const templateStrategy: SyncStrategy<Template[]> = {
 };
 
 // ============================================================================
-// GlobalInbox 전략 (Last-Write-Wins)
+// GlobalInbox 전략 (ID-based Merge)
 // ============================================================================
 
 export const globalInboxStrategy: SyncStrategy<Task[]> = {
   collection: 'globalInbox',
+  resolveConflict: mergeTaskArray,
   getSuccessMessage: (data) =>
     `GlobalInbox synced (${data.length} tasks, ${data.filter(t => !t.completed).length} uncompleted)`,
 };

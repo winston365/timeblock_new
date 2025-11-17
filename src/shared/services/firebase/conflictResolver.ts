@@ -9,7 +9,7 @@
  *   - 없음: 순수 함수만 포함, 외부 의존성 없음
  */
 
-import type { GameState } from '@/shared/types/domain';
+import type { GameState, Task } from '@/shared/types/domain';
 
 // ============================================================================
 // Types
@@ -122,6 +122,66 @@ export function mergeGameState(
     },
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
     deviceId: useLocal ? local.deviceId : remote.deviceId,
+  };
+}
+
+/**
+ * Task 배열 병합 알고리즘을 적용합니다.
+ * ID 기반으로 Task를 병합하며, 같은 ID가 있으면 더 최신 타임스탬프의 Task를 사용합니다.
+ *
+ * @param {SyncData<Task[]>} local - 로컬 Task 배열 데이터
+ * @param {SyncData<Task[]>} remote - 원격 Task 배열 데이터
+ * @returns {SyncData<Task[]>} 병합된 Task 배열 (ID 기반 merge, 최신 우선)
+ * @throws 없음
+ * @sideEffects
+ *   - 콘솔에 병합 로그 출력
+ */
+export function mergeTaskArray(
+  local: SyncData<Task[]>,
+  remote: SyncData<Task[]>
+): SyncData<Task[]> {
+  const localTasks = Array.isArray(local.data) ? local.data : [];
+  const remoteTasks = Array.isArray(remote.data) ? remote.data : [];
+
+  // ID를 키로 하는 Map 생성 (최신 Task 유지)
+  const taskMap = new Map<string, Task>();
+
+  // 원격 Task를 먼저 추가
+  for (const task of remoteTasks) {
+    taskMap.set(task.id, task);
+  }
+
+  // 로컬 Task 추가/업데이트 (최신 것으로 덮어쓰기)
+  for (const task of localTasks) {
+    const existingTask = taskMap.get(task.id);
+    if (!existingTask) {
+      // 새 Task 추가
+      taskMap.set(task.id, task);
+    } else {
+      // 같은 ID가 있으면, updatedAt 비교
+      const localUpdated = task.updatedAt || task.createdAt;
+      const remoteUpdated = existingTask.updatedAt || existingTask.createdAt;
+
+      if (localUpdated >= remoteUpdated) {
+        taskMap.set(task.id, task);
+      }
+    }
+  }
+
+  // Map을 배열로 변환하고 createdAt으로 정렬 (최신순)
+  const mergedTasks = Array.from(taskMap.values()).sort(
+    (a, b) => b.createdAt - a.createdAt
+  );
+
+  console.log(
+    `🔄 Merged Tasks: Local ${localTasks.length} + Remote ${remoteTasks.length} → ${mergedTasks.length} unique tasks`
+  );
+
+  // 더 최신 타임스탬프 사용
+  return {
+    data: mergedTasks,
+    updatedAt: Math.max(local.updatedAt, remote.updatedAt),
+    deviceId: local.updatedAt >= remote.updatedAt ? local.deviceId : remote.deviceId,
   };
 }
 
