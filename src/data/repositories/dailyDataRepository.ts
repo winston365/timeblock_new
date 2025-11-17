@@ -577,17 +577,39 @@ export async function getRecentDailyData(days: number): Promise<Array<DailyData 
  * @throws 없음
  * @sideEffects
  *   - getRecentDailyData 호출
+ *   - Global Inbox에서 완료된 작업도 포함
  */
 export async function getRecentCompletedTasks(days: number = 7): Promise<Task[]> {
   try {
     const recentData = await getRecentDailyData(days);
     const allCompletedTasks: Task[] = [];
 
-    // 모든 날짜의 완료된 작업 수집
+    // 모든 날짜의 완료된 작업 수집 (dailyData에서)
     recentData.forEach(dayData => {
       const completedTasks = dayData.tasks.filter(task => task.completed);
       allCompletedTasks.push(...completedTasks);
     });
+
+    // Global Inbox에서 완료된 작업도 포함
+    try {
+      const { loadInboxTasks } = await import('./inboxRepository');
+      const inboxTasks = await loadInboxTasks();
+      const completedInboxTasks = inboxTasks.filter(task => task.completed);
+
+      // 최근 N일 이내에 완료된 인박스 작업만 포함
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+
+      const recentCompletedInboxTasks = completedInboxTasks.filter(task => {
+        if (!task.completedAt) return false;
+        return new Date(task.completedAt) >= cutoffDate;
+      });
+
+      allCompletedTasks.push(...recentCompletedInboxTasks);
+    } catch (inboxError) {
+      console.warn('Failed to load completed inbox tasks:', inboxError);
+      // 인박스 로드 실패는 무시하고 dailyData 작업만 반환
+    }
 
     // completedAt 기준으로 최근 순으로 정렬
     return allCompletedTasks.sort((a, b) => {

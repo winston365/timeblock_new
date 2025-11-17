@@ -24,6 +24,7 @@ import type { Task } from '@/shared/types/domain';
 import { generateId } from '@/shared/lib/utils';
 import TaskCard from '@/features/schedule/TaskCard';
 import TaskModal from '@/features/schedule/TaskModal';
+import { useDragDropManager } from '@/features/schedule/hooks/useDragDropManager';
 import './tasks.css';
 
 /**
@@ -36,6 +37,7 @@ import './tasks.css';
  */
 export default function InboxTab() {
   const { updateQuestProgress } = useGameState();
+  const { getDragData } = useDragDropManager();
   const [inboxTasks, setInboxTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -153,13 +155,20 @@ export default function InboxTab() {
     e.preventDefault();
     setIsDragOver(false);
 
-    const taskId = e.dataTransfer.getData('text/plain');
-    if (!taskId) return;
+    // Phase 2 통합 드래그 시스템 사용 (JSON 파싱)
+    const dragData = getDragData(e);
+    if (!dragData) {
+      console.warn('No drag data found in drop event');
+      return;
+    }
 
     try {
-      // updateTask를 사용해서 작업을 인박스로 이동 (timeBlock을 null로 설정)
+      // 작업을 인박스로 이동 (timeBlock: null, hourSlot: undefined)
       const { updateTask } = await import('@/data/repositories/dailyDataRepository');
-      await updateTask(taskId, { timeBlock: null });
+      await updateTask(dragData.taskId, {
+        timeBlock: null,
+        hourSlot: undefined
+      });
 
       // 즉시 새로고침
       await refreshInboxTasks();
