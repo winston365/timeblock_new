@@ -152,9 +152,9 @@ const TimeBlock = memo(function TimeBlock({
   const getTimeStatus = (): 'comfortable' | 'balanced' | 'tight' | 'critical' => {
     if (pendingDuration === 0) return 'balanced';
     const ratio = remainingMinutes / pendingDuration;
-    if (ratio >= 1.1) return 'comfortable';      // 남은 시간 >= 계획 시간 × 1.1배
-    if (ratio >= 0.9) return 'balanced';         // 남은 시간 = 계획 시간 × 0.9~1.1배
-    if (ratio >= 0.75) return 'tight';           // 남은 시간 = 계획 시간 × 0.75~0.9배
+    if (ratio >= 1.3) return 'comfortable';      // 남은 시간 >= 계획 시간 × 1.1배
+    if (ratio >= 1.15) return 'balanced';         // 남은 시간 = 계획 시간 × 0.9~1.1배
+    if (ratio >= 0.9) return 'tight';           // 남은 시간 = 계획 시간 × 0.75~0.9배
     return 'critical';                           // 남은 시간 < 계획 시간 × 0.75배
   };
 
