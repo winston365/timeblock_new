@@ -307,7 +307,7 @@ export default function ScheduleView() {
       const block = TIME_BLOCKS.find(b => b.id === targetBlockId);
       const firstHour = block ? block.start : undefined;
 
-      // 작업 이동 (updateTask가 자동으로 inbox↔timeblock 이동 처리)
+      // 작업 이동 (updateTask가 자동으로 inbox↔timeblock 이동 처리 + refresh)
       await updateTask(taskId, { timeBlock: targetBlockId, hourSlot: firstHour });
     } catch (error) {
       console.error('Failed to move task:', error);

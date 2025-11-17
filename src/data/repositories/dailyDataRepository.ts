@@ -134,12 +134,13 @@ export async function saveDailyData(
   const existing = await db.dailyData.get(date);
   const goals = existing?.goals || [];
 
-  // Firebase는 undefined를 허용하지 않으므로, 모든 undefined 값을 빈 문자열로 변환
+  // Firebase는 undefined를 허용하지 않으므로, 모든 undefined 값을 적절한 기본값으로 변환
   const sanitizedTasks = tasks.map(task => ({
     ...task,
     preparation1: task.preparation1 ?? '',
     preparation2: task.preparation2 ?? '',
     preparation3: task.preparation3 ?? '',
+    hourSlot: task.hourSlot ?? null,  // undefined → null 변환 (Firebase 호환)
   }));
 
   const data: DailyData = {

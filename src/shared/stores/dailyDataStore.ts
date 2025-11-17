@@ -26,6 +26,7 @@ import {
 } from '@/data/repositories';
 import { getLocalDate } from '../lib/utils';
 import { taskCompletionService } from '@/shared/services/taskCompletion';
+import { db } from '@/data/db/dexieClient';
 
 interface DailyDataStore {
   // 상태
@@ -148,7 +149,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     }
   },
 
-  // Task 업데이트 (Optimistic Update 패턴)
+  // Task 업데이트 (Optimistic Update 패턴 + Global Inbox 지원)
   updateTask: async (taskId: string, updates: Partial<Task>) => {
     const { currentDate, dailyData, loadData } = get();
 
@@ -157,54 +158,74 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       return;
     }
 
-    // 원본 데이터 백업 (롤백용)
-    const originalTasks = dailyData.tasks;
-    const originalTask = dailyData.tasks.find(t => t.id === taskId);
-
-    // 작업이 dailyData.tasks에 없는 경우 (globalInbox에 있음)
-    if (!originalTask && updates.timeBlock !== null) {
-      // 인박스→타임블록 이동: DB 업데이트 후 강제 재로드
-      console.log('[DailyDataStore] Task not in dailyData, moving from inbox to timeblock');
-
-      try {
-        await updateTaskInRepo(taskId, updates, currentDate);
-        // 강제 재로드로 UI 업데이트
-        await loadData(currentDate, true);
-      } catch (err) {
-        console.error('[DailyDataStore] Failed to move task from inbox:', err);
-        set({ error: err as Error });
-        throw err;
-      }
-      return;
+    // 🔧 Firebase는 undefined를 허용하지 않으므로, undefined → null 변환
+    const sanitizedUpdates: Partial<Task> = { ...updates };
+    if ('hourSlot' in sanitizedUpdates && sanitizedUpdates.hourSlot === undefined) {
+      sanitizedUpdates.hourSlot = null as any;
     }
 
-    // 타임블록→인박스 이동 또는 타임블록 내 이동
-    // ✅ Optimistic Update: UI 즉시 업데이트
-    const optimisticTasks = dailyData.tasks.map(task =>
-      task.id === taskId ? { ...task, ...updates } : task
-    );
+    // 원본 데이터 백업 (롤백용)
+    const originalTasks = dailyData.tasks;
+    let originalTask = dailyData.tasks.find(t => t.id === taskId);
+    let inboxTask = null;
+    let isInboxToBlockMove = false;
+    let isBlockToInboxMove = false;
 
-    // 타임블록→인박스 이동의 경우 tasks 배열에서 제거
-    const finalTasks = updates.timeBlock === null && originalTask?.timeBlock !== null
-      ? optimisticTasks.filter(t => t.id !== taskId)
-      : optimisticTasks;
+    // ✅ dailyData.tasks에 없으면 globalInbox에서 찾기
+    if (!originalTask) {
+      try {
+        inboxTask = await db.globalInbox.get(taskId);
+        originalTask = inboxTask || undefined;
+      } catch (error) {
+        console.error('[DailyDataStore] Failed to check globalInbox:', error);
+      }
+    }
 
-    set({
-      dailyData: {
-        ...dailyData,
-        tasks: finalTasks,
-        updatedAt: Date.now(),
-      },
-    });
+    // 🔍 이동 타입 감지
+    if (inboxTask && sanitizedUpdates.timeBlock !== null && sanitizedUpdates.timeBlock !== undefined) {
+      isInboxToBlockMove = true;
+    } else if (originalTask && sanitizedUpdates.timeBlock === null && originalTask.timeBlock !== null) {
+      isBlockToInboxMove = true;
+    }
+
+    let optimisticTasks = [...dailyData.tasks];
+
+    // ✅ Optimistic Update: inbox ↔ timeBlock 이동 시 건너뛰기 (이중 추가 방지)
+    if (!isInboxToBlockMove && !isBlockToInboxMove) {
+      // 🔹 일반 업데이트만 Optimistic Update 적용
+      optimisticTasks = optimisticTasks.map(task =>
+        task.id === taskId ? { ...task, ...sanitizedUpdates } : task
+      );
+
+      set({
+        dailyData: {
+          ...dailyData,
+          tasks: optimisticTasks,
+          updatedAt: Date.now(),
+        },
+      });
+    } else {
+      // 🔹 inbox ↔ timeBlock 이동: Optimistic Update 건너뛰고, repository 작업 후 refresh
+      console.log('[DailyDataStore] Skipping Optimistic Update for inbox ↔ timeBlock move', {
+        taskId,
+        isInboxToBlockMove,
+        isBlockToInboxMove
+      });
+    }
 
     // ✅ 백그라운드에서 DB 저장
     try {
-      await updateTaskInRepo(taskId, updates, currentDate);
+      await updateTaskInRepo(taskId, sanitizedUpdates, currentDate);
+
+      // 🔹 inbox ↔ timeBlock 이동 시 명시적 refresh (이중 추가 방지)
+      if (isInboxToBlockMove || isBlockToInboxMove) {
+        await loadData(currentDate, true);
+      }
 
       // ✅ 목표 연결 변경 시 진행률 자동 재계산
       const affectedGoalIds = new Set<string>();
       if (originalTask?.goalId) affectedGoalIds.add(originalTask.goalId);
-      if (updates.goalId) affectedGoalIds.add(updates.goalId);
+      if (sanitizedUpdates.goalId) affectedGoalIds.add(sanitizedUpdates.goalId);
 
       if (affectedGoalIds.size > 0) {
         for (const goalId of affectedGoalIds) {
