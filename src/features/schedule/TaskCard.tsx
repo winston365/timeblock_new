@@ -279,7 +279,10 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
                 <div className="task-meta-item">
                   <button
                     className={`resistance-badge ${task.resistance} clickable`}
-                    onClick={() => setShowResistancePicker(!showResistancePicker)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowResistancePicker(!showResistancePicker);
+                    }}
                     title="클릭하여 변경"
                   >
                     {RESISTANCE_LABELS[task.resistance]}
@@ -299,7 +302,10 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
               <div className="task-meta-item">
                 <button
                   className="duration-badge clickable"
-                  onClick={() => setShowDurationPicker(!showDurationPicker)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDurationPicker(!showDurationPicker);
+                  }}
                   title="클릭하여 변경"
                 >
                   ⏱️ {formatDuration(task.baseDuration)}
