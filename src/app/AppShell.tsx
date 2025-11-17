@@ -192,9 +192,26 @@ export default function AppShell() {
               // ✅ GlobalInbox 저장
               if (firebaseData.globalInbox && Array.isArray(firebaseData.globalInbox)) {
                 console.log(`💾 Saving ${firebaseData.globalInbox.length} inbox tasks from Firebase`);
-                await db.globalInbox.clear();
-                if (firebaseData.globalInbox.length > 0) {
-                  await db.globalInbox.bulkAdd(firebaseData.globalInbox);
+                try {
+                  await db.globalInbox.clear();
+                  if (firebaseData.globalInbox.length > 0) {
+                    await db.globalInbox.bulkAdd(firebaseData.globalInbox);
+                  }
+                  const saved = await db.globalInbox.count();
+                  console.log(`✅ Verified: ${saved} inbox tasks in IndexedDB`);
+                } catch (error) {
+                  console.error('❌ Failed to bulkAdd inbox tasks:', error);
+                  // 하나씩 저장 시도
+                  let successCount = 0;
+                  for (const task of firebaseData.globalInbox) {
+                    try {
+                      await db.globalInbox.put(task);
+                      successCount++;
+                    } catch (e) {
+                      console.error(`❌ Failed to save task ${task.id}:`, e);
+                    }
+                  }
+                  console.log(`✅ Saved ${successCount}/${firebaseData.globalInbox.length} tasks individually`);
                 }
               }
 
@@ -206,16 +223,21 @@ export default function AppShell() {
                   for (const date of energyDates) {
                     const levels = firebaseData.energyLevels[date];
                     if (Array.isArray(levels) && levels.length > 0) {
-                      // 기존 데이터 삭제
-                      await db.energyLevels.where('date').equals(date).delete();
-                      // 새 데이터 저장
-                      const levelsWithId = levels.map(level => ({
-                        ...level,
-                        id: `${date}_${level.timestamp}`,
-                        date,
-                      }));
-                      await db.energyLevels.bulkAdd(levelsWithId);
-                      localStorage.setItem(`energyLevels_${date}`, JSON.stringify(levels));
+                      try {
+                        // 기존 데이터 삭제
+                        await db.energyLevels.where('date').equals(date).delete();
+                        // 새 데이터 저장
+                        const levelsWithId = levels.map(level => ({
+                          ...level,
+                          id: `${date}_${level.timestamp}`,
+                          date,
+                        }));
+                        await db.energyLevels.bulkAdd(levelsWithId);
+                        localStorage.setItem(`energyLevels_${date}`, JSON.stringify(levels));
+                        console.log(`✅ Saved ${levels.length} energy levels for ${date}`);
+                      } catch (error) {
+                        console.error(`❌ Failed to save energy levels for ${date}:`, error);
+                      }
                     }
                   }
                 }
@@ -224,31 +246,52 @@ export default function AppShell() {
               // ✅ ShopItems 저장
               if (firebaseData.shopItems && Array.isArray(firebaseData.shopItems)) {
                 console.log(`💾 Saving ${firebaseData.shopItems.length} shop items from Firebase`);
-                await db.shopItems.clear();
-                if (firebaseData.shopItems.length > 0) {
-                  await db.shopItems.bulkAdd(firebaseData.shopItems);
+                try {
+                  await db.shopItems.clear();
+                  if (firebaseData.shopItems.length > 0) {
+                    await db.shopItems.bulkAdd(firebaseData.shopItems);
+                  }
+                  saveToStorage(STORAGE_KEYS.SHOP_ITEMS, firebaseData.shopItems);
+                  const saved = await db.shopItems.count();
+                  console.log(`✅ Verified: ${saved} shop items in IndexedDB`);
+                } catch (error) {
+                  console.error('❌ Failed to save shop items:', error);
                 }
-                saveToStorage(STORAGE_KEYS.SHOP_ITEMS, firebaseData.shopItems);
               }
 
               // ✅ WaifuState 저장
               if (firebaseData.waifuState) {
                 console.log('💾 Saving WaifuState from Firebase');
-                await db.waifuState.put({
-                  key: 'current',
-                  ...firebaseData.waifuState,
-                });
-                saveToStorage(STORAGE_KEYS.WAIFU_STATE, firebaseData.waifuState);
+                try {
+                  await db.waifuState.put({
+                    key: 'current',
+                    ...firebaseData.waifuState,
+                  });
+                  saveToStorage(STORAGE_KEYS.WAIFU_STATE, firebaseData.waifuState);
+                  console.log('✅ Verified: WaifuState saved');
+                } catch (error) {
+                  console.error('❌ Failed to save WaifuState:', error);
+                }
+              } else {
+                console.log('ℹ️ No WaifuState in Firebase');
               }
 
               // ✅ Templates 저장
               if (firebaseData.templates && Array.isArray(firebaseData.templates)) {
                 console.log(`💾 Saving ${firebaseData.templates.length} templates from Firebase`);
-                await db.templates.clear();
-                if (firebaseData.templates.length > 0) {
-                  await db.templates.bulkAdd(firebaseData.templates);
+                try {
+                  await db.templates.clear();
+                  if (firebaseData.templates.length > 0) {
+                    await db.templates.bulkAdd(firebaseData.templates);
+                  }
+                  saveToStorage(STORAGE_KEYS.TEMPLATES, firebaseData.templates);
+                  const saved = await db.templates.count();
+                  console.log(`✅ Verified: ${saved} templates in IndexedDB`);
+                } catch (error) {
+                  console.error('❌ Failed to save templates:', error);
                 }
-                saveToStorage(STORAGE_KEYS.TEMPLATES, firebaseData.templates);
+              } else {
+                console.log('ℹ️ No Templates in Firebase');
               }
 
               // 로컬 데이터를 Firebase로 업로드 (Firebase에 없는 것만)
