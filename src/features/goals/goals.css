@@ -311,9 +311,9 @@
    ============================================================================ */
 
 .goal-modal {
-  max-width: 600px;
-  width: 95%;
-  max-height: 92vh;
+  max-width: 600px !important;
+  width: 95% !important;
+  max-height: 92vh !important;
   display: flex;
   flex-direction: column;
 }

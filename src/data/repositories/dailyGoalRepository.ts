@@ -10,10 +10,10 @@
  *   - dailyGoalStrategy: 동기화 전략
  */
 
-import type { DailyGoal } from '@/shared/types/domain';
+import type { DailyGoal, DailyData } from '@/shared/types/domain';
 import { db } from '@/data/db/dexieClient';
 import { syncToFirebase, fetchFromFirebase } from '@/shared/services/firebase/syncCore';
-import { dailyGoalStrategy } from '@/shared/services/firebase/strategies';
+import { dailyGoalStrategy, dailyDataStrategy } from '@/shared/services/firebase/strategies';
 import { generateId } from '@/shared/lib/utils';
 
 /**
@@ -122,8 +122,17 @@ export async function createGoal(
   // localStorage 백업
   localStorage.setItem(`goals_${date}`, JSON.stringify(updatedGoals));
 
-  // Firebase 동기화
-  await syncToFirebase(dailyGoalStrategy, updatedGoals, date);
+  // Firebase 동기화 (전체 DailyData를 동기화하여 일관성 보장)
+  const latestData = await db.dailyData.get(date);
+  if (latestData) {
+    const dataToSync: DailyData = {
+      tasks: latestData.tasks,
+      goals: updatedGoals,
+      timeBlockStates: latestData.timeBlockStates,
+      updatedAt: Date.now(),
+    };
+    await syncToFirebase(dailyDataStrategy, dataToSync, date);
+  }
 
   return newGoal;
 }
@@ -163,8 +172,17 @@ export async function updateGoal(
   // localStorage 백업
   localStorage.setItem(`goals_${date}`, JSON.stringify(updatedGoals));
 
-  // Firebase 동기화
-  await syncToFirebase(dailyGoalStrategy, updatedGoals, date);
+  // Firebase 동기화 (전체 DailyData를 동기화하여 일관성 보장)
+  const latestData = await db.dailyData.get(date);
+  if (latestData) {
+    const dataToSync: DailyData = {
+      tasks: latestData.tasks,
+      goals: updatedGoals,
+      timeBlockStates: latestData.timeBlockStates,
+      updatedAt: Date.now(),
+    };
+    await syncToFirebase(dailyDataStrategy, dataToSync, date);
+  }
 
   return updatedGoal;
 }
@@ -196,8 +214,17 @@ export async function deleteGoal(date: string, goalId: string): Promise<void> {
   // localStorage 백업
   localStorage.setItem(`goals_${date}`, JSON.stringify(updatedGoals));
 
-  // Firebase 동기화
-  await syncToFirebase(dailyGoalStrategy, updatedGoals, date);
+  // Firebase 동기화 (전체 DailyData를 동기화하여 일관성 보장)
+  const latestData = await db.dailyData.get(date);
+  if (latestData) {
+    const dataToSync: DailyData = {
+      tasks: updatedTasks,
+      goals: updatedGoals,
+      timeBlockStates: latestData.timeBlockStates,
+      updatedAt: Date.now(),
+    };
+    await syncToFirebase(dailyDataStrategy, dataToSync, date);
+  }
 }
 
 /**
