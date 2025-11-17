@@ -16,4 +16,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  base: './', // Electron에서 상대 경로로 로드하기 위함
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+  },
 })

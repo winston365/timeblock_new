@@ -31,3 +31,10 @@ dist-ssr
 
 # Firebase config (sensitive)
 src/data/firebase/config.ts
+
+# Electron build output
+dist-electron
+release
+*.exe
+*.dmg
+*.AppImage
