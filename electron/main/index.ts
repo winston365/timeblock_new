@@ -206,6 +206,9 @@ function setupAutoUpdater(): void {
     return;
   }
 
+  // 다운로드 진행률 알림용 변수
+  let lastNotifiedPercent = 0;
+
   // 업데이트 확인 가능 시
   autoUpdater.on('checking-for-update', () => {
     console.log('[AutoUpdater] Checking for updates...');
@@ -225,16 +228,26 @@ function setupAutoUpdater(): void {
       cancelId: 1,
     }).then((result) => {
       if (result.response === 0) {
+        console.log('[AutoUpdater] Starting download...');
+
+        // 다운로드 진행률 알림 카운터 리셋
+        lastNotifiedPercent = 0;
+
+        // 다운로드 시작 알림
+        if (Notification.isSupported()) {
+          new Notification({
+            title: '⬇️ 업데이트 다운로드 시작',
+            body: '백그라운드에서 업데이트를 다운로드합니다. 진행 상황은 앱 아이콘에서 확인할 수 있습니다.',
+          }).show();
+        }
+
         // 다운로드 시작
         autoUpdater.downloadUpdate();
 
-        dialog.showMessageBox(mainWindow!, {
-          type: 'info',
-          title: '업데이트 다운로드 중',
-          message: '백그라운드에서 업데이트를 다운로드하는 중입니다.',
-          detail: '다운로드가 완료되면 알려드리겠습니다.',
-          buttons: ['확인'],
-        });
+        // 프로그레스 바 초기화
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.setProgressBar(0);
+        }
       }
     });
   });
@@ -246,13 +259,68 @@ function setupAutoUpdater(): void {
 
   // 다운로드 진행 중
   autoUpdater.on('download-progress', (progressObj) => {
-    const logMessage = `Download speed: ${progressObj.bytesPerSecond} - Downloaded ${progressObj.percent}% (${progressObj.transferred}/${progressObj.total})`;
+    const percent = Math.round(progressObj.percent);
+    const speedMB = (progressObj.bytesPerSecond / 1024 / 1024).toFixed(2);
+    const transferredMB = (progressObj.transferred / 1024 / 1024).toFixed(2);
+    const totalMB = (progressObj.total / 1024 / 1024).toFixed(2);
+
+    const logMessage = `Download speed: ${speedMB} MB/s - Downloaded ${percent}% (${transferredMB}/${totalMB} MB)`;
     console.log('[AutoUpdater]', logMessage);
+
+    // 메인 윈도우 프로그레스 바 업데이트 (0.0 ~ 1.0)
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setProgressBar(progressObj.percent / 100);
+    }
+
+    // 25%, 50%, 75% 구간마다 알림 표시
+    if (percent >= 25 && lastNotifiedPercent < 25) {
+      lastNotifiedPercent = 25;
+      if (Notification.isSupported()) {
+        new Notification({
+          title: '업데이트 다운로드 중',
+          body: `다운로드 진행 중: 25% (${speedMB} MB/s)`,
+        }).show();
+      }
+    } else if (percent >= 50 && lastNotifiedPercent < 50) {
+      lastNotifiedPercent = 50;
+      if (Notification.isSupported()) {
+        new Notification({
+          title: '업데이트 다운로드 중',
+          body: `다운로드 진행 중: 50% (${speedMB} MB/s)`,
+        }).show();
+      }
+    } else if (percent >= 75 && lastNotifiedPercent < 75) {
+      lastNotifiedPercent = 75;
+      if (Notification.isSupported()) {
+        new Notification({
+          title: '업데이트 다운로드 중',
+          body: `다운로드 진행 중: 75% (${speedMB} MB/s)`,
+        }).show();
+      }
+    }
   });
 
   // 다운로드 완료
   autoUpdater.on('update-downloaded', (info) => {
     console.log('[AutoUpdater] Update downloaded:', info.version);
+
+    // 프로그레스 바 완료 표시 후 제거
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setProgressBar(1.0);
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.setProgressBar(-1); // 프로그레스 바 제거
+        }
+      }, 1000);
+    }
+
+    // 다운로드 완료 알림
+    if (Notification.isSupported()) {
+      new Notification({
+        title: '✅ 업데이트 다운로드 완료',
+        body: `새로운 버전(v${info.version})이 준비되었습니다.`,
+      }).show();
+    }
 
     dialog.showMessageBox(mainWindow!, {
       type: 'info',
@@ -274,8 +342,21 @@ function setupAutoUpdater(): void {
   autoUpdater.on('error', (error) => {
     console.error('[AutoUpdater] Error:', error);
 
-    // 사용자에게 에러 표시 (선택적)
-    // dialog.showErrorBox('업데이트 오류', `자동 업데이트 중 오류가 발생했습니다: ${error.message}`);
+    // 프로그레스 바 제거
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setProgressBar(-1);
+    }
+
+    // 사용자에게 에러 표시
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      dialog.showMessageBox(mainWindow, {
+        type: 'error',
+        title: '업데이트 오류',
+        message: '자동 업데이트 중 오류가 발생했습니다.',
+        detail: `오류 내용: ${error.message}\n\n나중에 다시 시도해주세요.`,
+        buttons: ['확인'],
+      });
+    }
   });
 
   // 초기 업데이트 체크 (앱 시작 5초 후)
