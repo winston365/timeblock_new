@@ -135,7 +135,7 @@ export async function saveEnergyLevels(
     }
 
     // 3. Firebase에 비동기 동기화
-    if (await isFirebaseInitialized()) {
+    if (isFirebaseInitialized()) {
       await syncToFirebase(energyLevelsStrategy, levels, date);
     }
   } catch (error) {

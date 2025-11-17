@@ -42,7 +42,7 @@ export async function loadInboxTasks(): Promise<Task[]> {
 
     // 2. Firebase에서 조회 (fallback)
     if (isFirebaseInitialized()) {
-      const firebaseTasks = await fetchFromFirebase<Task[]>(globalInboxStrategy);
+      const firebaseTasks = await fetchFromFirebase<Task[]>(globalInboxStrategy, 'all');
 
       if (firebaseTasks && firebaseTasks.length > 0) {
         // Firebase 데이터를 IndexedDB에 저장
@@ -87,7 +87,7 @@ export async function addInboxTask(task: Task): Promise<void> {
     // Firebase 동기화
     if (isFirebaseInitialized()) {
       const allTasks = await db.globalInbox.toArray();
-      await syncToFirebase(globalInboxStrategy, allTasks);
+      await syncToFirebase(globalInboxStrategy, allTasks, 'all');
     }
   } catch (error) {
     console.error('Failed to add inbox task:', error);
@@ -125,7 +125,7 @@ export async function updateInboxTask(taskId: string, updates: Partial<Task>): P
     // Firebase 동기화
     if (isFirebaseInitialized()) {
       const allTasks = await db.globalInbox.toArray();
-      await syncToFirebase(globalInboxStrategy, allTasks);
+      await syncToFirebase(globalInboxStrategy, allTasks, 'all');
     }
   } catch (error) {
     console.error('Failed to update inbox task:', error);
@@ -152,7 +152,7 @@ export async function deleteInboxTask(taskId: string): Promise<void> {
     // Firebase 동기화
     if (isFirebaseInitialized()) {
       const allTasks = await db.globalInbox.toArray();
-      await syncToFirebase(globalInboxStrategy, allTasks);
+      await syncToFirebase(globalInboxStrategy, allTasks, 'all');
     }
   } catch (error) {
     console.error('Failed to delete inbox task:', error);
@@ -188,7 +188,7 @@ export async function toggleInboxTaskCompletion(taskId: string): Promise<Task> {
     // Firebase 동기화
     if (isFirebaseInitialized()) {
       const allTasks = await db.globalInbox.toArray();
-      await syncToFirebase(globalInboxStrategy, allTasks);
+      await syncToFirebase(globalInboxStrategy, allTasks, 'all');
     }
 
     return task;
@@ -226,7 +226,7 @@ export async function moveInboxTaskToBlock(taskId: string): Promise<Task | null>
     // Firebase 동기화
     if (isFirebaseInitialized()) {
       const allTasks = await db.globalInbox.toArray();
-      await syncToFirebase(globalInboxStrategy, allTasks);
+      await syncToFirebase(globalInboxStrategy, allTasks, 'all');
     }
 
     return task;
@@ -259,7 +259,7 @@ export async function moveTaskToInbox(task: Task): Promise<void> {
     // Firebase 동기화
     if (isFirebaseInitialized()) {
       const allTasks = await db.globalInbox.toArray();
-      await syncToFirebase(globalInboxStrategy, allTasks);
+      await syncToFirebase(globalInboxStrategy, allTasks, 'all');
     }
   } catch (error) {
     console.error('Failed to move task to inbox:', error);

@@ -154,6 +154,15 @@ export default function AppShell() {
         if (settings.firebaseConfig) {
           const initialized = initializeFirebase(settings.firebaseConfig);
           if (initialized) {
+            // 로컬 데이터를 Firebase로 업로드 (새 Firebase 연결 시 기존 데이터 보존)
+            try {
+              const { syncAllLocalDataToFirebase } = await import('@/shared/services/firebase/initialSync');
+              await syncAllLocalDataToFirebase();
+              console.log('✅ Local data uploaded to Firebase');
+            } catch (error) {
+              console.warn('⚠️ Failed to upload local data to Firebase:', error);
+            }
+
             // Firebase에서 초기 데이터 가져오기
             try {
               const { fetchDataFromFirebase } = await import('@/shared/services/firebaseService');
