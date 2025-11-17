@@ -17,6 +17,7 @@ import { CompletionCelebrationModal } from './CompletionCelebrationModal';
 import { MemoModal } from './MemoModal';
 import { useGameState } from '@/shared/hooks';
 import { addXP } from '@/data/repositories/gameStateRepository';
+import { useDragDropManager } from './hooks/useDragDropManager';
 
 interface TaskCardProps {
   task: Task;
@@ -57,6 +58,9 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   // 게임 상태에서 퀘스트 업데이트 함수 가져오기
   const { updateQuestProgress } = useGameState();
 
+  // 통합 드래그 앤 드롭 관리 훅
+  const { setDragData } = useDragDropManager();
+
   // XP 계산
   const xp = calculateTaskXP(task);
 
@@ -89,10 +93,19 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
 
   const durationOptions = [5, 10, 15, 30, 45, 60];
 
-  // 드래그 핸들러
+  // 드래그 핸들러 (통합 드래그 시스템 사용)
   const handleDragStart = (e: React.DragEvent) => {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', task.id);
+    // 구조화된 드래그 데이터 설정 (task 전체 객체 포함)
+    setDragData(
+      {
+        taskId: task.id,
+        sourceBlockId: task.timeBlock,
+        sourceHourSlot: task.hourSlot,
+        taskData: task,
+      },
+      e
+    );
+
     setIsDragging(true);
     if (onDragStart) {
       onDragStart(task.id);

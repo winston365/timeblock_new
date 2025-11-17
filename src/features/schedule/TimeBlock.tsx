@@ -13,6 +13,7 @@ import { useState, useEffect, memo } from 'react';
 import type { Task, TimeBlockState, TimeBlockId } from '@/shared/types/domain';
 import { calculateTaskXP } from '@/shared/lib/utils';
 import HourBar from './HourBar';
+import { useDragDrop } from './hooks/useDragDrop';
 
 interface TimeBlockProps {
   block: {
@@ -58,10 +59,15 @@ const TimeBlock = memo(function TimeBlock({
   onDeleteTask,
   onToggleTask,
   onToggleLock,
-  onDropTask,
+  onDropTask: _onDropTask, // 사용하지 않음 (useDragDrop 훅으로 대체)
 }: TimeBlockProps) {
   const [isExpanded, setIsExpanded] = useState(isCurrentBlock);
-  const [isDragOver, setIsDragOver] = useState(false);
+
+  // 통합 드래그 앤 드롭 훅 사용 (블록 레벨, hourSlot 없음)
+  const { isDragOver, handleDragOver, handleDragLeave, handleDrop } = useDragDrop(
+    block.id as TimeBlockId,
+    undefined // hourSlot 없음 (블록 레벨 드롭)
+  );
 
   // 5분 타이머 상태
   const [timerElapsed, setTimerElapsed] = useState(0); // 경과 시간 (초)
@@ -334,25 +340,13 @@ const TimeBlock = memo(function TimeBlock({
     onToggleTask(taskId);
   };
 
-  // 드래그 앤 드롭 핸들러
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setIsDragOver(true);
-  };
+  // 드롭 핸들러 래퍼 (onUpdateTask를 handleDrop에 전달)
+  const handleDropWrapper = async (e: React.DragEvent) => {
+    if (!onUpdateTask) return;
 
-  const handleDragLeave = () => {
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-
-    const taskId = e.dataTransfer.getData('text/plain');
-    if (taskId && onDropTask) {
-      onDropTask(taskId, block.id as TimeBlockId);
-    }
+    await handleDrop(e, async (taskId, updates) => {
+      onUpdateTask(taskId, updates);
+    });
   };
 
   return (
@@ -361,7 +355,7 @@ const TimeBlock = memo(function TimeBlock({
       data-block-id={block.id}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      onDrop={handleDropWrapper}
     >
       <div className="block-header" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="block-primary-info">
