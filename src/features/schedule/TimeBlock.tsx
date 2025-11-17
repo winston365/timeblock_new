@@ -319,8 +319,8 @@ const TimeBlock = memo(function TimeBlock({
                         className={`time-bar-fill planned status-${timeStatus}`}
                         style={{ width: `${Math.min((pendingDuration / (remainingMinutes || 1)) * 100, 100)}%` }}
                       />
-                      <span className="time-value">{formatMinutesToHM(pendingDuration)}</span>
                     </div>
+                    <span className="time-value">{formatMinutesToHM(pendingDuration)}</span>
                   </div>
 
                   {/* 남은 시간 바 */}
@@ -331,8 +331,8 @@ const TimeBlock = memo(function TimeBlock({
                         className={`time-bar-fill remaining status-${timeStatus}`}
                         style={{ width: '100%' }}
                       />
-                      <span className="time-value">{formatMinutesToHM(remainingMinutes)}</span>
                     </div>
+                    <span className="time-value">{formatMinutesToHM(remainingMinutes)}</span>
                   </div>
                 </div>
 

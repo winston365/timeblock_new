@@ -611,11 +611,12 @@
 .time-bar-track {
   position: relative;
   flex: 1;
-  height: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  min-width: 120px;
 }
 
 /* 바 채움 (진행 상태) */
@@ -624,12 +625,9 @@
   left: 0;
   top: 0;
   height: 100%;
-  border-radius: 10px;
+  border-radius: 12px;
   transition: width 0.4s ease, background-color 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 6px;
+  min-width: 8px;
 }
 
 /* 계획 시간 바 색상 */
@@ -674,18 +672,15 @@
   box-shadow: 0 2px 8px rgba(252, 165, 165, 0.3);
 }
 
-/* 시간 값 텍스트 (바 안에 표시) */
+/* 시간 값 텍스트 (바 오른쪽에 표시) */
 .time-value {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   font-weight: 700;
-  color: white;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-  z-index: 1;
-  pointer-events: none;
+  color: var(--color-text-primary);
+  min-width: 48px;
+  text-align: right;
+  flex-shrink: 0;
+  padding-left: 8px;
 }
 
 /* 상태 텍스트 배지 */

@@ -239,7 +239,16 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
         draggable="true"
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onDoubleClick={onEdit}
+        onClick={(e) => {
+          // 체크박스, 버튼 등 다른 요소를 클릭한 경우 무시
+          if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.task-details')) {
+            if (!(e.target as HTMLElement).closest('.task-inline-badges') &&
+                !(e.target as HTMLElement).closest('.task-checkbox') &&
+                !isEditingText) {
+              onEdit();
+            }
+          }
+        }}
       >
       <div className="task-main">
         <button
