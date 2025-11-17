@@ -8,15 +8,40 @@
  *   - IndexedDB (db.waifuState): 메인 저장소
  *   - localStorage (STORAGE_KEYS.WAIFU_STATE): 백업 저장소
  *   - @/shared/types/domain: WaifuState 타입
- *   - @/shared/lib/utils: 저장소 유틸리티
  *   - @/shared/lib/constants: 상수 (호감도 증가량 등)
+ *   - BaseRepository: 공통 Repository 패턴
  */
 
 import { db } from '../db/dexieClient';
 import type { WaifuState } from '@/shared/types/domain';
-import { saveToStorage, getFromStorage } from '@/shared/lib/utils';
 import { STORAGE_KEYS, AFFECTION_XP_TARGET } from '@/shared/lib/constants';
 import { loadGameState } from './gameStateRepository';
+import { loadData, saveData, type RepositoryConfig } from './baseRepository';
+
+// ============================================================================
+// Repository Configuration
+// ============================================================================
+
+/**
+ * WaifuState Repository 설정
+ */
+const waifuStateConfig: RepositoryConfig<WaifuState> = {
+  table: db.waifuState,
+  storageKey: STORAGE_KEYS.WAIFU_STATE,
+  createInitial: () => ({
+    affection: 0,
+    currentPose: 'default',
+    lastInteraction: Date.now(),
+    tasksCompletedToday: 0,
+    totalInteractions: 0,
+    lastIdleWarning: null,
+    unlockedPoses: ['default'],
+    lastAffectionTier: 'neutral',
+    clickCount: 0,
+    poseLockedUntil: null,
+  }),
+  logPrefix: 'WaifuState',
+};
 
 // ============================================================================
 // WaifuState CRUD
@@ -30,18 +55,7 @@ import { loadGameState } from './gameStateRepository';
  * @sideEffects 없음 (순수 함수)
  */
 export function createInitialWaifuState(): WaifuState {
-  return {
-    affection: 0,
-    currentPose: 'default',
-    lastInteraction: Date.now(),
-    tasksCompletedToday: 0,
-    totalInteractions: 0,
-    lastIdleWarning: null,
-    unlockedPoses: ['default'],
-    lastAffectionTier: 'neutral',
-    clickCount: 0,
-    poseLockedUntil: null,
-  };
+  return waifuStateConfig.createInitial();
 }
 
 /**
@@ -55,31 +69,7 @@ export function createInitialWaifuState(): WaifuState {
  *   - 데이터 없을 시 IndexedDB/localStorage에 초기 상태 저장
  */
 export async function loadWaifuState(): Promise<WaifuState> {
-  try {
-    // 1. IndexedDB에서 조회
-    const data = await db.waifuState.get('current');
-
-    if (data) {
-      return data;
-    }
-
-    // 2. localStorage에서 조회
-    const localData = getFromStorage<WaifuState | null>(STORAGE_KEYS.WAIFU_STATE, null);
-
-    if (localData) {
-      // localStorage 데이터를 IndexedDB에 저장
-      await saveWaifuState(localData);
-      return localData;
-    }
-
-    // 3. 초기 상태 생성
-    const initialState = createInitialWaifuState();
-    await saveWaifuState(initialState);
-    return initialState;
-  } catch (error) {
-    console.error('Failed to load waifu state:', error);
-    return createInitialWaifuState();
-  }
+  return loadData(waifuStateConfig, 'current', { useFirebase: false });
 }
 
 /**
@@ -91,23 +81,9 @@ export async function loadWaifuState(): Promise<WaifuState> {
  * @sideEffects
  *   - IndexedDB에 저장 (db.waifuState.put)
  *   - localStorage에 저장 (STORAGE_KEYS.WAIFU_STATE)
- *   - 콘솔 로그 출력
  */
 export async function saveWaifuState(waifuState: WaifuState): Promise<void> {
-  try {
-    // 1. IndexedDB에 저장
-    await db.waifuState.put({
-      key: 'current',
-      ...waifuState,
-    });
-
-    // 2. localStorage에도 저장
-    saveToStorage(STORAGE_KEYS.WAIFU_STATE, waifuState);
-
-  } catch (error) {
-    console.error('Failed to save waifu state:', error);
-    throw error;
-  }
+  await saveData(waifuStateConfig, 'current', waifuState, { syncFirebase: false });
 }
 
 /**

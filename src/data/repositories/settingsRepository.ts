@@ -8,12 +8,41 @@
  *   - IndexedDB (db.settings): 메인 저장소
  *   - localStorage (STORAGE_KEYS.SETTINGS): 백업 저장소
  *   - @/shared/types/domain: Settings 타입
+ *   - BaseRepository: 공통 Repository 패턴
  */
 
 import { db } from '../db/dexieClient';
 import type { Settings } from '@/shared/types/domain';
-import { saveToStorage, getFromStorage } from '@/shared/lib/utils';
 import { STORAGE_KEYS, DEFAULT_AUTO_MESSAGE_INTERVAL } from '@/shared/lib/constants';
+import { loadData, saveData, updateData, type RepositoryConfig } from './baseRepository';
+
+// ============================================================================
+// Repository Configuration
+// ============================================================================
+
+/**
+ * Settings Repository 설정
+ */
+const settingsConfig: RepositoryConfig<Settings> = {
+  table: db.settings,
+  storageKey: STORAGE_KEYS.SETTINGS,
+  createInitial: () => ({
+    geminiApiKey: '',
+    autoMessageInterval: DEFAULT_AUTO_MESSAGE_INTERVAL,
+    autoMessageEnabled: true,
+    waifuMode: 'characteristic', // 기본값: 특성 모드
+    templateCategories: ['업무', '건강', '공부', '취미'], // 기본 카테고리
+  }),
+  sanitize: (data: Settings) => {
+    // 기존 사용자를 위한 마이그레이션
+    return {
+      ...data,
+      waifuMode: data.waifuMode || 'characteristic',
+      templateCategories: data.templateCategories || ['업무', '건강', '공부', '취미'],
+    };
+  },
+  logPrefix: 'Settings',
+};
 
 // ============================================================================
 // Settings CRUD
@@ -27,13 +56,7 @@ import { STORAGE_KEYS, DEFAULT_AUTO_MESSAGE_INTERVAL } from '@/shared/lib/consta
  * @sideEffects 없음 (순수 함수)
  */
 export function createInitialSettings(): Settings {
-  return {
-    geminiApiKey: '',
-    autoMessageInterval: DEFAULT_AUTO_MESSAGE_INTERVAL,
-    autoMessageEnabled: true,
-    waifuMode: 'characteristic', // 기본값: 특성 모드
-    templateCategories: ['업무', '건강', '공부', '취미'], // 기본 카테고리
-  };
+  return settingsConfig.createInitial();
 }
 
 /**
@@ -47,51 +70,7 @@ export function createInitialSettings(): Settings {
  *   - 데이터가 없으면 초기 설정 생성 및 저장
  */
 export async function loadSettings(): Promise<Settings> {
-  try {
-    // 1. IndexedDB에서 조회
-    const data = await db.settings.get('current');
-
-    if (data) {
-      // 기존 사용자를 위한 마이그레이션
-      let needsSave = false;
-
-      if (!data.waifuMode) {
-        data.waifuMode = 'characteristic';
-        needsSave = true;
-      }
-
-      if (!data.templateCategories) {
-        data.templateCategories = ['업무', '건강', '공부', '취미'];
-        needsSave = true;
-      }
-
-      if (needsSave) {
-        await saveSettings(data);
-      }
-
-      return data;
-    }
-
-    // 2. localStorage에서 조회
-    const localData = getFromStorage<Settings | null>(STORAGE_KEYS.SETTINGS, null);
-
-    if (localData) {
-      // 기존 사용자를 위한 마이그레이션: waifuMode가 없으면 기본값 설정
-      if (!localData.waifuMode) {
-        localData.waifuMode = 'characteristic';
-      }
-      await saveSettings(localData);
-      return localData;
-    }
-
-    // 3. 초기 설정 생성
-    const initialSettings = createInitialSettings();
-    await saveSettings(initialSettings);
-    return initialSettings;
-  } catch (error) {
-    console.error('Failed to load settings:', error);
-    return createInitialSettings();
-  }
+  return loadData(settingsConfig, 'current', { useFirebase: false });
 }
 
 /**
@@ -105,20 +84,7 @@ export async function loadSettings(): Promise<Settings> {
  *   - localStorage에 백업
  */
 export async function saveSettings(settings: Settings): Promise<void> {
-  try {
-    // 1. IndexedDB에 저장
-    await db.settings.put({
-      key: 'current',
-      ...settings,
-    });
-
-    // 2. localStorage에도 저장
-    saveToStorage(STORAGE_KEYS.SETTINGS, settings);
-
-  } catch (error) {
-    console.error('Failed to save settings:', error);
-    throw error;
-  }
+  await saveData(settingsConfig, 'current', settings, { syncFirebase: false });
 }
 
 /**
@@ -132,15 +98,7 @@ export async function saveSettings(settings: Settings): Promise<void> {
  *   - localStorage에 백업
  */
 export async function updateSettings(updates: Partial<Settings>): Promise<Settings> {
-  try {
-    const settings = await loadSettings();
-    const updatedSettings = { ...settings, ...updates };
-    await saveSettings(updatedSettings);
-    return updatedSettings;
-  } catch (error) {
-    console.error('Failed to update settings:', error);
-    throw error;
-  }
+  return updateData(settingsConfig, 'current', updates, { syncFirebase: false });
 }
 
 /**

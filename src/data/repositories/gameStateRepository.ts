@@ -10,17 +10,57 @@
  *   - Firebase: 실시간 동기화 (syncToFirebase)
  *   - @/shared/types/domain: GameState, Quest, Task 타입
  *   - @/shared/utils/gamification: 퀘스트 생성 및 보상 계산 로직
+ *   - BaseRepository: 공통 Repository 패턴
  */
 
 import { db } from '../db/dexieClient';
 import type { GameState, Quest, Task } from '@/shared/types/domain';
-import { getLocalDate, saveToStorage, getFromStorage, getLevelFromXP } from '@/shared/lib/utils';
+import { getLocalDate, getLevelFromXP } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
 import { generateQuestTarget, calculateQuestReward } from '@/shared/utils/gamification';
-import { isFirebaseInitialized } from '@/shared/services/firebaseService';
-import { syncToFirebase } from '@/shared/services/firebase/syncCore';
 import { gameStateStrategy } from '@/shared/services/firebase/strategies';
-import { addSyncLog } from '@/shared/services/syncLogger';
+import { loadData, saveData, type RepositoryConfig } from './baseRepository';
+
+// ============================================================================
+// Repository Configuration
+// ============================================================================
+
+/**
+ * GameState Repository 설정
+ */
+const gameStateConfig: RepositoryConfig<GameState> = {
+  table: db.gameState,
+  storageKey: STORAGE_KEYS.GAME_STATE,
+  firebaseStrategy: gameStateStrategy,
+  createInitial: () => ({
+    level: 1,
+    totalXP: 0,
+    dailyXP: 0,
+    availableXP: 0,
+    streak: 0,
+    lastLogin: getLocalDate(),
+    questBonusClaimed: false,
+    xpHistory: [],
+    dailyQuests: generateDailyQuests(),
+    timeBlockXP: {},
+    timeBlockXPHistory: [],
+    completedTasksHistory: [],
+    dailyTimerCount: 0, // 오늘 타이머 사용 횟수
+  }),
+  sanitize: (data: GameState) => {
+    // 필수 필드 초기화
+    return {
+      ...data,
+      dailyQuests: Array.isArray(data.dailyQuests) ? data.dailyQuests : generateDailyQuests(),
+      xpHistory: Array.isArray(data.xpHistory) ? data.xpHistory : [],
+      timeBlockXPHistory: Array.isArray(data.timeBlockXPHistory) ? data.timeBlockXPHistory : [],
+      completedTasksHistory: Array.isArray(data.completedTasksHistory) ? data.completedTasksHistory : [],
+      timeBlockXP: data.timeBlockXP || {},
+      dailyTimerCount: typeof data.dailyTimerCount === 'number' ? data.dailyTimerCount : 0,
+    };
+  },
+  logPrefix: 'GameState',
+};
 
 // ============================================================================
 // GameState CRUD
@@ -35,21 +75,7 @@ import { addSyncLog } from '@/shared/services/syncLogger';
  *   - generateDailyQuests 호출하여 초기 퀘스트 생성
  */
 export function createInitialGameState(): GameState {
-  return {
-    level: 1,
-    totalXP: 0,
-    dailyXP: 0,
-    availableXP: 0,
-    streak: 0,
-    lastLogin: getLocalDate(),
-    questBonusClaimed: false,
-    xpHistory: [],
-    dailyQuests: generateDailyQuests(),
-    timeBlockXP: {},
-    timeBlockXPHistory: [],
-    completedTasksHistory: [],
-    dailyTimerCount: 0, // 오늘 타이머 사용 횟수
-  };
+  return gameStateConfig.createInitial();
 }
 
 /**
@@ -60,172 +86,85 @@ export function createInitialGameState(): GameState {
  * @sideEffects
  *   - IndexedDB에서 데이터 조회
  *   - localStorage 폴백 시 IndexedDB에 데이터 복원
+ *   - Firebase 폴백 시 IndexedDB에 데이터 복원
  *   - 필수 필드 누락 시 초기화 및 저장
+ *   - 날짜 변경 시 일일 초기화
  */
 export async function loadGameState(): Promise<GameState> {
   try {
-    // 1. IndexedDB에서 조회
-    const data = await db.gameState.get('current');
+    // BaseRepository를 통한 기본 로드 (3-tier fallback)
+    let data = await loadData(gameStateConfig, 'current');
 
-    if (data) {
-      // 날짜 변경 체크 및 일일 초기화
-      const today = getLocalDate();
-      const needsReset = data.lastLogin !== today;
+    // 날짜 변경 체크 및 일일 초기화
+    const today = getLocalDate();
+    const needsReset = data.lastLogin !== today;
 
-      if (needsReset) {
-        console.log(`🔄 New day detected: ${data.lastLogin} → ${today}`);
+    if (needsReset) {
+      console.log(`🔄 New day detected: ${data.lastLogin} → ${today}`);
 
-        // 일일 초기화
-        data.dailyXP = 0;
-        data.availableXP = 0;
-        data.dailyTimerCount = 0;
-        data.dailyQuests = generateDailyQuests();
-        data.lastLogin = today;
-        data.questBonusClaimed = false;
-        data.timeBlockXP = {};
+      // 일일 초기화
+      data.dailyXP = 0;
+      data.availableXP = 0;
+      data.dailyTimerCount = 0;
+      data.dailyQuests = generateDailyQuests();
+      data.lastLogin = today;
+      data.questBonusClaimed = false;
+      data.timeBlockXP = {};
 
-        // 즉시 저장
-        await saveGameState(data);
-        console.log('✅ Daily reset completed');
-      }
-
-      // 필수 필드 초기화 (Firebase에서 가져온 데이터에 없을 수 있음)
-      if (!Array.isArray(data.dailyQuests)) {
-        data.dailyQuests = generateDailyQuests();
-      }
-      if (!Array.isArray(data.xpHistory)) {
-        data.xpHistory = [];
-      }
-      if (!Array.isArray(data.timeBlockXPHistory)) {
-        data.timeBlockXPHistory = [];
-      }
-      if (!Array.isArray(data.completedTasksHistory)) {
-        data.completedTasksHistory = [];
-      }
-      if (!data.timeBlockXP) {
-        data.timeBlockXP = {};
-      }
-      if (typeof data.dailyTimerCount !== 'number') {
-        data.dailyTimerCount = 0;
-      }
-
-      // 일일퀘스트가 비어있으면 생성
-      if (data.dailyQuests.length === 0) {
-        data.dailyQuests = generateDailyQuests();
-        await saveGameState(data);
-      } else {
-        let questsUpdated = false;
-
-        // 준비된 할일 퀘스트가 없으면 추가
-        const hasPrepareTasksQuest = data.dailyQuests.some(q => q.type === 'prepare_tasks');
-        if (!hasPrepareTasksQuest) {
-          const prepareTasksTarget = 10;
-          const prepareTasksReward = 150;
-          data.dailyQuests.push({
-            id: `quest-prepare-${prepareTasksTarget}-tasks`,
-            type: 'prepare_tasks',
-            title: `⭐ 준비된 할일 ${prepareTasksTarget}개 만들기`,
-            description: `방해물과 대처법을 모두 입력한 할일을 ${prepareTasksTarget}개 만드세요`,
-            target: prepareTasksTarget,
-            progress: 0,
-            completed: false,
-            reward: prepareTasksReward,
-          });
-          questsUpdated = true;
-        }
-
-        // 타이머 퀘스트가 없으면 추가
-        const hasUseTimerQuest = data.dailyQuests.some(q => q.type === 'use_timer');
-        if (!hasUseTimerQuest) {
-          const useTimerTarget = 5;
-          const useTimerReward = 100;
-          data.dailyQuests.push({
-            id: `quest-timer-${useTimerTarget}-tasks`,
-            type: 'use_timer',
-            title: `⏱️ 타이머 ${useTimerTarget}회 사용하기`,
-            description: `타이머를 사용하여 ${useTimerTarget}개의 작업을 완료하세요`,
-            target: useTimerTarget,
-            progress: 0,
-            completed: false,
-            reward: useTimerReward,
-          });
-          questsUpdated = true;
-        }
-
-        if (questsUpdated) {
-          await saveGameState(data);
-        }
-      }
-      return data;
+      // 즉시 저장
+      await saveGameState(data);
+      console.log('✅ Daily reset completed');
     }
 
-    // 2. localStorage에서 조회
-    const localData = getFromStorage<GameState | null>(STORAGE_KEYS.GAME_STATE, null);
+    // 일일퀘스트 검증 및 보완
+    if (data.dailyQuests.length === 0) {
+      data.dailyQuests = generateDailyQuests();
+      await saveGameState(data);
+    } else {
+      let questsUpdated = false;
 
-    if (localData) {
-      // 필수 필드 초기화
-      if (!Array.isArray(localData.dailyQuests)) {
-        localData.dailyQuests = generateDailyQuests();
-      } else {
-        // 준비된 할일 퀘스트가 없으면 추가
-        const hasPrepareTasksQuest = localData.dailyQuests.some(q => q.type === 'prepare_tasks');
-        if (!hasPrepareTasksQuest) {
-          const prepareTasksTarget = 3;
-          const prepareTasksReward = 150;
-          localData.dailyQuests.push({
-            id: `quest-prepare-${prepareTasksTarget}-tasks`,
-            type: 'prepare_tasks',
-            title: `⭐ 준비된 할일 ${prepareTasksTarget}개 만들기`,
-            description: `방해물과 대처법을 모두 입력한 할일을 ${prepareTasksTarget}개 만드세요`,
-            target: prepareTasksTarget,
-            progress: 0,
-            completed: false,
-            reward: prepareTasksReward,
-          });
-        }
-
-        // 타이머 퀘스트가 없으면 추가
-        const hasUseTimerQuest = localData.dailyQuests.some(q => q.type === 'use_timer');
-        if (!hasUseTimerQuest) {
-          const useTimerTarget = 5;
-          const useTimerReward = 100;
-          localData.dailyQuests.push({
-            id: `quest-timer-${useTimerTarget}-tasks`,
-            type: 'use_timer',
-            title: `⏱️ 타이머 ${useTimerTarget}회 사용하기`,
-            description: `타이머를 사용하여 ${useTimerTarget}개의 작업을 완료하세요`,
-            target: useTimerTarget,
-            progress: 0,
-            completed: false,
-            reward: useTimerReward,
-          });
-        }
-      }
-      if (!Array.isArray(localData.xpHistory)) {
-        localData.xpHistory = [];
-      }
-      if (!Array.isArray(localData.timeBlockXPHistory)) {
-        localData.timeBlockXPHistory = [];
-      }
-      if (!Array.isArray(localData.completedTasksHistory)) {
-        localData.completedTasksHistory = [];
-      }
-      if (!localData.timeBlockXP) {
-        localData.timeBlockXP = {};
-      }
-      if (typeof localData.dailyTimerCount !== 'number') {
-        localData.dailyTimerCount = 0;
+      // 준비된 할일 퀘스트가 없으면 추가
+      const hasPrepareTasksQuest = data.dailyQuests.some(q => q.type === 'prepare_tasks');
+      if (!hasPrepareTasksQuest) {
+        const prepareTasksTarget = 10;
+        const prepareTasksReward = 150;
+        data.dailyQuests.push({
+          id: `quest-prepare-${prepareTasksTarget}-tasks`,
+          type: 'prepare_tasks',
+          title: `⭐ 준비된 할일 ${prepareTasksTarget}개 만들기`,
+          description: `방해물과 대처법을 모두 입력한 할일을 ${prepareTasksTarget}개 만드세요`,
+          target: prepareTasksTarget,
+          progress: 0,
+          completed: false,
+          reward: prepareTasksReward,
+        });
+        questsUpdated = true;
       }
 
-      // localStorage 데이터를 IndexedDB에 저장
-      await saveGameState(localData);
-      return localData;
+      // 타이머 퀘스트가 없으면 추가
+      const hasUseTimerQuest = data.dailyQuests.some(q => q.type === 'use_timer');
+      if (!hasUseTimerQuest) {
+        const useTimerTarget = 5;
+        const useTimerReward = 100;
+        data.dailyQuests.push({
+          id: `quest-timer-${useTimerTarget}-tasks`,
+          type: 'use_timer',
+          title: `⏱️ 타이머 ${useTimerTarget}회 사용하기`,
+          description: `타이머를 사용하여 ${useTimerTarget}개의 작업을 완료하세요`,
+          target: useTimerTarget,
+          progress: 0,
+          completed: false,
+          reward: useTimerReward,
+        });
+        questsUpdated = true;
+      }
+
+      if (questsUpdated) {
+        await saveGameState(data);
+      }
     }
 
-    // 3. 초기 상태 생성
-    const initialState = createInitialGameState();
-    await saveGameState(initialState);
-    return initialState;
+    return data;
   } catch (error) {
     console.error('Failed to load game state:', error);
     return createInitialGameState();
@@ -245,33 +184,7 @@ export async function loadGameState(): Promise<GameState> {
  *   - syncLogger에 로그 기록
  */
 export async function saveGameState(gameState: GameState): Promise<void> {
-  try {
-    // 1. IndexedDB에 저장
-    await db.gameState.put({
-      key: 'current',
-      ...gameState,
-    });
-
-    // 2. localStorage에도 저장
-    saveToStorage(STORAGE_KEYS.GAME_STATE, gameState);
-
-    addSyncLog('dexie', 'save', 'GameState saved', {
-      level: gameState.level,
-      xp: gameState.totalXP,
-      dailyXP: gameState.dailyXP
-    });
-
-    // 3. Firebase에 동기화 (비동기, 실패해도 로컬은 성공)
-    if (isFirebaseInitialized()) {
-      syncToFirebase(gameStateStrategy, gameState).catch(err => {
-        console.error('Firebase sync failed, but local save succeeded:', err);
-      });
-    }
-  } catch (error) {
-    console.error('Failed to save game state:', error);
-    addSyncLog('dexie', 'error', 'Failed to save game state', undefined, error as Error);
-    throw error;
-  }
+  await saveData(gameStateConfig, 'current', gameState);
 }
 
 // ============================================================================
