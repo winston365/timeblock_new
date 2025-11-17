@@ -16,7 +16,7 @@ import type { Template, Task, TimeBlockId, Resistance, RecurrenceType } from '@/
 import { saveToStorage, getFromStorage, generateId } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
 import { isFirebaseInitialized } from '@/shared/services/firebaseService';
-import { syncToFirebase } from '@/shared/services/firebase/syncCore';
+import { syncToFirebase, fetchFromFirebase } from '@/shared/services/firebase/syncCore';
 import { templateStrategy } from '@/shared/services/firebase/strategies';
 import { addSyncLog } from '@/shared/services/syncLogger';
 
@@ -32,6 +32,7 @@ import { addSyncLog } from '@/shared/services/syncLogger';
  * @sideEffects
  *   - IndexedDB에서 데이터 조회
  *   - localStorage 폴백 시 IndexedDB에 데이터 복원
+ *   - Firebase 폴백 시 IndexedDB에 데이터 복원
  */
 export async function loadTemplates(): Promise<Template[]> {
   try {
@@ -65,6 +66,30 @@ export async function loadTemplates(): Promise<Template[]> {
       // localStorage 데이터를 IndexedDB에 저장
       await db.templates.bulkPut(sanitizedTemplates);
       return sanitizedTemplates;
+    }
+
+    // 3. Firebase에서 조회
+    if (isFirebaseInitialized()) {
+      const firebaseTemplates = await fetchFromFirebase<Template[]>(templateStrategy, 'all');
+
+      if (firebaseTemplates && firebaseTemplates.length > 0) {
+        // preparation 필드 정제
+        const sanitizedTemplates = firebaseTemplates.map(template => ({
+          ...template,
+          preparation1: template.preparation1 ?? '',
+          preparation2: template.preparation2 ?? '',
+          preparation3: template.preparation3 ?? '',
+          category: template.category ?? '',
+          isFavorite: template.isFavorite ?? false,
+        }));
+
+        // Firebase 데이터를 IndexedDB와 localStorage에 저장
+        await db.templates.bulkPut(sanitizedTemplates);
+        saveToStorage(STORAGE_KEYS.TEMPLATES, sanitizedTemplates);
+
+        addSyncLog('firebase', 'load', `Loaded ${sanitizedTemplates.length} templates from Firebase`);
+        return sanitizedTemplates;
+      }
     }
 
     return [];

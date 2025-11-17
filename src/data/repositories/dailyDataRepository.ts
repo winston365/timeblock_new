@@ -18,7 +18,7 @@ import { getLocalDate, saveToStorage, getFromStorage } from '@/shared/lib/utils'
 import { STORAGE_KEYS } from '@/shared/lib/constants';
 import { addSyncLog } from '@/shared/services/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/firebaseService';
-import { syncToFirebase } from '@/shared/services/firebase/syncCore';
+import { syncToFirebase, fetchFromFirebase } from '@/shared/services/firebase/syncCore';
 import { dailyDataStrategy } from '@/shared/services/firebase/strategies';
 
 // ============================================================================
@@ -34,6 +34,7 @@ import { dailyDataStrategy } from '@/shared/services/firebase/strategies';
  * @sideEffects
  *   - IndexedDB에서 데이터 조회
  *   - localStorage 폴백 시 IndexedDB에 데이터 복원
+ *   - Firebase 폴백 시 IndexedDB에 데이터 복원
  *   - syncLogger에 로그 기록
  */
 export async function loadDailyData(date: string = getLocalDate()): Promise<DailyData> {
@@ -64,7 +65,30 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
       return localData;
     }
 
-    // 3. 데이터가 없으면 초기 상태 반환
+    // 3. Firebase에서 조회
+    if (isFirebaseInitialized()) {
+      const firebaseData = await fetchFromFirebase<DailyData>(dailyDataStrategy, date);
+
+      if (firebaseData) {
+        // 데이터 유효성 검사
+        const tasks = Array.isArray(firebaseData.tasks) ? firebaseData.tasks : [];
+        const timeBlockStates = firebaseData.timeBlockStates || {};
+
+        const sanitizedData: DailyData = {
+          tasks,
+          timeBlockStates,
+          updatedAt: firebaseData.updatedAt || Date.now(),
+        };
+
+        // Firebase 데이터를 IndexedDB와 localStorage에 저장
+        await saveDailyData(date, sanitizedData.tasks, sanitizedData.timeBlockStates);
+
+        addSyncLog('firebase', 'load', `Loaded daily data for ${date} from Firebase`, { taskCount: tasks.length });
+        return sanitizedData;
+      }
+    }
+
+    // 4. 데이터가 없으면 초기 상태 반환
     addSyncLog('dexie', 'load', `No data found for ${date}, creating empty data`);
     return createEmptyDailyData();
   } catch (error) {

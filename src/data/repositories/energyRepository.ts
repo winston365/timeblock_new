@@ -16,7 +16,7 @@ import type { EnergyLevel } from '@/shared/types/domain';
 import { getLocalDate } from '@/shared/lib/utils';
 import { addSyncLog } from '@/shared/services/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/firebaseService';
-import { syncToFirebase } from '@/shared/services/firebase/syncCore';
+import { syncToFirebase, fetchFromFirebase } from '@/shared/services/firebase/syncCore';
 import { energyLevelsStrategy } from '@/shared/services/firebase/strategies';
 
 const STORAGE_KEY_PREFIX = 'energyLevels_';
@@ -34,6 +34,7 @@ const STORAGE_KEY_PREFIX = 'energyLevels_';
  * @sideEffects
  *   - IndexedDB에서 데이터 조회
  *   - localStorage 폴백 시 IndexedDB에 데이터 복원
+ *   - Firebase 폴백 시 IndexedDB에 데이터 복원
  *   - syncLogger에 로그 기록
  */
 export async function loadEnergyLevels(date: string = getLocalDate()): Promise<EnergyLevel[]> {
@@ -66,7 +67,20 @@ export async function loadEnergyLevels(date: string = getLocalDate()): Promise<E
       }
     }
 
-    // 3. 데이터가 없으면 빈 배열 반환
+    // 3. Firebase에서 조회
+    if (isFirebaseInitialized()) {
+      const firebaseLevels = await fetchFromFirebase<EnergyLevel[]>(energyLevelsStrategy, date);
+
+      if (firebaseLevels && firebaseLevels.length > 0) {
+        // Firebase 데이터를 IndexedDB와 localStorage에 저장
+        await saveEnergyLevels(date, firebaseLevels);
+
+        addSyncLog('firebase', 'load', `Loaded ${firebaseLevels.length} energy levels for ${date} from Firebase`);
+        return firebaseLevels;
+      }
+    }
+
+    // 4. 데이터가 없으면 빈 배열 반환
     addSyncLog('dexie', 'load', `No energy levels found for ${date}`);
     return [];
   } catch (error) {
