@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "bump": "npm version patch -m \"chore: bump version to %s\"",
     "electron:build": "node scripts/build-electron.cjs",
     "electron:dev": "npm run electron:build && concurrently \"npm run dev\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
     "electron:prod": "npm run build && npm run electron:build && cross-env NODE_ENV=production electron .",
