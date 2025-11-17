@@ -40,7 +40,7 @@
     "installerIcon": "electron/resources/1.ico",
     "uninstallerIcon": "electron/resources/1.ico",
     "installerHeaderIcon": "electron/resources/1.ico",
-    "installerHeaderImage": "electron/resources/2.bmp",
+    "installerHeader": "electron/resources/2.bmp",
     "installerSidebar": "electron/resources/3.bmp"
   },
 
