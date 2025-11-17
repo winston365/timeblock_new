@@ -215,9 +215,10 @@ export default function InboxTab() {
                   await updateInboxTask(task.id, updates);
                   await refreshInboxTasks();
                 }}
-                onDragEnd={() => {
+                onDragEnd={async () => {
                   // Refresh after drag ends to remove task if it was moved to a time block
-                  setTimeout(() => refreshInboxTasks(), 100);
+                  // 충분한 시간을 주어 DB 업데이트와 dailyDataStore 재로드 완료
+                  setTimeout(() => refreshInboxTasks(), 500);
                 }}
                 hideMetadata={true}
               />
