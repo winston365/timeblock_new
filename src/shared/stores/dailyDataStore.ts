@@ -158,10 +158,17 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       return;
     }
 
-    // 🔧 Firebase는 undefined를 허용하지 않으므로, undefined → null 변환
+    // 🔧 Firebase는 undefined를 허용하지 않으므로, undefined 처리
     const sanitizedUpdates: Partial<Task> = { ...updates };
     if ('hourSlot' in sanitizedUpdates && sanitizedUpdates.hourSlot === undefined) {
-      sanitizedUpdates.hourSlot = null as any;
+      // ✅ timeBlock이 존재하면 블록의 첫 시간대로 설정 (null 방지)
+      if (sanitizedUpdates.timeBlock) {
+        const block = TIME_BLOCKS.find(b => b.id === sanitizedUpdates.timeBlock);
+        sanitizedUpdates.hourSlot = block ? block.start : null as any;
+      } else {
+        // inbox로 이동하는 경우에만 null 허용
+        sanitizedUpdates.hourSlot = null as any;
+      }
     }
 
     // 원본 데이터 백업 (롤백용)

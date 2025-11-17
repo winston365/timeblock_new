@@ -305,10 +305,14 @@ export default function ScheduleView() {
 
       // 블록의 첫 번째 시간대 찾기
       const block = TIME_BLOCKS.find(b => b.id === targetBlockId);
-      const firstHour = block ? block.start : undefined;
+      if (!block) {
+        console.error('Target block not found:', targetBlockId);
+        return;
+      }
 
       // 작업 이동 (updateTask가 자동으로 inbox↔timeblock 이동 처리 + refresh)
-      await updateTask(taskId, { timeBlock: targetBlockId, hourSlot: firstHour });
+      // ✅ hourSlot을 명시적으로 블록의 첫 시간대로 설정 (UI 표시 보장)
+      await updateTask(taskId, { timeBlock: targetBlockId, hourSlot: block.start });
     } catch (error) {
       console.error('Failed to move task:', error);
       alert('작업 이동에 실패했습니다.');
