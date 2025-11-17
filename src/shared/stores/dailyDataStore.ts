@@ -22,6 +22,7 @@ import {
   updateBlockState as updateBlockStateInRepo,
   spendXP,
   updateQuestProgress,
+  recalculateGoalProgress,
 } from '@/data/repositories';
 import { getLocalDate } from '../lib/utils';
 import { taskCompletionService } from '@/shared/services/taskCompletion';
@@ -131,6 +132,13 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     // ✅ 백그라운드에서 DB 저장
     try {
       await addTaskToRepo(task, currentDate);
+
+      // ✅ 목표 연결 시 진행률 자동 재계산
+      if (task.goalId) {
+        await recalculateGoalProgress(currentDate, task.goalId);
+        // 강제 재로드로 최신 목표 데이터 반영
+        await loadData(currentDate, true);
+      }
     } catch (err) {
       console.error('[DailyDataStore] Failed to add task, rolling back:', err);
       // ❌ 실패 시 롤백 (DB에서 최신 데이터 다시 로드)
@@ -142,7 +150,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
   // Task 업데이트 (Optimistic Update 패턴)
   updateTask: async (taskId: string, updates: Partial<Task>) => {
-    const { currentDate, dailyData } = get();
+    const { currentDate, dailyData, loadData } = get();
 
     if (!dailyData) {
       console.error('[DailyDataStore] No dailyData available');
@@ -151,6 +159,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
     // 원본 데이터 백업 (롤백용)
     const originalTasks = dailyData.tasks;
+    const originalTask = dailyData.tasks.find(t => t.id === taskId);
 
     // ✅ Optimistic Update: UI 즉시 업데이트
     const optimisticTasks = dailyData.tasks.map(task =>
@@ -167,6 +176,19 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     // ✅ 백그라운드에서 DB 저장
     try {
       await updateTaskInRepo(taskId, updates, currentDate);
+
+      // ✅ 목표 연결 변경 시 진행률 자동 재계산
+      const affectedGoalIds = new Set<string>();
+      if (originalTask?.goalId) affectedGoalIds.add(originalTask.goalId);
+      if (updates.goalId) affectedGoalIds.add(updates.goalId);
+
+      if (affectedGoalIds.size > 0) {
+        for (const goalId of affectedGoalIds) {
+          await recalculateGoalProgress(currentDate, goalId);
+        }
+        // 강제 재로드로 최신 목표 데이터 반영
+        await loadData(currentDate, true);
+      }
     } catch (err) {
       console.error('[DailyDataStore] Failed to update task, rolling back:', err);
       // ❌ 실패 시 롤백
@@ -184,7 +206,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
   // Task 삭제 (Optimistic Update 패턴)
   deleteTask: async (taskId: string) => {
-    const { currentDate, dailyData } = get();
+    const { currentDate, dailyData, loadData } = get();
 
     if (!dailyData) {
       console.error('[DailyDataStore] No dailyData available');
@@ -193,6 +215,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
     // 원본 데이터 백업 (롤백용)
     const originalTasks = dailyData.tasks;
+    const deletedTask = dailyData.tasks.find(t => t.id === taskId);
 
     // ✅ Optimistic Update: UI 즉시 업데이트
     const optimisticTasks = dailyData.tasks.filter(task => task.id !== taskId);
@@ -207,6 +230,13 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     // ✅ 백그라운드에서 DB 삭제
     try {
       await deleteTaskFromRepo(taskId, currentDate);
+
+      // ✅ 목표 연결 시 진행률 자동 재계산
+      if (deletedTask?.goalId) {
+        await recalculateGoalProgress(currentDate, deletedTask.goalId);
+        // 강제 재로드로 최신 목표 데이터 반영
+        await loadData(currentDate, true);
+      }
     } catch (err) {
       console.error('[DailyDataStore] Failed to delete task, rolling back:', err);
       // ❌ 실패 시 롤백

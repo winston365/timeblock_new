@@ -4,13 +4,17 @@
  * @role 왼쪽 사이드바에서 오늘, 통계, 에너지, 완료, 인박스 탭 네비게이션 제공
  * @input activeTab: 현재 활성화된 탭, onTabChange: 탭 변경 핸들러
  * @output 탭 네비게이션 UI 및 각 탭 컨텐츠
- * @dependencies InboxTab, CompletedTab, StatsTab, EnergyTab 컴포넌트
+ * @dependencies InboxTab, CompletedTab, StatsTab, EnergyTab, GoalPanel, GoalModal 컴포넌트
  */
 
+import { useState } from 'react';
 import InboxTab from '@/features/tasks/InboxTab';
 import CompletedTab from '@/features/tasks/CompletedTab';
 import StatsTab from '@/features/stats/StatsTab';
 import EnergyTab from '@/features/energy/EnergyTab';
+import GoalPanel from '@/features/goals/GoalPanel';
+import GoalModal from '@/features/goals/GoalModal';
+import type { DailyGoal } from '@/shared/types/domain';
 
 interface LeftSidebarProps {
   activeTab: 'today' | 'stats' | 'energy' | 'completed' | 'inbox';
@@ -23,6 +27,10 @@ interface LeftSidebarProps {
  * @returns 왼쪽 사이드바 UI
  */
 export default function LeftSidebar({ activeTab, onTabChange }: LeftSidebarProps) {
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<DailyGoal | undefined>(undefined);
+  const [goalPanelKey, setGoalPanelKey] = useState(0);
+
   const tabs = [
     { id: 'today' as const, icon: '🎯', label: '오늘' },
     { id: 'stats' as const, icon: '📊', label: '통계' },
@@ -30,6 +38,24 @@ export default function LeftSidebar({ activeTab, onTabChange }: LeftSidebarProps
     { id: 'completed' as const, icon: '✅', label: '완료' },
     { id: 'inbox' as const, icon: '📥', label: '인박스' },
   ];
+
+  // 목표 모달 열기 핸들러
+  const handleOpenGoalModal = (goal?: DailyGoal) => {
+    setEditingGoal(goal);
+    setIsGoalModalOpen(true);
+  };
+
+  // 목표 모달 닫기 핸들러
+  const handleCloseGoalModal = () => {
+    setIsGoalModalOpen(false);
+    setEditingGoal(undefined);
+  };
+
+  // 목표 저장 완료 핸들러
+  const handleGoalSaved = () => {
+    // GoalPanel 강제 재렌더링 (key 변경)
+    setGoalPanelKey(prev => prev + 1);
+  };
 
   return (
     <nav className="left-sidebar" aria-label="메인 네비게이션">
@@ -72,16 +98,19 @@ export default function LeftSidebar({ activeTab, onTabChange }: LeftSidebarProps
           </div>
         )}
         {activeTab === 'today' && (
-          <div
-            role="tabpanel"
-            id="sidebar-panel-today"
-            aria-labelledby="sidebar-tab-today"
-            style={{ padding: 'var(--spacing-md)', color: 'var(--color-text-secondary)' }}
-          >
-            <p>📅 타임블럭 스케줄러는 중앙 패널에서 확인하세요</p>
+          <div role="tabpanel" id="sidebar-panel-today" aria-labelledby="sidebar-tab-today">
+            <GoalPanel key={goalPanelKey} onOpenModal={handleOpenGoalModal} />
           </div>
         )}
       </div>
+
+      {/* 목표 추가/수정 모달 */}
+      <GoalModal
+        isOpen={isGoalModalOpen}
+        onClose={handleCloseGoalModal}
+        goal={editingGoal}
+        onSaved={handleGoalSaved}
+      />
     </nav>
   );
 }

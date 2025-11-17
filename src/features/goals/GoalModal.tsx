@@ -73,6 +73,20 @@ export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalP
     }
   }, [goal, isOpen]);
 
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !saving) {
+        handleClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, saving]);
+
   // 모달 닫기
   const handleClose = () => {
     if (!saving) {
