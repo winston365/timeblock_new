@@ -4,6 +4,10 @@
   "version": "1.0.7",
   "type": "module",
   "main": "dist-electron/main/index.cjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/winston365/timeblock_new.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
