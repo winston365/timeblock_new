@@ -86,11 +86,21 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
   const [tokenUsage, setTokenUsage] = useState<DailyTokenUsage[]>([]);
   const [filterType, setFilterType] = useState<SyncType | 'all'>('all');
   const [filterAction, setFilterAction] = useState<SyncAction | 'all'>('all');
+  const [appVersion, setAppVersion] = useState<string>('...');
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string>('');
 
   // 설정 로드
   useEffect(() => {
     if (isOpen) {
       loadSettingsData();
+      // Electron 환경에서 앱 버전 가져오기
+      if (window.electronAPI?.getAppVersion) {
+        window.electronAPI.getAppVersion().then(setAppVersion).catch(() => setAppVersion('Unknown'));
+      } else {
+        // 웹 환경일 경우
+        setAppVersion('Web Version');
+      }
     }
   }, [isOpen]);
 
@@ -190,6 +200,36 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
   const handleClearLogs = () => {
     if (confirm('모든 동기화 로그를 삭제하시겠습니까?')) {
       clearSyncLogs();
+    }
+  };
+
+  // 수동 업데이트 체크
+  const handleCheckForUpdates = async () => {
+    if (!window.electronAPI?.checkForUpdates) {
+      setUpdateStatus('❌ Electron 환경이 아닙니다 (웹 버전)');
+      return;
+    }
+
+    try {
+      setCheckingUpdate(true);
+      setUpdateStatus('🔍 업데이트 확인 중...');
+
+      const result = await window.electronAPI.checkForUpdates();
+
+      if (result.success) {
+        if (result.updateInfo) {
+          setUpdateStatus(`✅ 업데이트 확인 완료! (현재: v${result.currentVersion})`);
+        } else {
+          setUpdateStatus(`✅ 최신 버전입니다 (v${result.currentVersion})`);
+        }
+      } else {
+        setUpdateStatus(`❌ ${result.message}`);
+      }
+    } catch (error: any) {
+      console.error('Update check failed:', error);
+      setUpdateStatus(`❌ 오류: ${error.message || '알 수 없는 오류'}`);
+    } finally {
+      setCheckingUpdate(false);
     }
   };
 
@@ -326,6 +366,86 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                   <div className="info-box">
                     <strong>💡 팁:</strong> 테마는 즉시 적용되며, 자동으로 저장됩니다.
                     작업 환경에 맞는 테마를 선택하여 눈의 피로를 줄이고 집중력을 높여보세요!
+                  </div>
+
+                  <hr style={{ margin: '24px 0', border: 'none', borderTop: '1px solid var(--color-border)' }} />
+
+                  <h3>ℹ️ 앱 정보</h3>
+                  <div className="form-group">
+                    <label>현재 버전</label>
+                    <div style={{
+                      padding: '12px 16px',
+                      background: 'var(--color-bg-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      fontFamily: 'monospace',
+                      fontSize: '14px',
+                      color: 'var(--color-primary)',
+                      fontWeight: 600,
+                    }}>
+                      v{appVersion}
+                    </div>
+                    <small className="form-hint">
+                      새 버전이 출시되면 앱 시작 시 자동으로 알림이 표시됩니다.
+                    </small>
+                  </div>
+
+                  <div className="form-group">
+                    <label>수동 업데이트 확인</label>
+                    <button
+                      className="btn-primary"
+                      onClick={handleCheckForUpdates}
+                      disabled={checkingUpdate}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {checkingUpdate ? '⏳ 확인 중...' : '🔄 지금 업데이트 확인'}
+                    </button>
+                    {updateStatus && (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        background: updateStatus.startsWith('✅')
+                          ? 'rgba(34, 197, 94, 0.1)'
+                          : updateStatus.startsWith('❌')
+                          ? 'rgba(239, 68, 68, 0.1)'
+                          : 'rgba(59, 130, 246, 0.1)',
+                        border: `1px solid ${
+                          updateStatus.startsWith('✅')
+                            ? 'rgba(34, 197, 94, 0.3)'
+                            : updateStatus.startsWith('❌')
+                            ? 'rgba(239, 68, 68, 0.3)'
+                            : 'rgba(59, 130, 246, 0.3)'
+                        }`,
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        color: 'var(--color-text-primary)',
+                      }}>
+                        {updateStatus}
+                      </div>
+                    )}
+                    <small className="form-hint">
+                      자동 업데이트가 작동하지 않을 때 이 버튼으로 수동 확인할 수 있습니다.
+                    </small>
+                  </div>
+
+                  <div className="info-box">
+                    <strong>🚀 자동 업데이트:</strong> TimeBlock Planner는 GitHub Releases를 통해 자동으로 업데이트됩니다.
+                    앱 시작 후 5초 뒤 최신 버전을 확인하며, 새 버전이 있으면 다운로드 및 설치 안내가 표시됩니다.
+                  </div>
+
+                  <div className="info-box" style={{ marginTop: '16px' }}>
+                    <strong>🔧 업데이트 문제 해결:</strong>
+                    <ul style={{ marginTop: '8px', paddingLeft: '20px', fontSize: '13px', lineHeight: '1.6' }}>
+                      <li>앱을 <strong>프로덕션 빌드</strong>로 실행했는지 확인 (개발 모드에서는 업데이트 비활성화)</li>
+                      <li>GitHub Releases에 <code>.exe</code>, <code>.exe.blockmap</code>, <code>latest.yml</code> 파일이 있는지 확인</li>
+                      <li>네트워크 연결 확인 (GitHub에 접근 가능해야 함)</li>
+                      <li>현재 버전이 <code>v{appVersion}</code>이고, 새 릴리스가 더 높은 버전인지 확인</li>
+                    </ul>
                   </div>
 
                   <hr style={{ margin: '24px 0', border: 'none', borderTop: '1px solid var(--color-border)' }} />

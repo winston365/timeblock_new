@@ -25,9 +25,20 @@ const electronAPI = {
   // 플랫폼 정보
   platform: process.platform,
 
-  // 앱 버전 가져오기 (예시)
+  // 앱 버전 가져오기
   getAppVersion: (): Promise<string> => {
     return ipcRenderer.invoke('get-app-version');
+  },
+
+  // 수동 업데이트 체크
+  checkForUpdates: (): Promise<{
+    success: boolean;
+    message: string;
+    currentVersion?: string;
+    updateInfo?: any;
+    error?: string;
+  }> => {
+    return ipcRenderer.invoke('check-for-updates');
   },
 
   // 필요에 따라 추가 API 정의

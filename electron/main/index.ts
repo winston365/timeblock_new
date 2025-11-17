@@ -10,7 +10,7 @@
  *   - path: 경로 처리
  */
 
-import { app, BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import path from 'path';
 
@@ -211,8 +211,50 @@ function setupAutoUpdater(): void {
 }
 
 // ============================================================================
-// IPC 통신 (예시)
+// IPC 통신
 // ============================================================================
 
-// IPC 핸들러는 필요에 따라 추가
-// 예: ipcMain.handle('get-app-version', () => app.getVersion());
+/**
+ * 앱 버전 정보 제공
+ */
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
+
+/**
+ * 수동 업데이트 체크 (사용자 요청)
+ */
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    if (isDev) {
+      return {
+        success: false,
+        message: '개발 모드에서는 업데이트를 확인할 수 없습니다.',
+      };
+    }
+
+    console.log('[AutoUpdater] Manual update check requested');
+    const result = await autoUpdater.checkForUpdates();
+
+    if (result) {
+      return {
+        success: true,
+        message: '업데이트 확인 중...',
+        currentVersion: app.getVersion(),
+        updateInfo: result.updateInfo,
+      };
+    } else {
+      return {
+        success: false,
+        message: '업데이트를 확인할 수 없습니다.',
+      };
+    }
+  } catch (error: any) {
+    console.error('[AutoUpdater] Manual check error:', error);
+    return {
+      success: false,
+      message: `업데이트 확인 중 오류: ${error.message}`,
+      error: error.message,
+    };
+  }
+});
