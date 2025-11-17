@@ -26,6 +26,7 @@ import {
 } from '@/data/repositories';
 import { getLocalDate } from '../lib/utils';
 import { taskCompletionService } from '@/shared/services/taskCompletion';
+import { db } from '@/data/db/dexieClient';
 
 interface DailyDataStore {
   // 상태
@@ -148,7 +149,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     }
   },
 
-  // Task 업데이트 (Optimistic Update 패턴)
+  // Task 업데이트 (Optimistic Update 패턴 + Global Inbox 지원)
   updateTask: async (taskId: string, updates: Partial<Task>) => {
     const { currentDate, dailyData, loadData } = get();
 
@@ -159,12 +160,38 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
     // 원본 데이터 백업 (롤백용)
     const originalTasks = dailyData.tasks;
-    const originalTask = dailyData.tasks.find(t => t.id === taskId);
+    let originalTask = dailyData.tasks.find(t => t.id === taskId);
+    let inboxTask = null;
 
-    // ✅ Optimistic Update: UI 즉시 업데이트
-    const optimisticTasks = dailyData.tasks.map(task =>
-      task.id === taskId ? { ...task, ...updates } : task
-    );
+    // ✅ dailyData.tasks에 없으면 globalInbox에서 찾기
+    if (!originalTask) {
+      try {
+        inboxTask = await db.globalInbox.get(taskId);
+        originalTask = inboxTask || undefined;
+      } catch (error) {
+        console.error('[DailyDataStore] Failed to check globalInbox:', error);
+      }
+    }
+
+    let optimisticTasks = [...dailyData.tasks];
+
+    // ✅ Optimistic Update: 세 가지 케이스 처리
+    if (inboxTask && updates.timeBlock !== null && updates.timeBlock !== undefined) {
+      // 🔹 케이스 1: inbox → timeBlock (인박스에서 타임블럭으로 이동)
+      const movedTask = { ...inboxTask, ...updates };
+      optimisticTasks.push(movedTask);
+      console.log('[DailyDataStore] Optimistic: inbox → timeBlock', { taskId, timeBlock: updates.timeBlock });
+    } else if (originalTask && updates.timeBlock === null && originalTask.timeBlock !== null) {
+      // 🔹 케이스 2: timeBlock → inbox (타임블럭에서 인박스로 이동)
+      optimisticTasks = optimisticTasks.filter(t => t.id !== taskId);
+      console.log('[DailyDataStore] Optimistic: timeBlock → inbox', { taskId });
+    } else if (!inboxTask) {
+      // 🔹 케이스 3: 일반 업데이트 (같은 영역 내 수정)
+      optimisticTasks = optimisticTasks.map(task =>
+        task.id === taskId ? { ...task, ...updates } : task
+      );
+    }
+
     set({
       dailyData: {
         ...dailyData,

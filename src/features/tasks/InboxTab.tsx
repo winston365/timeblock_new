@@ -170,8 +170,15 @@ export default function InboxTab() {
         hourSlot: undefined
       });
 
-      // 즉시 새로고침
+      // ✅ 인박스 새로고침
       await refreshInboxTasks();
+
+      // ✅ DailyDataStore도 refresh (ScheduleView 업데이트용)
+      setTimeout(async () => {
+        const { useDailyDataStore } = await import('@/shared/stores/dailyDataStore');
+        const { refresh } = useDailyDataStore.getState();
+        await refresh();
+      }, 150);
     } catch (error) {
       console.error('Failed to move task to inbox:', error);
       alert('작업을 인박스로 이동하는데 실패했습니다.');
