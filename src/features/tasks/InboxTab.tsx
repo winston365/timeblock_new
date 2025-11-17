@@ -11,9 +11,10 @@
  *   - tasks.css: 스타일시트
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDailyData } from '@/shared/hooks';
 import { useGameState } from '@/shared/hooks/useGameState';
+import { getRecentUncompletedInboxTasks } from '@/data/repositories';
 import type { Task } from '@/shared/types/domain';
 import { generateId } from '@/shared/lib/utils';
 import TaskCard from '@/features/schedule/TaskCard';
@@ -31,11 +32,45 @@ import './tasks.css';
 export default function InboxTab() {
   const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion } = useDailyData();
   const { updateQuestProgress } = useGameState();
-  const inboxTasks = dailyData?.tasks.filter(task => !task.timeBlock) ?? [];
+  const [recentInboxTasks, setRecentInboxTasks] = useState<Task[]>([]);
+  const [loadingRecent, setLoadingRecent] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+
+  // 최근 7일의 미완료 인박스 작업 로드
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadRecentInboxTasks() {
+      try {
+        setLoadingRecent(true);
+        const tasks = await getRecentUncompletedInboxTasks(7);
+        if (isMounted) {
+          setRecentInboxTasks(tasks);
+        }
+      } catch (error) {
+        console.error('Failed to load recent inbox tasks:', error);
+      } finally {
+        if (isMounted) {
+          setLoadingRecent(false);
+        }
+      }
+    }
+
+    loadRecentInboxTasks();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [dailyData]); // dailyData가 변경될 때마다 다시 로드
+
+  // 오늘 인박스 작업 + 과거 미완료 인박스 작업 합치기 (중복 제거)
+  const todayInboxTasks = dailyData?.tasks.filter(task => !task.timeBlock) ?? [];
+  const todayTaskIds = new Set(todayInboxTasks.map(t => t.id));
+  const pastInboxTasks = recentInboxTasks.filter(task => !todayTaskIds.has(task.id));
+  const inboxTasks = [...todayInboxTasks, ...pastInboxTasks];
 
   const handleAddTask = () => {
     setEditingTask(null);
@@ -136,7 +171,7 @@ export default function InboxTab() {
     }
   };
 
-  if (loading) {
+  if (loading || loadingRecent) {
     return <div className="tab-loading">로딩 중...</div>;
   }
 

@@ -510,3 +510,35 @@ export async function getRecentCompletedTasks(days: number = 7): Promise<Task[]>
     return [];
   }
 }
+
+/**
+ * 최근 N일의 미완료 인박스 작업 가져오기
+ *
+ * @param {number} [days=7] - 조회할 일수 (기본값: 7일)
+ * @returns {Promise<Task[]>} 미완료 인박스 작업 배열 (최근 순으로 정렬)
+ * @throws 없음
+ * @sideEffects
+ *   - getRecentDailyData 호출
+ */
+export async function getRecentUncompletedInboxTasks(days: number = 7): Promise<Task[]> {
+  try {
+    const recentData = await getRecentDailyData(days);
+    const allUncompletedInboxTasks: Task[] = [];
+
+    // 모든 날짜의 미완료 인박스 작업 수집
+    recentData.forEach(dayData => {
+      const uncompletedInboxTasks = dayData.tasks.filter(
+        task => !task.timeBlock && !task.completed
+      );
+      allUncompletedInboxTasks.push(...uncompletedInboxTasks);
+    });
+
+    // createdAt 기준으로 최근 순으로 정렬
+    return allUncompletedInboxTasks.sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  } catch (error) {
+    console.error('Failed to get recent uncompleted inbox tasks:', error);
+    return [];
+  }
+}
