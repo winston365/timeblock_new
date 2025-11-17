@@ -61,9 +61,36 @@ export default function AppShell() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [syncErrorToasts, setSyncErrorToasts] = useState<SyncErrorToastData[]>([]);
 
+  // 패널 접힘 상태 (기본값: 펼침)
+  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('leftSidebarCollapsed');
+    return saved === 'true';
+  });
+  const [rightPanelsCollapsed, setRightPanelsCollapsed] = useState(() => {
+    const saved = localStorage.getItem('rightPanelsCollapsed');
+    return saved === 'true';
+  });
+
   const { gameState, updateQuestProgress } = useGameState();
   const { toasts, removeToast } = useXPToastStore();
   const { visibility } = useWaifuCompanionStore();
+
+  // 패널 토글 핸들러
+  const toggleLeftSidebar = () => {
+    setLeftSidebarCollapsed(prev => {
+      const newValue = !prev;
+      localStorage.setItem('leftSidebarCollapsed', String(newValue));
+      return newValue;
+    });
+  };
+
+  const toggleRightPanels = () => {
+    setRightPanelsCollapsed(prev => {
+      const newValue = !prev;
+      localStorage.setItem('rightPanelsCollapsed', String(newValue));
+      return newValue;
+    });
+  };
 
   // 동기화 에러 콜백 설정
   useEffect(() => {
@@ -335,7 +362,19 @@ export default function AppShell() {
       />
 
       {/* 메인 레이아웃 */}
-      <main className="main-layout">
+      <main
+        className={`main-layout ${leftSidebarCollapsed ? 'left-collapsed' : ''} ${rightPanelsCollapsed ? 'right-collapsed' : ''}`}
+      >
+        {/* 좌측 토글 버튼 (항상 표시) */}
+        <button
+          className={`panel-toggle-btn left-toggle ${leftSidebarCollapsed ? 'collapsed' : ''}`}
+          onClick={toggleLeftSidebar}
+          title={leftSidebarCollapsed ? '좌측 패널 펼치기' : '좌측 패널 접기'}
+          aria-label={leftSidebarCollapsed ? '좌측 패널 펼치기' : '좌측 패널 접기'}
+        >
+          {leftSidebarCollapsed ? '▶' : '◀'}
+        </button>
+
         {/* 좌측 사이드바 */}
         <LeftSidebar
           activeTab={activeTab}
@@ -357,6 +396,16 @@ export default function AppShell() {
           onTabChange={setRightPanelTab}
           onShopPurchaseSuccess={handleShopPurchaseSuccess}
         />
+
+        {/* 우측 토글 버튼 (항상 표시) */}
+        <button
+          className={`panel-toggle-btn right-toggle ${rightPanelsCollapsed ? 'collapsed' : ''}`}
+          onClick={toggleRightPanels}
+          title={rightPanelsCollapsed ? '우측 패널 펼치기' : '우측 패널 접기'}
+          aria-label={rightPanelsCollapsed ? '우측 패널 펼치기' : '우측 패널 접기'}
+        >
+          {rightPanelsCollapsed ? '◀' : '▶'}
+        </button>
       </main>
 
       {/* 와이푸 컴패니언 레이어 (Fixed Position) */}
