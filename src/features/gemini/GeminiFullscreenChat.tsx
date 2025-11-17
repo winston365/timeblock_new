@@ -11,10 +11,9 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { callGeminiAPI, generateWaifuPersona } from '@/shared/services/geminiApi';
+import { callAIWithContext } from '@/shared/services/aiService';
 import { useWaifuState, useGameState, useDailyData, useEnergyState } from '@/shared/hooks';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
-import { buildPersonaContext } from '@/shared/lib/personaUtils';
 import {
   loadTodayChatHistory,
   saveChatHistory,
@@ -168,19 +167,17 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
         text: msg.text,
       }));
 
-      // PersonaContext 빌드 (메시지 전송 시점에만 실행 - 성능 최적화)
-      const personaContext = await buildPersonaContext({
+      // ✅ 통합 AI 호출 (PersonaContext 빌드 + 프롬프트 생성 + API 호출)
+      const { text, tokenUsage } = await callAIWithContext({
         dailyData,
         gameState,
         waifuState,
         currentEnergy,
+        apiKey: settings.geminiApiKey,
+        type: 'chat',
+        userPrompt: userMessage.text,
+        history,
       });
-
-      // 시스템 프롬프트 생성
-      const systemPrompt = generateWaifuPersona(personaContext);
-      const fullPrompt = messages.length === 0 ? `${systemPrompt}\n\n${userMessage.text}` : userMessage.text;
-
-      const { text, tokenUsage } = await callGeminiAPI(fullPrompt, history, settings.geminiApiKey);
 
       const modelMessage: GeminiChatMessage = {
         id: `model-${Date.now()}`,
