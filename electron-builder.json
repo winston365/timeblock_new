@@ -30,5 +30,13 @@
     "target": ["AppImage"],
     "icon": "electron/resources/icon.png",
     "category": "Utility"
+  },
+  "publish": [
+  {
+    "provider": "github",
+    "owner": "sayin",
+    "repo": "timeblock_new"
   }
+]
+
 }
