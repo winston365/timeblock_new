@@ -45,7 +45,7 @@ jobs:
             echo "cache=npm" >> $GITHUB_OUTPUT
           fi
 
-      # 4. Setup cache for dependencies
+      # 4. Cache node_modules
       - name: Cache node modules
         uses: actions/cache@v4
         with:
@@ -67,25 +67,47 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-      # 7. Bump version (patch)
+      # 7. DELETE existing tag BEFORE bump
+      - name: Delete existing tag if exists
+        shell: bash
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          TAG="v$CURRENT_VERSION"
+
+          echo "Checking existing tag: $TAG"
+
+          # Delete remote tag if exists
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
+            echo "Deleting remote tag $TAG ..."
+            git push --delete origin $TAG || true
+          fi
+
+          # Delete local tag if exists
+          if git tag | grep -q "$TAG"; then
+            echo "Deleting local tag $TAG ..."
+            git tag -d $TAG || true
+          fi
+
+      # 8. Bump version (patch)
       - name: Bump version
         id: version
         shell: bash
         run: |
-          # Get current version
+          # Get current version BEFORE bump
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           echo "Current version: $CURRENT_VERSION"
 
-          # Bump patch version using bump script
+          # Run bump script
           ${{ steps.detect-pm.outputs.pm }} run bump
 
-          # Get new version
+          # Read new version
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "New version: $NEW_VERSION"
+
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
 
-      # 8. Push version bump and tag
+      # 9. Push version bump commit + tag
       - name: Push changes
         shell: bash
         run: |
@@ -93,35 +115,34 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 9. Build Electron app
+      # 10. Build Electron app
       - name: Build Electron app
         run: ${{ steps.detect-pm.outputs.pm }} run dist:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 10. Verify build artifacts
+      # 11. Verify build artifacts
       - name: Verify build artifacts
         shell: bash
         run: |
           echo "Build artifacts:"
           ls -la release/
 
-          # Check for required files
           if [ ! -f release/*.exe ]; then
             echo "Error: .exe file not found!"
             exit 1
           fi
 
           if [ ! -f release/*.exe.blockmap ]; then
-            echo "Warning: .exe.blockmap file not found (needed for delta updates)"
+            echo "Warning: .exe.blockmap file not found"
           fi
 
           if [ ! -f release/latest.yml ]; then
-            echo "Warning: latest.yml file not found (needed for auto-updates)"
+            echo "Warning: latest.yml file not found"
           fi
 
-      # 11. Create GitHub Release
+      # 12. Create GitHub Release
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -134,11 +155,11 @@ jobs:
             Download and run `TimeBlock Planner-${{ steps.version.outputs.version }}-Setup.exe`
 
             ### Auto-Update
-            This release includes auto-update support via electron-updater.
-            Existing users will be notified of this update automatically.
+            Automatically updates using electron-updater.
 
             ### Changes
-            See commit history for details.
+            See commit history.
+
           draft: false
           prerelease: false
           files: |
@@ -148,7 +169,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 12. Upload build artifacts (backup)
+      # 13. Upload CI artifacts (backup)
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         if: always()
