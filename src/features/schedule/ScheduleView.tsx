@@ -16,7 +16,6 @@ import { useGameState } from '@/shared/hooks/useGameState';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
-import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { generateId } from '@/shared/lib/utils';
 import { db } from '@/data/db/dexieClient';
 import TimeBlock from './TimeBlock';
@@ -288,12 +287,10 @@ export default function ScheduleView() {
     try {
       // 1. dailyData에서 작업 찾기
       let task = dailyData.tasks.find((t) => t.id === taskId);
-      let fromInbox = false;
 
       // 2. dailyData에 없으면 globalInbox에서 찾기
       if (!task) {
         task = await db.globalInbox.get(taskId);
-        fromInbox = true;
       }
 
       if (!task) {
@@ -310,16 +307,8 @@ export default function ScheduleView() {
       const block = TIME_BLOCKS.find(b => b.id === targetBlockId);
       const firstHour = block ? block.start : undefined;
 
-      // 작업 이동 (updateTask가 자동으로 inbox↔timeblock 이동 처리)
+      // 작업 이동 (updateTask가 자동으로 inbox↔timeblock 이동 처리 + refresh)
       await updateTask(taskId, { timeBlock: targetBlockId, hourSlot: firstHour });
-
-      // ✅ 인박스에서 온 경우, 짧은 지연 후 명시적 refresh (Optimistic Update 보험)
-      if (fromInbox) {
-        setTimeout(async () => {
-          const { refresh } = useDailyDataStore.getState();
-          await refresh();
-        }, 150);
-      }
     } catch (error) {
       console.error('Failed to move task:', error);
       alert('작업 이동에 실패했습니다.');

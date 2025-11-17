@@ -158,10 +158,18 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       return;
     }
 
+    // 🔧 Firebase는 undefined를 허용하지 않으므로, undefined → null 변환
+    const sanitizedUpdates: Partial<Task> = { ...updates };
+    if ('hourSlot' in sanitizedUpdates && sanitizedUpdates.hourSlot === undefined) {
+      sanitizedUpdates.hourSlot = null as any;
+    }
+
     // 원본 데이터 백업 (롤백용)
     const originalTasks = dailyData.tasks;
     let originalTask = dailyData.tasks.find(t => t.id === taskId);
     let inboxTask = null;
+    let isInboxToBlockMove = false;
+    let isBlockToInboxMove = false;
 
     // ✅ dailyData.tasks에 없으면 globalInbox에서 찾기
     if (!originalTask) {
@@ -173,41 +181,51 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       }
     }
 
-    let optimisticTasks = [...dailyData.tasks];
-
-    // ✅ Optimistic Update: 세 가지 케이스 처리
-    if (inboxTask && updates.timeBlock !== null && updates.timeBlock !== undefined) {
-      // 🔹 케이스 1: inbox → timeBlock (인박스에서 타임블럭으로 이동)
-      const movedTask = { ...inboxTask, ...updates };
-      optimisticTasks.push(movedTask);
-      console.log('[DailyDataStore] Optimistic: inbox → timeBlock', { taskId, timeBlock: updates.timeBlock });
-    } else if (originalTask && updates.timeBlock === null && originalTask.timeBlock !== null) {
-      // 🔹 케이스 2: timeBlock → inbox (타임블럭에서 인박스로 이동)
-      optimisticTasks = optimisticTasks.filter(t => t.id !== taskId);
-      console.log('[DailyDataStore] Optimistic: timeBlock → inbox', { taskId });
-    } else if (!inboxTask) {
-      // 🔹 케이스 3: 일반 업데이트 (같은 영역 내 수정)
-      optimisticTasks = optimisticTasks.map(task =>
-        task.id === taskId ? { ...task, ...updates } : task
-      );
+    // 🔍 이동 타입 감지
+    if (inboxTask && sanitizedUpdates.timeBlock !== null && sanitizedUpdates.timeBlock !== undefined) {
+      isInboxToBlockMove = true;
+    } else if (originalTask && sanitizedUpdates.timeBlock === null && originalTask.timeBlock !== null) {
+      isBlockToInboxMove = true;
     }
 
-    set({
-      dailyData: {
-        ...dailyData,
-        tasks: optimisticTasks,
-        updatedAt: Date.now(),
-      },
-    });
+    let optimisticTasks = [...dailyData.tasks];
+
+    // ✅ Optimistic Update: inbox ↔ timeBlock 이동 시 건너뛰기 (이중 추가 방지)
+    if (!isInboxToBlockMove && !isBlockToInboxMove) {
+      // 🔹 일반 업데이트만 Optimistic Update 적용
+      optimisticTasks = optimisticTasks.map(task =>
+        task.id === taskId ? { ...task, ...sanitizedUpdates } : task
+      );
+
+      set({
+        dailyData: {
+          ...dailyData,
+          tasks: optimisticTasks,
+          updatedAt: Date.now(),
+        },
+      });
+    } else {
+      // 🔹 inbox ↔ timeBlock 이동: Optimistic Update 건너뛰고, repository 작업 후 refresh
+      console.log('[DailyDataStore] Skipping Optimistic Update for inbox ↔ timeBlock move', {
+        taskId,
+        isInboxToBlockMove,
+        isBlockToInboxMove
+      });
+    }
 
     // ✅ 백그라운드에서 DB 저장
     try {
-      await updateTaskInRepo(taskId, updates, currentDate);
+      await updateTaskInRepo(taskId, sanitizedUpdates, currentDate);
+
+      // 🔹 inbox ↔ timeBlock 이동 시 명시적 refresh (이중 추가 방지)
+      if (isInboxToBlockMove || isBlockToInboxMove) {
+        await loadData(currentDate, true);
+      }
 
       // ✅ 목표 연결 변경 시 진행률 자동 재계산
       const affectedGoalIds = new Set<string>();
       if (originalTask?.goalId) affectedGoalIds.add(originalTask.goalId);
-      if (updates.goalId) affectedGoalIds.add(updates.goalId);
+      if (sanitizedUpdates.goalId) affectedGoalIds.add(sanitizedUpdates.goalId);
 
       if (affectedGoalIds.size > 0) {
         for (const goalId of affectedGoalIds) {

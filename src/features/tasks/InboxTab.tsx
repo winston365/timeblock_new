@@ -164,21 +164,15 @@ export default function InboxTab() {
 
     try {
       // 작업을 인박스로 이동 (timeBlock: null, hourSlot: undefined)
+      // updateTask가 자동으로 timeBlock → inbox 이동 처리 + refresh
       const { updateTask } = await import('@/data/repositories/dailyDataRepository');
       await updateTask(dragData.taskId, {
         timeBlock: null,
         hourSlot: undefined
       });
 
-      // ✅ 인박스 새로고침
+      // ✅ 인박스 새로고침 (인박스 뷰 업데이트용)
       await refreshInboxTasks();
-
-      // ✅ DailyDataStore도 refresh (ScheduleView 업데이트용)
-      setTimeout(async () => {
-        const { useDailyDataStore } = await import('@/shared/stores/dailyDataStore');
-        const { refresh } = useDailyDataStore.getState();
-        await refresh();
-      }, 150);
     } catch (error) {
       console.error('Failed to move task to inbox:', error);
       alert('작업을 인박스로 이동하는데 실패했습니다.');
