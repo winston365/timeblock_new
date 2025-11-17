@@ -10,7 +10,7 @@
  *   - path: 경로 처리
  */
 
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, globalShortcut, Notification } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import path from 'path';
 
@@ -35,6 +35,7 @@ if (isDev) {
 // ============================================================================
 
 let mainWindow: BrowserWindow | null = null;
+let quickAddWindow: BrowserWindow | null = null;
 
 /**
  * 메인 윈도우 생성
@@ -79,6 +80,75 @@ function createWindow(): void {
   });
 }
 
+/**
+ * 퀵 애드 윈도우 생성 (글로벌 단축키용)
+ */
+function createQuickAddWindow(): void {
+  // 이미 윈도우가 열려있으면 포커스
+  if (quickAddWindow && !quickAddWindow.isDestroyed()) {
+    quickAddWindow.show();
+    quickAddWindow.focus();
+    return;
+  }
+
+  quickAddWindow = new BrowserWindow({
+    width: 600,
+    height: 700,
+    resizable: false,
+    frame: true,
+    alwaysOnTop: true,
+    skipTaskbar: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      preload: path.join(__dirname, '../preload/index.cjs'),
+    },
+    backgroundColor: '#0a0e1a',
+    show: false,
+    title: '빠른 작업 추가',
+  });
+
+  // 윈도우 준비되면 표시
+  quickAddWindow.once('ready-to-show', () => {
+    quickAddWindow?.show();
+    quickAddWindow?.focus();
+  });
+
+  // 개발 모드 vs 프로덕션 모드 (쿼리 파라미터로 모드 구분)
+  if (isDev) {
+    quickAddWindow.loadURL(`${VITE_DEV_SERVER_URL}?mode=quickadd`);
+  } else {
+    quickAddWindow.loadFile(path.join(__dirname, '../../dist/index.html'), {
+      query: { mode: 'quickadd' }
+    });
+  }
+
+  // 윈도우 닫힘 이벤트
+  quickAddWindow.on('closed', () => {
+    quickAddWindow = null;
+  });
+}
+
+/**
+ * 글로벌 단축키 설정
+ */
+function setupGlobalShortcuts(): void {
+  // Cmd+Shift+Space (macOS) / Ctrl+Shift+Space (Windows/Linux)
+  const shortcut = process.platform === 'darwin' ? 'Cmd+Shift+Space' : 'Ctrl+Shift+Space';
+
+  const registered = globalShortcut.register(shortcut, () => {
+    console.log(`[GlobalShortcut] ${shortcut} pressed - Opening Quick Add window`);
+    createQuickAddWindow();
+  });
+
+  if (registered) {
+    console.log(`[GlobalShortcut] ${shortcut} registered successfully`);
+  } else {
+    console.error(`[GlobalShortcut] Failed to register ${shortcut}`);
+  }
+}
+
 // ============================================================================
 // 앱 라이프사이클
 // ============================================================================
@@ -89,6 +159,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   createWindow();
   setupAutoUpdater(); // 자동 업데이트 초기화
+  setupGlobalShortcuts(); // 글로벌 단축키 설정
 
   // macOS: 모든 윈도우 닫혀도 앱 유지
   app.on('activate', () => {
@@ -106,6 +177,14 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+/**
+ * 앱 종료 시 글로벌 단축키 해제
+ */
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+  console.log('[GlobalShortcut] All shortcuts unregistered');
 });
 
 // ============================================================================
@@ -219,4 +298,33 @@ function setupAutoUpdater(): void {
  */
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
+});
+
+/**
+ * 퀵 애드 윈도우 닫기
+ */
+ipcMain.handle('close-quick-add-window', () => {
+  if (quickAddWindow && !quickAddWindow.isDestroyed()) {
+    quickAddWindow.close();
+    return true;
+  }
+  return false;
+});
+
+/**
+ * 데스크탑 알림 표시
+ */
+ipcMain.handle('show-notification', (_event, title: string, body: string) => {
+  if (Notification.isSupported()) {
+    const notification = new Notification({
+      title,
+      body,
+      icon: process.platform === 'darwin'
+        ? undefined
+        : path.join(__dirname, '../../electron/resources/icon.png'),
+    });
+    notification.show();
+    return true;
+  }
+  return false;
 });

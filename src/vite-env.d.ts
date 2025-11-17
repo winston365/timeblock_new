@@ -29,3 +29,15 @@ declare module '*.webp' {
   const value: string;
   export default value;
 }
+
+// Electron API 타입 정의
+interface ElectronAPI {
+  platform: string;
+  getAppVersion: () => Promise<string>;
+  closeQuickAddWindow: () => Promise<boolean>;
+  showNotification: (title: string, body: string) => Promise<boolean>;
+}
+
+interface Window {
+  electronAPI?: ElectronAPI;
+}

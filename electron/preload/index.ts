@@ -25,13 +25,20 @@ const electronAPI = {
   // 플랫폼 정보
   platform: process.platform,
 
-  // 앱 버전 가져오기 (예시)
+  // 앱 버전 가져오기
   getAppVersion: (): Promise<string> => {
     return ipcRenderer.invoke('get-app-version');
   },
 
-  // 필요에 따라 추가 API 정의
-  // 예: openExternal, showNotification 등
+  // 퀵 애드 윈도우 닫기
+  closeQuickAddWindow: (): Promise<boolean> => {
+    return ipcRenderer.invoke('close-quick-add-window');
+  },
+
+  // 데스크탑 알림 표시
+  showNotification: (title: string, body: string): Promise<boolean> => {
+    return ipcRenderer.invoke('show-notification', title, body);
+  },
 };
 
 // ============================================================================

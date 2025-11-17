@@ -217,12 +217,15 @@ npm run bump             # Bump version (patch) and create git tag
     │   ├── stats/                 # Statistics and analytics
     │   │   ├── StatsTab.tsx       # Statistics dashboard
     │   │   └── stats.css
-    │   └── template/              # Recurring task templates
-    │       ├── TemplatePanel.tsx  # Template quick actions
-    │       ├── TemplatesModal.tsx # Template management UI
-    │       ├── TemplateModal.tsx  # Template creation/edit
-    │       ├── template.css
-    │       └── templatesModal.css
+    │   ├── template/              # Recurring task templates
+    │   │   ├── TemplatePanel.tsx  # Template quick actions
+    │   │   ├── TemplatesModal.tsx # Template management UI
+    │   │   ├── TemplateModal.tsx  # Template creation/edit
+    │   │   ├── template.css
+    │   │   └── templatesModal.css
+    │   └── quickadd/              # Global hotkey quick task addition
+    │       ├── QuickAddTask.tsx   # Quick task addition popup (global shortcut)
+    │       └── quickadd.css
     │
     ├── data/                      # Data layer
     │   ├── db/
@@ -918,6 +921,27 @@ const result = await callAI({
 - Energy patterns visualization
 - Historical data storage per date
 - Integration with AI insights (energy-aware task recommendations)
+
+### Global Hotkey (Quick Add Task)
+- **OS-level global shortcut**: `Cmd+Shift+Space` (macOS) / `Ctrl+Shift+Space` (Windows/Linux)
+- **Always accessible**: Works even when app is in background or minimized
+- **Instant task capture**: Popup window opens immediately from any application
+- **Core features**:
+  - Task title, memo, duration, resistance selection
+  - Auto-tag parsing (T30, D2, etc.) same as main TaskModal
+  - Preparation notes for task planning
+  - Direct inbox addition (no time block assignment)
+  - Desktop notification on successful save
+  - Auto-close after save
+  - ESC to cancel, Ctrl+Enter to save
+- **Implementation**:
+  - **Main process** (`electron/main/index.ts`): Global shortcut registration, quick-add window manager
+  - **Preload** (`electron/preload/index.ts`): IPC channels for window close and notifications
+  - **Component** (`src/features/quickadd/QuickAddTask.tsx`): Simplified task creation form
+  - **Entry point** (`src/main.tsx`): URL query parameter routing (`?mode=quickadd`)
+  - **Window properties**: 600x700px, always-on-top, non-resizable, frameless experience
+- **Data flow**: QuickAddTask → inboxRepository.addInboxTask → IndexedDB + Firebase sync
+- **Quest integration**: Tracks preparation task quest progress on save
 
 ## Deployment & Distribution
 
