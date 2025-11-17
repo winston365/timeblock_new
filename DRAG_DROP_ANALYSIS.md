@@ -338,18 +338,26 @@ const hourBars = useMemo(
 1. ✅ HourBar 드래그 데이터 키 수정 (`taskId` → `text/plain`) - HourBar.tsx:124
 2. ✅ 경쟁 조건 수정 (hourSlot을 생성 시 직접 전달) - ScheduleView.tsx:139, TimeBlock.tsx:522-526
 
-### Phase 2: 단기 개선 (1-2주) ✅ COMPLETED
+### Phase 2: 단기 개선 (1-2주) ✅ COMPLETED (Hotfix Applied)
 3. ✅ 통합 드래그 컨텍스트 시스템 구현
    - useDragDropManager.ts: 구조화된 데이터 전달, 타입 안전성 확보
    - DragData 인터페이스로 taskId, sourceBlockId, sourceHourSlot, taskData 전달
    - 데이터베이스 재조회 제거 (task 전체 객체 포함)
+   - **Hotfix**: text/plain 사용 (커스텀 MIME 타입 브라우저 호환성 이슈)
 4. ✅ 단일 책임 원칙 적용
    - useDragDrop.ts: 드래그 앤 드롭 로직 캡슐화
    - TaskCard, HourBar, TimeBlock 모두 통합 훅 사용
    - 중복 코드 67% 감소
+   - **Hotfix**: dragOver에서 getData() 호출 제거 (브라우저 보안 제약)
 5. ✅ 같은 위치 드롭 방지
-   - isSameLocation 함수로 드롭 전 검증
+   - isSameLocation 함수로 drop 시점 검증
    - 불필요한 DB 업데이트 제거
+
+**Hotfix 상세:**
+- 문제: dragOver 이벤트에서 getData() 호출 불가 (브라우저 보안 제약)
+- 문제: 커스텀 MIME 타입 일부 브라우저에서 미지원
+- 해결: dragOver를 단순화 (무조건 preventDefault), drop에서만 검증
+- 해결: text/plain에 JSON 직렬화 (최대 브라우저 호환성)
 
 ### Phase 3: 장기 개선 (1개월)
 6. ⏳ Undo 시스템 구현

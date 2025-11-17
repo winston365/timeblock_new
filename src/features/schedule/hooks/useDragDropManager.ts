@@ -21,10 +21,12 @@ export interface DragData {
 }
 
 /**
- * 커스텀 MIME 타입 (표준 text/plain 대신 구조화된 데이터 전달)
- * 브라우저 간 호환성을 위해 application/json 대신 커스텀 타입 사용
+ * 브라우저 호환성을 위해 text/plain만 사용
+ * (커스텀 MIME 타입은 일부 브라우저에서 지원 안됨)
+ *
+ * JSON 문자열을 text/plain에 직접 저장하여 구조화된 데이터 전달
  */
-const DRAG_DATA_KEY = 'application/x-timeblock-task';
+const DRAG_DATA_KEY = 'text/plain';
 
 /**
  * 통합 드래그 앤 드롭 관리 훅
@@ -59,13 +61,9 @@ export const useDragDropManager = () => {
    * @param e - React 드래그 이벤트
    */
   const setDragData = (data: DragData, e: React.DragEvent) => {
-    // JSON 직렬화로 구조화된 데이터 전달
+    // JSON 직렬화하여 text/plain에 저장 (브라우저 호환성 최대)
     e.dataTransfer.setData(DRAG_DATA_KEY, JSON.stringify(data));
     e.dataTransfer.effectAllowed = 'move';
-
-    // 폴백: 일부 브라우저는 커스텀 MIME 타입을 지원하지 않을 수 있음
-    // text/plain도 설정하여 브라우저 호환성 보장
-    e.dataTransfer.setData('text/plain', data.taskId);
   };
 
   /**
@@ -77,15 +75,19 @@ export const useDragDropManager = () => {
   const getDragData = (e: React.DragEvent): DragData | null => {
     try {
       const raw = e.dataTransfer.getData(DRAG_DATA_KEY);
-      if (raw) {
-        return JSON.parse(raw) as DragData;
+      if (!raw) {
+        return null;
       }
 
-      // 폴백: 커스텀 타입이 없으면 text/plain에서 taskId만 가져오기
-      // (이전 버전과의 호환성을 위해)
-      const taskId = e.dataTransfer.getData('text/plain');
-      if (taskId) {
-        // taskData가 없으면 null 반환 (구조화된 데이터 없음)
+      // JSON 파싱 시도
+      try {
+        const parsed = JSON.parse(raw) as DragData;
+        // 필수 필드 검증
+        if (parsed.taskId && parsed.taskData) {
+          return parsed;
+        }
+      } catch {
+        // JSON이 아니면 null 반환 (구조화된 데이터 아님)
         return null;
       }
 

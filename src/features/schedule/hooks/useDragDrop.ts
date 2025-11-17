@@ -56,23 +56,12 @@ export const useDragDrop = (
    * 드래그 오버 핸들러
    *
    * @param e - React 드래그 이벤트
+   *
+   * NOTE: dragOver 이벤트에서는 dataTransfer.getData()를 호출할 수 없음 (브라우저 보안 제약)
+   * 따라서 같은 위치 검증은 handleDrop에서만 수행
    */
   const handleDragOver = (e: React.DragEvent) => {
-    const dragData = getDragData(e);
-    if (!dragData) {
-      // 드래그 데이터가 없으면 드롭 불가 (다른 소스에서 드래그)
-      e.dataTransfer.dropEffect = 'none';
-      return;
-    }
-
-    // 같은 위치 드롭 방지
-    if (isSameLocation(dragData, blockId, hourSlot)) {
-      e.dataTransfer.dropEffect = 'none';
-      setIsDragOver(false);
-      return;
-    }
-
-    // 드롭 허용
+    // 드롭 허용 (같은 위치 검증은 drop 시점에 수행)
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setIsDragOver(true);
