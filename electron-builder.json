@@ -10,10 +10,17 @@
     "dist-electron/**/*",
     "package.json"
   ],
+  "publish": {
+    "provider": "github",
+    "owner": "winston365",
+    "repo": "timeblock_new",
+    "releaseType": "release"
+  },
   "win": {
     "target": ["nsis"],
     "icon": "electron/resources/icon.ico",
-    "artifactName": "${productName}-${version}-Setup.${ext}"
+    "artifactName": "${productName}-${version}-Setup.${ext}",
+    "publish": ["github"]
   },
   "nsis": {
     "oneClick": false,
