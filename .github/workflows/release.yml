@@ -9,12 +9,20 @@ permissions:
   contents: write
   packages: write
 
+concurrency:
+  group: timeblock-release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release:
     runs-on: windows-latest
 
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
-      # 1. Checkout code
+      # 1. Repo 체크아웃
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -22,30 +30,14 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
-      # 2. Setup Node.js 20
+      # 2. Node 20 세팅
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      # 3. Detect package manager
-      - name: Detect package manager
-        id: detect-pm
-        shell: bash
-        run: |
-          if [ -f "yarn.lock" ]; then
-            echo "pm=yarn" >> $GITHUB_OUTPUT
-            echo "cache=yarn" >> $GITHUB_OUTPUT
-          elif [ -f "pnpm-lock.yaml" ]; then
-            echo "pm=pnpm" >> $GITHUB_OUTPUT
-            echo "cache=pnpm" >> $GITHUB_OUTPUT
-          else
-            echo "pm=npm" >> $GITHUB_OUTPUT
-            echo "cache=npm" >> $GITHUB_OUTPUT
-          fi
-
-      # 4. Cache node_modules
+      # 3. node_modules 캐시
       - name: Cache node modules
         uses: actions/cache@v4
         with:
@@ -53,21 +45,21 @@ jobs:
             node_modules
             ~/.cache/electron
             ~/.cache/electron-builder
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json', '**/yarn.lock', '**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
 
-      # 5. Install dependencies
+      # 4. 의존성 설치 (npm ci → lockfile 안 건드림)
       - name: Install dependencies
-        run: ${{ steps.detect-pm.outputs.pm }} install
+        run: npm ci
 
-      # 6. Configure Git
+      # 5. Git 사용자 설정
       - name: Configure Git
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-      # 7. DELETE existing tag BEFORE bump
+      # 6. (옵션) 현재 버전 태그 있으면 삭제
       - name: Delete existing tag if exists
         shell: bash
         run: |
@@ -76,74 +68,70 @@ jobs:
 
           echo "Checking existing tag: $TAG"
 
-          # Delete remote tag if exists
+          # remote tag 삭제
           if git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
             echo "Deleting remote tag $TAG ..."
             git push --delete origin $TAG || true
           fi
 
-          # Delete local tag if exists
-          if git tag | grep -q "$TAG"; then
+          # local tag 삭제
+          if git tag | grep -q "^$TAG$"; then
             echo "Deleting local tag $TAG ..."
             git tag -d $TAG || true
           fi
 
-      # 8. Bump version (patch)
+      # 7. 버전 올리기 (npm run bump → npm version patch)
       - name: Bump version
         id: version
         shell: bash
         run: |
-          # Get current version BEFORE bump
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "Current version: $CURRENT_VERSION"
+          # bump 이전 버전 (로그용)
+          BEFORE_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $BEFORE_VERSION"
 
-          # Run bump script
-          ${{ steps.detect-pm.outputs.pm }} run bump
+          # 여기서 npm version patch 실행 (package.json + package-lock.json 수정 + commit + tag)
+          npm run bump
 
-          # Read new version
+          # bump 이후 버전
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "New version: $NEW_VERSION"
 
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
 
-      # 9. Push version bump commit + tag
-      - name: Push changes
+      # 8. 버전 커밋 + 태그 푸시
+      - name: Push version commit and tag
         shell: bash
         run: |
           git push origin main --follow-tags
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 10. Build Electron app
-      - name: Build Electron app
-        run: ${{ steps.detect-pm.outputs.pm }} run dist:win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 9. Electron 윈도우 빌드 (electron-builder 사용)
+      #   package.json 에서 예를 들어:
+      #   "dist:win": "electron-builder --win --publish always"
+      - name: Build Electron app (Windows)
+        run: npm run dist:win
 
-      # 11. Verify build artifacts
+      # 10. 빌드 산출물 확인
       - name: Verify build artifacts
         shell: bash
         run: |
-          echo "Build artifacts:"
-          ls -la release/
+          echo "==== release/ contents ===="
+          ls -la release/ || { echo "release/ folder missing"; exit 1; }
 
-          if [ ! -f release/*.exe ]; then
-            echo "Error: .exe file not found!"
-            exit 1
+          echo "Checking for installer (.exe)..."
+          ls release/*.exe || { echo "ERROR: No .exe found in release/"; exit 1; }
+
+          echo "Checking for latest.yml (auto-update metadata)..."
+          if ! ls release/latest.yml >/dev/null 2>&1; then
+            echo "WARNING: latest.yml not found. Auto-update may not work."
           fi
 
-          if [ ! -f release/*.exe.blockmap ]; then
-            echo "Warning: .exe.blockmap file not found"
-          fi
+          echo "Build verification completed."
 
-          if [ ! -f release/latest.yml ]; then
-            echo "Warning: latest.yml file not found"
-          fi
-
-      # 12. Create GitHub Release
-      - name: Create Release
+      # 11. (선택) 별도 GitHub Release 생성 + 파일 업로드
+      # electron-builder 가 이미 GitHub Publish 하는 경우
+      # 이 스텝은 '보기 좋은 Release 페이지용' 보너스라고 보면 됨
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
@@ -151,32 +139,21 @@ jobs:
           body: |
             ## TimeBlock Planner ${{ steps.version.outputs.version }}
 
-            ### Windows Installation
-            Download and run `TimeBlock Planner-${{ steps.version.outputs.version }}-Setup.exe`
+            - 자동 업데이트 지원 (electron-updater + GitHub Releases)
+            - Windows 설치 프로그램 포함
 
-            ### Auto-Update
-            Automatically updates using electron-updater.
-
-            ### Changes
-            See commit history.
-
+            자세한 변경 내용은 커밋 로그를 참고하세요.
           draft: false
           prerelease: false
           files: |
             release/*.exe
             release/*.exe.blockmap
             release/latest.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 13. Upload CI artifacts (backup)
+      # 12. CI 아티팩트 업로드 (백업 / 디버깅용)
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: windows-build-${{ steps.version.outputs.version }}
-          path: |
-            release/*.exe
-            release/*.exe.blockmap
-            release/latest.yml
+          path: release/
           retention-days: 30
