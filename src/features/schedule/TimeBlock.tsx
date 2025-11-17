@@ -9,10 +9,10 @@
  *   - utils: XP 계산 함수
  */
 
-import { useState, useRef, useEffect, memo } from 'react';
+import { useState, useEffect, memo } from 'react';
 import type { Task, TimeBlockState, TimeBlockId } from '@/shared/types/domain';
 import { calculateTaskXP } from '@/shared/lib/utils';
-import TaskCard from './TaskCard';
+import HourBar from './HourBar';
 
 interface TimeBlockProps {
   block: {
@@ -52,7 +52,7 @@ const TimeBlock = memo(function TimeBlock({
   isCurrentBlock,
   isPastBlock = false,
   onAddTask: _onAddTask, // NOTE: 현재 사용되지 않음
-  onCreateTask,
+  onCreateTask: _onCreateTask, // NOTE: HourBar가 대체
   onEditTask,
   onUpdateTask,
   onDeleteTask,
@@ -62,9 +62,6 @@ const TimeBlock = memo(function TimeBlock({
 }: TimeBlockProps) {
   const [isExpanded, setIsExpanded] = useState(isCurrentBlock);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [showInlineInput, setShowInlineInput] = useState(false);
-  const [inlineInputValue, setInlineInputValue] = useState('');
-  const inlineInputRef = useRef<HTMLInputElement>(null);
 
   // 5분 타이머 상태
   const [timerElapsed, setTimerElapsed] = useState(0); // 경과 시간 (초)
@@ -295,33 +292,6 @@ const TimeBlock = memo(function TimeBlock({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // 인라인 입력 필드 포커스
-  useEffect(() => {
-    if (showInlineInput && inlineInputRef.current) {
-      inlineInputRef.current.focus();
-    }
-  }, [showInlineInput]);
-
-  // 인라인 입력 처리
-  const handleInlineInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && inlineInputValue.trim()) {
-      e.preventDefault();
-
-      if (onCreateTask) {
-        try {
-          await onCreateTask(inlineInputValue.trim(), block.id as TimeBlockId);
-          setInlineInputValue('');
-          // 입력 필드 유지하여 연속 입력 가능
-        } catch (err) {
-          console.error('Failed to create task:', err);
-        }
-      }
-    } else if (e.key === 'Escape') {
-      setShowInlineInput(false);
-      setInlineInputValue('');
-    }
-  };
-
   // 추가 버튼 클릭 핸들러
   // NOTE: 현재 사용되지 않음 - 필요시 주석 해제
   // const handleAddClick = (e: React.MouseEvent) => {
@@ -537,32 +507,39 @@ const TimeBlock = memo(function TimeBlock({
 
       {isExpanded && (
         <div className="block-content" onClick={handleBlockContentClick}>
-          <div className="task-list">
-            {tasks.map(task => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onEdit={() => onEditTask(task)}
-                onDelete={() => onDeleteTask(task.id)}
-                onToggle={() => handleTaskToggle(task.id)}
-                onUpdateTask={onUpdateTask ? (updates) => onUpdateTask(task.id, updates) : undefined}
-                blockIsLocked={state?.isLocked}
-              />
-            ))}
+          {/* 시간대별 HourBar 렌더링 */}
+          {Array.from({ length: block.end - block.start }, (_, i) => block.start + i).map(hour => {
+            // 해당 hour의 작업들 필터링
+            const hourTasks = tasks.filter(task => task.hourSlot === hour);
 
-            {/* 인라인 입력 필드 - 항상 표시 */}
-            <div className="inline-task-input">
-              <input
-                ref={inlineInputRef}
-                type="text"
-                value={inlineInputValue}
-                onChange={(e) => setInlineInputValue(e.target.value)}
-                onKeyDown={handleInlineInputKeyDown}
-                placeholder="할 일을 입력하고 Enter를 누르세요 (기본: 15분, 🟢 쉬움)"
-                className="inline-input-field"
+            return (
+              <HourBar
+                key={hour}
+                hour={hour}
+                blockId={block.id as TimeBlockId}
+                tasks={hourTasks}
+                isLocked={state?.isLocked || false}
+                onAddTask={(_h) => {
+                  // TODO: 시간별 작업 추가 모달 구현 필요
+                  // 현재는 HourBar 내부의 버튼으로만 작업 추가 가능
+                }}
+                onEditTask={onEditTask}
+                onUpdateTask={(taskId, updates) => {
+                  if (onUpdateTask) {
+                    onUpdateTask(taskId, updates);
+                  }
+                }}
+                onDeleteTask={onDeleteTask}
+                onToggleTask={handleTaskToggle}
+                onDropTask={(taskId, targetHour) => {
+                  // hourSlot 업데이트
+                  if (onUpdateTask) {
+                    onUpdateTask(taskId, { hourSlot: targetHour, timeBlock: block.id as TimeBlockId });
+                  }
+                }}
               />
-            </div>
-          </div>
+            );
+          })}
         </div>
       )}
     </div>

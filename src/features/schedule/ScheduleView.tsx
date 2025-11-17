@@ -138,6 +138,10 @@ export default function ScheduleView() {
   // 인라인 작업 생성 (기본값: 15분, 쉬움)
   const handleCreateTask = async (text: string, blockId: TimeBlockId) => {
     try {
+      // 블록의 첫 번째 시간대 찾기
+      const block = TIME_BLOCKS.find(b => b.id === blockId);
+      const firstHour = block ? block.start : undefined;
+
       const newTask: Task = {
         id: generateId('task'),
         text: text.trim(),
@@ -146,6 +150,7 @@ export default function ScheduleView() {
         resistance: 'low',
         adjustedDuration: 15,  // 30분 -> 15분으로 변경
         timeBlock: blockId,
+        hourSlot: firstHour, // 첫 번째 시간대에 배치
         completed: false,
         actualDuration: 0,
         createdAt: new Date().toISOString(),
@@ -190,7 +195,10 @@ export default function ScheduleView() {
           await updateQuestProgress('prepare_tasks', 1);
         }
       } else {
-        // 추가
+        // 추가 - 블록의 첫 번째 시간대 찾기
+        const block = TIME_BLOCKS.find(b => b.id === selectedBlockId);
+        const firstHour = block ? block.start : undefined;
+
         const newTask: Task = {
           id: generateId('task'),
           text: taskData.text || '',
@@ -199,6 +207,7 @@ export default function ScheduleView() {
           resistance: taskData.resistance || 'low',
           adjustedDuration: taskData.adjustedDuration || 30,
           timeBlock: selectedBlockId,
+          hourSlot: firstHour, // 첫 번째 시간대에 배치
           completed: false,
           actualDuration: 0,
           createdAt: new Date().toISOString(),
@@ -294,8 +303,12 @@ export default function ScheduleView() {
         return;
       }
 
+      // 블록의 첫 번째 시간대 찾기
+      const block = TIME_BLOCKS.find(b => b.id === targetBlockId);
+      const firstHour = block ? block.start : undefined;
+
       // 작업 이동 (updateTask가 자동으로 inbox↔timeblock 이동 처리)
-      await updateTask(taskId, { timeBlock: targetBlockId });
+      await updateTask(taskId, { timeBlock: targetBlockId, hourSlot: firstHour });
     } catch (error) {
       console.error('Failed to move task:', error);
       alert('작업 이동에 실패했습니다.');
