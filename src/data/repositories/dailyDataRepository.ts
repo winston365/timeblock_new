@@ -135,13 +135,22 @@ export async function saveDailyData(
   const goals = existing?.goals || [];
 
   // Firebase는 undefined를 허용하지 않으므로, 모든 undefined 값을 적절한 기본값으로 변환
-  const sanitizedTasks = tasks.map(task => ({
-    ...task,
-    preparation1: task.preparation1 ?? '',
-    preparation2: task.preparation2 ?? '',
-    preparation3: task.preparation3 ?? '',
-    hourSlot: task.hourSlot ?? null,  // undefined → null 변환 (Firebase 호환)
-  }));
+  const sanitizedTasks = tasks.map(task => {
+    // ✅ hourSlot이 undefined이고 timeBlock이 존재하면, 블록의 첫 시간대로 설정
+    let hourSlot = task.hourSlot;
+    if (hourSlot === undefined && task.timeBlock) {
+      const block = TIME_BLOCKS.find(b => b.id === task.timeBlock);
+      hourSlot = block ? block.start : null;
+    }
+
+    return {
+      ...task,
+      preparation1: task.preparation1 ?? '',
+      preparation2: task.preparation2 ?? '',
+      preparation3: task.preparation3 ?? '',
+      hourSlot: hourSlot !== undefined ? hourSlot : null,  // 최종 null fallback
+    };
+  });
 
   const data: DailyData = {
     tasks: sanitizedTasks,
@@ -308,6 +317,15 @@ export async function updateTask(taskId: string, updates: Partial<Task>, date: s
 
         // dailyData에 추가 (updates 적용)
         const movedTask: Task = { ...inboxTask, ...updates };
+
+        // ✅ hourSlot이 없으면 블록의 첫 시간대로 설정 (UI 표시 보장)
+        if (!movedTask.hourSlot && movedTask.timeBlock) {
+          const block = TIME_BLOCKS.find(b => b.id === movedTask.timeBlock);
+          if (block) {
+            movedTask.hourSlot = block.start;
+          }
+        }
+
         const todayData = await loadDailyData(date);
         todayData.tasks.push(movedTask);
         await saveDailyData(date, todayData.tasks, todayData.timeBlockStates);
