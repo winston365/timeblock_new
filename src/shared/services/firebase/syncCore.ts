@@ -54,6 +54,41 @@ export interface SyncStrategy<T> {
 const lastSyncHash: Record<string, string> = {};
 
 // ============================================================================
+// Firebase Sanitization - undefined 값 제거
+// ============================================================================
+
+/**
+ * Firebase에 업로드하기 전에 undefined 값을 재귀적으로 제거합니다.
+ * Firebase는 undefined 값을 허용하지 않으므로, 업로드 전에 모든 undefined를 제거해야 합니다.
+ *
+ * @template T 데이터 타입
+ * @param {T} obj - 정제할 객체, 배열, 또는 원시값
+ * @returns {T} undefined가 제거된 데이터
+ */
+function removeUndefined<T>(obj: T): T {
+  // 배열인 경우
+  if (Array.isArray(obj)) {
+    return obj
+      .filter(item => item !== undefined)
+      .map(item => removeUndefined(item)) as T;
+  }
+
+  // 객체인 경우 (null 제외)
+  if (obj !== null && typeof obj === 'object') {
+    const cleaned: any = {};
+    Object.entries(obj).forEach(([key, value]) => {
+      if (value !== undefined) {
+        cleaned[key] = removeUndefined(value);
+      }
+    });
+    return cleaned as T;
+  }
+
+  // 원시값 또는 null인 경우
+  return obj;
+}
+
+// ============================================================================
 // Generic Sync Functions - R8: 중복 제거
 // ============================================================================
 
@@ -86,8 +121,11 @@ export async function syncToFirebase<T>(
     const path = getFirebasePath(userId, strategy.collection, key);
     const dataRef = ref(db, path);
 
+    // Firebase는 undefined 값을 허용하지 않으므로 사전에 제거
+    const sanitizedData = removeUndefined(data);
+
     // 중복 동기화 방지
-    const dataHash = getDataHash(data);
+    const dataHash = getDataHash(sanitizedData);
     const hashKey = `${strategy.collection}-${key || 'root'}`;
 
     if (lastSyncHash[hashKey] === dataHash) {
@@ -99,7 +137,7 @@ export async function syncToFirebase<T>(
     const remoteData = snapshot.val() as SyncData<T> | null;
 
     const localSyncData: SyncData<T> = {
-      data,
+      data: sanitizedData,
       updatedAt: getServerTimestamp(),
       deviceId,
     };
