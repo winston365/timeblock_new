@@ -13,6 +13,7 @@
 
 import { db } from '../db/dexieClient';
 import type { Template, Task, TimeBlockId, Resistance, RecurrenceType } from '@/shared/types/domain';
+import { TIME_BLOCKS } from '@/shared/types/domain';
 import { saveToStorage, getFromStorage, generateId } from '@/shared/lib/utils';
 import { STORAGE_KEYS } from '@/shared/lib/constants';
 import { isFirebaseInitialized } from '@/shared/services/firebaseService';
@@ -331,6 +332,15 @@ export function createTaskFromTemplate(template: Template): Task {
   const now = new Date().toISOString();
   const adjustedDuration = Math.round(template.baseDuration * getResistanceMultiplier(template.resistance));
 
+  // timeBlock이 설정되어 있으면 해당 블록의 첫 번째 시간대(start hour)를 hourSlot으로 설정
+  let hourSlot: number | undefined = undefined;
+  if (template.timeBlock) {
+    const block = TIME_BLOCKS.find(b => b.id === template.timeBlock);
+    if (block) {
+      hourSlot = block.start;
+    }
+  }
+
   return {
     id: generateId('task'),
     text: template.text,
@@ -339,6 +349,7 @@ export function createTaskFromTemplate(template: Template): Task {
     resistance: template.resistance,
     adjustedDuration,
     timeBlock: template.timeBlock,
+    hourSlot, // 타임블록의 첫 번째 시간대로 설정
     completed: false,
     actualDuration: 0,
     createdAt: now,

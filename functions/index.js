@@ -23,6 +23,18 @@ function generateId(prefix = "task") {
 }
 
 /**
+ * 시간 블록 정의 (클라이언트와 동기화)
+ */
+const TIME_BLOCKS = [
+  {id: "5-8", label: "05:00-08:00", start: 5, end: 8},
+  {id: "8-11", label: "08:00-11:00", start: 8, end: 11},
+  {id: "11-14", label: "11:00-14:00", start: 11, end: 14},
+  {id: "14-17", label: "14:00-17:00", start: 14, end: 17},
+  {id: "17-19", label: "17:00-19:00", start: 17, end: 19},
+  {id: "19-24", label: "19:00-24:00", start: 19, end: 24},
+];
+
+/**
  * 저항도 배율 가져오기
  */
 function getResistanceMultiplier(resistance) {
@@ -43,6 +55,15 @@ function createTaskFromTemplate(template, date) {
       template.baseDuration * getResistanceMultiplier(template.resistance),
   );
 
+  // timeBlock이 설정되어 있으면 해당 블록의 첫 번째 시간대(start hour)를 hourSlot으로 설정
+  let hourSlot = undefined;
+  if (template.timeBlock) {
+    const block = TIME_BLOCKS.find((b) => b.id === template.timeBlock);
+    if (block) {
+      hourSlot = block.start;
+    }
+  }
+
   return {
     id: generateId("task"),
     text: template.text,
@@ -51,6 +72,7 @@ function createTaskFromTemplate(template, date) {
     resistance: template.resistance,
     adjustedDuration,
     timeBlock: template.timeBlock || null,
+    hourSlot, // 타임블록의 첫 번째 시간대로 설정
     completed: false,
     actualDuration: 0,
     createdAt: now,
