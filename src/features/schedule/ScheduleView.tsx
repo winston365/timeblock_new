@@ -97,12 +97,25 @@ export default function ScheduleView() {
       // 지난 블록 찾기 (현재 시간보다 종료 시간이 이전인 블록)
       const pastBlocks = TIME_BLOCKS.filter(block => currentHourValue >= block.end);
 
-      // 지난 블록의 미완료 작업 찾기
+      // 지난 블록의 미완료 작업 찾기 및 실패 플래그 설정
       const tasksToMove: Task[] = [];
       for (const block of pastBlocks) {
         const incompleteTasks = dailyData.tasks.filter(
           task => task.timeBlock === block.id && !task.completed
         );
+
+        // 잠긴 블록에 미완료 작업이 있으면 실패 플래그 설정
+        const blockState = dailyData.timeBlockStates[block.id];
+        if (blockState?.isLocked && incompleteTasks.length > 0 && !blockState.isFailed) {
+          try {
+            // 실패 플래그 직접 설정
+            const { updateBlockState } = await import('@/data/repositories/dailyDataRepository');
+            await updateBlockState(block.id, { isFailed: true });
+          } catch (error) {
+            console.error(`Failed to set isFailed for block ${block.id}:`, error);
+          }
+        }
+
         tasksToMove.push(...incompleteTasks);
       }
 

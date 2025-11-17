@@ -1176,7 +1176,7 @@
 .task-main {
   display: flex;
   gap: var(--spacing-xs);
-  align-items: flex-start;
+  align-items: center;
 }
 
 .task-checkbox {
