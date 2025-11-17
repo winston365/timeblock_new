@@ -43,12 +43,14 @@ export default function InboxTab() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // 전역 인박스 작업 로드
+  // 전역 인박스 작업 로드 (미완료만)
   const refreshInboxTasks = async () => {
     try {
       setLoading(true);
       const tasks = await loadInboxTasks();
-      setInboxTasks(tasks);
+      // 미완료 작업만 필터링
+      const uncompletedTasks = tasks.filter(task => !task.completed);
+      setInboxTasks(uncompletedTasks);
     } catch (error) {
       console.error('Failed to load inbox tasks:', error);
     } finally {

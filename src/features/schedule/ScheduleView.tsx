@@ -17,6 +17,7 @@ import { TIME_BLOCKS } from '@/shared/types/domain';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { generateId } from '@/shared/lib/utils';
+import { db } from '@/data/db/dexieClient';
 import TimeBlock from './TimeBlock';
 import TaskModal from './TaskModal';
 import CurrentTimeIndicator from './CurrentTimeIndicator';
@@ -266,8 +267,14 @@ export default function ScheduleView() {
     if (!dailyData) return;
 
     try {
-      // 작업 찾기
-      const task = dailyData.tasks.find((t) => t.id === taskId);
+      // 1. dailyData에서 작업 찾기
+      let task = dailyData.tasks.find((t) => t.id === taskId);
+
+      // 2. dailyData에 없으면 globalInbox에서 찾기
+      if (!task) {
+        task = await db.globalInbox.get(taskId);
+      }
+
       if (!task) {
         console.error('Task not found:', taskId);
         return;
@@ -278,7 +285,7 @@ export default function ScheduleView() {
         return;
       }
 
-      // 작업 이동
+      // 작업 이동 (updateTask가 자동으로 inbox↔timeblock 이동 처리)
       await updateTask(taskId, { timeBlock: targetBlockId });
     } catch (error) {
       console.error('Failed to move task:', error);
