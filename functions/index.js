@@ -144,42 +144,60 @@ exports.dailyTemplateGeneration = onSchedule({
   logger.info("Daily template generation started", {time: new Date().toISOString()});
 
   const db = admin.database();
-  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+
+  // UTC 시간을 KST로 변환 (+9시간)
+  const nowKST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
+  const today = nowKST.toISOString().split("T")[0]; // YYYY-MM-DD (KST 기준)
+
+  logger.info("Current date (KST):", {today, nowKST: nowKST.toISOString()});
 
   try {
-    // 모든 사용자 가져오기
-    const usersSnapshot = await db.ref("users/user").once("value");
-    const userData = usersSnapshot.val();
-
-    if (!userData) {
-      logger.info("No users found");
-      return null;
-    }
-
     // 단일 사용자 구조 (현재 앱은 users/user 경로 사용)
     let generatedCount = 0;
     let updatedTemplateCount = 0;
 
-    // 템플릿 가져오기
+    // 템플릿 가져오기 (users/user 존재 여부 확인 불필요)
     const templatesSnapshot = await db.ref("users/user/templates/all").once("value");
     const templatesData = templatesSnapshot.val();
 
     // SyncData 구조에서 실제 데이터 추출
     const templates = templatesData?.data;
 
+    logger.info("Templates snapshot received:", {
+      exists: templatesSnapshot.exists(),
+      hasData: !!templatesData,
+      hasTemplates: !!templates,
+      isArray: Array.isArray(templates),
+      length: templates?.length,
+    });
+
     if (!templates || !Array.isArray(templates)) {
-      logger.info("No templates found or invalid format");
-      return null;
+      logger.info("No templates found or invalid format", {
+        templatesData: JSON.stringify(templatesData).substring(0, 200),
+      });
+      return {
+        success: false,
+        message: "No templates found",
+        date: today,
+      };
     }
 
-    logger.info(`Found ${templates.length} templates`);
+    logger.info(`Found ${templates.length} templates for date: ${today}`);
 
     // 각 템플릿 확인
     for (let i = 0; i < templates.length; i++) {
       const template = templates[i];
 
+      logger.info(`Checking template ${i + 1}/${templates.length}:`, {
+        name: template.name,
+        recurrenceType: template.recurrenceType,
+        autoGenerate: template.autoGenerate,
+        lastGeneratedDate: template.lastGeneratedDate,
+        shouldGenerate: shouldGenerateToday(template, today),
+      });
+
       if (shouldGenerateToday(template, today)) {
-        logger.info(`Generating task from template: ${template.name}`);
+        logger.info(`✅ Generating task from template: ${template.name} (${template.recurrenceType})`);
 
         // Task 생성
         const newTask = createTaskFromTemplate(template, today);
@@ -207,8 +225,17 @@ exports.dailyTemplateGeneration = onSchedule({
 
         // Task 추가
         dailyData.tasks = dailyData.tasks || [];
+        const taskCountBefore = dailyData.tasks.length;
         dailyData.tasks.push(newTask);
         dailyData.updatedAt = Date.now();
+
+        logger.info(`Adding task to dailyData/${today}:`, {
+          taskId: newTask.id,
+          taskText: newTask.text,
+          timeBlock: newTask.timeBlock,
+          taskCountBefore,
+          taskCountAfter: dailyData.tasks.length,
+        });
 
         // Firebase에 저장 (SyncData 래퍼 사용)
         await db.ref(`users/user/dailyData/${today}`).set({
@@ -216,6 +243,8 @@ exports.dailyTemplateGeneration = onSchedule({
           updatedAt: Date.now(),
           deviceId: "firebase-function",
         });
+
+        logger.info(`✅ Task saved to Firebase: ${newTask.text}`);
 
         generatedCount++;
 
@@ -227,14 +256,23 @@ exports.dailyTemplateGeneration = onSchedule({
 
     // 템플릿 배열 업데이트 (SyncData 래퍼 사용)
     if (updatedTemplateCount > 0) {
+      logger.info(`Updating ${updatedTemplateCount} templates with lastGeneratedDate: ${today}`);
+
       await db.ref("users/user/templates/all").set({
         data: templates,
         updatedAt: Date.now(),
         deviceId: "firebase-function",
       });
+
+      logger.info("✅ Templates updated in Firebase");
     }
 
-    logger.info(`Daily template generation completed. Generated ${generatedCount} tasks from ${updatedTemplateCount} templates`);
+    logger.info(`✅ Daily template generation completed!`, {
+      date: today,
+      generatedCount,
+      updatedTemplateCount,
+      totalTemplates: templates.length,
+    });
 
     return {
       success: true,

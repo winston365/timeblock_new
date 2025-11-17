@@ -25,9 +25,17 @@ const VITE_DEV_SERVER_URL = 'http://localhost:5173';
 autoUpdater.autoDownload = false; // 사용자 확인 후 다운로드
 autoUpdater.autoInstallOnAppQuit = true; // 앱 종료 시 자동 설치
 
-// 개발 모드에서는 업데이트 로깅만 활성화
-if (isDev) {
-  autoUpdater.logger = console;
+// 프로덕션 모드에서도 로깅 활성화 (디버깅용)
+autoUpdater.logger = console;
+
+// GitHub releases 명시적 설정
+if (!isDev) {
+  autoUpdater.setFeedURL({
+    provider: 'github',
+    owner: 'winston365',
+    repo: 'timeblock_new',
+  });
+  console.log('[AutoUpdater] Feed URL set to GitHub releases: winston365/timeblock_new');
 }
 
 // ============================================================================
@@ -394,9 +402,13 @@ ipcMain.handle('check-for-updates', async () => {
     }
 
     console.log('[AutoUpdater] Manual update check requested');
+    console.log('[AutoUpdater] Current version:', app.getVersion());
+    console.log('[AutoUpdater] Feed URL:', autoUpdater.getFeedURL());
+
     const result = await autoUpdater.checkForUpdates();
 
     if (result) {
+      console.log('[AutoUpdater] Update check result:', result);
       return {
         success: true,
         message: '업데이트 확인 중...',
@@ -411,10 +423,12 @@ ipcMain.handle('check-for-updates', async () => {
     }
   } catch (error: any) {
     console.error('[AutoUpdater] Manual check error:', error);
+    console.error('[AutoUpdater] Error stack:', error.stack);
     return {
       success: false,
       message: `업데이트 확인 중 오류: ${error.message}`,
       error: error.message,
+      errorStack: error.stack,
     };
   }
 });
