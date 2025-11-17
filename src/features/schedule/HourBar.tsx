@@ -2,20 +2,20 @@
  * HourBar - 1시간 단위 시간대 바
  *
  * @role 타임블록 내부의 1시간 단위 시간대 관리 (50분 몰입 + 10분 휴식)
- * @input hour, tasks, onAddTask, onEditTask, onUpdateTask, onDeleteTask, onToggleTask, onDropTask
- * @output 시간대 프로그레스 바 + 작업 리스트 + 할일 추가
+ * @input hour, tasks, onCreateTask, onEditTask, onUpdateTask, onDeleteTask, onToggleTask, onDropTask
+ * @output 시간대 프로그레스 바 + 작업 리스트 + 인라인 입력
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
 import TaskCard from './TaskCard';
 
 interface HourBarProps {
   hour: number; // 시간 (예: 5, 6, 7)
-  blockId: TimeBlockId; // 속한 타임블록 ID (향후 사용 예정)
+  blockId: TimeBlockId; // 속한 타임블록 ID
   tasks: Task[]; // 해당 시간대의 작업들
   isLocked: boolean; // 블록 잠금 여부
-  onAddTask: (hour: number) => void;
+  onCreateTask: (text: string, hour: number) => Promise<void>;
   onEditTask: (task: Task) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onDeleteTask: (taskId: string) => void;
@@ -31,7 +31,7 @@ export default function HourBar({
   blockId: _blockId, // 향후 사용 예정
   tasks,
   isLocked,
-  onAddTask,
+  onCreateTask,
   onEditTask,
   onUpdateTask,
   onDeleteTask,
@@ -40,6 +40,8 @@ export default function HourBar({
 }: HourBarProps) {
   const [progress, setProgress] = useState(0); // 0-100% (50분 기준)
   const [isDragOver, setIsDragOver] = useState(false);
+  const [inlineInputValue, setInlineInputValue] = useState('');
+  const inlineInputRef = useRef<HTMLInputElement>(null);
 
   // 실시간 프로그레스 계산 (50분 몰입 시간 기준)
   useEffect(() => {
@@ -68,26 +70,40 @@ export default function HourBar({
     return () => clearInterval(interval);
   }, [hour]);
 
-  // 시간 포맷팅 (예: "05:00-06:00")
+  // 시간 포맷팅 with 진행 시간 (예: "05:00-06:00 (25/50)")
   const formatHourRange = () => {
     const startHour = hour.toString().padStart(2, '0');
     const endHour = (hour + 1).toString().padStart(2, '0');
-    return `${startHour}:00-${endHour}:00`;
-  };
+    const baseRange = `${startHour}:00-${endHour}:00`;
 
-  // 현재 진행 시간 표시 (예: "25/50분")
-  const getProgressText = () => {
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
 
     if (currentHour === hour) {
       const elapsed = Math.min(currentMinute, 50);
-      return `${elapsed}/50분`;
+      return `${baseRange} (${elapsed}/50)`;
     } else if (currentHour > hour) {
-      return '완료';
+      return `${baseRange} (완료)`;
     } else {
-      return '대기중';
+      return `${baseRange}`;
+    }
+  };
+
+  // 인라인 입력 핸들러
+  const handleInlineInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && inlineInputValue.trim()) {
+      e.preventDefault();
+
+      try {
+        await onCreateTask(inlineInputValue.trim(), hour);
+        setInlineInputValue('');
+        // 입력 필드 유지하여 연속 입력 가능
+      } catch (err) {
+        console.error('Failed to create task:', err);
+      }
+    } else if (e.key === 'Escape') {
+      setInlineInputValue('');
     }
   };
 
@@ -122,7 +138,6 @@ export default function HourBar({
       {/* 시간대 헤더 + 프로그레스 바 */}
       <div className="hour-bar-header">
         <div className="hour-time-label">{formatHourRange()}</div>
-        <div className="hour-progress-text">{getProgressText()}</div>
       </div>
 
       {/* 프로그레스 바 (50분 몰입 + 10분 휴식) */}
@@ -140,32 +155,33 @@ export default function HourBar({
 
       {/* 작업 리스트 */}
       <div className="hour-tasks">
-        {tasks.length === 0 ? (
-          <div className="hour-empty-message">작업 없음</div>
-        ) : (
-          tasks.map(task => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onEdit={() => onEditTask(task)}
-              onUpdateTask={(updates: Partial<Task>) => onUpdateTask(task.id, updates)}
-              onDelete={() => onDeleteTask(task.id)}
-              onToggle={() => onToggleTask(task.id)}
-              blockIsLocked={isLocked}
+        {tasks.map(task => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            onEdit={() => onEditTask(task)}
+            onUpdateTask={(updates: Partial<Task>) => onUpdateTask(task.id, updates)}
+            onDelete={() => onDeleteTask(task.id)}
+            onToggle={() => onToggleTask(task.id)}
+            blockIsLocked={isLocked}
+          />
+        ))}
+
+        {/* 인라인 입력 필드 - 항상 표시 */}
+        {!isLocked && (
+          <div className="inline-task-input">
+            <input
+              ref={inlineInputRef}
+              type="text"
+              value={inlineInputValue}
+              onChange={(e) => setInlineInputValue(e.target.value)}
+              onKeyDown={handleInlineInputKeyDown}
+              placeholder="할 일을 입력하고 Enter를 누르세요 (기본: 15분, 🟢 쉬움)"
+              className="inline-input-field"
             />
-          ))
+          </div>
         )}
       </div>
-
-      {/* 할일 추가 버튼 */}
-      {!isLocked && (
-        <button
-          className="hour-add-task-btn"
-          onClick={() => onAddTask(hour)}
-        >
-          + 할일 추가
-        </button>
-      )}
     </div>
   );
 }

@@ -52,7 +52,7 @@ const TimeBlock = memo(function TimeBlock({
   isCurrentBlock,
   isPastBlock = false,
   onAddTask: _onAddTask, // NOTE: 현재 사용되지 않음
-  onCreateTask: _onCreateTask, // NOTE: HourBar가 대체
+  onCreateTask,
   onEditTask,
   onUpdateTask,
   onDeleteTask,
@@ -519,9 +519,25 @@ const TimeBlock = memo(function TimeBlock({
                 blockId={block.id as TimeBlockId}
                 tasks={hourTasks}
                 isLocked={state?.isLocked || false}
-                onAddTask={(_h) => {
-                  // TODO: 시간별 작업 추가 모달 구현 필요
-                  // 현재는 HourBar 내부의 버튼으로만 작업 추가 가능
+                onCreateTask={async (text, targetHour) => {
+                  if (onCreateTask) {
+                    // 작업 생성 (blockId로)
+                    await onCreateTask(text, block.id as TimeBlockId);
+
+                    // 생성된 작업의 hourSlot 업데이트
+                    // Note: onCreateTask에서 이미 hourSlot을 block.start로 설정하지만,
+                    // 특정 hour에 추가하려면 여기서 업데이트 필요
+                    if (targetHour !== block.start && onUpdateTask) {
+                      // 방금 생성된 작업 찾기 (가장 최근 작업)
+                      const latestTask = tasks
+                        .filter(t => t.timeBlock === block.id)
+                        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+                      if (latestTask) {
+                        onUpdateTask(latestTask.id, { hourSlot: targetHour });
+                      }
+                    }
+                  }
                 }}
                 onEditTask={onEditTask}
                 onUpdateTask={(taskId, updates) => {
