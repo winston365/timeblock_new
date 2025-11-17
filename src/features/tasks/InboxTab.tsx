@@ -12,9 +12,14 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useDailyData } from '@/shared/hooks';
 import { useGameState } from '@/shared/hooks/useGameState';
-import { getRecentUncompletedInboxTasks } from '@/data/repositories';
+import {
+  loadInboxTasks,
+  addInboxTask,
+  updateInboxTask,
+  deleteInboxTask,
+  toggleInboxTaskCompletion,
+} from '@/data/repositories/inboxRepository';
 import type { Task } from '@/shared/types/domain';
 import { generateId } from '@/shared/lib/utils';
 import TaskCard from '@/features/schedule/TaskCard';
@@ -30,47 +35,30 @@ import './tasks.css';
  *   - 드래그앤드롭으로 작업을 인박스로 이동 가능
  */
 export default function InboxTab() {
-  const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion } = useDailyData();
   const { updateQuestProgress } = useGameState();
-  const [recentInboxTasks, setRecentInboxTasks] = useState<Task[]>([]);
-  const [loadingRecent, setLoadingRecent] = useState(true);
+  const [inboxTasks, setInboxTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // 최근 7일의 미완료 인박스 작업 로드
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadRecentInboxTasks() {
-      try {
-        setLoadingRecent(true);
-        const tasks = await getRecentUncompletedInboxTasks(7);
-        if (isMounted) {
-          setRecentInboxTasks(tasks);
-        }
-      } catch (error) {
-        console.error('Failed to load recent inbox tasks:', error);
-      } finally {
-        if (isMounted) {
-          setLoadingRecent(false);
-        }
-      }
+  // 전역 인박스 작업 로드
+  const refreshInboxTasks = async () => {
+    try {
+      setLoading(true);
+      const tasks = await loadInboxTasks();
+      setInboxTasks(tasks);
+    } catch (error) {
+      console.error('Failed to load inbox tasks:', error);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    loadRecentInboxTasks();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [dailyData]); // dailyData가 변경될 때마다 다시 로드
-
-  // 오늘 인박스 작업 + 과거 미완료 인박스 작업 합치기 (중복 제거)
-  const todayInboxTasks = dailyData?.tasks.filter(task => !task.timeBlock) ?? [];
-  const todayTaskIds = new Set(todayInboxTasks.map(t => t.id));
-  const pastInboxTasks = recentInboxTasks.filter(task => !todayTaskIds.has(task.id));
-  const inboxTasks = [...todayInboxTasks, ...pastInboxTasks];
+  useEffect(() => {
+    refreshInboxTasks();
+  }, []);
 
   const handleAddTask = () => {
     setEditingTask(null);
@@ -85,7 +73,7 @@ export default function InboxTab() {
   const handleSaveTask = async (taskData: Partial<Task>) => {
     try {
       if (editingTask) {
-        await updateTask(editingTask.id, taskData);
+        await updateInboxTask(editingTask.id, taskData);
 
         // 수정 후에도 준비된 작업인지 확인 (이전에 준비되지 않았다면 퀘스트 진행)
         const wasPrepared = !!(editingTask.preparation1 && editingTask.preparation2 && editingTask.preparation3);
@@ -111,7 +99,7 @@ export default function InboxTab() {
           preparation2: taskData.preparation2 || '',
           preparation3: taskData.preparation3 || '',
         };
-        await addTask(newTask);
+        await addInboxTask(newTask);
 
         // 준비된 작업이면 퀘스트 진행
         const isPrepared = !!(taskData.preparation1 && taskData.preparation2 && taskData.preparation3);
@@ -119,6 +107,8 @@ export default function InboxTab() {
           await updateQuestProgress('prepare_tasks', 1);
         }
       }
+
+      await refreshInboxTasks(); // 목록 새로고침
       setIsModalOpen(false);
       setEditingTask(null);
     } catch (error) {
@@ -129,7 +119,8 @@ export default function InboxTab() {
 
   const handleDeleteTask = async (taskId: string) => {
     try {
-      await deleteTask(taskId);
+      await deleteInboxTask(taskId);
+      await refreshInboxTasks(); // 목록 새로고침
     } catch (error) {
       console.error('Failed to delete task:', error);
       alert('작업 삭제에 실패했습니다.');
@@ -138,7 +129,8 @@ export default function InboxTab() {
 
   const handleToggleTask = async (taskId: string) => {
     try {
-      await toggleTaskCompletion(taskId);
+      await toggleInboxTaskCompletion(taskId);
+      await refreshInboxTasks(); // 목록 새로고침
     } catch (error) {
       console.error('Failed to toggle task:', error);
     }
@@ -162,16 +154,11 @@ export default function InboxTab() {
     const taskId = e.dataTransfer.getData('text/plain');
     if (!taskId) return;
 
-    try {
-      // 작업을 인박스로 이동 (timeBlock을 null로 설정)
-      await updateTask(taskId, { timeBlock: null });
-    } catch (error) {
-      console.error('Failed to move task to inbox:', error);
-      alert('작업 이동에 실패했습니다.');
-    }
+    // 타임블록에서 인박스로 이동 로직은 ScheduleView에서 처리
+    // 여기서는 아무것도 하지 않음 (드래그 수신만)
   };
 
-  if (loading || loadingRecent) {
+  if (loading) {
     return <div className="tab-loading">로딩 중...</div>;
   }
 
@@ -205,7 +192,8 @@ export default function InboxTab() {
                 onDelete={() => handleDeleteTask(task.id)}
                 onToggle={() => handleToggleTask(task.id)}
                 onUpdateTask={async (updates) => {
-                  await updateTask(task.id, updates);
+                  await updateInboxTask(task.id, updates);
+                  await refreshInboxTasks();
                 }}
                 hideMetadata={true}
               />

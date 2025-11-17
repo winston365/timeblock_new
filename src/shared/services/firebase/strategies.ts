@@ -13,7 +13,7 @@
 
 import type { SyncStrategy } from './syncCore';
 import { mergeGameState } from './conflictResolver';
-import type { DailyData, GameState, ChatHistory, DailyTokenUsage, EnergyLevel, Template } from '@/shared/types/domain';
+import type { DailyData, GameState, ChatHistory, DailyTokenUsage, EnergyLevel, Template, Task } from '@/shared/types/domain';
 
 // ============================================================================
 // DailyData 전략 (Last-Write-Wins)
@@ -74,4 +74,14 @@ export const templateStrategy: SyncStrategy<Template[]> = {
   collection: 'templates',
   getSuccessMessage: (data) =>
     `Templates synced (${data.length} templates, ${data.filter(t => t.autoGenerate).length} auto-generate)`,
+};
+
+// ============================================================================
+// GlobalInbox 전략 (Last-Write-Wins)
+// ============================================================================
+
+export const globalInboxStrategy: SyncStrategy<Task[]> = {
+  collection: 'globalInbox',
+  getSuccessMessage: (data) =>
+    `GlobalInbox synced (${data.length} tasks, ${data.filter(t => !t.completed).length} uncompleted)`,
 };

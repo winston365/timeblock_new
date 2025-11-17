@@ -20,6 +20,13 @@ import { addSyncLog } from '@/shared/services/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/firebaseService';
 import { syncToFirebase, fetchFromFirebase } from '@/shared/services/firebase/syncCore';
 import { dailyDataStrategy } from '@/shared/services/firebase/strategies';
+import {
+  moveInboxTaskToBlock,
+  moveTaskToInbox,
+  deleteInboxTask,
+  updateInboxTask,
+  toggleInboxTaskCompletion,
+} from './inboxRepository';
 
 // ============================================================================
 // DailyData CRUD
@@ -233,7 +240,7 @@ export async function addTask(task: Task, date: string = getLocalDate()): Promis
 }
 
 /**
- * Task 업데이트
+ * Task 업데이트 (Global Inbox 지원)
  *
  * @param {string} taskId - 업데이트할 작업 ID
  * @param {Partial<Task>} updates - 업데이트할 필드
@@ -241,23 +248,68 @@ export async function addTask(task: Task, date: string = getLocalDate()): Promis
  * @returns {Promise<void>}
  * @throws {Error} 작업이 존재하지 않거나 저장 실패 시
  * @sideEffects
- *   - loadDailyData 및 saveDailyData 호출
+ *   - dailyData와 globalInbox 간 작업 이동 처리
+ *   - timeBlock → null: dailyData에서 globalInbox로 이동
+ *   - null → timeBlock: globalInbox에서 dailyData로 이동
  */
 export async function updateTask(taskId: string, updates: Partial<Task>, date: string = getLocalDate()): Promise<void> {
   try {
+    // 1. dailyData에서 찾기
     const dailyData = await loadDailyData(date);
     const taskIndex = dailyData.tasks.findIndex(t => t.id === taskId);
 
-    if (taskIndex === -1) {
-      throw new Error(`Task not found: ${taskId}`);
+    if (taskIndex !== -1) {
+      const task = dailyData.tasks[taskIndex];
+
+      // timeBlock → inbox 이동 (타임블록에서 인박스로)
+      if (updates.timeBlock === null && task.timeBlock !== null) {
+        addSyncLog('dexie', 'save', `Moving task ${taskId} from timeblock to inbox`);
+
+        // dailyData에서 제거
+        dailyData.tasks.splice(taskIndex, 1);
+        await saveDailyData(date, dailyData.tasks, dailyData.timeBlockStates);
+
+        // globalInbox로 이동 (updates 적용)
+        const movedTask: Task = { ...task, ...updates };
+        await moveTaskToInbox(movedTask);
+        return;
+      }
+
+      // 일반 업데이트 (타임블록 내 이동 또는 속성 변경)
+      dailyData.tasks[taskIndex] = {
+        ...task,
+        ...updates,
+      };
+      await saveDailyData(date, dailyData.tasks, dailyData.timeBlockStates);
+      return;
     }
 
-    dailyData.tasks[taskIndex] = {
-      ...dailyData.tasks[taskIndex],
-      ...updates,
-    };
+    // 2. globalInbox에서 찾기
+    const inboxTask = await db.globalInbox.get(taskId);
 
-    await saveDailyData(date, dailyData.tasks, dailyData.timeBlockStates);
+    if (inboxTask) {
+      // inbox → timeBlock 이동 (인박스에서 타임블록으로)
+      if (updates.timeBlock !== null) {
+        addSyncLog('dexie', 'save', `Moving task ${taskId} from inbox to timeblock`);
+
+        // globalInbox에서 제거
+        await moveInboxTaskToBlock(taskId);
+
+        // dailyData에 추가 (updates 적용)
+        const movedTask: Task = { ...inboxTask, ...updates };
+        const todayData = await loadDailyData(date);
+        todayData.tasks.push(movedTask);
+        await saveDailyData(date, todayData.tasks, todayData.timeBlockStates);
+        return;
+      }
+
+      // 인박스 내 업데이트
+      await updateInboxTask(taskId, updates);
+      return;
+    }
+
+    // 3. 어디에도 없으면 에러
+    throw new Error(`Task not found: ${taskId}`);
   } catch (error) {
     console.error('Failed to update task:', error);
     throw error;
@@ -265,20 +317,37 @@ export async function updateTask(taskId: string, updates: Partial<Task>, date: s
 }
 
 /**
- * Task 삭제
+ * Task 삭제 (Global Inbox 지원)
  *
  * @param {string} taskId - 삭제할 작업 ID
  * @param {string} [date] - 날짜 (기본값: 오늘)
  * @returns {Promise<void>}
  * @throws {Error} 데이터 로드 또는 저장 실패 시
  * @sideEffects
- *   - loadDailyData 및 saveDailyData 호출
+ *   - dailyData와 globalInbox 모두 검색하여 삭제
  */
 export async function deleteTask(taskId: string, date: string = getLocalDate()): Promise<void> {
   try {
+    // 1. dailyData에서 삭제 시도
     const dailyData = await loadDailyData(date);
-    dailyData.tasks = dailyData.tasks.filter(t => t.id !== taskId);
-    await saveDailyData(date, dailyData.tasks, dailyData.timeBlockStates);
+    const taskExists = dailyData.tasks.some(t => t.id === taskId);
+
+    if (taskExists) {
+      dailyData.tasks = dailyData.tasks.filter(t => t.id !== taskId);
+      await saveDailyData(date, dailyData.tasks, dailyData.timeBlockStates);
+      return;
+    }
+
+    // 2. globalInbox에서 삭제 시도
+    const inboxTask = await db.globalInbox.get(taskId);
+
+    if (inboxTask) {
+      await deleteInboxTask(taskId);
+      return;
+    }
+
+    // 3. 어디에도 없으면 에러
+    throw new Error(`Task not found: ${taskId}`);
   } catch (error) {
     console.error('Failed to delete task:', error);
     throw error;
@@ -286,31 +355,39 @@ export async function deleteTask(taskId: string, date: string = getLocalDate()):
 }
 
 /**
- * Task 완료 토글
+ * Task 완료 토글 (Global Inbox 지원)
  *
  * @param {string} taskId - 토글할 작업 ID
  * @param {string} [date] - 날짜 (기본값: 오늘)
  * @returns {Promise<Task>} 토글된 작업 객체
  * @throws {Error} 작업이 존재하지 않거나 저장 실패 시
  * @sideEffects
+ *   - dailyData와 globalInbox 모두 검색하여 토글
  *   - 작업의 completed 및 completedAt 필드 변경
- *   - loadDailyData 및 saveDailyData 호출
  */
 export async function toggleTaskCompletion(taskId: string, date: string = getLocalDate()): Promise<Task> {
   try {
+    // 1. dailyData에서 토글 시도
     const dailyData = await loadDailyData(date);
     const task = dailyData.tasks.find(t => t.id === taskId);
 
-    if (!task) {
-      throw new Error(`Task not found: ${taskId}`);
+    if (task) {
+      task.completed = !task.completed;
+      task.completedAt = task.completed ? new Date().toISOString() : null;
+
+      await saveDailyData(date, dailyData.tasks, dailyData.timeBlockStates);
+      return task;
     }
 
-    task.completed = !task.completed;
-    task.completedAt = task.completed ? new Date().toISOString() : null;
+    // 2. globalInbox에서 토글 시도
+    const inboxTask = await db.globalInbox.get(taskId);
 
-    await saveDailyData(date, dailyData.tasks, dailyData.timeBlockStates);
+    if (inboxTask) {
+      return await toggleInboxTaskCompletion(taskId);
+    }
 
-    return task;
+    // 3. 어디에도 없으면 에러
+    throw new Error(`Task not found: ${taskId}`);
   } catch (error) {
     console.error('Failed to toggle task completion:', error);
     throw error;
@@ -406,17 +483,19 @@ export async function toggleBlockLock(blockId: string, date: string = getLocalDa
 // ============================================================================
 
 /**
- * 인박스 작업 가져오기
+ * 인박스 작업 가져오기 (Global Inbox)
  *
- * @param {string} [date] - 날짜 (기본값: 오늘)
- * @returns {Promise<Task[]>} 타임블록이 할당되지 않은 작업 배열
+ * @deprecated 이제 globalInbox 테이블을 사용합니다. loadInboxTasks()를 직접 사용하세요.
+ * @param {string} [_date] - 날짜 (사용되지 않음)
+ * @returns {Promise<Task[]>} 전역 인박스 작업 배열
  * @throws 없음
  * @sideEffects
- *   - loadDailyData 호출
+ *   - loadInboxTasks 호출 (globalInbox 테이블)
  */
-export async function getInboxTasks(date: string = getLocalDate()): Promise<Task[]> {
-  const dailyData = await loadDailyData(date);
-  return dailyData.tasks.filter(task => !task.timeBlock);
+export async function getInboxTasks(_date: string = getLocalDate()): Promise<Task[]> {
+  // Global inbox를 사용하므로 date 파라미터는 무시됨
+  const { loadInboxTasks } = await import('./inboxRepository');
+  return loadInboxTasks();
 }
 
 /**
@@ -514,31 +593,23 @@ export async function getRecentCompletedTasks(days: number = 7): Promise<Task[]>
 /**
  * 최근 N일의 미완료 인박스 작업 가져오기
  *
- * @param {number} [days=7] - 조회할 일수 (기본값: 7일)
+ * @deprecated Global Inbox 도입으로 더 이상 필요하지 않습니다. loadInboxTasks()를 사용하세요.
+ * @param {number} [_days=7] - 조회할 일수 (기본값: 7일, 사용되지 않음)
  * @returns {Promise<Task[]>} 미완료 인박스 작업 배열 (최근 순으로 정렬)
  * @throws 없음
  * @sideEffects
- *   - getRecentDailyData 호출
+ *   - 이제 globalInbox 테이블에서 직접 조회 (날짜 독립적)
  */
-export async function getRecentUncompletedInboxTasks(days: number = 7): Promise<Task[]> {
+export async function getRecentUncompletedInboxTasks(_days: number = 7): Promise<Task[]> {
   try {
-    const recentData = await getRecentDailyData(days);
-    const allUncompletedInboxTasks: Task[] = [];
+    // Global inbox를 사용하므로 날짜 범위 검색은 불필요
+    const { loadInboxTasks } = await import('./inboxRepository');
+    const allInboxTasks = await loadInboxTasks();
 
-    // 모든 날짜의 미완료 인박스 작업 수집
-    recentData.forEach(dayData => {
-      const uncompletedInboxTasks = dayData.tasks.filter(
-        task => !task.timeBlock && !task.completed
-      );
-      allUncompletedInboxTasks.push(...uncompletedInboxTasks);
-    });
-
-    // createdAt 기준으로 최근 순으로 정렬
-    return allUncompletedInboxTasks.sort((a, b) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
+    // 미완료 작업만 필터링
+    return allInboxTasks.filter(task => !task.completed);
   } catch (error) {
-    console.error('Failed to get recent uncompleted inbox tasks:', error);
+    console.error('Failed to get uncompleted inbox tasks:', error);
     return [];
   }
 }

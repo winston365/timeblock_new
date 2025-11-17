@@ -17,7 +17,8 @@ import type {
   EnergyLevel,
   Settings,
   ChatHistory,
-  DailyTokenUsage
+  DailyTokenUsage,
+  Task
 } from '@/shared/types/domain';
 
 // ============================================================================
@@ -35,6 +36,7 @@ import type {
  * - settings: 앱 설정 (단일 레코드, 'current' 키 사용)
  * - chatHistory: Gemini 채팅 히스토리 (date를 primary key로)
  * - dailyTokenUsage: 일일 토큰 사용량 (date를 primary key로)
+ * - globalInbox: 전역 인박스 작업 (날짜 독립적, id를 primary key로)
  */
 export class TimeBlockDB extends Dexie {
   // 테이블 선언
@@ -47,6 +49,7 @@ export class TimeBlockDB extends Dexie {
   settings!: Table<Settings & { key: string }, string>;
   chatHistory!: Table<ChatHistory, string>;
   dailyTokenUsage!: Table<DailyTokenUsage, string>;
+  globalInbox!: Table<Task, string>;
 
   constructor() {
     super('timeblock_db');
@@ -88,6 +91,46 @@ export class TimeBlockDB extends Dexie {
       chatHistory: 'date, updatedAt',
       // dailyTokenUsage: date를 primary key로
       dailyTokenUsage: 'date, updatedAt',
+    });
+
+    // 스키마 버전 3 - 전역 인박스 추가
+    this.version(3).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      energyLevels: 'id, date, timestamp, hour',
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      // globalInbox: 전역 인박스 (날짜 독립적)
+      globalInbox: 'id, createdAt, completed',
+    }).upgrade(async (tx) => {
+      // 기존 dailyData의 인박스 작업을 전역 인박스로 마이그레이션
+      console.log('🔄 Migrating inbox tasks to globalInbox...');
+
+      const dailyDataTable = tx.table('dailyData');
+      const globalInboxTable = tx.table('globalInbox');
+
+      const allDailyData = await dailyDataTable.toArray();
+      let migratedCount = 0;
+
+      for (const dayData of allDailyData) {
+        const inboxTasks = (dayData.tasks || []).filter((task: Task) => !task.timeBlock);
+
+        // 전역 인박스로 이동
+        for (const task of inboxTasks) {
+          await globalInboxTable.put(task);
+          migratedCount++;
+        }
+
+        // dailyData에서 인박스 작업 제거 (timeBlock이 있는 작업만 남김)
+        const scheduledTasks = (dayData.tasks || []).filter((task: Task) => task.timeBlock);
+        await dailyDataTable.update(dayData.date, { tasks: scheduledTasks });
+      }
+
+      console.log(`✅ Migrated ${migratedCount} inbox tasks to globalInbox`);
     });
   }
 }

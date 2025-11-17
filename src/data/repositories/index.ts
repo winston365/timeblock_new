@@ -10,3 +10,4 @@ export * from './templateRepository';
 export * from './shopRepository';
 export * from './chatHistoryRepository';
 export * from './energyRepository';
+export * from './inboxRepository';
