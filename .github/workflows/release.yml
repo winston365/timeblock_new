@@ -76,8 +76,8 @@ jobs:
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           echo "Current version: $CURRENT_VERSION"
 
-          # Bump patch version using npm (creates tag automatically)
-          ${{ steps.detect-pm.outputs.pm }} version patch -m "chore: bump version to %s [skip ci]"
+          # Bump patch version using bump script
+          ${{ steps.detect-pm.outputs.pm }} run bump
 
           # Get new version
           NEW_VERSION=$(node -p "require('./package.json').version")
