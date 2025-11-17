@@ -250,7 +250,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
           {task.completed ? '✅' : '⬜'}
         </button>
 
-        <div className="task-details" onClick={() => task.memo && !isEditingText && setShowMemoModal(true)}>
+        <div className="task-details">
           {/* 작업명과 아이콘을 같은 행에 배치 */}
           <div className="task-header-row">
             <div className="task-text">

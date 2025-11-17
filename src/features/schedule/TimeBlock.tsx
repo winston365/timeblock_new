@@ -166,11 +166,6 @@ const TimeBlock = memo(function TimeBlock({
 
   const progressPercentage = getProgressPercentage();
 
-  // SVG 원형 프로그레스 바 계산
-  const radius = 32; // 원의 반지름 (28 -> 32, 72px SVG에 맞춤)
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
-
   // 툴팁 텍스트 생성
   const getTooltipText = (): string => {
     const utilization = Math.round(progressPercentage);
@@ -305,54 +300,46 @@ const TimeBlock = memo(function TimeBlock({
     >
       <div className="block-header" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="block-primary-info">
-          {/* 원형 시간표 (현재 시간대 블록만) */}
+          {/* 바 형태 시간표 (현재 시간대 블록만) */}
           {isCurrentBlock && timeRemaining && (
-            <div className="time-circle-wrapper" data-tooltip={getTooltipText()}>
-              {/* SVG 원형 프로그레스 바 */}
-              <svg className="circular-progress" width="72" height="72">
-                {/* 배경 링 */}
-                <circle
-                  className="progress-ring"
-                  cx="36"
-                  cy="36"
-                  r={radius}
-                />
-                {/* 진행 링 */}
-                <circle
-                  className={`progress-ring-fill status-${timeStatus}`}
-                  cx="36"
-                  cy="36"
-                  r={radius}
-                  strokeDasharray={circumference}
-                  strokeDashoffset={strokeDashoffset}
-                />
-              </svg>
+            <div className="time-bar-wrapper" data-tooltip={getTooltipText()}>
+              <div className="time-bar-container">
+                {/* 상태 아이콘 */}
+                <div className={`status-icon-large status-${timeStatus}`}>
+                  {getStatusIcon()}
+                </div>
 
-              {/* 중앙 시간 표시 */}
-              <div
-                className={`time-circle-compact status-${timeStatus}`}
-                role="status"
-                aria-live="polite"
-                aria-label={`미완료 작업 시간 ${pendingDuration}분, 남은 시간 ${remainingMinutes}분`}
-              >
-                <span className="time-remaining">
-                  <span className="planned-time">{formatMinutesToHM(pendingDuration)}</span>
-                  <span className="time-divider">·</span>
-                  <span className="remaining-time">{formatMinutesToHM(remainingMinutes)}</span>
-                </span>
-              </div>
+                {/* 시간 정보와 바 */}
+                <div className="time-info-bars">
+                  {/* 계획 시간 바 */}
+                  <div className="time-bar-row">
+                    <span className="time-label">📋 계획</span>
+                    <div className="time-bar-track">
+                      <div
+                        className={`time-bar-fill planned status-${timeStatus}`}
+                        style={{ width: `${Math.min((pendingDuration / (remainingMinutes || 1)) * 100, 100)}%` }}
+                      />
+                      <span className="time-value">{formatMinutesToHM(pendingDuration)}</span>
+                    </div>
+                  </div>
 
-              {/* 시간 구분 라벨 (계획/남은) */}
-              <div className="time-type-labels">
-                <span className="time-type-label planned">📋 계획</span>
-                <span className="time-type-divider">|</span>
-                <span className="time-type-label remaining">남은 ⏱️</span>
-              </div>
+                  {/* 남은 시간 바 */}
+                  <div className="time-bar-row">
+                    <span className="time-label">⏱️ 남은</span>
+                    <div className="time-bar-track">
+                      <div
+                        className={`time-bar-fill remaining status-${timeStatus}`}
+                        style={{ width: '100%' }}
+                      />
+                      <span className="time-value">{formatMinutesToHM(remainingMinutes)}</span>
+                    </div>
+                  </div>
+                </div>
 
-              {/* 상태 배지 */}
-              <div className={`time-status-badge status-${timeStatus}`}>
-                <span className="status-icon">{getStatusIcon()}</span>
-                <span className="status-text">{getStatusText()}</span>
+                {/* 상태 텍스트 */}
+                <div className={`status-text-badge status-${timeStatus}`}>
+                  {getStatusText()}
+                </div>
               </div>
             </div>
           )}
@@ -370,7 +357,6 @@ const TimeBlock = memo(function TimeBlock({
               ) : (
                 <>
                   <span className="stat-compact">📋 {tasks.length}</span>
-                  <span className="stat-compact">⏱️ {completedDuration}/{totalDuration}m</span>
                   {maxXP > 0 && <span className="stat-compact">✨ ~{maxXP}XP</span>}
                   {!isPastBlock && <span className="stat-compact lock-warning">⚠️ 잠금 필요</span>}
                 </>

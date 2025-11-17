@@ -518,6 +518,236 @@
   opacity: 1;
 }
 
+/* ============================================================================
+   바 형태 시간표 (Bar-style Time Display)
+   ============================================================================ */
+
+.time-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.time-bar-wrapper:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.time-bar-container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  width: 100%;
+}
+
+/* 상태 아이콘 (큰 크기) */
+.status-icon-large {
+  font-size: 1.75rem;
+  line-height: 1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.status-icon-large.status-comfortable {
+  background: rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.status-icon-large.status-balanced {
+  background: rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+}
+
+.status-icon-large.status-tight {
+  background: rgba(245, 158, 11, 0.15);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+.status-icon-large.status-critical {
+  background: rgba(239, 68, 68, 0.15);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+  animation: pulse-urgent 1.5s ease-in-out infinite;
+}
+
+/* 시간 정보와 바 컨테이너 */
+.time-info-bars {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 개별 바 행 */
+.time-bar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* 시간 라벨 */
+.time-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  min-width: 48px;
+  flex-shrink: 0;
+}
+
+/* 바 트랙 (배경) */
+.time-bar-track {
+  position: relative;
+  flex: 1;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 바 채움 (진행 상태) */
+.time-bar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.4s ease, background-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+}
+
+/* 계획 시간 바 색상 */
+.time-bar-fill.planned.status-comfortable {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.6), rgba(16, 185, 129, 0.8));
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.time-bar-fill.planned.status-balanced {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.6), rgba(99, 102, 241, 0.8));
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.time-bar-fill.planned.status-tight {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.6), rgba(245, 158, 11, 0.8));
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.time-bar-fill.planned.status-critical {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.6), rgba(239, 68, 68, 0.8));
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+/* 남은 시간 바 색상 (약간 더 밝게) */
+.time-bar-fill.remaining.status-comfortable {
+  background: linear-gradient(90deg, rgba(110, 231, 183, 0.5), rgba(110, 231, 183, 0.7));
+  box-shadow: 0 2px 8px rgba(110, 231, 183, 0.25);
+}
+
+.time-bar-fill.remaining.status-balanced {
+  background: linear-gradient(90deg, rgba(165, 180, 252, 0.5), rgba(165, 180, 252, 0.7));
+  box-shadow: 0 2px 8px rgba(165, 180, 252, 0.25);
+}
+
+.time-bar-fill.remaining.status-tight {
+  background: linear-gradient(90deg, rgba(252, 211, 77, 0.5), rgba(252, 211, 77, 0.7));
+  box-shadow: 0 2px 8px rgba(252, 211, 77, 0.25);
+}
+
+.time-bar-fill.remaining.status-critical {
+  background: linear-gradient(90deg, rgba(252, 165, 165, 0.5), rgba(252, 165, 165, 0.7));
+  box-shadow: 0 2px 8px rgba(252, 165, 165, 0.3);
+}
+
+/* 시간 값 텍스트 (바 안에 표시) */
+.time-value {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 상태 텍스트 배지 */
+.status-text-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.status-text-badge.status-comfortable {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.status-text-badge.status-balanced {
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.status-text-badge.status-tight {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.status-text-badge.status-critical {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+/* 툴팁 */
+.time-bar-wrapper::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: -36px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.95);
+  color: white;
+  font-size: 0.6875rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 100;
+}
+
+.time-bar-wrapper:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(4px);
+}
+
 .block-actions {
   display: flex;
   align-items: center;
