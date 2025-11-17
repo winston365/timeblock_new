@@ -1,10 +1,11 @@
 {
   "appId": "com.timeblock.planner",
-  "productName": "TimeBlock Planner",
+  "productName": "TimeBlockPlanner",
   "directories": {
     "output": "release",
     "buildResources": "electron/resources"
   },
+
   "files": [
     "dist/**/*",
     "dist-electron/**/*",
@@ -28,14 +29,19 @@
   "win": {
     "target": ["nsis"],
     "icon": "electron/resources/icon.ico",
-    "artifactName": "${productName}-${version}-Setup.${ext}"
+    "artifactName": "TimeBlockPlanner-${version}-Setup.${ext}"
   },
 
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
-    "createStartMenuShortcut": true
+    "createStartMenuShortcut": true,
+    "installerIcon": "electron/resources/1.ico",
+    "uninstallerIcon": "electron/resources/1.ico",
+    "installerHeaderIcon": "electron/resources/1.ico",
+    "installerHeaderImage": "electron/resources/2.bmp",
+    "installerSidebar": "electron/resources/3.bmp"
   },
 
   "mac": {
