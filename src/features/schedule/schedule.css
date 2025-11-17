@@ -455,6 +455,30 @@
   }
 }
 
+/* 아이콘 경고 맥동 (주황 - 촉박) - translate 없이 scale만 */
+@keyframes pulse-icon-warning {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+    transform: scale(1.08);
+  }
+}
+
+/* 아이콘 긴급 맥동 (빨강 - 위험) - translate 없이 scale만 */
+@keyframes pulse-icon-urgent {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(239, 68, 68, 0.7);
+    transform: scale(1.1);
+  }
+}
+
 /* 호버 효과 */
 .time-circle-wrapper:hover .time-circle-compact {
   transform: translate(-50%, -50%) scale(1.06);
@@ -574,13 +598,13 @@
 .status-icon-large.status-tight {
   background: rgba(245, 158, 11, 0.15);
   box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
-  animation: pulse-warning 2s ease-in-out infinite;
+  animation: pulse-icon-warning 2s ease-in-out infinite;
 }
 
 .status-icon-large.status-critical {
   background: rgba(239, 68, 68, 0.15);
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
-  animation: pulse-urgent 1.5s ease-in-out infinite;
+  animation: pulse-icon-urgent 1.5s ease-in-out infinite;
 }
 
 /* 시간 정보와 바 컨테이너 */

@@ -416,6 +416,7 @@ const TimeBlock = memo(function TimeBlock({
                 onDelete={() => onDeleteTask(task.id)}
                 onToggle={() => handleTaskToggle(task.id)}
                 onUpdateTask={onUpdateTask ? (updates) => onUpdateTask(task.id, updates) : undefined}
+                blockIsLocked={state?.isLocked}
               />
             ))}
 

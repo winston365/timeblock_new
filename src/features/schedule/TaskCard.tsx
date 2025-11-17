@@ -27,6 +27,7 @@ interface TaskCardProps {
   onDragStart?: (taskId: string) => void;
   onDragEnd?: () => void;
   hideMetadata?: boolean; // 인박스에서 난이도/XP 숨기기 옵션
+  blockIsLocked?: boolean; // 블록 잠금 여부 (인박스일 경우 undefined)
 }
 
 /**
@@ -38,7 +39,7 @@ interface TaskCardProps {
  *   - 드래그앤드롭으로 작업 이동
  *   - 인라인 난이도/시간 변경 시 즉시 업데이트
  */
-export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTask, onDragStart, onDragEnd, hideMetadata = false }: TaskCardProps) {
+export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTask, onDragStart, onDragEnd, hideMetadata = false, blockIsLocked }: TaskCardProps) {
   const [showResistancePicker, setShowResistancePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -110,6 +111,12 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     // 완료 취소하는 경우 (이미 완료된 작업)
     if (task.completed) {
       onToggle();
+      return;
+    }
+
+    // 블록 작업인 경우 (task.timeBlock !== null) 잠금 체크
+    if (task.timeBlock && blockIsLocked === false) {
+      alert('⚠️ 블록을 먼저 잠궈야 작업을 완료할 수 있습니다!\n\n블록 잠금 버튼(⚠️)을 눌러주세요. (비용: 15 XP)');
       return;
     }
 
