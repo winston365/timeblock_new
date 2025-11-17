@@ -125,8 +125,8 @@ exports.dailyTemplateGeneration = onSchedule({
   const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
   try {
-    // 모든 사용자 가져오기 (users 컬렉션이 없다면 user 사용)
-    const usersSnapshot = await db.ref("user").once("value");
+    // 모든 사용자 가져오기
+    const usersSnapshot = await db.ref("users/user").once("value");
     const userData = usersSnapshot.val();
 
     if (!userData) {
@@ -134,16 +134,19 @@ exports.dailyTemplateGeneration = onSchedule({
       return null;
     }
 
-    // 단일 사용자 구조 (현재 앱은 user 단일 키 사용)
+    // 단일 사용자 구조 (현재 앱은 users/user 경로 사용)
     let generatedCount = 0;
     let updatedTemplateCount = 0;
 
     // 템플릿 가져오기
-    const templatesSnapshot = await db.ref("user/templates/all").once("value");
-    const templates = templatesSnapshot.val();
+    const templatesSnapshot = await db.ref("users/user/templates/all").once("value");
+    const templatesData = templatesSnapshot.val();
+
+    // SyncData 구조에서 실제 데이터 추출
+    const templates = templatesData?.data;
 
     if (!templates || !Array.isArray(templates)) {
-      logger.info("No templates found");
+      logger.info("No templates found or invalid format");
       return null;
     }
 
@@ -160,8 +163,9 @@ exports.dailyTemplateGeneration = onSchedule({
         const newTask = createTaskFromTemplate(template, today);
 
         // dailyData에 추가
-        const dailyDataSnapshot = await db.ref(`user/dailyData/${today}`).once("value");
-        let dailyData = dailyDataSnapshot.val();
+        const dailyDataSnapshot = await db.ref(`users/user/dailyData/${today}`).once("value");
+        const dailyDataWrapper = dailyDataSnapshot.val();
+        let dailyData = dailyDataWrapper?.data;
 
         if (!dailyData) {
           // 오늘 데이터가 없으면 초기화
@@ -184,8 +188,8 @@ exports.dailyTemplateGeneration = onSchedule({
         dailyData.tasks.push(newTask);
         dailyData.updatedAt = Date.now();
 
-        // Firebase에 저장
-        await db.ref(`user/dailyData/${today}`).set({
+        // Firebase에 저장 (SyncData 래퍼 사용)
+        await db.ref(`users/user/dailyData/${today}`).set({
           data: dailyData,
           updatedAt: Date.now(),
           deviceId: "firebase-function",
@@ -199,9 +203,9 @@ exports.dailyTemplateGeneration = onSchedule({
       }
     }
 
-    // 템플릿 배열 업데이트
+    // 템플릿 배열 업데이트 (SyncData 래퍼 사용)
     if (updatedTemplateCount > 0) {
-      await db.ref("user/templates/all").set({
+      await db.ref("users/user/templates/all").set({
         data: templates,
         updatedAt: Date.now(),
         deviceId: "firebase-function",
