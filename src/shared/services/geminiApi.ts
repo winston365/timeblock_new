@@ -55,7 +55,7 @@ export async function callGeminiAPI(
   // API 키 확인 (설정에서 가져옴)
   const key = apiKey;
   if (!key) {
-    throw new Error('Gemini API 키가 설정되지 않았습니다. 우측 하단 ⚙️ 설정에서 Gemini API 키를 추가해주세요.!!!');
+    throw new Error('Gemini API 키가 설정되지 않았습니다. 우측 하단 ⚙️ 설정에서 Gemini API 키를 추가해주세요!');
   }
 
   // 메시지 히스토리 변환
