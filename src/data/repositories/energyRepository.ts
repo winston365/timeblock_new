@@ -192,23 +192,32 @@ export async function deleteEnergyLevel(
 // ============================================================================
 
 /**
- * 최근 N일간의 에너지 레벨 데이터 로드
+ * 최근 N일간의 에너지 레벨 데이터 로드 (병렬 처리)
  *
  * @param {number} days - 조회할 일 수
  * @returns {Promise<Record<string, EnergyLevel[]>>} 날짜별 에너지 레벨 맵
+ * @sideEffects
+ *   - 모든 날짜를 병렬로 로드하여 성능 최적화
  */
 export async function loadRecentEnergyLevels(days: number = 5): Promise<Record<string, EnergyLevel[]>> {
-  const result: Record<string, EnergyLevel[]> = {};
   const today = new Date();
 
-  for (let i = 0; i < days; i++) {
+  // 날짜 문자열 배열 생성
+  const dateStrings = Array.from({ length: days }, (_, i) => {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
-    const dateStr = getLocalDate(date);
+    return getLocalDate(date);
+  });
 
-    const levels = await loadEnergyLevels(dateStr);
-    result[dateStr] = levels;
-  }
+  // 모든 날짜를 병렬로 로드
+  const levelsPromises = dateStrings.map(dateStr => loadEnergyLevels(dateStr));
+  const levelsArray = await Promise.all(levelsPromises);
+
+  // 결과를 Record 형태로 변환
+  const result: Record<string, EnergyLevel[]> = {};
+  dateStrings.forEach((dateStr, index) => {
+    result[dateStr] = levelsArray[index];
+  });
 
   return result;
 }

@@ -31,11 +31,13 @@ export interface DailyTimeBlockEnergy {
 }
 
 /**
- * 전체 날짜의 평균 에너지 계산 (최근 30일)
+ * 전체 날짜의 평균 에너지 계산
+ *
+ * @param {Record<string, EnergyLevel[]>} recentData - 날짜별 에너지 데이터
+ * @returns {number} 전체 평균 에너지
  */
-async function calculateOverallAverage(): Promise<number> {
+function calculateOverallAverageFromData(recentData: Record<string, EnergyLevel[]>): number {
   try {
-    const recentData = await loadRecentEnergyLevels(30);
     let totalEnergy = 0;
     let count = 0;
 
@@ -54,15 +56,21 @@ async function calculateOverallAverage(): Promise<number> {
 }
 
 /**
- * 5일간 시간대별 에너지 통계 계산
+ * N일간 시간대별 에너지 통계 계산
+ *
+ * @param {Record<string, EnergyLevel[]>} recentData - 날짜별 에너지 데이터
+ * @param {number} days - 사용할 일수 (기본값: 5)
+ * @returns {DailyTimeBlockEnergy[]} 일별 시간대 통계 배열
  */
-async function calculateRecentTimeBlockStats(days: number = 5): Promise<DailyTimeBlockEnergy[]> {
+function calculateRecentTimeBlockStatsFromData(
+  recentData: Record<string, EnergyLevel[]>,
+  days: number = 5
+): DailyTimeBlockEnergy[] {
   try {
-    const recentData = await loadRecentEnergyLevels(days);
     const result: DailyTimeBlockEnergy[] = [];
 
-    // 날짜를 최근순으로 정렬
-    const dates = Object.keys(recentData).sort().reverse();
+    // 날짜를 최근순으로 정렬하고 최대 days개만 사용
+    const dates = Object.keys(recentData).sort().reverse().slice(0, days);
 
     for (const date of dates) {
       const levels = recentData[date];
@@ -102,19 +110,23 @@ export function useEnergyState() {
   const [overallAverage, setOverallAverage] = useState(0);
   const [recentTimeBlockStats, setRecentTimeBlockStats] = useState<DailyTimeBlockEnergy[]>([]);
 
-  // 초기 로드
+  // 초기 로드 (최적화: 30일 데이터 한 번만 로드)
   useEffect(() => {
     const loadData = async () => {
       try {
         const today = getLocalDate();
-        const levels = await loadEnergyLevels(today);
+
+        // 병렬 로드: 오늘 데이터 + 최근 30일 데이터
+        const [levels, recentData] = await Promise.all([
+          loadEnergyLevels(today),
+          loadRecentEnergyLevels(30),
+        ]);
+
         setEnergyLevels(levels);
 
-        // 전체 평균 및 5일간 통계 계산
-        const [avgEnergy, stats] = await Promise.all([
-          calculateOverallAverage(),
-          calculateRecentTimeBlockStats(5),
-        ]);
+        // 30일 데이터로 전체 평균 및 5일 통계 계산 (추가 네트워크 요청 없음)
+        const avgEnergy = calculateOverallAverageFromData(recentData);
+        const stats = calculateRecentTimeBlockStatsFromData(recentData, 5);
 
         setOverallAverage(avgEnergy);
         setRecentTimeBlockStats(stats);
@@ -128,7 +140,7 @@ export function useEnergyState() {
     loadData();
   }, []);
 
-  // 에너지 추가
+  // 에너지 추가 (최적화: 30일 데이터 한 번만 로드)
   const addEnergyLevel = useCallback(
     async (energy: number, context?: string, activity?: string) => {
       try {
@@ -144,15 +156,17 @@ export function useEnergyState() {
         const today = getLocalDate();
         await addEnergyLevelToRepo(today, newLevel);
 
-        // 상태 업데이트
-        const updatedLevels = await loadEnergyLevels(today);
+        // 병렬 로드: 오늘 데이터 + 최근 30일 데이터
+        const [updatedLevels, recentData] = await Promise.all([
+          loadEnergyLevels(today),
+          loadRecentEnergyLevels(30),
+        ]);
+
         setEnergyLevels(updatedLevels);
 
-        // 통계 재계산
-        const [avgEnergy, stats] = await Promise.all([
-          calculateOverallAverage(),
-          calculateRecentTimeBlockStats(5),
-        ]);
+        // 30일 데이터로 통계 계산 (추가 네트워크 요청 없음)
+        const avgEnergy = calculateOverallAverageFromData(recentData);
+        const stats = calculateRecentTimeBlockStatsFromData(recentData, 5);
 
         setOverallAverage(avgEnergy);
         setRecentTimeBlockStats(stats);
@@ -163,22 +177,24 @@ export function useEnergyState() {
     []
   );
 
-  // 에너지 삭제
+  // 에너지 삭제 (최적화: 30일 데이터 한 번만 로드)
   const deleteEnergyLevel = useCallback(
     async (timestamp: number) => {
       try {
         const today = getLocalDate();
         await deleteEnergyLevelFromRepo(today, timestamp);
 
-        // 상태 업데이트
-        const updatedLevels = await loadEnergyLevels(today);
+        // 병렬 로드: 오늘 데이터 + 최근 30일 데이터
+        const [updatedLevels, recentData] = await Promise.all([
+          loadEnergyLevels(today),
+          loadRecentEnergyLevels(30),
+        ]);
+
         setEnergyLevels(updatedLevels);
 
-        // 통계 재계산
-        const [avgEnergy, stats] = await Promise.all([
-          calculateOverallAverage(),
-          calculateRecentTimeBlockStats(5),
-        ]);
+        // 30일 데이터로 통계 계산 (추가 네트워크 요청 없음)
+        const avgEnergy = calculateOverallAverageFromData(recentData);
+        const stats = calculateRecentTimeBlockStatsFromData(recentData, 5);
 
         setOverallAverage(avgEnergy);
         setRecentTimeBlockStats(stats);
