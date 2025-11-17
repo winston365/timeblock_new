@@ -292,7 +292,11 @@ export async function saveGameState(gameState: GameState): Promise<void> {
  *   - XP 토스트 표시 (브라우저 환경에서)
  *   - saveGameState 호출
  */
-export async function addXP(amount: number, blockId?: string): Promise<GameState> {
+export async function addXP(
+  amount: number,
+  blockId?: string,
+  reason: import('@/shared/services/gameState').XPGainReason = 'other'
+): Promise<import('@/shared/services/gameState').GameStateChangeResult> {
   try {
     const gameState = await loadGameState();
 
@@ -314,39 +318,31 @@ export async function addXP(amount: number, blockId?: string): Promise<GameState
 
     await saveGameState(gameState);
 
-    // XP 토스트 표시 (동적 import로 순환 참조 방지)
-    if (typeof window !== 'undefined') {
-      import('@/shared/hooks/useXPToast').then((module) => {
-        // XP 양에 따라 메시지 결정
-        let message = 'XP 획득!';
-        if (amount === 15) {
-          message = '계획 잠금!';
-        } else if (amount === 20) {
-          message = '⏱️ 타이머 보너스!';
-        } else if (amount === 40) {
-          message = '완벽한 블록 완료!';
-        } else if (amount === 100) {
-          message = '🎯 완벽한 달성!';
-        } else if (amount >= 50 && amount <= 200) {
-          message = '🎯 퀘스트 완료!';
-        } else if (amount < 15) {
-          message = '작업 완료!';
-        } else {
-          message = 'XP 획득!';
-        }
-        module.useXPToastStore.getState().addToast(amount, message);
-      }).catch(console.error);
+    // 이벤트 생성 (UI 로직 분리)
+    const events: import('@/shared/services/gameState').GameStateEvent[] = [];
 
-      // 레벨업 시 와이푸 컴패니언 등장
-      if (leveledUp) {
-        import('@/shared/stores/waifuCompanionStore').then((module) => {
-          const waifuStore = module.useWaifuCompanionStore.getState();
-          waifuStore.show(`축하해! 레벨 ${gameState.level}로 올랐어! 🎊✨`);
-        }).catch(console.error);
-      }
+    // XP 획득 이벤트
+    events.push({
+      type: 'xp_gained',
+      amount,
+      reason,
+      blockId,
+    });
+
+    // 레벨업 이벤트
+    if (leveledUp) {
+      events.push({
+        type: 'level_up',
+        previousLevel,
+        newLevel: gameState.level,
+        totalXP: gameState.totalXP,
+      });
     }
 
-    return gameState;
+    return {
+      gameState,
+      events,
+    };
   } catch (error) {
     console.error('Failed to add XP:', error);
     throw error;

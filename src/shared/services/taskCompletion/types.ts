@@ -49,6 +49,6 @@ export interface TaskCompletionResult {
 export interface TaskCompletionHandler {
   /** 핸들러 이름 (디버깅용) */
   name: string;
-  /** 핸들러 실행 */
-  handle(context: TaskCompletionContext): Promise<void>;
+  /** 핸들러 실행 - 게임 상태 이벤트 배열 반환 */
+  handle(context: TaskCompletionContext): Promise<import('@/shared/services/gameState').GameStateEvent[]>;
 }

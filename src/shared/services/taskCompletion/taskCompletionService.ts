@@ -87,9 +87,11 @@ export class TaskCompletionService {
 
       console.log(`[TaskCompletionService] 🎯 Processing completion for: ${task.text}`);
 
-      // 모든 핸들러 순차 실행
+      // 모든 핸들러 순차 실행하고 이벤트 수집
+      const allEvents: import('@/shared/services/gameState').GameStateEvent[] = [];
       for (const handler of this.handlers) {
-        await handler.handle(context);
+        const events = await handler.handle(context);
+        allEvents.push(...events);
       }
 
       // 결과 집계
@@ -103,10 +105,16 @@ export class TaskCompletionService {
         isPerfectBlock
       );
 
-      // 와이푸 메시지 표시
+      // 와이푸 메시지 표시 (작업 완료 메시지만)
       if (waifuMessage) {
         const waifuStore = useWaifuCompanionStore.getState();
         waifuStore.show(waifuMessage);
+      }
+
+      // 수집된 게임 상태 이벤트 처리 (XP 토스트, 레벨업 등)
+      if (allEvents.length > 0) {
+        const { gameStateEventHandler } = await import('@/shared/services/gameState');
+        await gameStateEventHandler.handleEvents(allEvents);
       }
 
       const result: TaskCompletionResult = {

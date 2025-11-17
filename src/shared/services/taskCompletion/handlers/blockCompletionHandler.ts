@@ -20,36 +20,36 @@ import { updateBlockState } from '@/data/repositories/dailyDataRepository';
 export class BlockCompletionHandler implements TaskCompletionHandler {
   name = 'BlockCompletionHandler';
 
-  async handle(context: TaskCompletionContext): Promise<void> {
+  async handle(context: TaskCompletionContext): Promise<import('@/shared/services/gameState').GameStateEvent[]> {
     const { task, wasCompleted, date, blockState, blockTasks } = context;
 
     // 완료 -> 미완료 전환은 처리하지 않음
     if (wasCompleted) {
-      return;
+      return [];
     }
 
     // 블록이 없으면 처리하지 않음
     if (!task.timeBlock || !blockState || !blockTasks) {
-      return;
+      return [];
     }
 
     // 블록이 잠기지 않았으면 보너스 없음
     if (!blockState.isLocked) {
-      return;
+      return [];
     }
 
     // 모든 작업이 완료되었는지 체크
     const allCompleted = blockTasks.length > 0 && blockTasks.every(t => t.completed);
 
     if (!allCompleted) {
-      return;
+      return [];
     }
 
     // 🎉 완벽한 블록 달성!
     const PERFECT_BLOCK_BONUS = 40;
 
-    // 보너스 XP 지급
-    await addXP(PERFECT_BLOCK_BONUS, task.timeBlock);
+    // 보너스 XP 지급 (사유: 완벽한 블록)
+    const result = await addXP(PERFECT_BLOCK_BONUS, task.timeBlock, 'perfect_block');
 
     // 블록 상태 업데이트
     await updateBlockState(
@@ -62,6 +62,9 @@ export class BlockCompletionHandler implements TaskCompletionHandler {
     await updateQuestProgress('perfect_blocks', 1);
 
     console.log(`[${this.name}] 🎉 Perfect block achieved: ${task.timeBlock} (+${PERFECT_BLOCK_BONUS} XP)`);
+
+    // 이벤트 반환 (UI 처리는 상위 서비스에서)
+    return result.events;
   }
 
   /**

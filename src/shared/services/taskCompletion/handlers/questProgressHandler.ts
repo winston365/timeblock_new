@@ -19,12 +19,12 @@ import { calculateTaskXP } from '@/shared/lib/utils';
 export class QuestProgressHandler implements TaskCompletionHandler {
   name = 'QuestProgressHandler';
 
-  async handle(context: TaskCompletionContext): Promise<void> {
+  async handle(context: TaskCompletionContext): Promise<import('@/shared/services/gameState').GameStateEvent[]> {
     const { task, wasCompleted } = context;
 
     // 완료 -> 미완료 전환은 처리하지 않음
     if (wasCompleted) {
-      return;
+      return [];
     }
 
     // 작업 완료 퀘스트 업데이트
@@ -35,5 +35,8 @@ export class QuestProgressHandler implements TaskCompletionHandler {
     await updateQuestProgress('earn_xp', xpAmount);
 
     console.log(`[${this.name}] ✅ Updated quests: complete_tasks +1, earn_xp +${xpAmount}`);
+
+    // 퀘스트는 별도 이벤트 없음 (UI 업데이트는 상태 변경으로 자동 처리)
+    return [];
   }
 }

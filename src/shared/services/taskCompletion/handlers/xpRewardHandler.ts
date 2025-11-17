@@ -21,20 +21,23 @@ import { calculateTaskXP } from '@/shared/lib/utils';
 export class XPRewardHandler implements TaskCompletionHandler {
   name = 'XPRewardHandler';
 
-  async handle(context: TaskCompletionContext): Promise<void> {
+  async handle(context: TaskCompletionContext): Promise<import('@/shared/services/gameState').GameStateEvent[]> {
     const { task, wasCompleted } = context;
 
     // 완료 -> 미완료 전환은 처리하지 않음
     if (wasCompleted) {
-      return;
+      return [];
     }
 
     // XP 계산
     const xpAmount = calculateTaskXP(task);
 
-    // XP 지급 (블록 ID 포함)
-    await addXP(xpAmount, task.timeBlock || undefined);
+    // XP 지급 (블록 ID 포함, 사유: 작업 완료)
+    const result = await addXP(xpAmount, task.timeBlock || undefined, 'task_complete');
 
     console.log(`[${this.name}] ✅ Granted ${xpAmount} XP for task: ${task.text}`);
+
+    // 이벤트 반환 (UI 처리는 상위 서비스에서)
+    return result.events;
   }
 }

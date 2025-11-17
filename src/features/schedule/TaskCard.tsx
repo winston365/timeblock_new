@@ -142,7 +142,13 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
       const totalXP = baseXP + TIMER_BONUS;
 
       // 타이머 보너스 XP 추가
-      await addXP(TIMER_BONUS, task.timeBlock || undefined);
+      const result = await addXP(TIMER_BONUS, task.timeBlock || undefined, 'timer_bonus');
+
+      // 이벤트 처리 (UI 업데이트)
+      if (result.events.length > 0) {
+        const { gameStateEventHandler } = await import('@/shared/services/gameState');
+        await gameStateEventHandler.handleEvents(result.events);
+      }
 
       setCelebrationXP(totalXP);
       setTimerBonus(TIMER_BONUS);

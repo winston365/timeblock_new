@@ -82,8 +82,14 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
   // XP 추가
   addXP: async (amount: number, blockId?: string) => {
     try {
-      const updatedState = await addXPToRepo(amount, blockId);
-      set({ gameState: updatedState });
+      const result = await addXPToRepo(amount, blockId);
+      set({ gameState: result.gameState });
+
+      // 이벤트 처리 (UI 업데이트)
+      if (result.events.length > 0) {
+        const { gameStateEventHandler } = await import('@/shared/services/gameState');
+        await gameStateEventHandler.handleEvents(result.events);
+      }
     } catch (err) {
       console.error('[GameStateStore] Failed to add XP:', err);
       set({ error: err as Error });

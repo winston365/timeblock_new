@@ -18,17 +18,20 @@ import { increaseAffectionFromTask } from '@/data/repositories/waifuRepository';
 export class WaifuAffectionHandler implements TaskCompletionHandler {
   name = 'WaifuAffectionHandler';
 
-  async handle(context: TaskCompletionContext): Promise<void> {
+  async handle(context: TaskCompletionContext): Promise<import('@/shared/services/gameState').GameStateEvent[]> {
     const { wasCompleted } = context;
 
     // 완료 -> 미완료 전환은 처리하지 않음
     if (wasCompleted) {
-      return;
+      return [];
     }
 
     // 와이푸 호감도 증가
     await increaseAffectionFromTask();
 
     console.log(`[${this.name}] ✅ Increased waifu affection`);
+
+    // 와이푸는 별도 이벤트 없음 (상태 변경으로 자동 처리)
+    return [];
   }
 }
