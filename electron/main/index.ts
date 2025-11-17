@@ -10,7 +10,7 @@
  *   - path: 경로 처리
  */
 
-import { app, BrowserWindow, dialog, ipcMain, globalShortcut, Notification } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, globalShortcut, Notification, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import path from 'path';
 
@@ -24,6 +24,8 @@ const VITE_DEV_SERVER_URL = 'http://localhost:5173';
 // AutoUpdater 설정
 autoUpdater.autoDownload = false; // 사용자 확인 후 다운로드
 autoUpdater.autoInstallOnAppQuit = true; // 앱 종료 시 자동 설치
+autoUpdater.allowPrerelease = false; // prerelease 제외
+autoUpdater.allowDowngrade = false; // 다운그레이드 방지
 
 // 개발 모드에서는 업데이트 로깅만 활성화
 if (isDev) {
@@ -347,14 +349,31 @@ function setupAutoUpdater(): void {
       mainWindow.setProgressBar(-1);
     }
 
-    // 사용자에게 에러 표시
+    // GitHub API 406 에러 특별 처리
+    const isGitHubApiError = error.message.includes('406') ||
+                             error.message.includes('Cannot parse releases feed') ||
+                             error.message.includes('Unable to find latest version');
+
+    if (isGitHubApiError) {
+      console.warn('[AutoUpdater] GitHub API error - skipping user notification');
+      // GitHub API 일시적 문제는 조용히 처리 (다음 체크 때 재시도)
+      return;
+    }
+
+    // 그 외 실제 업데이트 에러는 사용자에게 표시
     if (mainWindow && !mainWindow.isDestroyed()) {
       dialog.showMessageBox(mainWindow, {
         type: 'error',
         title: '업데이트 오류',
         message: '자동 업데이트 중 오류가 발생했습니다.',
-        detail: `오류 내용: ${error.message}\n\n나중에 다시 시도해주세요.`,
-        buttons: ['확인'],
+        detail: `오류 내용: ${error.message}\n\n나중에 다시 시도하거나, GitHub에서 직접 다운로드할 수 있습니다.`,
+        buttons: ['확인', 'GitHub에서 다운로드'],
+        defaultId: 0,
+      }).then((result) => {
+        if (result.response === 1) {
+          // GitHub 릴리즈 페이지 열기
+          shell.openExternal('https://github.com/winston365/timeblock_new/releases/latest');
+        }
       });
     }
   });
