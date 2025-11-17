@@ -68,6 +68,27 @@ export async function loadGameState(): Promise<GameState> {
     const data = await db.gameState.get('current');
 
     if (data) {
+      // 날짜 변경 체크 및 일일 초기화
+      const today = getLocalDate();
+      const needsReset = data.lastLogin !== today;
+
+      if (needsReset) {
+        console.log(`🔄 New day detected: ${data.lastLogin} → ${today}`);
+
+        // 일일 초기화
+        data.dailyXP = 0;
+        data.availableXP = 0;
+        data.dailyTimerCount = 0;
+        data.dailyQuests = generateDailyQuests();
+        data.lastLogin = today;
+        data.questBonusClaimed = false;
+        data.timeBlockXP = {};
+
+        // 즉시 저장
+        await saveGameState(data);
+        console.log('✅ Daily reset completed');
+      }
+
       // 필수 필드 초기화 (Firebase에서 가져온 데이터에 없을 수 있음)
       if (!Array.isArray(data.dailyQuests)) {
         data.dailyQuests = generateDailyQuests();

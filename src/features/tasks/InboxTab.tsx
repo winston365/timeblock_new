@@ -60,6 +60,13 @@ export default function InboxTab() {
 
   useEffect(() => {
     refreshInboxTasks();
+
+    // 주기적 자동 새로고침 (2초마다) - 드래그앤드롭 후 UI 동기화
+    const intervalId = setInterval(() => {
+      refreshInboxTasks();
+    }, 2000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleAddTask = () => {
