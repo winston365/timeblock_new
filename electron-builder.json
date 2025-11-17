@@ -44,6 +44,17 @@
       "owner": "winston365",
       "repo": "timeblock_new"
   }
+  ,
+  {
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*",
+    {
+      "from": "public/assets",
+      "to": "assets",
+      "filter": ["**/*"]
+    }
 ]
-
+  }
+  ] 
 }

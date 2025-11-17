@@ -110,7 +110,7 @@ const IMAGE_COUNTS: Record<string, number> = {
 /**
  * 기본 이미지 (호감도 이미지가 없을 때 사용)
  */
-export const DEFAULT_IMAGE = '/assets/waifu/default.png';
+export const DEFAULT_IMAGE = 'assets/waifu/default.png';
 
 /**
  * 호감도 값에 따라 적절한 구간을 반환합니다.
@@ -170,7 +170,9 @@ export function getWaifuImagePath(affection: number, imageIndex?: number): strin
   const folderName = tier.name === 'interested' ? 'indifferent' : tier.name;
 
   // 폴더 구조: /assets/waifu/poses/hostile/hyeeun_angry.png
-  return `/assets/waifu/poses/${folderName}/${fileName}`;
+  return `assets/waifu/poses/${folderName}/${fileName}`;
+
+
 }
 
 /**
@@ -180,7 +182,7 @@ export function getWaifuImagePath(affection: number, imageIndex?: number): strin
  * @returns 단일 파일 이미지 경로
  */
 export function getSingleFileImagePath(tierName: string): string {
-  return `/assets/waifu/poses/${tierName}.png`;
+  return `assets/waifu/poses/${tierName}.png`;
 }
 
 /**
