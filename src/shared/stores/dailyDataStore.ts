@@ -254,7 +254,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
   // Task 완료 토글 (Optimistic Update 패턴 + 서비스 레이어 분리)
   toggleTaskCompletion: async (taskId: string) => {
-    const { currentDate, dailyData } = get();
+    const { currentDate, dailyData, loadData } = get();
 
     if (!dailyData) {
       console.error('[DailyDataStore] No dailyData available');
@@ -332,7 +332,12 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         console.log('[DailyDataStore] ✅ Task completion processed:', result);
       }
 
-      // ✅ DB 재조회 제거 - optimistic update로 UI 이미 업데이트됨
+      // ✅ 목표 연결 시 진행률 자동 재계산 및 Store 갱신
+      if (updatedTask.goalId) {
+        await recalculateGoalProgress(currentDate, updatedTask.goalId);
+        // 강제 재로드로 최신 목표 데이터 반영
+        await loadData(currentDate, true);
+      }
     } catch (err) {
       console.error('[DailyDataStore] Failed to toggle task completion, rolling back:', err);
       // ❌ 실패 시 롤백

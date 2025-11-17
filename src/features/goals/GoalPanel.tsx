@@ -100,22 +100,56 @@ function GoalProgressCard({
         </div>
       </div>
 
-      {/* 진행률 바 */}
-      <div className="goal-progress-container">
-        {/* 계획 진행률 (배경) */}
-        <div className="goal-progress-bar goal-progress-planned" style={{ width: `${plannedProgress}%` }} />
-        {/* 달성 진행률 (전경) */}
-        <div
-          className="goal-progress-bar goal-progress-completed"
-          style={{
-            width: `${targetProgress}%`,
-            backgroundColor: goal.color || undefined
-          }}
-        />
-        {/* 진행률 텍스트 */}
-        <span className="goal-progress-text">
-          {targetProgress.toFixed(0)}%
-        </span>
+      {/* 진행률 바 그룹 */}
+      <div className="goal-progress-group">
+        {/* 목표 시간 바 (기준선) */}
+        <div className="progress-row">
+          <span className="progress-row-label">목표</span>
+          <div className="progress-bar-container">
+            <div className="progress-bar-bg">
+              <div
+                className="progress-bar-fill progress-bar-target"
+                style={{ width: '100%', backgroundColor: goal.color || undefined }}
+              />
+            </div>
+            <span className="progress-bar-text">{formatMinutes(goal.targetMinutes)}</span>
+          </div>
+        </div>
+
+        {/* 계획 시간 바 */}
+        <div className="progress-row">
+          <span className="progress-row-label">계획</span>
+          <div className="progress-bar-container">
+            <div className="progress-bar-bg">
+              <div
+                className={`progress-bar-fill progress-bar-planned ${isOverPlanned ? 'over-planned' : ''}`}
+                style={{ width: `${plannedProgress}%` }}
+              />
+            </div>
+            <span className="progress-bar-text">
+              {formatMinutes(goal.plannedMinutes)} ({plannedProgress.toFixed(0)}%)
+            </span>
+          </div>
+        </div>
+
+        {/* 달성 시간 바 */}
+        <div className="progress-row">
+          <span className="progress-row-label">달성</span>
+          <div className="progress-bar-container">
+            <div className="progress-bar-bg">
+              <div
+                className={`progress-bar-fill progress-bar-completed ${isCompleted ? 'completed' : ''}`}
+                style={{
+                  width: `${targetProgress}%`,
+                  backgroundColor: isCompleted ? '#22c55e' : (goal.color || undefined)
+                }}
+              />
+            </div>
+            <span className="progress-bar-text">
+              {formatMinutes(goal.completedMinutes)} ({targetProgress.toFixed(0)}%)
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

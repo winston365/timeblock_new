@@ -230,45 +230,80 @@
   color: var(--color-success);
 }
 
-/* Goal Progress Bar */
-.goal-progress-container {
+/* Goal Progress Bar Group (3-bar design) */
+.goal-progress-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-1);
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.progress-row-label {
+  font-size: 11px;
+  font-weight: var(--font-semibold);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 36px;
+  text-align: right;
+}
+
+.progress-bar-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.progress-bar-bg {
   position: relative;
-  width: 100%;
-  height: 24px;
+  flex: 1;
+  height: 20px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: var(--radius-sm);
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.goal-progress-bar {
-  position: absolute;
-  top: 0;
-  left: 0;
+.progress-bar-fill {
   height: 100%;
-  transition: width 0.3s ease;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: var(--radius-sm);
 }
 
-.goal-progress-planned {
-  background: rgba(255, 255, 255, 0.1);
-  z-index: 1;
-}
-
-.goal-progress-completed {
+.progress-bar-target {
   background: var(--color-primary);
-  z-index: 2;
+  opacity: 0.4;
 }
 
-.goal-progress-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+.progress-bar-planned {
+  background: rgba(139, 92, 246, 0.6);
+}
+
+.progress-bar-planned.over-planned {
+  background: rgba(245, 158, 11, 0.7);
+}
+
+.progress-bar-completed {
+  background: var(--color-primary);
+}
+
+.progress-bar-completed.completed {
+  background: var(--color-success);
+}
+
+.progress-bar-text {
   font-size: 11px;
-  font-weight: var(--font-bold);
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  z-index: 3;
-  letter-spacing: 0.05em;
+  font-weight: var(--font-semibold);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  min-width: 80px;
 }
 
 /* ============================================================================
@@ -276,9 +311,9 @@
    ============================================================================ */
 
 .goal-modal {
-  max-width: 480px;
-  width: 90%;
-  max-height: 90vh;
+  max-width: 600px;
+  width: 95%;
+  max-height: 92vh;
   display: flex;
   flex-direction: column;
 }
@@ -292,7 +327,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
-  padding: var(--spacing-4);
+  padding: var(--spacing-6) var(--spacing-5);
 }
 
 .goal-modal .modal-footer {
@@ -307,7 +342,7 @@
 
 /* Form Groups */
 .form-group {
-  margin-bottom: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
 }
 
 .form-label {
@@ -320,10 +355,10 @@
 
 .form-input {
   width: 100%;
-  padding: var(--spacing-2-5);
+  padding: var(--spacing-3);
   background: var(--color-bg-base);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   font-size: var(--text-base);
   color: var(--color-text-primary);
   transition: all 0.2s ease;
@@ -378,11 +413,11 @@
 }
 
 .icon-option {
-  padding: var(--spacing-2);
+  padding: var(--spacing-2-5);
   background: var(--color-bg-base);
   border: 2px solid transparent;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xl);
+  border-radius: var(--radius-md);
+  font-size: var(--text-2xl);
   cursor: pointer;
   transition: all 0.2s ease;
   aspect-ratio: 1;
@@ -417,7 +452,7 @@
   width: 100%;
   aspect-ratio: 1;
   border: 3px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
