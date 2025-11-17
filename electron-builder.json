@@ -40,9 +40,9 @@
   },
   "publish": [
   {
-    "provider": "github",
-    "owner": "sayin",
-    "repo": "timeblock_new"
+      "provider": "github",
+      "owner": "winston365",
+      "repo": "timeblock_new"
   }
 ]
 
