@@ -30,15 +30,19 @@ const electronAPI = {
     return ipcRenderer.invoke('get-app-version');
   },
 
-  // 퀵 애드 윈도우 닫기
-  closeQuickAddWindow: (): Promise<boolean> => {
-    return ipcRenderer.invoke('close-quick-add-window');
+  // 수동 업데이트 체크
+  checkForUpdates: (): Promise<{
+    success: boolean;
+    message: string;
+    currentVersion?: string;
+    updateInfo?: any;
+    error?: string;
+  }> => {
+    return ipcRenderer.invoke('check-for-updates');
   },
 
-  // 데스크탑 알림 표시
-  showNotification: (title: string, body: string): Promise<boolean> => {
-    return ipcRenderer.invoke('show-notification', title, body);
-  },
+  // 필요에 따라 추가 API 정의
+  // 예: openExternal, showNotification 등
 };
 
 // ============================================================================

@@ -301,30 +301,39 @@ ipcMain.handle('get-app-version', () => {
 });
 
 /**
- * 퀵 애드 윈도우 닫기
+ * 수동 업데이트 체크 (사용자 요청)
  */
-ipcMain.handle('close-quick-add-window', () => {
-  if (quickAddWindow && !quickAddWindow.isDestroyed()) {
-    quickAddWindow.close();
-    return true;
-  }
-  return false;
-});
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    if (isDev) {
+      return {
+        success: false,
+        message: '개발 모드에서는 업데이트를 확인할 수 없습니다.',
+      };
+    }
 
-/**
- * 데스크탑 알림 표시
- */
-ipcMain.handle('show-notification', (_event, title: string, body: string) => {
-  if (Notification.isSupported()) {
-    const notification = new Notification({
-      title,
-      body,
-      icon: process.platform === 'darwin'
-        ? undefined
-        : path.join(__dirname, '../../electron/resources/icon.png'),
-    });
-    notification.show();
-    return true;
+    console.log('[AutoUpdater] Manual update check requested');
+    const result = await autoUpdater.checkForUpdates();
+
+    if (result) {
+      return {
+        success: true,
+        message: '업데이트 확인 중...',
+        currentVersion: app.getVersion(),
+        updateInfo: result.updateInfo,
+      };
+    } else {
+      return {
+        success: false,
+        message: '업데이트를 확인할 수 없습니다.',
+      };
+    }
+  } catch (error: any) {
+    console.error('[AutoUpdater] Manual check error:', error);
+    return {
+      success: false,
+      message: `업데이트 확인 중 오류: ${error.message}`,
+      error: error.message,
+    };
   }
-  return false;
 });
