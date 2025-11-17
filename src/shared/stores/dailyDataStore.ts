@@ -161,14 +161,38 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     const originalTasks = dailyData.tasks;
     const originalTask = dailyData.tasks.find(t => t.id === taskId);
 
+    // 작업이 dailyData.tasks에 없는 경우 (globalInbox에 있음)
+    if (!originalTask && updates.timeBlock !== null) {
+      // 인박스→타임블록 이동: DB 업데이트 후 강제 재로드
+      console.log('[DailyDataStore] Task not in dailyData, moving from inbox to timeblock');
+
+      try {
+        await updateTaskInRepo(taskId, updates, currentDate);
+        // 강제 재로드로 UI 업데이트
+        await loadData(currentDate, true);
+      } catch (err) {
+        console.error('[DailyDataStore] Failed to move task from inbox:', err);
+        set({ error: err as Error });
+        throw err;
+      }
+      return;
+    }
+
+    // 타임블록→인박스 이동 또는 타임블록 내 이동
     // ✅ Optimistic Update: UI 즉시 업데이트
     const optimisticTasks = dailyData.tasks.map(task =>
       task.id === taskId ? { ...task, ...updates } : task
     );
+
+    // 타임블록→인박스 이동의 경우 tasks 배열에서 제거
+    const finalTasks = updates.timeBlock === null && originalTask?.timeBlock !== null
+      ? optimisticTasks.filter(t => t.id !== taskId)
+      : optimisticTasks;
+
     set({
       dailyData: {
         ...dailyData,
-        tasks: optimisticTasks,
+        tasks: finalTasks,
         updatedAt: Date.now(),
       },
     });

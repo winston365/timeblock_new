@@ -300,7 +300,7 @@ export async function deleteGoal(date: string, goalId: string): Promise<void> {
   const latestData = await db.dailyData.get(date);
   if (latestData) {
     const dataToSync: DailyData = {
-      tasks: updatedTasks,
+      tasks: latestData.tasks,
       goals: updatedGoals,
       timeBlockStates: latestData.timeBlockStates,
       updatedAt: Date.now(),
