@@ -164,6 +164,7 @@ export default function AppShell() {
                   await db.dailyData.put({
                     date,
                     tasks: data.tasks,
+                    goals: data.goals || [],
                     timeBlockStates: data.timeBlockStates || {},
                     updatedAt: data.updatedAt || Date.now(),
                   });
@@ -185,6 +186,7 @@ export default function AppShell() {
                 try {
                   await syncToFirebase(dailyDataStrategy, {
                     tasks: localData.tasks || [],
+                    goals: localData.goals || [],
                     timeBlockStates: localData.timeBlockStates || {},
                     updatedAt: localData.updatedAt || Date.now(),
                   }, localData.date);

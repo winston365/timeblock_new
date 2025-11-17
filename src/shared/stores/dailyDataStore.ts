@@ -100,11 +100,11 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
   // 데이터 저장
   saveData: async (tasks: Task[], timeBlockStates: DailyData['timeBlockStates']) => {
-    const { currentDate } = get();
+    const { currentDate, dailyData } = get();
 
     try {
       await saveDailyData(currentDate, tasks, timeBlockStates);
-      set({ dailyData: { tasks, timeBlockStates, updatedAt: Date.now() } });
+      set({ dailyData: { tasks, goals: dailyData?.goals || [], timeBlockStates, updatedAt: Date.now() } });
     } catch (err) {
       console.error('[DailyDataStore] Failed to save daily data:', err);
       set({ error: err as Error });

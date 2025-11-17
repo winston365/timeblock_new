@@ -19,6 +19,7 @@ import type {
   TaskCompletionResult,
   TaskCompletionHandler,
 } from './types';
+import { GoalProgressHandler } from './handlers/goalProgressHandler';
 import { XPRewardHandler } from './handlers/xpRewardHandler';
 import { QuestProgressHandler } from './handlers/questProgressHandler';
 import { WaifuAffectionHandler } from './handlers/waifuAffectionHandler';
@@ -58,10 +59,11 @@ export class TaskCompletionService {
     // 핸들러 초기화 (실행 순서 중요)
     this.blockHandler = new BlockCompletionHandler();
     this.handlers = [
-      new XPRewardHandler(),           // 1. XP 지급
-      new QuestProgressHandler(),      // 2. 퀘스트 업데이트
-      new WaifuAffectionHandler(),     // 3. 와이푸 호감도 증가
-      this.blockHandler,               // 4. 블록 완성 체크 (마지막)
+      new GoalProgressHandler(),       // 1. 목표 진행률 업데이트
+      new XPRewardHandler(),           // 2. XP 지급
+      new QuestProgressHandler(),      // 3. 퀘스트 업데이트
+      new WaifuAffectionHandler(),     // 4. 와이푸 호감도 증가
+      this.blockHandler,               // 5. 블록 완성 체크 (마지막)
     ];
   }
 

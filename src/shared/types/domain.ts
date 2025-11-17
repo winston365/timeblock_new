@@ -42,6 +42,7 @@ export interface Task {
   preparation2?: string; // 준비 사항 2 (예상 방해물 또는 대처 환경)
   preparation3?: string; // 준비 사항 3 (예상 방해물 또는 대처 환경)
   timerUsed?: boolean; // 타이머 사용 여부 (몰입 작업)
+  goalId?: string | null; // 연결된 목표 ID
 }
 
 /**
@@ -63,10 +64,31 @@ export type TimeBlockStates = Record<string, TimeBlockState>;
 // ============================================================================
 
 /**
- * 일일 데이터 (작업 목록, 블록 상태)
+ * 일일 목표
+ * @description 하루 단위 시간 기반 목표 (예: 영어 3시간, 운동 1시간)
+ */
+export interface DailyGoal {
+  id: string; // 고유 ID
+  title: string; // 목표명 (예: "영어", "운동", "독서")
+  targetMinutes: number; // 목표 시간 (분)
+  plannedMinutes: number; // 계획한 시간 (연결된 할일 예상시간 합계)
+  completedMinutes: number; // 달성한 시간 (완료된 할일 실제시간 합계)
+
+  // 커스터마이징
+  color?: string; // 목표 색상 (프로그레스 바)
+  icon?: string; // 목표 아이콘 (이모지)
+  order: number; // 정렬 순서
+
+  createdAt: string; // 생성 시각 (ISO 8601)
+  updatedAt: string; // 수정 시각 (ISO 8601)
+}
+
+/**
+ * 일일 데이터 (작업 목록, 블록 상태, 목표)
  */
 export interface DailyData {
   tasks: Task[]; // 작업 목록
+  goals: DailyGoal[]; // 목표 목록
   timeBlockStates: TimeBlockStates; // 블록 상태
   updatedAt: number; // 타임스탬프 (밀리초)
 }

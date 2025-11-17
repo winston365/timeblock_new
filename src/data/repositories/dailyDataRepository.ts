@@ -53,11 +53,13 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
       // 데이터 유효성 검사
       const tasks = Array.isArray(data.tasks) ? data.tasks : [];
       const timeBlockStates = data.timeBlockStates || {};
+      const goals = data.goals || [];
 
       addSyncLog('dexie', 'load', `DailyData loaded for ${date}`, { taskCount: tasks.length });
       // IndexedDB에 데이터가 있으면 반환
       return {
         tasks,
+        goals,
         timeBlockStates,
         updatedAt: data.updatedAt,
       };
@@ -79,10 +81,12 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
       if (firebaseData) {
         // 데이터 유효성 검사
         const tasks = Array.isArray(firebaseData.tasks) ? firebaseData.tasks : [];
+        const goals = Array.isArray(firebaseData.goals) ? firebaseData.goals : [];
         const timeBlockStates = firebaseData.timeBlockStates || {};
 
         const sanitizedData: DailyData = {
           tasks,
+          goals,
           timeBlockStates,
           updatedAt: firebaseData.updatedAt || Date.now(),
         };
@@ -126,6 +130,10 @@ export async function saveDailyData(
 ): Promise<void> {
   const updatedAt = Date.now();
 
+  // 기존 goals 유지
+  const existing = await db.dailyData.get(date);
+  const goals = existing?.goals || [];
+
   // Firebase는 undefined를 허용하지 않으므로, 모든 undefined 값을 빈 문자열로 변환
   const sanitizedTasks = tasks.map(task => ({
     ...task,
@@ -136,6 +144,7 @@ export async function saveDailyData(
 
   const data: DailyData = {
     tasks: sanitizedTasks,
+    goals,
     timeBlockStates,
     updatedAt,
   };
@@ -189,6 +198,7 @@ export function createEmptyDailyData(): DailyData {
 
   return {
     tasks: [],
+    goals: [],
     timeBlockStates,
     updatedAt: Date.now(),
   };

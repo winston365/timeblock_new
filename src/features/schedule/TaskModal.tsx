@@ -9,11 +9,13 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { Task, Resistance, TimeBlockId } from '@/shared/types/domain';
+import type { Task, Resistance, TimeBlockId, DailyGoal } from '@/shared/types/domain';
 import { calculateAdjustedDuration } from '@/shared/lib/utils';
 import { generateTaskBreakdown } from '@/shared/services/geminiApi';
 import { useWaifuState } from '@/shared/hooks';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
+import { loadDailyGoals } from '@/data/repositories/dailyGoalRepository';
 import { MemoModal } from './MemoModal';
 
 interface TaskModalProps {
@@ -40,6 +42,8 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
   const [preparation1, setPreparation1] = useState('');
   const [preparation2, setPreparation2] = useState('');
   const [preparation3, setPreparation3] = useState('');
+  const [goalId, setGoalId] = useState<string | null>(null);
+  const [goals, setGoals] = useState<DailyGoal[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [memoRows, setMemoRows] = useState(2); // 자동 높이 조절용
@@ -47,6 +51,20 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
 
   const { waifuState } = useWaifuState();
   const { settings } = useSettingsStore();
+  const { currentDate } = useDailyDataStore();
+
+  // 목표 목록 로드
+  useEffect(() => {
+    const fetchGoals = async () => {
+      try {
+        const loadedGoals = await loadDailyGoals(currentDate);
+        setGoals(loadedGoals.sort((a, b) => a.order - b.order));
+      } catch (error) {
+        console.error('[TaskModal] Failed to load goals:', error);
+      }
+    };
+    fetchGoals();
+  }, [currentDate]);
 
   // 기존 작업 데이터로 초기화
   useEffect(() => {
@@ -58,6 +76,7 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
       setPreparation1(task.preparation1 || '');
       setPreparation2(task.preparation2 || '');
       setPreparation3(task.preparation3 || '');
+      setGoalId(task.goalId || null);
 
       // 메모 줄 수 계산
       const lineCount = task.memo.split('\n').length;
@@ -237,6 +256,7 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
       preparation1: preparation1.trim(),
       preparation2: preparation2.trim(),
       preparation3: preparation3.trim(),
+      goalId: goalId || null,
     });
   };
 
@@ -380,6 +400,22 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
                 <option value="low">🟢 쉬움 (x1.0)</option>
                 <option value="medium">🟡 보통 (x1.3)</option>
                 <option value="high">🔴 어려움 (x1.6)</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="task-goal">연결된 목표</label>
+              <select
+                id="task-goal"
+                value={goalId || ''}
+                onChange={e => setGoalId(e.target.value || null)}
+              >
+                <option value="">목표 없음</option>
+                {goals.map(goal => (
+                  <option key={goal.id} value={goal.id}>
+                    {goal.icon ? `${goal.icon} ` : ''}{goal.title}
+                  </option>
+                ))}
               </select>
             </div>
 

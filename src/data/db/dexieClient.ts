@@ -132,6 +132,34 @@ export class TimeBlockDB extends Dexie {
 
       console.log(`✅ Migrated ${migratedCount} inbox tasks to globalInbox`);
     });
+
+    // 스키마 버전 4 - 일일 목표 추가
+    this.version(4).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      energyLevels: 'id, date, timestamp, hour',
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      globalInbox: 'id, createdAt, completed',
+    }).upgrade(async (tx) => {
+      // dailyData에 goals 필드 초기화
+      console.log('🔄 Adding goals field to dailyData...');
+
+      const dailyDataTable = tx.table('dailyData');
+      const allDailyData = await dailyDataTable.toArray();
+
+      for (const dayData of allDailyData) {
+        if (!(dayData as any).goals) {
+          await dailyDataTable.update(dayData.date, { goals: [] } as any);
+        }
+      }
+
+      console.log('✅ Goals field added to all dailyData records');
+    });
   }
 }
 
@@ -204,6 +232,7 @@ async function migrateFromLocalStorage(): Promise<void> {
         await db.dailyData.put({
           date,
           tasks: data.tasks || [],
+          goals: data.goals || [],
           timeBlockStates: data.timeBlockStates || {},
           updatedAt: data.updatedAt || Date.now(),
         });
