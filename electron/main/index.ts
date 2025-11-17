@@ -10,7 +10,7 @@
  *   - path: 경로 처리
  */
 
-import { app, BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import path from 'path';
 
@@ -211,8 +211,12 @@ function setupAutoUpdater(): void {
 }
 
 // ============================================================================
-// IPC 통신 (예시)
+// IPC 통신
 // ============================================================================
 
-// IPC 핸들러는 필요에 따라 추가
-// 예: ipcMain.handle('get-app-version', () => app.getVersion());
+/**
+ * 앱 버전 정보 제공
+ */
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
