@@ -121,7 +121,7 @@ export default function HourBar({
     e.preventDefault();
     setIsDragOver(false);
 
-    const taskId = e.dataTransfer.getData('taskId');
+    const taskId = e.dataTransfer.getData('text/plain');
     if (taskId) {
       onDropTask(taskId, hour);
     }

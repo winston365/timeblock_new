@@ -136,11 +136,11 @@ export default function ScheduleView() {
   };
 
   // 인라인 작업 생성 (기본값: 15분, 쉬움)
-  const handleCreateTask = async (text: string, blockId: TimeBlockId) => {
+  const handleCreateTask = async (text: string, blockId: TimeBlockId, hourSlot?: number) => {
     try {
-      // 블록의 첫 번째 시간대 찾기
+      // hourSlot이 지정되지 않으면 블록의 첫 번째 시간대 사용
       const block = TIME_BLOCKS.find(b => b.id === blockId);
-      const firstHour = block ? block.start : undefined;
+      const targetHour = hourSlot ?? (block ? block.start : undefined);
 
       const newTask: Task = {
         id: generateId('task'),
@@ -150,7 +150,7 @@ export default function ScheduleView() {
         resistance: 'low',
         adjustedDuration: 15,  // 30분 -> 15분으로 변경
         timeBlock: blockId,
-        hourSlot: firstHour, // 첫 번째 시간대에 배치
+        hourSlot: targetHour, // 지정된 시간대 또는 첫 번째 시간대에 배치
         completed: false,
         actualDuration: 0,
         createdAt: new Date().toISOString(),

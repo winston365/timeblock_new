@@ -26,7 +26,7 @@ interface TimeBlockProps {
   isCurrentBlock: boolean;
   isPastBlock?: boolean;
   onAddTask: () => void;
-  onCreateTask?: (text: string, blockId: TimeBlockId) => Promise<void>;
+  onCreateTask?: (text: string, blockId: TimeBlockId, hourSlot?: number) => Promise<void>;
   onEditTask: (task: Task) => void;
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void;
   onDeleteTask: (taskId: string) => void;
@@ -521,22 +521,8 @@ const TimeBlock = memo(function TimeBlock({
                 isLocked={state?.isLocked || false}
                 onCreateTask={async (text, targetHour) => {
                   if (onCreateTask) {
-                    // 작업 생성 (blockId로)
-                    await onCreateTask(text, block.id as TimeBlockId);
-
-                    // 생성된 작업의 hourSlot 업데이트
-                    // Note: onCreateTask에서 이미 hourSlot을 block.start로 설정하지만,
-                    // 특정 hour에 추가하려면 여기서 업데이트 필요
-                    if (targetHour !== block.start && onUpdateTask) {
-                      // 방금 생성된 작업 찾기 (가장 최근 작업)
-                      const latestTask = tasks
-                        .filter(t => t.timeBlock === block.id)
-                        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-
-                      if (latestTask) {
-                        onUpdateTask(latestTask.id, { hourSlot: targetHour });
-                      }
-                    }
+                    // 작업 생성 시 targetHour를 직접 전달 (race condition 방지)
+                    await onCreateTask(text, block.id as TimeBlockId, targetHour);
                   }
                 }}
                 onEditTask={onEditTask}
