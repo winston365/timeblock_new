@@ -2737,3 +2737,122 @@
   margin: 0;
   text-align: center;
 }
+
+/* ============================================================================
+   HourBar (1시간 단위 시간대 바)
+   ============================================================================ */
+
+.hour-bar {
+  margin-bottom: var(--spacing-sm);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: var(--spacing-sm);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hour-bar.drag-over {
+  border-color: var(--color-primary);
+  background: rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+/* 시간대 헤더 */
+.hour-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  padding-bottom: 2px;
+}
+
+.hour-time-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  letter-spacing: 0.05em;
+}
+
+.hour-progress-text {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+/* 프로그레스 바 (얇게) */
+.hour-progress-bar {
+  display: flex;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: var(--spacing-sm);
+}
+
+/* 몰입 시간 (50분, 83.33%) */
+.hour-progress-focus {
+  position: relative;
+  background: rgba(255, 255, 255, 0.1);
+  border-right: 1px solid var(--color-border);
+}
+
+.hour-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+  background-size: 200% 100%;
+  transition: width 1s linear;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+  animation: shimmerProgress 3s linear infinite;
+}
+
+@keyframes shimmerProgress {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 휴식 시간 (10분, 16.67%) */
+.hour-progress-rest {
+  background: linear-gradient(90deg, rgba(251, 146, 60, 0.4), rgba(234, 88, 12, 0.4));
+}
+
+/* 작업 리스트 */
+.hour-tasks {
+  margin-bottom: var(--spacing-xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.hour-empty-message {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  text-align: center;
+  padding: var(--spacing-xs);
+  font-style: italic;
+}
+
+/* 할일 추가 버튼 */
+.hour-add-task-btn {
+  width: 100%;
+  padding: var(--spacing-xs);
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.hour-add-task-btn:hover {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
