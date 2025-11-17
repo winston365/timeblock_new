@@ -77,6 +77,27 @@ export async function buildPersonaContext(
     ? tasks.filter((t: Task) => t.timeBlock === currentBlockId).map((t: Task) => ({ text: t.text, completed: t.completed }))
     : [];
 
+  // ✅ 오늘의 모든 블록별 상세 할일 정보 수집 (시간대바별 구분)
+  const allBlockTasks: Record<string, any[]> = {};
+  TIME_BLOCKS.forEach(block => {
+    const blockTasks = tasks.filter((t: Task) => t.timeBlock === block.id);
+    allBlockTasks[block.id] = blockTasks.map((t: Task) => ({
+      text: t.text,
+      memo: t.memo || '',
+      resistance: t.resistance,
+      baseDuration: t.baseDuration,
+      adjustedDuration: t.adjustedDuration,
+      hourSlot: t.hourSlot,
+      completed: t.completed,
+      actualDuration: t.actualDuration || 0,
+      preparation1: t.preparation1,
+      preparation2: t.preparation2,
+      preparation3: t.preparation3,
+      timerUsed: t.timerUsed,
+      completedAt: t.completedAt,
+    }));
+  });
+
   // 잠금 블록 수 계산
   const timeBlockStates: Record<string, TimeBlockState> = dailyData?.timeBlockStates ?? {};
   const lockedBlocksCount = Object.values(timeBlockStates).filter((s: TimeBlockState) => s.isLocked).length;
@@ -122,7 +143,8 @@ export async function buildPersonaContext(
     inboxTasks: inboxTasks.map((t: Task) => ({
       text: t.text,
       resistance: t.resistance,
-      baseDuration: t.baseDuration
+      baseDuration: t.baseDuration,
+      memo: t.memo || ''
     })),
     recentTasks: tasks.slice(-5).map((t: Task) => ({
       text: t.text,
@@ -142,6 +164,9 @@ export async function buildPersonaContext(
     currentBlockTasks,
     lockedBlocksCount,
     totalBlocksCount,
+
+    // ✅ 오늘의 모든 블록별 상세 할일 정보
+    allBlockTasks,
 
     // 에너지 정보
     currentEnergy: currentEnergy ?? 0,

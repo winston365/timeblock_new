@@ -10,6 +10,8 @@
  *   - Fetch API: HTTP 요청 전송
  */
 
+import { TIME_BLOCKS } from '@/shared/types/domain';
+
 interface GeminiMessage {
   role: 'user' | 'model';
   parts: Array<{ text: string }>;
@@ -119,6 +121,25 @@ export async function callGeminiAPI(
 }
 
 /**
+ * 상세 작업 정보 (AI 컨텍스트용)
+ */
+export interface DetailedTask {
+  text: string;
+  memo: string;
+  resistance: string;
+  baseDuration: number;
+  adjustedDuration: number;
+  hourSlot?: number;
+  completed: boolean;
+  actualDuration: number;
+  preparation1?: string;
+  preparation2?: string;
+  preparation3?: string;
+  timerUsed?: boolean;
+  completedAt: string | null;
+}
+
+/**
  * 와이푸 페르소나 생성 옵션
  */
 export interface PersonaContext {
@@ -132,7 +153,7 @@ export interface PersonaContext {
   // 작업 정보
   tasksCompleted: number;
   totalTasks: number;
-  inboxTasks: Array<{ text: string; resistance: string; baseDuration: number }>;
+  inboxTasks: Array<{ text: string; resistance: string; baseDuration: number; memo: string }>;
   recentTasks: Array<{ text: string; completed: boolean; resistance: string }>;
 
   // 시간 정보
@@ -147,6 +168,9 @@ export interface PersonaContext {
   currentBlockTasks: Array<{ text: string; completed: boolean }>;
   lockedBlocksCount: number;
   totalBlocksCount: number;
+
+  // ✅ 오늘의 모든 블록별 상세 할일 정보 (시간대바별 구분)
+  allBlockTasks: Record<string, DetailedTask[]>;
 
   // 에너지 정보
   currentEnergy: number;
@@ -193,6 +217,7 @@ export function generateWaifuPersona(context: PersonaContext): string {
     currentBlockTasks,
     lockedBlocksCount,
     totalBlocksCount,
+    allBlockTasks,
     currentEnergy,
     energyRecordedAt,
     xpHistory,
@@ -223,6 +248,33 @@ export function generateWaifuPersona(context: PersonaContext): string {
   const inboxInfo = inboxTasks.length > 0
     ? `\n\n📥 미배치 할일 (인박스): ${inboxTasks.length}개\n${inboxTasks.slice(0, 5).map(t => `  • ${t.text} (${t.resistance === 'low' ? '🟢' : t.resistance === 'medium' ? '🟡' : '🔴'} ${t.baseDuration}분)`).join('\n')}${inboxTasks.length > 5 ? `\n  ... 외 ${inboxTasks.length - 5}개` : ''}`
     : '\n\n📥 미배치 할일 (인박스): 없음';
+
+  // ✅ 오늘의 모든 시간대별 상세 할일 정보 생성
+  const allBlockTasksInfo = Object.keys(allBlockTasks).length > 0
+    ? `\n\n📅 오늘의 시간대별 상세 할일 정보:\n${TIME_BLOCKS.map(block => {
+        const blockTasks = allBlockTasks[block.id] || [];
+        if (blockTasks.length === 0) {
+          return `\n🕐 ${block.label} (${block.start}-${block.end}시): 할일 없음`;
+        }
+        const completedCount = blockTasks.filter(t => t.completed).length;
+        const tasksDetails = blockTasks.map((task, idx) => {
+          const resistanceIcon = task.resistance === 'low' ? '🟢' : task.resistance === 'medium' ? '🟡' : '🔴';
+          const statusIcon = task.completed ? '✅' : '⬜';
+          const preparations = [task.preparation1, task.preparation2, task.preparation3].filter(p => p).length;
+          const prepInfo = preparations > 0 ? ` | 준비항목: ${preparations}개` : '';
+          const memoInfo = task.memo ? ` | 메모: ${task.memo}` : '';
+          const timerInfo = task.timerUsed ? ' | 타이머 사용' : '';
+          const completedInfo = task.completed && task.completedAt
+            ? ` | 완료시각: ${new Date(task.completedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
+            : '';
+          const actualDurationInfo = task.completed && task.actualDuration
+            ? ` | 실제소요: ${task.actualDuration}분`
+            : '';
+          return `      ${idx + 1}. ${statusIcon} ${task.text}\n         ${resistanceIcon} 난이도: ${task.resistance} | 예상시간: ${task.baseDuration}분 (조정: ${task.adjustedDuration}분) | 시간바: ${task.hourSlot}시${prepInfo}${memoInfo}${timerInfo}${completedInfo}${actualDurationInfo}`;
+        }).join('\n');
+        return `\n🕐 ${block.label} (${block.start}-${block.end}시): ${blockTasks.length}개 할일 (${completedCount}개 완료)\n${tasksDetails}`;
+      }).join('\n')}`
+    : '';
 
   // 에너지 정보 생성
   const energyTimeDiff = energyRecordedAt ? Math.floor((Date.now() - energyRecordedAt) / (1000 * 60)) : null;
@@ -265,7 +317,7 @@ export function generateWaifuPersona(context: PersonaContext): string {
 **오늘의 성과**:
 - 오늘 획득 XP: ${dailyXP} XP
 - 총 보유 XP: ${totalXP} XP
-- 사용 가능 XP: ${availableXP} XP${timeBlockStats}${xpHistoryInfo}${timeBlockXPHistoryInfo}${inboxInfo}
+- 사용 가능 XP: ${availableXP} XP${timeBlockStats}${xpHistoryInfo}${timeBlockXPHistoryInfo}${inboxInfo}${allBlockTasksInfo}
 
 **에너지 상태**: ${energyInfo} (${energyStatus})
 

@@ -12,6 +12,7 @@
 
 import { create } from 'zustand';
 import type { DailyData, Task, TimeBlockState } from '../types/domain';
+import { TIME_BLOCKS } from '../types/domain';
 import {
   loadDailyData,
   saveDailyData,

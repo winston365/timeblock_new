@@ -17,5 +17,3 @@ export * from './useGameState';
 export * from './useWaifuState';
 export * from './useEnergyState';
 export * from './useKeyboardNavigation';
-// DEPRECATED: usePersonaContext는 성능 최적화를 위해 buildPersonaContext()로 대체됨
-// export * from './usePersonaContext';
