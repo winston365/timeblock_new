@@ -1,16 +1,16 @@
 /**
  * ScheduleView
  *
- * @role 타임블록 기반 일일 스케줄러 메인 화면. 시간대별 작업 관리 및 현재 시간 인디케이터 표시
+ * @role 타임블록 기반 일일 스케줄러 메인 화면. 시간대별 작업 관리
  * @input 없음 (훅으로 데이터 로드)
- * @output 타임블록 그리드, 현재 시간 인디케이터, 작업 모달
+ * @output 타임블록 그리드, 작업 모달
  * @external_dependencies
  *   - useDailyData: 일일 데이터 및 CRUD 훅
  *   - TimeBlock: 개별 타임블록 컴포넌트
  *   - TaskModal: 작업 추가/수정 모달
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useDailyData } from '@/shared/hooks';
 import { useGameState } from '@/shared/hooks/useGameState';
 import { TIME_BLOCKS } from '@/shared/types/domain';
@@ -20,7 +20,6 @@ import { generateId } from '@/shared/lib/utils';
 import { db } from '@/data/db/dexieClient';
 import TimeBlock from './TimeBlock';
 import TaskModal from './TaskModal';
-import CurrentTimeIndicator from './CurrentTimeIndicator';
 import './schedule.css';
 
 /**
@@ -29,16 +28,13 @@ import './schedule.css';
  * @returns {JSX.Element} 스케줄 뷰
  * @sideEffects
  *   - 1분마다 현재 시간 업데이트
- *   - 현재 시간 인디케이터 위치 계산 및 표시
  *   - 지난 블록의 미완료 작업 자동 인박스 이동
- *   - ResizeObserver로 블록 크기 변화 감지
  */
 export default function ScheduleView() {
   const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion, toggleBlockLock } = useDailyData();
   const { updateQuestProgress } = useGameState();
   const { show: showWaifu } = useWaifuCompanionStore();
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
-  const scheduleRef = useRef<HTMLDivElement>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -333,10 +329,7 @@ export default function ScheduleView() {
         </div>
       </div>
 
-      <div className="timeblocks-grid" ref={scheduleRef}>
-        {/* 현재 시간 인디케이터 */}
-        <CurrentTimeIndicator scheduleRef={scheduleRef} dailyData={dailyData} />
-
+      <div className="timeblocks-grid">
         {TIME_BLOCKS.map(block => {
           const blockTasks = dailyData.tasks.filter(task => task.timeBlock === block.id);
           const blockState = dailyData.timeBlockStates[block.id];
