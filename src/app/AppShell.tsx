@@ -133,61 +133,50 @@ export default function AppShell() {
       try {
         await initializeDatabase();
 
-        // Store 초기화 - 직접 접근
-        const dailyDataStore = useDailyDataStore.getState();
-        const gameStateStore = useGameStateStore.getState();
-
-        await Promise.all([
-          dailyDataStore.loadData(),
-          gameStateStore.loadData(),
-        ]);
-
-        if (!isSubscribed) return;
-
-        setDbInitialized(true);
-
-        // 디버그 함수를 window에 노출
-        exposeDebugToWindow();
-
-        // Firebase 설정 확인 및 초기화
+        // ✅ STEP 1: Settings 및 Firebase 먼저 초기화 (Store 로드 전!)
+        console.log('🔧 Loading settings and initializing Firebase...');
         const settings = await loadSettings();
+
+        let firebaseReady = false;
+
+        // ✅ STEP 2: Firebase 초기화 및 데이터 가져오기 (Store 로드 전!)
         if (settings.firebaseConfig) {
           const initialized = initializeFirebase(settings.firebaseConfig);
           if (initialized) {
+            console.log('✅ Firebase initialized');
+            firebaseReady = true;
+
             // Firebase에서 초기 데이터 가져오기
             try {
               const { fetchDataFromFirebase } = await import('@/shared/services/firebaseService');
               const { saveGameState } = await import('@/data/repositories/gameStateRepository');
-
-              const firebaseData = await fetchDataFromFirebase();
-
-              // Firebase 데이터를 IndexedDB에 저장
-              // GameState 저장
-              if (firebaseData.gameState) {
-                await saveGameState(firebaseData.gameState);
-                await gameStateStore.loadData(); // 리로드
-              }
-
-              // Firebase 동기화 임시 비활성화를 위해 직접 IndexedDB에 저장
               const { db } = await import('@/data/db/dexieClient');
               const { saveToStorage } = await import('@/shared/lib/utils');
               const { STORAGE_KEYS } = await import('@/shared/lib/constants');
               const { syncToFirebase } = await import('@/shared/services/firebase/syncCore');
               const { dailyDataStrategy, gameStateStrategy } = await import('@/shared/services/firebase/strategies');
 
+              console.log('📥 Fetching data from Firebase...');
+              const firebaseData = await fetchDataFromFirebase();
+
+              // GameState 저장
+              if (firebaseData.gameState) {
+                console.log('💾 Saving GameState from Firebase');
+                await saveGameState(firebaseData.gameState);
+              }
+
               // DailyData 저장 (모든 날짜)
               const dailyDataDates = Object.keys(firebaseData.dailyData);
               if (dailyDataDates.length > 0) {
+                console.log(`💾 Saving ${dailyDataDates.length} days of data from Firebase`);
                 for (const date of dailyDataDates) {
                   const data = firebaseData.dailyData[date];
 
-                  // 데이터 유효성 검사
                   if (!data || !data.tasks) {
                     console.warn(`⚠️ Invalid data for ${date}, skipping`);
                     continue;
                   }
 
-                  // IndexedDB에 직접 저장 (Firebase 재동기화 방지)
                   await db.dailyData.put({
                     date,
                     tasks: data.tasks,
@@ -196,20 +185,17 @@ export default function AppShell() {
                     updatedAt: data.updatedAt || Date.now(),
                   });
 
-                  // localStorage에도 저장
                   saveToStorage(`${STORAGE_KEYS.DAILY_PLANS}${date}`, data);
                 }
               }
 
-              // 🔥 IndexedDB의 모든 데이터를 Firebase로 동기화 (Firebase에 없는 것만)
+              // 로컬 데이터를 Firebase로 업로드 (Firebase에 없는 것만)
               const allLocalDailyData = await db.dailyData.toArray();
               const firebaseDates = new Set(Object.keys(firebaseData.dailyData));
 
               for (const localData of allLocalDailyData) {
-                // Firebase에 이미 있는 날짜는 스킵
                 if (firebaseDates.has(localData.date)) continue;
 
-                // IndexedDB에는 있지만 Firebase에는 없는 데이터 업로드
                 try {
                   await syncToFirebase(dailyDataStrategy, {
                     tasks: localData.tasks || [],
@@ -222,7 +208,7 @@ export default function AppShell() {
                 }
               }
 
-              // GameState도 동기화
+              // GameState 동기화
               if (!firebaseData.gameState) {
                 const localGameState = await db.gameState.get('current');
                 if (localGameState) {
@@ -235,29 +221,55 @@ export default function AppShell() {
                 }
               }
 
-              // 오늘 날짜 리로드
-              const today = getLocalDate();
-              await dailyDataStore.loadData(today, true); // 강제 리로드
+              console.log('✅ Firebase data sync completed');
             } catch (error) {
-              console.error('Failed to fetch from Firebase:', error);
+              console.error('❌ Failed to fetch from Firebase:', error);
             }
-
-            // 실시간 동기화 활성화
-            const unsubscribe = enableFirebaseSync(
-              async () => {
-                await dailyDataStore.refresh();
-              },
-              async () => {
-                await gameStateStore.refresh();
-              }
-            );
-
-            // 컴포넌트 언마운트 시 동기화 해제
-            return () => {
-              isSubscribed = false;
-              unsubscribe();
-            };
+          } else {
+            console.warn('⚠️ Firebase initialization failed, working offline');
           }
+        } else {
+          console.log('ℹ️ No Firebase config, working offline');
+        }
+
+        if (!isSubscribed) return;
+
+        // ✅ STEP 3: Store 로드 (이제 IndexedDB에 Firebase 데이터가 있음)
+        console.log('📦 Loading stores from IndexedDB...');
+        const dailyDataStore = useDailyDataStore.getState();
+        const gameStateStore = useGameStateStore.getState();
+
+        await Promise.all([
+          dailyDataStore.loadData(),
+          gameStateStore.loadData(),
+        ]);
+
+        console.log('✅ Stores loaded');
+
+        if (!isSubscribed) return;
+
+        // ✅ STEP 4: 모든 데이터 로드 후 UI 표시
+        setDbInitialized(true);
+
+        // 디버그 함수를 window에 노출
+        exposeDebugToWindow();
+
+        // ✅ STEP 5: Firebase 실시간 동기화 활성화
+        if (firebaseReady) {
+          const unsubscribe = enableFirebaseSync(
+            async () => {
+              await dailyDataStore.refresh();
+            },
+            async () => {
+              await gameStateStore.refresh();
+            }
+          );
+
+          // 컴포넌트 언마운트 시 동기화 해제
+          return () => {
+            isSubscribed = false;
+            unsubscribe();
+          };
         }
       } catch (error) {
         console.error('❌ Failed to initialize:', error);
