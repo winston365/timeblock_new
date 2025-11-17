@@ -590,3 +590,142 @@
     width: 250px;
   }
 }
+
+/* ============================================================================
+   Panel Collapse/Expand Functionality
+   ============================================================================ */
+
+/* 패널 토글 버튼 */
+.panel-toggle-btn {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+  width: 32px;
+  height: 64px;
+  background: var(--color-primary);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  user-select: none;
+}
+
+.panel-toggle-btn:hover {
+  background: var(--color-primary-dark);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  width: 36px;
+}
+
+.panel-toggle-btn:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+/* 좌측 토글 버튼 */
+.left-toggle {
+  left: 380px;
+  border-radius: 0 8px 8px 0;
+  border-left: none;
+}
+
+.left-toggle.collapsed {
+  left: 0;
+}
+
+/* 우측 토글 버튼 */
+.right-toggle {
+  right: 656px; /* 320px (insight) + 336px (right panel) */
+  border-radius: 8px 0 0 8px;
+  border-right: none;
+}
+
+.right-toggle.collapsed {
+  right: 0;
+}
+
+/* 좌측 사이드바가 접힌 상태 */
+.main-layout.left-collapsed {
+  grid-template-columns:
+    0                        /* 좌측 사이드바 숨김 */
+    minmax(600px, 1fr)       /* 중앙 콘텐츠 확장 */
+    320px                    /* 인사이트 패널 */
+    336px;                   /* 우측 패널 */
+}
+
+.main-layout.left-collapsed .left-sidebar {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  border-right: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 우측 패널들이 접힌 상태 */
+.main-layout.right-collapsed {
+  grid-template-columns:
+    380px                    /* 좌측 사이드바 */
+    minmax(600px, 1fr)       /* 중앙 콘텐츠 확장 */
+    0                        /* 인사이트 패널 숨김 */
+    0;                       /* 우측 패널 숨김 */
+}
+
+.main-layout.right-collapsed .insight-panel,
+.main-layout.right-collapsed .right-panel {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 좌측과 우측 모두 접힌 상태 */
+.main-layout.left-collapsed.right-collapsed {
+  grid-template-columns:
+    0                        /* 좌측 사이드바 숨김 */
+    1fr                      /* 중앙 콘텐츠 전체 확장 */
+    0                        /* 인사이트 패널 숨김 */
+    0;                       /* 우측 패널 숨김 */
+}
+
+/* 패널 전환 애니메이션 */
+.left-sidebar,
+.insight-panel,
+.right-panel {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 반응형: 1600px 이하에서 우측 토글 버튼 위치 조정 */
+@media (max-width: 1600px) {
+  .main-layout.left-collapsed {
+    grid-template-columns: 0 minmax(600px, 1fr) 336px;
+  }
+
+  .right-toggle {
+    right: 336px; /* 우측 패널만 */
+  }
+}
+
+/* 반응형: 1440px 이하에서 우측 토글 버튼 숨김 (원래 패널이 없음) */
+@media (max-width: 1440px) {
+  .right-toggle {
+    display: none;
+  }
+
+  .main-layout.left-collapsed {
+    grid-template-columns: 0 1fr;
+  }
+}
+
+/* 반응형: 768px 이하에서 토글 버튼 숨김 */
+@media (max-width: 768px) {
+  .panel-toggle-btn {
+    display: none;
+  }
+}
