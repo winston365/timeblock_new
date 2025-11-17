@@ -10,7 +10,10 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "strict": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+
+    // 🔥 여기가 정확한 위치
+    "noImplicitAny": false
   },
   "include": ["electron/**/*.ts"],
   "exclude": ["node_modules", "dist", "dist-electron"]
