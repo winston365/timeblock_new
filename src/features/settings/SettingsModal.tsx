@@ -86,11 +86,19 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
   const [tokenUsage, setTokenUsage] = useState<DailyTokenUsage[]>([]);
   const [filterType, setFilterType] = useState<SyncType | 'all'>('all');
   const [filterAction, setFilterAction] = useState<SyncAction | 'all'>('all');
+  const [appVersion, setAppVersion] = useState<string>('...');
 
   // 설정 로드
   useEffect(() => {
     if (isOpen) {
       loadSettingsData();
+      // Electron 환경에서 앱 버전 가져오기
+      if (window.electronAPI?.getAppVersion) {
+        window.electronAPI.getAppVersion().then(setAppVersion).catch(() => setAppVersion('Unknown'));
+      } else {
+        // 웹 환경일 경우
+        setAppVersion('Web Version');
+      }
     }
   }, [isOpen]);
 
@@ -326,6 +334,33 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                   <div className="info-box">
                     <strong>💡 팁:</strong> 테마는 즉시 적용되며, 자동으로 저장됩니다.
                     작업 환경에 맞는 테마를 선택하여 눈의 피로를 줄이고 집중력을 높여보세요!
+                  </div>
+
+                  <hr style={{ margin: '24px 0', border: 'none', borderTop: '1px solid var(--color-border)' }} />
+
+                  <h3>ℹ️ 앱 정보</h3>
+                  <div className="form-group">
+                    <label>현재 버전</label>
+                    <div style={{
+                      padding: '12px 16px',
+                      background: 'var(--color-bg-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      fontFamily: 'monospace',
+                      fontSize: '14px',
+                      color: 'var(--color-primary)',
+                      fontWeight: 600,
+                    }}>
+                      v{appVersion}
+                    </div>
+                    <small className="form-hint">
+                      새 버전이 출시되면 앱 시작 시 자동으로 알림이 표시됩니다.
+                    </small>
+                  </div>
+
+                  <div className="info-box">
+                    <strong>🚀 자동 업데이트:</strong> TimeBlock Planner는 GitHub Releases를 통해 자동으로 업데이트됩니다.
+                    앱 시작 후 5초 뒤 최신 버전을 확인하며, 새 버전이 있으면 다운로드 및 설치 안내가 표시됩니다.
                   </div>
 
                   <hr style={{ margin: '24px 0', border: 'none', borderTop: '1px solid var(--color-border)' }} />
