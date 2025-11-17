@@ -9,6 +9,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
 import TaskCard from './TaskCard';
+import { useDragDrop } from './hooks/useDragDrop';
 
 interface HourBarProps {
   hour: number; // 시간 (예: 5, 6, 7)
@@ -28,7 +29,7 @@ interface HourBarProps {
  */
 export default function HourBar({
   hour,
-  blockId: _blockId, // 향후 사용 예정
+  blockId,
   tasks,
   isLocked,
   onCreateTask,
@@ -36,12 +37,17 @@ export default function HourBar({
   onUpdateTask,
   onDeleteTask,
   onToggleTask,
-  onDropTask,
+  onDropTask: _onDropTask, // 사용하지 않음 (useDragDrop 훅으로 대체)
 }: HourBarProps) {
   const [progress, setProgress] = useState(0); // 0-100% (50분 기준)
-  const [isDragOver, setIsDragOver] = useState(false);
   const [inlineInputValue, setInlineInputValue] = useState('');
   const inlineInputRef = useRef<HTMLInputElement>(null);
+
+  // 통합 드래그 앤 드롭 훅 사용
+  const { isDragOver, handleDragOver, handleDragLeave, handleDrop } = useDragDrop(
+    blockId,
+    hour
+  );
 
   // 실시간 프로그레스 계산 (50분 몰입 시간 기준)
   useEffect(() => {
@@ -107,24 +113,13 @@ export default function HourBar({
     }
   };
 
-  // 드래그 오버 핸들러
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  };
+  // 드롭 핸들러 래퍼 (onUpdateTask를 handleDrop에 전달)
+  const handleDropWrapper = async (e: React.DragEvent) => {
+    if (!onUpdateTask) return;
 
-  const handleDragLeave = () => {
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-
-    const taskId = e.dataTransfer.getData('text/plain');
-    if (taskId) {
-      onDropTask(taskId, hour);
-    }
+    await handleDrop(e, async (taskId, updates) => {
+      onUpdateTask(taskId, updates);
+    });
   };
 
   return (
@@ -132,7 +127,7 @@ export default function HourBar({
       className={`hour-bar ${isDragOver ? 'drag-over' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      onDrop={handleDropWrapper}
       data-hour={hour}
     >
       {/* 시간대 헤더 + 프로그레스 바 */}
