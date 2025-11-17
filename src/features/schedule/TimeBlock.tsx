@@ -66,6 +66,9 @@ const TimeBlock = memo(function TimeBlock({
   const [inlineInputValue, setInlineInputValue] = useState('');
   const inlineInputRef = useRef<HTMLInputElement>(null);
 
+  // 5분 타이머 상태
+  const [timerElapsed, setTimerElapsed] = useState(0); // 경과 시간 (초)
+
   // 블록 총 XP 계산 (현재 미사용)
   // const totalXP = tasks
   //   .filter(t => t.completed)
@@ -200,6 +203,98 @@ const TimeBlock = memo(function TimeBlock({
     return texts[timeStatus];
   };
 
+  // 타이머 경과 시간 계산
+  useEffect(() => {
+    if (!state?.lockTimerStartedAt) {
+      setTimerElapsed(0);
+      return;
+    }
+
+    const updateTimer = async () => {
+      const elapsed = Math.floor((Date.now() - state.lockTimerStartedAt!) / 1000);
+      const duration = (state.lockTimerDuration || 300000) / 1000; // 기본 5분
+
+      if (elapsed >= duration) {
+        // 타이머 완료 - 자동 잠금
+        setTimerElapsed(duration);
+        if (!state.isLocked && onToggleLock) {
+          // 블록 잠금
+          onToggleLock();
+
+          // 타이머 상태 초기화
+          try {
+            const { updateBlockState } = await import('@/data/repositories/dailyDataRepository');
+            await updateBlockState(block.id, {
+              lockTimerStartedAt: null,
+              lockTimerDuration: undefined,
+            });
+          } catch (error) {
+            console.error('Failed to clear timer state:', error);
+          }
+        }
+      } else {
+        setTimerElapsed(elapsed);
+      }
+    };
+
+    updateTimer(); // 초기 실행
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [state?.lockTimerStartedAt, state?.lockTimerDuration, state?.isLocked, onToggleLock, block.id]);
+
+  // 타이머 시작 핸들러
+  const handleStartLockTimer = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (tasks.length === 0) {
+      alert('빈 블록은 잠글 수 없습니다. 작업을 먼저 추가해주세요.');
+      return;
+    }
+
+    try {
+      const { updateBlockState } = await import('@/data/repositories/dailyDataRepository');
+      await updateBlockState(block.id, {
+        lockTimerStartedAt: Date.now(),
+        lockTimerDuration: 300000, // 5분
+      });
+    } catch (error) {
+      console.error('Failed to start lock timer:', error);
+    }
+  };
+
+  // 타이머 취소 핸들러
+  const handleCancelLockTimer = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    try {
+      const { updateBlockState } = await import('@/data/repositories/dailyDataRepository');
+      await updateBlockState(block.id, {
+        lockTimerStartedAt: null,
+        lockTimerDuration: undefined,
+      });
+    } catch (error) {
+      console.error('Failed to cancel lock timer:', error);
+    }
+  };
+
+  // 타이머 진행률 계산
+  const getTimerProgress = (): number => {
+    if (!state?.lockTimerStartedAt) return 0;
+    const duration = (state.lockTimerDuration || 300000) / 1000;
+    return Math.min((timerElapsed / duration) * 100, 100);
+  };
+
+  // 남은 시간 포맷팅 (MM:SS)
+  const formatRemainingTime = (): string => {
+    if (!state?.lockTimerStartedAt) return '5:00';
+    const duration = (state.lockTimerDuration || 300000) / 1000;
+    const remaining = Math.max(duration - timerElapsed, 0);
+    const mins = Math.floor(remaining / 60);
+    const secs = Math.floor(remaining % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   // 인라인 입력 필드 포커스
   useEffect(() => {
     if (showInlineInput && inlineInputRef.current) {
@@ -300,7 +395,85 @@ const TimeBlock = memo(function TimeBlock({
     >
       <div className="block-header" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="block-primary-info">
-          {/* 바 형태 시간표 (현재 시간대 블록만) */}
+          {/* 왼쪽: 잠금 버튼 / 타이머 버튼 */}
+          <div className="block-lock-section">
+            {state?.isLocked ? (
+              // 잠긴 상태
+              <button
+                className="lock-icon-btn locked"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isPastBlock) {
+                    onToggleLock?.();
+                  }
+                }}
+                disabled={isPastBlock}
+                title={isPastBlock ? "지난 시간대는 잠금 해제할 수 없습니다" : "잠금 해제 (베팅한 15 XP는 돌려받지 못함)"}
+              >
+                🔒
+              </button>
+            ) : state?.lockTimerStartedAt ? (
+              // 타이머 진행 중
+              <div className="lock-timer-active">
+                <button
+                  className="lock-timer-cancel"
+                  onClick={handleCancelLockTimer}
+                  title="타이머 취소"
+                >
+                  ❌
+                </button>
+                <div className="lock-timer-display">
+                  <span className="timer-icon">⏰</span>
+                  <span className="timer-text">{formatRemainingTime()}</span>
+                  <div className="timer-progress-bar">
+                    <div
+                      className="timer-progress-fill"
+                      style={{ width: `${getTimerProgress()}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : isPastBlock ? (
+              // 지난 블록
+              <button className="lock-icon-btn past" disabled title="지난 시간대는 잠금할 수 없습니다">
+                🔓
+              </button>
+            ) : (
+              // 타이머 시작 버튼
+              <button
+                className="lock-timer-start-btn"
+                onClick={handleStartLockTimer}
+                title="5분 후 자동 잠금 시작 (비용: 15 XP / 완벽 달성 시: +40 XP)"
+              >
+                <span className="timer-start-icon">⏰</span>
+                <span className="timer-start-text">5분 뒤 잠금</span>
+              </button>
+            )}
+          </div>
+
+          <div className="block-time-group">
+            <span className="block-time-range-large">{block.start.toString().padStart(2, '0')}-{block.end.toString().padStart(2, '0')}</span>
+            <div className="block-stats-inline">
+              {state?.isLocked ? (
+                // 잠긴 블록: 과거 블록이면서 미완료 작업이 있으면 "계획 실패"
+                isPastBlock && tasks.some(t => !t.completed) ? (
+                  <span className="stat-compact failed-plan">❌ 계획 실패</span>
+                ) : (
+                  <span className="stat-compact locked-bonus">✨ 40 XP 보너스 도전 중!</span>
+                )
+              ) : (
+                <>
+                  <span className="stat-compact">📋 {tasks.length}</span>
+                  {maxXP > 0 && <span className="stat-compact">✨ ~{maxXP}XP</span>}
+                  {!isPastBlock && !state?.lockTimerStartedAt && <span className="stat-compact lock-warning">⚠️ 잠금 필요</span>}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="block-actions">
+          {/* 오른쪽: 시간 표시 (현재 시간대 블록만) */}
           {isCurrentBlock && timeRemaining && (
             <div className="time-bar-wrapper" data-tooltip={getTooltipText()}>
               <div className="time-bar-container">
@@ -343,49 +516,6 @@ const TimeBlock = memo(function TimeBlock({
               </div>
             </div>
           )}
-
-          <div className="block-time-group">
-            <span className="block-time-range-large">{block.start.toString().padStart(2, '0')}-{block.end.toString().padStart(2, '0')}</span>
-            <div className="block-stats-inline">
-              {state?.isLocked ? (
-                // 잠긴 블록: 과거 블록이면서 미완료 작업이 있으면 "계획 실패"
-                isPastBlock && tasks.some(t => !t.completed) ? (
-                  <span className="stat-compact failed-plan">❌ 계획 실패</span>
-                ) : (
-                  <span className="stat-compact locked-bonus">✨ 40 XP 보너스 도전 중!</span>
-                )
-              ) : (
-                <>
-                  <span className="stat-compact">📋 {tasks.length}</span>
-                  {maxXP > 0 && <span className="stat-compact">✨ ~{maxXP}XP</span>}
-                  {!isPastBlock && <span className="stat-compact lock-warning">⚠️ 잠금 필요</span>}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="block-actions">
-          {/* 잠금 아이콘 */}
-          <button
-            className={`action-btn-sm ${!state?.isLocked && !isPastBlock ? 'lock-needed' : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isPastBlock) {
-                onToggleLock?.();
-              }
-            }}
-            disabled={isPastBlock}
-            title={
-              isPastBlock
-                ? "지난 시간대는 잠금할 수 없습니다"
-                : state?.isLocked
-                ? "잠금 해제 (베팅한 15 XP는 돌려받지 못함)"
-                : "⚠️ 잠금 필요! (비용: 15 XP / 완벽 달성 시: +40 XP)"
-            }
-          >
-            {state?.isLocked ? '🔒' : isPastBlock ? '🔓' : '⚠️'}
-          </button>
         </div>
       </div>
 
