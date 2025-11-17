@@ -201,10 +201,22 @@ npm run lint             # Run ESLint
 ### 1. Repository Pattern
 All data access goes through repositories in `src/data/repositories/`. Each repository:
 - Manages IndexedDB operations via Dexie
-- Handles Firebase sync (dual-write pattern)
+- Handles Firebase sync (dual-write pattern with fallback on read)
 - Provides typed data access functions
 
+**Data Loading Strategy** (with Firebase fallback):
+1. Try IndexedDB first (fastest, local-first)
+2. Fallback to localStorage (local backup)
+3. Fallback to Firebase (cloud sync, ensures cross-device data availability)
+4. Return empty/default data if all sources fail
+
 **Example**: `dailyDataRepository.ts` manages tasks and time block states per date.
+
+**Key Functions with Firebase Fallback**:
+- `loadDailyData(date)` - Daily tasks and block states
+- `loadTemplates()` - Task templates
+- `loadEnergyLevels(date)` - Energy tracking data
+- `loadGameState()` - XP, level, quests (via gameStateStore)
 
 ### 2. State Management Strategy
 - **Zustand stores** (`src/shared/stores/`): Global reactive state (gameStateStore, waifuCompanionStore, settingsStore, dailyDataStore)
@@ -212,14 +224,24 @@ All data access goes through repositories in `src/data/repositories/`. Each repo
 - **IndexedDB as source of truth**: All state persisted via Dexie, stores sync from DB
 
 ### 3. Data Flow
+
+**Write Flow**:
 ```
 User Action → Repository (IndexedDB write + Firebase sync) → Store update → UI re-render
+```
+
+**Read Flow** (with Firebase fallback):
+```
+Repository Load → IndexedDB → localStorage → Firebase → Empty/Default
+                     ↓             ↓             ↓
+                  Return        Return       Return & Save to IndexedDB
 ```
 
 **Key Principles**:
 - **Local-first**: IndexedDB is source of truth, UI reads from local DB
 - **Optimistic updates**: UI updates immediately from IndexedDB
 - **Background sync**: Firebase sync happens asynchronously after local write
+- **Cross-device availability**: Firebase fallback ensures data accessible from any device
 - **Conflict resolution**: Merge strategies handle concurrent updates
 
 ### 4. Module Organization
@@ -243,8 +265,12 @@ User Action → Repository (IndexedDB write + Firebase sync) → Store update �
 ### 5. Firebase Sync Architecture
 - Located in `src/shared/services/firebase/`
 - **syncCore.ts**: Core sync engine with conflict resolution
+  - `syncToFirebase<T>(strategy, data, key)`: Write data to Firebase
+  - `fetchFromFirebase<T>(strategy, key)`: Read data from Firebase (fallback)
+  - `listenToFirebase<T>(strategy, onUpdate, key)`: Real-time listener
 - **strategies.ts**: Merge strategies (client-wins, server-wins, last-write-wins)
 - **Dual-write pattern**: Local-first with background cloud sync
+- **Read fallback**: Load from Firebase when local storage is empty
 - Each repository calls `syncToFirebase()` after local writes
 
 **Synced Collections**:
@@ -503,3 +529,17 @@ Persona characteristics:
   - Skips regeneration if interval hasn't passed (prevents unnecessary API calls)
 - **Retry logic**: 3 automatic retries with 10-second intervals on API errors
 - **Progress indicator**: Visual timer shows time until next refresh
+
+### InboxTab (Uncompleted Tasks)
+- **Multi-day inbox view**: Shows uncompleted inbox tasks from recent 7 days
+  - Loads today's inbox tasks from current dailyData
+  - Loads past 7 days' uncompleted inbox tasks via `getRecentUncompletedInboxTasks()`
+  - Deduplicates by task ID (today's tasks take precedence)
+- **Task filtering**: `timeBlock === null && completed === false`
+- **Sort order**: By `createdAt` timestamp (newest first)
+- **Benefits**:
+  - No data loss from auto-migration failures
+  - Users see all pending tasks across multiple days
+  - Works seamlessly with Firebase fallback for cross-device sync
+- **Implementation**: `src/features/tasks/InboxTab.tsx` uses `useEffect` to load recent tasks
+- **Repository function**: `dailyDataRepository.getRecentUncompletedInboxTasks(days)`
