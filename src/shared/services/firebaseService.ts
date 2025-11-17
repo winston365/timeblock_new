@@ -196,8 +196,7 @@ export function listenToTokenUsageFromFirebase(
 /**
  * Firebase에서 전체 데이터를 가져옵니다 (초기 로드용).
  *
- * @returns {Promise<{dailyData: Record<string, DailyData>; gameState: GameState | null}>}
- *          모든 DailyData와 GameState 객체
+ * @returns {Promise<{...}>} 모든 컬렉션 데이터
  * @throws {Error} Firebase 초기화 실패 또는 데이터 읽기 오류
  * @sideEffects
  *   - Firebase Database에서 데이터 읽기
@@ -205,7 +204,12 @@ export function listenToTokenUsageFromFirebase(
  */
 export async function fetchDataFromFirebase(): Promise<{
   dailyData: Record<string, DailyData>;
-  gameState: GameState | null;
+  gameState: any | null;
+  globalInbox: any[] | null;
+  energyLevels: Record<string, any[]> | null;
+  shopItems: any[] | null;
+  waifuState: any | null;
+  templates: any[] | null;
 }> {
   try {
     const { getFirebaseDatabase } = await import('./firebase/firebaseClient');
@@ -214,17 +218,27 @@ export async function fetchDataFromFirebase(): Promise<{
     const db = getFirebaseDatabase();
     const userId = 'user';
 
-    // DailyData 가져오기
-    const dailyDataRef = ref(db, `users/${userId}/dailyData`);
-    const dailyDataSnapshot = await get(dailyDataRef);
+    // 모든 컬렉션을 병렬로 가져오기
+    const [
+      dailyDataSnapshot,
+      gameStateSnapshot,
+      globalInboxSnapshot,
+      energyLevelsSnapshot,
+      shopItemsSnapshot,
+      waifuStateSnapshot,
+      templatesSnapshot,
+    ] = await Promise.all([
+      get(ref(db, `users/${userId}/dailyData`)),
+      get(ref(db, `users/${userId}/gameState`)),
+      get(ref(db, `users/${userId}/globalInbox`)),
+      get(ref(db, `users/${userId}/energyLevels`)),
+      get(ref(db, `users/${userId}/shopItems`)),
+      get(ref(db, `users/${userId}/waifuState`)),
+      get(ref(db, `users/${userId}/templates`)),
+    ]);
+
+    // DailyData 처리
     const dailyDataValue = dailyDataSnapshot.val() || {};
-
-    // GameState 가져오기
-    const gameStateRef = ref(db, `users/${userId}/gameState`);
-    const gameStateSnapshot = await get(gameStateRef);
-    const gameStateValue = gameStateSnapshot.val();
-
-    // SyncData 래퍼 제거하고 실제 데이터만 반환
     const dailyData: Record<string, DailyData> = {};
     Object.entries(dailyDataValue).forEach(([date, syncData]: [string, any]) => {
       if (syncData && syncData.data) {
@@ -232,9 +246,41 @@ export async function fetchDataFromFirebase(): Promise<{
       }
     });
 
-    const gameState = gameStateValue ? gameStateValue.data : null;
+    // 각 컬렉션의 SyncData 래퍼 제거
+    const gameStateValue = gameStateSnapshot.val();
+    const gameState = gameStateValue?.data || null;
 
-    return { dailyData, gameState };
+    const globalInboxValue = globalInboxSnapshot.val();
+    const globalInbox = globalInboxValue?.data || null;
+
+    const energyLevelsValue = energyLevelsSnapshot.val() || {};
+    const energyLevels: Record<string, any[]> = {};
+    Object.entries(energyLevelsValue).forEach(([date, syncData]: [string, any]) => {
+      if (syncData && syncData.data) {
+        energyLevels[date] = syncData.data;
+      }
+    });
+
+    const shopItemsValue = shopItemsSnapshot.val();
+    const shopItems = shopItemsValue?.data || null;
+
+    const waifuStateValue = waifuStateSnapshot.val();
+    const waifuState = waifuStateValue?.data || null;
+
+    const templatesValue = templatesSnapshot.val();
+    const templates = templatesValue?.data || null;
+
+    console.log('📊 Fetched from Firebase:', {
+      dailyData: Object.keys(dailyData).length,
+      gameState: !!gameState,
+      globalInbox: globalInbox?.length || 0,
+      energyLevels: Object.keys(energyLevels).length,
+      shopItems: shopItems?.length || 0,
+      waifuState: !!waifuState,
+      templates: templates?.length || 0,
+    });
+
+    return { dailyData, gameState, globalInbox, energyLevels, shopItems, waifuState, templates };
   } catch (error) {
     console.error('Failed to fetch data from Firebase:', error);
     throw error;

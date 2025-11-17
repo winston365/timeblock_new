@@ -189,6 +189,68 @@ export default function AppShell() {
                 }
               }
 
+              // ✅ GlobalInbox 저장
+              if (firebaseData.globalInbox && Array.isArray(firebaseData.globalInbox)) {
+                console.log(`💾 Saving ${firebaseData.globalInbox.length} inbox tasks from Firebase`);
+                await db.globalInbox.clear();
+                if (firebaseData.globalInbox.length > 0) {
+                  await db.globalInbox.bulkAdd(firebaseData.globalInbox);
+                }
+              }
+
+              // ✅ EnergyLevels 저장 (모든 날짜)
+              if (firebaseData.energyLevels) {
+                const energyDates = Object.keys(firebaseData.energyLevels);
+                if (energyDates.length > 0) {
+                  console.log(`💾 Saving energy levels for ${energyDates.length} days from Firebase`);
+                  for (const date of energyDates) {
+                    const levels = firebaseData.energyLevels[date];
+                    if (Array.isArray(levels) && levels.length > 0) {
+                      // 기존 데이터 삭제
+                      await db.energyLevels.where('date').equals(date).delete();
+                      // 새 데이터 저장
+                      const levelsWithId = levels.map(level => ({
+                        ...level,
+                        id: `${date}_${level.timestamp}`,
+                        date,
+                      }));
+                      await db.energyLevels.bulkAdd(levelsWithId);
+                      localStorage.setItem(`energyLevels_${date}`, JSON.stringify(levels));
+                    }
+                  }
+                }
+              }
+
+              // ✅ ShopItems 저장
+              if (firebaseData.shopItems && Array.isArray(firebaseData.shopItems)) {
+                console.log(`💾 Saving ${firebaseData.shopItems.length} shop items from Firebase`);
+                await db.shopItems.clear();
+                if (firebaseData.shopItems.length > 0) {
+                  await db.shopItems.bulkAdd(firebaseData.shopItems);
+                }
+                saveToStorage(STORAGE_KEYS.SHOP_ITEMS, firebaseData.shopItems);
+              }
+
+              // ✅ WaifuState 저장
+              if (firebaseData.waifuState) {
+                console.log('💾 Saving WaifuState from Firebase');
+                await db.waifuState.put({
+                  key: 'current',
+                  ...firebaseData.waifuState,
+                });
+                saveToStorage(STORAGE_KEYS.WAIFU_STATE, firebaseData.waifuState);
+              }
+
+              // ✅ Templates 저장
+              if (firebaseData.templates && Array.isArray(firebaseData.templates)) {
+                console.log(`💾 Saving ${firebaseData.templates.length} templates from Firebase`);
+                await db.templates.clear();
+                if (firebaseData.templates.length > 0) {
+                  await db.templates.bulkAdd(firebaseData.templates);
+                }
+                saveToStorage(STORAGE_KEYS.TEMPLATES, firebaseData.templates);
+              }
+
               // 로컬 데이터를 Firebase로 업로드 (Firebase에 없는 것만)
               const allLocalDailyData = await db.dailyData.toArray();
               const firebaseDates = new Set(Object.keys(firebaseData.dailyData));
