@@ -23,7 +23,8 @@ import { generateId } from '@/shared/lib/utils';
  *   1. IndexedDB에서 로드
  *   2. localStorage 폴백
  *   3. Firebase 폴백
- *   4. 빈 배열 반환
+ *   4. 이전 날짜의 목표 복사 (진행률은 0으로 초기화)
+ *   5. 빈 배열 반환
  *
  * @param date - 날짜 (YYYY-MM-DD)
  * @returns 목표 배열
@@ -73,9 +74,90 @@ export async function loadDailyGoals(date: string): Promise<DailyGoal[]> {
       return firebaseGoals;
     }
 
+    // 4. 이전 날짜의 목표 복사 (진행률 초기화)
+    const previousGoals = await copyGoalsFromPreviousDay(date);
+    if (previousGoals.length > 0) {
+      return previousGoals;
+    }
+
     return [];
   } catch (error) {
     console.error('Failed to load daily goals:', error);
+    return [];
+  }
+}
+
+/**
+ * 이전 날짜의 목표를 복사 (진행률 초기화)
+ *
+ * @description
+ *   - 최근 7일 이내의 목표를 찾아서 복사
+ *   - plannedMinutes와 completedMinutes는 0으로 초기화
+ *   - title, targetMinutes, color, icon은 유지
+ *
+ * @param date - 목표를 복사할 대상 날짜
+ * @returns 복사된 목표 배열
+ */
+async function copyGoalsFromPreviousDay(date: string): Promise<DailyGoal[]> {
+  try {
+    const targetDate = new Date(date);
+
+    // 최근 7일 이내에서 목표가 있는 날짜 찾기
+    for (let i = 1; i <= 7; i++) {
+      const previousDate = new Date(targetDate);
+      previousDate.setDate(previousDate.getDate() - i);
+      const previousDateStr = previousDate.toISOString().split('T')[0];
+
+      const previousDailyData = await db.dailyData.get(previousDateStr);
+      if (previousDailyData?.goals && previousDailyData.goals.length > 0) {
+        // 목표 복사 (진행률만 0으로 초기화)
+        const copiedGoals: DailyGoal[] = previousDailyData.goals.map(goal => ({
+          ...goal,
+          id: generateId('goal'), // 새로운 ID 생성
+          plannedMinutes: 0,
+          completedMinutes: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
+
+        // 새 날짜에 저장
+        const existingDailyData = await db.dailyData.get(date);
+        if (existingDailyData) {
+          await db.dailyData.update(date, {
+            goals: copiedGoals,
+            updatedAt: Date.now()
+          });
+        } else {
+          await db.dailyData.put({
+            date,
+            tasks: [],
+            goals: copiedGoals,
+            timeBlockStates: {},
+            updatedAt: Date.now(),
+          });
+        }
+
+        // localStorage에도 저장
+        localStorage.setItem(`goals_${date}`, JSON.stringify(copiedGoals));
+
+        // Firebase에 동기화
+        const dataToSync: DailyData = {
+          tasks: existingDailyData?.tasks || [],
+          goals: copiedGoals,
+          timeBlockStates: existingDailyData?.timeBlockStates || {},
+          updatedAt: Date.now(),
+        };
+        await syncToFirebase(dailyDataStrategy, dataToSync, date);
+
+        console.log(`📋 Copied ${copiedGoals.length} goals from ${previousDateStr} to ${date} (progress reset)`);
+
+        return copiedGoals;
+      }
+    }
+
+    return [];
+  } catch (error) {
+    console.error('Failed to copy goals from previous day:', error);
     return [];
   }
 }
