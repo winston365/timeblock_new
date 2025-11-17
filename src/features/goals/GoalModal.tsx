@@ -42,7 +42,7 @@ const GOAL_COLORS = [
  * 목표 추가/수정 모달
  */
 export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalProps) {
-  const { currentDate } = useDailyDataStore();
+  const { currentDate, refresh } = useDailyDataStore();
   const isEditMode = !!goal;
 
   // 폼 상태
@@ -128,6 +128,9 @@ export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalP
           color: selectedColor,
         });
       }
+
+      // Store 강제 새로고침으로 최신 데이터 반영
+      await refresh();
 
       // 성공 시 콜백 실행 및 모달 닫기
       if (onSaved) {

@@ -7,9 +7,8 @@
  * @dependencies dailyGoalRepository, useDailyDataStore
  */
 
-import { useState, useEffect } from 'react';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
-import { loadDailyGoals, deleteGoal } from '@/data/repositories/dailyGoalRepository';
+import { deleteGoal } from '@/data/repositories/dailyGoalRepository';
 import type { DailyGoal } from '@/shared/types/domain';
 import './goals.css';
 
@@ -126,28 +125,11 @@ function GoalProgressCard({
  * 목표 패널 메인 컴포넌트
  */
 export default function GoalPanel({ onOpenModal }: GoalPanelProps) {
-  const { currentDate } = useDailyDataStore();
-  const [goals, setGoals] = useState<DailyGoal[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Store에서 직접 구독 - dailyData가 변경될 때마다 자동으로 재렌더링
+  const { dailyData, currentDate, loading, refresh } = useDailyDataStore();
 
-  // 목표 로드
-  const loadGoals = async () => {
-    try {
-      setLoading(true);
-      const loadedGoals = await loadDailyGoals(currentDate);
-      // order 기준 정렬
-      setGoals(loadedGoals.sort((a, b) => a.order - b.order));
-    } catch (error) {
-      console.error('[GoalPanel] Failed to load goals:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 초기 로드 및 날짜 변경 시 재로드
-  useEffect(() => {
-    loadGoals();
-  }, [currentDate]);
+  // Store의 goals를 직접 사용
+  const goals = (dailyData?.goals || []).sort((a, b) => a.order - b.order);
 
   // 목표 삭제 핸들러
   const handleDelete = async (goalId: string) => {
@@ -159,7 +141,8 @@ export default function GoalPanel({ onOpenModal }: GoalPanelProps) {
 
     try {
       await deleteGoal(currentDate, goalId);
-      await loadGoals(); // 재로드
+      // Store 강제 새로고침으로 최신 데이터 반영
+      await refresh();
     } catch (error) {
       console.error('[GoalPanel] Failed to delete goal:', error);
       alert('목표 삭제에 실패했습니다.');

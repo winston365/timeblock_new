@@ -29,7 +29,6 @@ interface LeftSidebarProps {
 export default function LeftSidebar({ activeTab, onTabChange }: LeftSidebarProps) {
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<DailyGoal | undefined>(undefined);
-  const [goalPanelKey, setGoalPanelKey] = useState(0);
 
   const tabs = [
     { id: 'today' as const, icon: '🎯', label: '오늘' },
@@ -49,12 +48,6 @@ export default function LeftSidebar({ activeTab, onTabChange }: LeftSidebarProps
   const handleCloseGoalModal = () => {
     setIsGoalModalOpen(false);
     setEditingGoal(undefined);
-  };
-
-  // 목표 저장 완료 핸들러
-  const handleGoalSaved = () => {
-    // GoalPanel 강제 재렌더링 (key 변경)
-    setGoalPanelKey(prev => prev + 1);
   };
 
   return (
@@ -99,7 +92,7 @@ export default function LeftSidebar({ activeTab, onTabChange }: LeftSidebarProps
         )}
         {activeTab === 'today' && (
           <div role="tabpanel" id="sidebar-panel-today" aria-labelledby="sidebar-tab-today">
-            <GoalPanel key={goalPanelKey} onOpenModal={handleOpenGoalModal} />
+            <GoalPanel onOpenModal={handleOpenGoalModal} />
           </div>
         )}
       </div>
@@ -109,7 +102,6 @@ export default function LeftSidebar({ activeTab, onTabChange }: LeftSidebarProps
         isOpen={isGoalModalOpen}
         onClose={handleCloseGoalModal}
         goal={editingGoal}
-        onSaved={handleGoalSaved}
       />
     </nav>
   );
