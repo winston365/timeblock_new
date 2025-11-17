@@ -39,7 +39,7 @@ function createWindow(): void {
       nodeIntegration: false,        // ✅ Node.js 직접 접근 차단
       contextIsolation: true,        // ✅ Context 격리
       sandbox: true,                 // ✅ Renderer 샌드박스
-      preload: path.join(__dirname, '../preload/index.js'),
+      preload: path.join(__dirname, '../preload/index.cjs'),
     },
     // UI 설정
     backgroundColor: '#0a0e1a',      // Dark mode 배경

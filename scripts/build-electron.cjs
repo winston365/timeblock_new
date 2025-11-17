@@ -40,6 +40,27 @@ try {
     fs.rmSync(sourceDir, { recursive: true, force: true });
   }
 
+  // .js → .cjs로 rename (CommonJS 명시)
+  function renameJsToCjs(dir) {
+    if (!fs.existsSync(dir)) return;
+
+    const files = fs.readdirSync(dir);
+    files.forEach(file => {
+      const filePath = path.join(dir, file);
+      const stat = fs.statSync(filePath);
+
+      if (stat.isDirectory()) {
+        renameJsToCjs(filePath);
+      } else if (file.endsWith('.js')) {
+        const newPath = filePath.replace(/\.js$/, '.cjs');
+        fs.renameSync(filePath, newPath);
+      }
+    });
+  }
+
+  renameJsToCjs(path.join(distElectron, 'main'));
+  renameJsToCjs(path.join(distElectron, 'preload'));
+
   console.log('✅ Electron build completed');
 } catch (error) {
   console.error('❌ Electron build failed:', error.message);
