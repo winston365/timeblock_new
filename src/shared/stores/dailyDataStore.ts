@@ -20,13 +20,11 @@ import {
   deleteTask as deleteTaskFromRepo,
   toggleTaskCompletion as toggleTaskInRepo,
   updateBlockState as updateBlockStateInRepo,
-  addXP,
   spendXP,
   updateQuestProgress,
-  increaseAffectionFromTask,
 } from '@/data/repositories';
-import { getLocalDate, calculateTaskXP } from '../lib/utils';
-import { useWaifuCompanionStore } from './waifuCompanionStore';
+import { getLocalDate } from '../lib/utils';
+import { taskCompletionService } from '@/shared/services/taskCompletion';
 
 interface DailyDataStore {
   // 상태
@@ -224,7 +222,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     }
   },
 
-  // Task 완료 토글 (Optimistic Update 패턴)
+  // Task 완료 토글 (Optimistic Update 패턴 + 서비스 레이어 분리)
   toggleTaskCompletion: async (taskId: string) => {
     const { currentDate, dailyData } = get();
 
@@ -233,7 +231,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       return;
     }
 
-    // 원본 데이터 백업 (롤백용) - try 블록 밖에서 선언
+    // 원본 데이터 백업 (롤백용)
     const originalTasks = dailyData.tasks;
     const originalBlockStates = dailyData.timeBlockStates;
 
@@ -261,65 +259,47 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         },
       });
 
-      // ✅ 백그라운드에서 DB 업데이트 및 XP/퀘스트 처리
+      // ✅ 백그라운드에서 DB 업데이트
       const updatedTask = await toggleTaskInRepo(taskId, currentDate);
 
-      // 완료 -> 미완료가 아니라, 미완료 -> 완료로 변경된 경우에만 XP & 퀘스트 & 와이푸 호감도 업데이트
+      // ✅ 완료 처리 (미완료 -> 완료인 경우에만)
       if (!wasCompleted && updatedTask.completed) {
-        // XP 추가
-        const xpAmount = calculateTaskXP(updatedTask);
-        await addXP(xpAmount, updatedTask.timeBlock || undefined);
+        // 블록 상태 및 작업 정보 준비
+        const blockState = updatedTask.timeBlock
+          ? dailyData.timeBlockStates[updatedTask.timeBlock]
+          : undefined;
+        const blockTasks = updatedTask.timeBlock
+          ? optimisticTasks.filter(t => t.timeBlock === updatedTask.timeBlock)
+          : undefined;
 
-        // 퀘스트 업데이트
-        await updateQuestProgress('complete_tasks', 1);
-        await updateQuestProgress('earn_xp', xpAmount);
+        // 🎯 TaskCompletionService에 위임 (모든 부수효과 처리)
+        const result = await taskCompletionService.handleTaskCompletion({
+          task: updatedTask,
+          wasCompleted,
+          date: currentDate,
+          blockState,
+          blockTasks,
+        });
 
-        // 와이푸 호감도 증가
-        await increaseAffectionFromTask();
-
-        // 와이푸 등장 (기본 완료 메시지)
-        let waifuMessage = `좋아! "${updatedTask.text}" 완료했구나! (+${xpAmount}XP)`;
-
-        // 잠금된 블록의 모든 작업이 완료되었는지 체크
-        if (updatedTask.timeBlock) {
-          // ✅ Optimistic data 사용 (DB 재조회 불필요)
-          const blockState = dailyData.timeBlockStates[updatedTask.timeBlock];
-          const blockTasks = optimisticTasks.filter(t => t.timeBlock === updatedTask.timeBlock);
-          const allCompleted = blockTasks.length > 0 && blockTasks.every(t => t.completed);
-
-          // 잠금된 블록이고 모든 작업이 완료되었으면 +40XP
-          if (blockState?.isLocked && allCompleted) {
-            await addXP(40, updatedTask.timeBlock);
-            // 완벽 블록 상태 업데이트
-            await updateBlockStateInRepo(
-              updatedTask.timeBlock,
-              { isPerfect: true },
-              currentDate
-            );
-            await updateQuestProgress('perfect_blocks', 1);
-            waifuMessage = `완벽해! ${updatedTask.timeBlock} 블록 완성! 🎉 (+40XP 보너스!)`;
-
-            // ✅ 블록 상태도 optimistic update
-            set({
-              dailyData: {
-                ...dailyData,
-                tasks: optimisticTasks,
-                timeBlockStates: {
-                  ...dailyData.timeBlockStates,
-                  [updatedTask.timeBlock]: {
-                    ...blockState,
-                    isPerfect: true,
-                  },
+        // 완벽한 블록 달성 시 UI 상태 업데이트
+        if (result.isPerfectBlock && updatedTask.timeBlock && blockState) {
+          set({
+            dailyData: {
+              ...dailyData,
+              tasks: optimisticTasks,
+              timeBlockStates: {
+                ...dailyData.timeBlockStates,
+                [updatedTask.timeBlock]: {
+                  ...blockState,
+                  isPerfect: true,
                 },
-                updatedAt: Date.now(),
               },
-            });
-          }
+              updatedAt: Date.now(),
+            },
+          });
         }
 
-        // 와이푸 컴패니언 등장
-        const waifuStore = useWaifuCompanionStore.getState();
-        waifuStore.show(waifuMessage);
+        console.log('[DailyDataStore] ✅ Task completion processed:', result);
       }
 
       // ✅ DB 재조회 제거 - optimistic update로 UI 이미 업데이트됨
