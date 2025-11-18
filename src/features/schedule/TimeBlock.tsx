@@ -33,6 +33,7 @@ interface TimeBlockProps {
   onDeleteTask: (taskId: string) => void;
   onToggleTask: (taskId: string) => void;
   onToggleLock?: () => void;
+  onUpdateBlockState?: (blockId: string, updates: Partial<TimeBlockState>) => Promise<void>;
   onDropTask?: (taskId: string, targetBlockId: TimeBlockId) => void;
 }
 
@@ -59,6 +60,7 @@ const TimeBlock = memo(function TimeBlock({
   onDeleteTask,
   onToggleTask,
   onToggleLock,
+  onUpdateBlockState,
   onDropTask: _onDropTask, // 사용하지 않음 (useDragDrop 훅으로 대체)
 }: TimeBlockProps) {
   const [isExpanded, setIsExpanded] = useState(isCurrentBlock);
@@ -255,14 +257,15 @@ const TimeBlock = memo(function TimeBlock({
       return;
     }
 
-    try {
-      const { updateBlockState } = await import('@/data/repositories/dailyDataRepository');
-      await updateBlockState(block.id, {
-        lockTimerStartedAt: Date.now(),
-        lockTimerDuration: 300000, // 5분
-      });
-    } catch (error) {
-      console.error('Failed to start lock timer:', error);
+    if (onUpdateBlockState) {
+      try {
+        await onUpdateBlockState(block.id, {
+          lockTimerStartedAt: Date.now(),
+          lockTimerDuration: 300000, // 5분
+        });
+      } catch (error) {
+        console.error('Failed to start lock timer:', error);
+      }
     }
   };
 
@@ -270,14 +273,15 @@ const TimeBlock = memo(function TimeBlock({
   const handleCancelLockTimer = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    try {
-      const { updateBlockState } = await import('@/data/repositories/dailyDataRepository');
-      await updateBlockState(block.id, {
-        lockTimerStartedAt: null,
-        lockTimerDuration: undefined,
-      });
-    } catch (error) {
-      console.error('Failed to cancel lock timer:', error);
+    if (onUpdateBlockState) {
+      try {
+        await onUpdateBlockState(block.id, {
+          lockTimerStartedAt: null,
+          lockTimerDuration: undefined,
+        });
+      } catch (error) {
+        console.error('Failed to cancel lock timer:', error);
+      }
     }
   };
 
