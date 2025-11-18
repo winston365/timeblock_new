@@ -98,11 +98,21 @@ export const shopItemsStrategy: SyncStrategy<ShopItem[]> = {
 };
 
 // ============================================================================
-// DailyGoals 전략 (Last-Write-Wins)
+// DailyGoals 전략 (Last-Write-Wins) - DEPRECATED
 // ============================================================================
 
 export const dailyGoalStrategy: SyncStrategy<DailyGoal[]> = {
   collection: 'dailyGoals',
   getSuccessMessage: (data, key) =>
     `DailyGoals synced: ${key} (${data.length} goals, ${data.reduce((sum, g) => sum + g.completedMinutes, 0)}m completed)`,
+};
+
+// ============================================================================
+// GlobalGoals 전략 (Last-Write-Wins)
+// ============================================================================
+
+export const globalGoalStrategy: SyncStrategy<DailyGoal[]> = {
+  collection: 'globalGoals',
+  getSuccessMessage: (data) =>
+    `GlobalGoals synced (${data.length} goals, ${data.reduce((sum, g) => sum + g.completedMinutes, 0)}m completed)`,
 };

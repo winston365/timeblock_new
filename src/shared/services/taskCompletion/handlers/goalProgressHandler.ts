@@ -1,18 +1,18 @@
 /**
  * Goal Progress Handler
  *
- * @role 작업 완료/미완료 시 연결된 목표의 진행률 자동 업데이트
- * @responsibility 단일 책임: 목표 진행률 재계산만 처리
+ * @role 작업 완료/미완료 시 연결된 전역 목표의 진행률 자동 업데이트
+ * @responsibility 단일 책임: 전역 목표 진행률 재계산만 처리
  */
 
 import type { TaskCompletionHandler, TaskCompletionContext } from '../types';
-import { recalculateGoalProgress } from '@/data/repositories/dailyGoalRepository';
+import { recalculateGlobalGoalProgress } from '@/data/repositories/globalGoalRepository';
 
 /**
- * 목표 진행률 업데이트 핸들러
+ * 전역 목표 진행률 업데이트 핸들러
  *
- * @description 작업이 완료/미완료될 때 연결된 목표의 진행률을 재계산합니다.
- * - plannedMinutes: 목표에 연결된 모든 작업의 adjustedDuration 합계
+ * @description 작업이 완료/미완료될 때 연결된 전역 목표의 진행률을 재계산합니다.
+ * - plannedMinutes: 목표에 연결된 모든 작업의 adjustedDuration 합계 (globalInbox + dailyData)
  * - completedMinutes: 목표에 연결된 완료된 작업의 actualDuration (또는 adjustedDuration) 합계
  */
 export class GoalProgressHandler implements TaskCompletionHandler {
@@ -27,9 +27,9 @@ export class GoalProgressHandler implements TaskCompletionHandler {
     }
 
     try {
-      // 목표 진행률 재계산
-      await recalculateGoalProgress(date, task.goalId);
-      console.log(`[${this.name}] ✅ Updated progress for goal: ${task.goalId}`);
+      // 전역 목표 진행률 재계산
+      await recalculateGlobalGoalProgress(task.goalId, date);
+      console.log(`[${this.name}] ✅ Updated progress for global goal: ${task.goalId}`);
     } catch (error) {
       console.error(`[${this.name}] ❌ Failed to update goal progress:`, error);
       // 에러가 발생해도 작업 완료 자체는 성공시킴 (목표 진행률은 나중에 수동으로도 재계산 가능)

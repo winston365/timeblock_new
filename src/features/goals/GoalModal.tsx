@@ -1,15 +1,14 @@
 /**
- * GoalModal - 목표 추가/수정 모달
+ * GoalModal - 전역 목표 추가/수정 모달
  *
- * @role 목표 생성 및 수정을 위한 폼 제공
+ * @role 날짜와 무관한 전역 목표 생성 및 수정을 위한 폼 제공
  * @input goal (수정 모드) 또는 undefined (생성 모드)
  * @output 목표 생성/수정 완료 시 콜백 실행
- * @dependencies dailyGoalRepository, useDailyDataStore
+ * @dependencies globalGoalRepository
  */
 
 import { useState, useEffect } from 'react';
-import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
-import { createGoal, updateGoal } from '@/data/repositories/dailyGoalRepository';
+import { addGlobalGoal, updateGlobalGoal } from '@/data/repositories/globalGoalRepository';
 import type { DailyGoal } from '@/shared/types/domain';
 import './goals.css';
 
@@ -42,7 +41,6 @@ const GOAL_COLORS = [
  * 목표 추가/수정 모달
  */
 export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalProps) {
-  const { currentDate, refresh } = useDailyDataStore();
   const isEditMode = !!goal;
 
   // 폼 상태
@@ -113,7 +111,7 @@ export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalP
 
       if (isEditMode) {
         // 수정 모드
-        await updateGoal(currentDate, goal.id, {
+        await updateGlobalGoal(goal.id, {
           title: title.trim(),
           targetMinutes: totalMinutes,
           icon: selectedIcon,
@@ -121,7 +119,7 @@ export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalP
         });
       } else {
         // 생성 모드
-        await createGoal(currentDate, {
+        await addGlobalGoal({
           title: title.trim(),
           targetMinutes: totalMinutes,
           icon: selectedIcon,
@@ -129,8 +127,8 @@ export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalP
         });
       }
 
-      // Store 강제 새로고침으로 최신 데이터 반영
-      await refresh();
+      // 목표 변경 이벤트 발생 (GoalPanel에서 새로고침)
+      window.dispatchEvent(new Event('goal-changed'));
 
       // 성공 시 콜백 실행 및 모달 닫기
       if (onSaved) {

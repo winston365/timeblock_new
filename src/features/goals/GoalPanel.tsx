@@ -1,14 +1,14 @@
 /**
- * GoalPanel - 일일 목표 표시 패널
+ * GoalPanel - 전역 목표 표시 패널
  *
- * @role 오늘 날짜의 목표 목록을 표시하고 진행 상황을 시각화
- * @input 없음 (store에서 데이터 가져옴)
+ * @role 날짜와 무관한 전역 목표 목록을 표시하고 진행 상황을 시각화
+ * @input 없음 (globalGoalRepository에서 데이터 가져옴)
  * @output 목표 카드 목록 + 추가/수정/삭제 UI
- * @dependencies dailyGoalRepository, useDailyDataStore
+ * @dependencies globalGoalRepository
  */
 
-import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
-import { deleteGoal } from '@/data/repositories/dailyGoalRepository';
+import { useState, useEffect } from 'react';
+import { loadGlobalGoals, deleteGlobalGoal } from '@/data/repositories/globalGoalRepository';
 import type { DailyGoal } from '@/shared/types/domain';
 import './goals.css';
 
@@ -159,11 +159,26 @@ function GoalProgressCard({
  * 목표 패널 메인 컴포넌트
  */
 export default function GoalPanel({ onOpenModal }: GoalPanelProps) {
-  // Store에서 직접 구독 - dailyData가 변경될 때마다 자동으로 재렌더링
-  const { dailyData, currentDate, loading, refresh } = useDailyDataStore();
+  const [goals, setGoals] = useState<DailyGoal[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Store의 goals를 직접 사용
-  const goals = (dailyData?.goals || []).sort((a, b) => a.order - b.order);
+  // 목표 로드
+  const loadGoals = async () => {
+    try {
+      setLoading(true);
+      const loadedGoals = await loadGlobalGoals();
+      setGoals(loadedGoals.sort((a, b) => a.order - b.order));
+    } catch (error) {
+      console.error('[GoalPanel] Failed to load goals:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 초기 로드
+  useEffect(() => {
+    loadGoals();
+  }, []);
 
   // 목표 삭제 핸들러
   const handleDelete = async (goalId: string) => {
@@ -174,9 +189,9 @@ export default function GoalPanel({ onOpenModal }: GoalPanelProps) {
     if (!confirmed) return;
 
     try {
-      await deleteGoal(currentDate, goalId);
-      // Store 강제 새로고침으로 최신 데이터 반영
-      await refresh();
+      await deleteGlobalGoal(goalId);
+      // 목표 목록 새로고침
+      await loadGoals();
     } catch (error) {
       console.error('[GoalPanel] Failed to delete goal:', error);
       alert('목표 삭제에 실패했습니다.');
@@ -196,6 +211,20 @@ export default function GoalPanel({ onOpenModal }: GoalPanelProps) {
       onOpenModal(undefined);
     }
   };
+
+  // 목표 새로고침 함수 (GoalModal에서 호출 가능하도록 외부에 노출)
+  useEffect(() => {
+    // 창에 이벤트 리스너 등록 (목표 변경 시 새로고침)
+    const handleGoalChanged = () => {
+      loadGoals();
+    };
+
+    window.addEventListener('goal-changed', handleGoalChanged);
+
+    return () => {
+      window.removeEventListener('goal-changed', handleGoalChanged);
+    };
+  }, []);
 
   if (loading) {
     return (

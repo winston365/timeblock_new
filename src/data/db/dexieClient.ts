@@ -18,7 +18,8 @@ import type {
   Settings,
   ChatHistory,
   DailyTokenUsage,
-  Task
+  Task,
+  DailyGoal
 } from '@/shared/types/domain';
 
 // ============================================================================
@@ -37,6 +38,7 @@ import type {
  * - chatHistory: Gemini 채팅 히스토리 (date를 primary key로)
  * - dailyTokenUsage: 일일 토큰 사용량 (date를 primary key로)
  * - globalInbox: 전역 인박스 작업 (날짜 독립적, id를 primary key로)
+ * - globalGoals: 전역 목표 (날짜 독립적, id를 primary key로)
  */
 export class TimeBlockDB extends Dexie {
   // 테이블 선언
@@ -50,6 +52,7 @@ export class TimeBlockDB extends Dexie {
   chatHistory!: Table<ChatHistory, string>;
   dailyTokenUsage!: Table<DailyTokenUsage, string>;
   globalInbox!: Table<Task, string>;
+  globalGoals!: Table<DailyGoal, string>;
 
   constructor() {
     super('timeblock_db');
@@ -159,6 +162,63 @@ export class TimeBlockDB extends Dexie {
       }
 
       console.log('✅ Goals field added to all dailyData records');
+    });
+
+    // 스키마 버전 5 - 전역 목표 추가
+    this.version(5).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      energyLevels: 'id, date, timestamp, hour',
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      globalInbox: 'id, createdAt, completed',
+      // globalGoals: 전역 목표 (날짜 독립적)
+      globalGoals: 'id, createdAt, order',
+    }).upgrade(async (tx) => {
+      // 기존 dailyData의 목표를 전역 목표로 마이그레이션
+      console.log('🔄 Migrating goals to globalGoals...');
+
+      const dailyDataTable = tx.table('dailyData');
+      const globalGoalsTable = tx.table('globalGoals');
+
+      const allDailyData = await dailyDataTable.toArray();
+      const migratedGoalsMap = new Map<string, any>(); // title을 키로 중복 제거
+
+      // 모든 날짜의 목표를 수집 (최신 목표 우선)
+      const sortedDailyData = allDailyData.sort((a, b) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+      for (const dayData of sortedDailyData) {
+        const goals = (dayData as any).goals || [];
+
+        for (const goal of goals) {
+          // 같은 제목의 목표가 이미 있으면 스킵 (최신 날짜 우선)
+          if (!migratedGoalsMap.has(goal.title)) {
+            // 진행률 초기화하여 저장
+            const globalGoal = {
+              ...goal,
+              plannedMinutes: 0,
+              completedMinutes: 0,
+              updatedAt: new Date().toISOString(),
+            };
+            migratedGoalsMap.set(goal.title, globalGoal);
+          }
+        }
+      }
+
+      // 전역 목표로 저장
+      let migratedCount = 0;
+      for (const goal of migratedGoalsMap.values()) {
+        await globalGoalsTable.put(goal);
+        migratedCount++;
+      }
+
+      console.log(`✅ Migrated ${migratedCount} unique goals to globalGoals (duplicates removed by title)`);
     });
   }
 }
