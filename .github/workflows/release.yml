@@ -13,125 +13,71 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # -----------------------------
       # 1. Checkout
-      # -----------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # -----------------------------
-      # 2. Setup Node
-      # -----------------------------
+      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      # -----------------------------
-      # 3. Cache (VITE + Electron)
-      # -----------------------------
-      - name: Cache Node Modules & Electron
-        uses: actions/cache@v4
-        with:
-          path: |
-            node_modules
-            ~/.npm
-            ~/.cache/electron
-            ~/.cache/electron-builder
-          key: ${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: ${{ runner.os }}-
-
-      # -----------------------------
-      # 4. Install dependencies
-      # -----------------------------
+      # 3. Install dependencies
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      # -----------------------------
-      # 5. Setup Git identity
-      # -----------------------------
-      - name: Setup Git Identity
+      # 4. Configure Git (npm version 이 commit & tag 할 수 있게)
+      - name: Configure Git
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-      # -----------------------------
-      # 6. Delete existing tag (PREVENT bump errors)
-      # -----------------------------
-      - name: Delete existing tag (local + remote)
+      # 5. Bump patch version (1.0.14 -> 1.0.15)
+      - name: Bump version
+        id: bump
         shell: bash
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          TAG="v$VERSION"
-          echo "Checking TAG: $TAG"
+          echo "Current version: $(node -p "require('./package.json').version")"
 
-          # Remote tag delete
-          if git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
-            echo "Deleting remote tag $TAG..."
-            git push --delete origin "$TAG" || true
-          fi
+          # 버전 올리면서 커밋 + 태그 생성 (npm이 알아서 함)
+          npm version patch -m "chore: bump version to %s"
 
-          # Local tag delete
-          if git tag | grep -q "$TAG"; then
-            echo "Deleting local tag $TAG..."
-            git tag -d "$TAG" || true
-          fi
+          # 변경된 버전 읽어서 output으로 저장
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "New version: $NEW_VERSION"
 
-      # -----------------------------
-      # 7. Bump version (patch)
-      # -----------------------------
-      - name: Bump Version
-        id: bump
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      # 6. Push commit + tag
+      - name: Push changes
         run: |
-          NEW_VERSION=$(npm version patch -m "chore: bump version to %s")
-          echo "newversion=$NEW_VERSION" >> $GITHUB_OUTPUT
+          git push origin HEAD:main --follow-tags
 
-      # -----------------------------
-      # 8. Push version & tag
-      # -----------------------------
-      - name: Push commit & tag
-        run: git push origin main --follow-tags
-
-      # -----------------------------
-      # 9. Build Electron (Windows)
-      # -----------------------------
+      # 7. Build Electron app (Windows)
       - name: Build Electron app
         run: npm run dist:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # -----------------------------
-      # 10. Verify build artifacts
-      # -----------------------------
-      - name: Verify build artifacts
-        shell: bash
-        run: |
-          echo "Checking release folder..."
-          ls -la release/
-
-          if ! compgen -G "release/*.exe" > /dev/null; then
-            echo "❌ ERROR: No exe file found"
-            exit 1
-          fi
-
-      # -----------------------------
-      # 11. Create GitHub Release
-      # -----------------------------
+      # 8. Create GitHub Release (exe + blockmap + latest.yml 업로드)
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.bump.outputs.newversion }}
-          name: Release ${{ steps.bump.outputs.newversion }}
+          tag_name: ${{ steps.bump.outputs.tag }}
+          name: Release ${{ steps.bump.outputs.tag }}
           body: |
-            ## TimeBlock Planner ${{ steps.bump.outputs.newversion }}
+            ## TimeBlock Planner ${{ steps.bump.outputs.version }}
 
-            - Auto Update Enabled
-            - Built via GitHub Actions CI
+            자동 빌드 및 배포.
 
+          draft: false
+          prerelease: false
           files: |
             release/*.exe
             release/*.exe.blockmap
@@ -139,11 +85,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # -----------------------------
-      # 12. Upload CI Artifacts (optional)
-      # -----------------------------
-      - name: Upload Artifacts
+      # 9. Upload CI artifacts (백업용)
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: win-build-${{ steps.bump.outputs.newversion }}
+          name: windows-build-${{ steps.bump.outputs.version }}
           path: release/
