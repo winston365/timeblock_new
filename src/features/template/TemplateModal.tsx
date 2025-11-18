@@ -48,6 +48,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const [preparation3, setPreparation3] = useState('');
   const [category, setCategory] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [newCategory, setNewCategory] = useState('');
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
@@ -81,6 +82,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
       setPreparation3(template.preparation3 || '');
       setCategory(template.category || '');
       setIsFavorite(template.isFavorite || false);
+      setImageUrl(template.imageUrl || '');
     }
   }, [template]);
 
@@ -152,6 +154,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           preparation3: preparation3.trim(),
           category: category.trim(),
           isFavorite,
+          imageUrl: imageUrl.trim(),
         });
       } else {
         // 신규 생성
@@ -170,7 +173,8 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           weeklyDays,
           intervalDays,
           category.trim(),
-          isFavorite
+          isFavorite,
+          imageUrl.trim()
         );
       }
 
@@ -423,6 +427,28 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                     </div>
                   </div>
                 )}
+
+                {/* 이미지 URL */}
+                <div className="form-group">
+                  <label htmlFor="template-image-url">이미지 URL (선택)</label>
+                  <input
+                    id="template-image-url"
+                    type="url"
+                    value={imageUrl}
+                    onChange={e => setImageUrl(e.target.value)}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                  <p className="form-hint">
+                    템플릿 카드에 표시할 썸네일 이미지 URL을 입력하세요.
+                  </p>
+                  {imageUrl && (
+                    <div className="image-preview">
+                      <img src={imageUrl} alt="미리보기" onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }} />
+                    </div>
+                  )}
+                </div>
 
                 {/* 즐겨찾기 */}
                 <div className="form-group form-group-checkbox">

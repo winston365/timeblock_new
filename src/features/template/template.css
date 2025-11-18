@@ -918,3 +918,27 @@
   background: var(--color-bg-elevated);
   border-color: var(--color-text-secondary);
 }
+
+/* ============================================
+   Image Preview
+============================================ */
+
+.image-preview {
+  margin-top: var(--spacing-2);
+  width: 100%;
+  max-width: 300px;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
