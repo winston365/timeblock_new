@@ -10,7 +10,6 @@
 
 import { useQuests } from '@/shared/hooks';
 import type { Quest } from '@/shared/types/domain';
-import './gamification.css';
 
 /**
  * 일일 퀘스트 패널
@@ -21,7 +20,11 @@ export default function QuestsPanel() {
   const { quests, loading } = useQuests();
 
   if (loading) {
-    return <div className="quests-loading">퀘스트 로딩 중...</div>;
+    return (
+      <div className="flex h-full items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-6 text-sm text-[var(--color-text-secondary)]">
+        퀘스트 로딩 중...
+      </div>
+    );
   }
 
   const completedCount = quests.filter(q => q.completed).length;
@@ -30,33 +33,38 @@ export default function QuestsPanel() {
     .reduce((sum, q) => sum + q.reward, 0);
 
   return (
-    <div className="quests-panel">
-      <div className="quests-header">
-        <h3>🎯 일일 퀘스트</h3>
-        <div className="quests-summary">
-          <span className="quest-count">
+    <section className="flex flex-col gap-4 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-[0_25px_45px_rgba(0,0,0,0.45)]">
+      <header className="flex items-center justify-between rounded-t-3xl border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-5 py-4">
+        <h3 className="text-lg font-semibold text-[var(--color-text)]">🎯 일일 퀘스트</h3>
+        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-secondary)]">
+          <span>
             {completedCount} / {quests.length}
           </span>
           {totalReward > 0 && (
-            <span className="quest-reward">+{totalReward} XP</span>
+            <span className="rounded-full bg-[var(--color-primary)]/90 px-3 py-1 text-[var(--color-text)]">
+              +{totalReward} XP
+            </span>
           )}
         </div>
-      </div>
+      </header>
 
-      <div className="quests-list">
+      <div className="flex flex-col gap-3 px-5 pb-4 pt-3">
         {quests.length === 0 ? (
-          <div className="quests-empty">오늘의 퀘스트가 없습니다</div>
+          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-6 text-center text-sm text-[var(--color-text-secondary)]">
+            <p className="font-semibold text-[var(--color-text)]">오늘의 퀘스트가 없습니다</p>
+            <p>내일을 기대해주세요!</p>
+          </div>
         ) : (
           quests.map(quest => <QuestItem key={quest.id} quest={quest} />)
         )}
       </div>
 
       {completedCount === quests.length && quests.length > 0 && (
-        <div className="quests-complete-banner">
+        <div className="rounded-b-3xl bg-gradient-to-br from-emerald-500 to-emerald-600 px-5 py-3 text-center text-sm font-semibold text-white">
           🎉 오늘의 퀘스트를 모두 완료했습니다!
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -79,31 +87,49 @@ function QuestItem({ quest }: { quest: Quest }) {
   };
 
   return (
-    <div className={`quest-item ${quest.completed ? 'completed' : ''}`}>
-      <div className="quest-icon">{getQuestIcon(quest.type)}</div>
+    <article
+      className={[
+        'relative flex gap-4 rounded-2xl border-2 p-4 transition-shadow duration-200',
+        quest.completed
+          ? 'border-[var(--color-success)] bg-[rgba(16,185,129,0.15)] shadow-[0_20px_30px_rgba(16,185,129,0.25)]'
+          : 'border-[var(--color-border)] bg-[var(--color-bg)] hover:border-[var(--color-primary)] hover:shadow-xl',
+      ].join(' ')}
+    >
+      <div
+        className={[
+          'flex h-10 w-10 items-center justify-center rounded-2xl text-xl',
+          quest.completed ? 'bg-[var(--color-success)] text-white' : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text)]',
+        ].join(' ')}
+      >
+        {getQuestIcon(quest.type)}
+      </div>
 
-      <div className="quest-content">
-        <div className="quest-title">{quest.title}</div>
-        <div className="quest-description">{quest.description}</div>
+      <div className="flex flex-1 flex-col gap-2">
+        <div className="text-sm font-semibold text-[var(--color-text)]">{quest.title}</div>
+        <p className="text-xs text-[var(--color-text-secondary)]">{quest.description}</p>
 
-        <div className="quest-progress-bar">
-          <div
-            className="quest-progress-fill"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-
-        <div className="quest-footer">
-          <span className="quest-progress-text">
-            {quest.progress} / {quest.target}
+        <div className="flex items-center gap-2 text-[var(--color-text-tertiary)] text-[11px]">
+          <span>{quest.progress} / {quest.target}</span>
+          <span className="flex-1">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-bg-tertiary)]">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
           </span>
-          <span className="quest-reward-text">+{quest.reward} XP</span>
         </div>
       </div>
 
+      <div className="flex flex-col items-end gap-2 text-xs font-semibold text-[var(--color-reward)]">
+        <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-[var(--color-reward)]">+{quest.reward} XP</span>
+      </div>
+
       {quest.completed && (
-        <div className="quest-complete-badge">✓</div>
+        <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-success)] text-sm font-semibold text-white shadow-lg">
+          ✓
+        </span>
       )}
-    </div>
+    </article>
   );
 }

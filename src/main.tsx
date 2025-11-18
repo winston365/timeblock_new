@@ -14,8 +14,6 @@ import QuickAddTask from './features/quickadd/QuickAddTask.tsx'
 import './styles/tailwind.css'
 import './styles/design-system.css'
 import './styles/globals.css'
-import './styles/layout.css'
-
 // 테마 초기화: localStorage에서 테마를 읽어와서 적용
 const savedTheme = localStorage.getItem('theme');
 if (savedTheme) {

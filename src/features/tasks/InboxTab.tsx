@@ -6,9 +6,8 @@
  * @output 인박스 작업 목록, 추가/편집/삭제 버튼, 드래그앤드롭 영역을 포함한 UI
  * @external_dependencies
  *   - useDailyData: 일일 데이터 및 작업 관리 훅
- *   - TaskCard: 개별 작업 카드 컴포넌트
+ *   - TaskCard: 개별 작업 카드 컴포넌트 (Tailwind)
  *   - TaskModal: 작업 추가/편집 모달 컴포넌트
- *   - tasks.css: 스타일시트
  */
 
 import { useState, useEffect } from 'react';
@@ -25,7 +24,6 @@ import { generateId } from '@/shared/lib/utils';
 import TaskCard from '@/features/schedule/TaskCard';
 import TaskModal from '@/features/schedule/TaskModal';
 import { useDragDropManager } from '@/features/schedule/hooks/useDragDropManager';
-import './tasks.css';
 
 /**
  * 인박스 탭 컴포넌트
@@ -181,31 +179,46 @@ export default function InboxTab() {
   };
 
   if (loading) {
-    return <div className="tab-loading">로딩 중...</div>;
+    return (
+      <div className="flex h-full items-center justify-center px-4 py-6 text-sm text-[var(--color-text-secondary)]">
+        로딩 중...
+      </div>
+    );
   }
 
+  const tabContentClass = [
+    'flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-5 transition-all',
+    isDragOver
+      ? 'border-2 border-[var(--color-primary)]/80 bg-[rgba(99,102,241,0.1)]'
+      : 'border border-transparent',
+  ].join(' ');
+
   return (
-    <div className="inbox-tab">
-      <div className="tab-header">
-        <h3>📥 인박스</h3>
-        <button className="add-btn" onClick={handleAddTask}>
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3">
+        <h3 className="text-base font-semibold text-[var(--color-text)]">📥 인박스</h3>
+        <button
+          className="rounded-2xl bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:opacity-90"
+          onClick={handleAddTask}
+        >
           ➕ 추가
         </button>
       </div>
 
       <div
-        className={`tab-content ${isDragOver ? 'drag-over' : ''}`}
+        className={tabContentClass}
+        style={{ maxHeight: 'calc(100vh - 220px)' }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         {inboxTasks.length === 0 ? (
-          <div className="empty-state">
-            <p>📭 인박스가 비어있습니다</p>
-            <p className="empty-hint">할 일을 추가하거나 블록에서 이동하세요</p>
+          <div className="flex h-full flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 text-center text-sm text-[var(--color-text-secondary)]">
+            <p className="text-lg font-semibold text-[var(--color-text)]">📭 인박스가 비어있습니다</p>
+            <p className="text-xs text-[var(--color-text-tertiary)]">할 일을 추가하거나 블록에서 이동하세요</p>
           </div>
         ) : (
-          <div className="task-list-vertical">
+          <div className="flex flex-col gap-3">
             {inboxTasks.map(task => (
               <TaskCard
                 key={task.id}
@@ -218,11 +231,9 @@ export default function InboxTab() {
                   await refreshInboxTasks();
                 }}
                 onDragEnd={async () => {
-                  // Refresh after drag ends to remove task if it was moved to a time block
-                  // 충분한 시간을 주어 DB 업데이트와 dailyDataStore 재로드 완료
                   setTimeout(() => refreshInboxTasks(), 500);
                 }}
-                hideMetadata={true}
+                hideMetadata
                 compact
               />
             ))}

@@ -22,7 +22,6 @@ import {
 import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier } from '@/features/waifu/waifuImageUtils';
 import baseImage from '@/features/waifu/base.png';
 import type { GeminiChatMessage } from '@/shared/types/domain';
-import './gemini-fullscreen.css';
 
 const MAX_HISTORY_MESSAGES = 20;
 
@@ -239,127 +238,182 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
   if (!isOpen) return null;
 
   return (
-    <div className="gemini-fullscreen-overlay">
-      <div className="gemini-fullscreen-container">
-        {/* 좌측: 와이푸 이미지 (50%) */}
-        <div className="fullscreen-waifu-section">
-          {waifuImagePath ? (
-            <img
-              src={waifuImagePath}
-              alt={`와이푸 (호감도 ${waifuState?.affection}%)`}
-              className={`fullscreen-waifu-image waifu-turn-${waifuTurnState}`}
-            />
-          ) : (
-            <div className="fullscreen-waifu-placeholder">
-              <div className="waifu-placeholder-icon">🥰</div>
-              <p>와이푸 이미지 로딩 중...</p>
+    <div
+      className="fixed inset-0 z-[1000] flex items-stretch bg-[var(--color-bg-base)]/90 backdrop-blur-lg"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="grid h-full w-full overflow-hidden lg:grid-cols-[1fr_1fr]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 좌측: 와이푸 이미지 */}
+        <div className="relative flex h-full min-h-screen items-center justify-center bg-[var(--color-bg-surface)] px-6 py-8">
+          <div
+            className="group relative flex w-full flex-col items-center justify-center overflow-hidden rounded-[32px] border border-white/5 bg-[var(--color-bg-surface)] p-6 shadow-[0_30px_70px_rgba(0,0,0,0.55)] transition duration-300 hover:-translate-y-1 hover:scale-[1.002]"
+            onClick={changeWaifuImage}
+            role="button"
+            tabIndex={0}
+            aria-label={`와이푸 이미지. 클릭 시 포즈 변경. 현재 호감도: ${waifuState?.affection}%, 기분: ${currentEnergy ? '현재 에너지' : ''}`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                changeWaifuImage();
+              }
+            }}
+          >
+            {waifuImagePath ? (
+              <img
+                src={waifuImagePath}
+                alt={`와이푸 (호감도 ${waifuState?.affection}%)`}
+                className={`max-h-[80vh] w-auto transform object-contain drop-shadow-[0_25px_60px_rgba(0,0,0,0.45)] transition duration-500 ${waifuTurnState === 'listening' ? 'opacity-70 blur-sm' : 'opacity-100'} animate-[fadeInScale_0.6s_ease-out]`}
+              />
+            ) : (
+              <div className="flex h-[480px] flex-col items-center justify-center gap-3 rounded-[28px] border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg)] text-center leading-relaxed text-sm text-[var(--color-text-secondary)]">
+                <span className="text-5xl opacity-70">🥰</span>
+                <p>와이푸 이미지 로딩 중...</p>
+                <p className="text-[0.65rem] text-[var(--color-text-tertiary)]">
+                  /public/assets/waifu/poses/ 아래에<br />
+                  호감도별 이미지를 넣어주세요
+                </p>
+              </div>
+            )}
+            <div className="pointer-events-none absolute bottom-4 flex -translate-x-1/2 transform rounded-full border border-white/10 bg-black/60 px-4 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.4em] text-white opacity-0 transition duration-300 group-hover:opacity-100">
+              클릭하여 포즈 변경 ({clickCount}/4)
             </div>
-          )}
 
-          {/* 상태 정보 오버레이 */}
-          <div className="waifu-info-overlay">
-            <div className="info-item">
-              <span className="info-label">호감도</span>
-              <span className="info-value">{waifuState?.affection ?? 0}%</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">레벨</span>
-              <span className="info-value">{gameState?.level ?? 1}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">오늘 XP</span>
-              <span className="info-value">{gameState?.dailyXP ?? 0}</span>
+            <div className="absolute inset-x-6 top-6 rounded-2xl border border-[var(--color-border)] bg-[rgba(15,23,42,0.65)] p-4 text-[0.75rem] text-[var(--color-text-secondary)] backdrop-blur">
+              <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em]">
+                <span>호감도</span>
+                <span className="font-semibold text-[var(--color-text)]">
+                  {waifuState?.affection ?? 0}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em]">
+                <span>레벨</span>
+                <span className="font-semibold text-[var(--color-text)]">{gameState?.level ?? 1}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em]">
+                <span>오늘 XP</span>
+                <span className="font-semibold text-[var(--color-text)]">{gameState?.dailyXP ?? 0}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* 우측: 채팅 인터페이스 (50%) */}
-        <div className="fullscreen-chat-section">
-          {/* 헤더 */}
-          <div className="fullscreen-chat-header">
-            <h2>💬 AI와의 대화</h2>
-            <div className="header-actions">
+        {/* 우측: Gemini 채팅 */}
+        <div className="flex h-full min-h-screen flex-col bg-[var(--color-bg-base)] shadow-[inset_0_0_64px_rgba(0,0,0,0.4)]">
+          <header className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6 py-5">
+            <h2 className="text-xl font-semibold text-[var(--color-text)]">💬 AI와의 대화</h2>
+            <div className="flex items-center gap-2">
               {messages.length > 0 && (
-                <button className="btn-clear" onClick={clearChat}>
+                <button
+                  className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-text)]"
+                  onClick={clearChat}
+                >
                   🗑️ 지우기
                 </button>
               )}
-              <button className="btn-close-fullscreen" onClick={onClose} aria-label="닫기">
+              <button
+                className="rounded-2xl bg-[var(--color-danger)] px-4 py-1 text-lg font-bold uppercase tracking-[0.3em] text-white transition hover:bg-[#dc2626]/90"
+                onClick={onClose}
+                aria-label="닫기"
+              >
                 ✕
               </button>
             </div>
-          </div>
+          </header>
 
-          {/* 메시지 목록 */}
-          <div className="fullscreen-messages">
+          <div
+            className="flex flex-1 min-h-0 flex-col gap-5 overflow-y-auto px-6 py-8"
+            ref={messagesEndRef}
+          >
             {messages.length === 0 && (
-              <div className="chat-welcome">
-                <div className="welcome-icon">🤖</div>
-                <h3>안녕하세요!</h3>
+              <div className="flex h-full flex-1 flex-col items-center justify-center gap-4 text-center text-sm text-[var(--color-text-secondary)]">
+                <div className="text-5xl">🤖</div>
+                <h3 className="text-2xl font-semibold text-[var(--color-text)]">안녕하세요!</h3>
                 <p>무엇을 도와드릴까요?</p>
-                <div className="example-questions">
-                  <button className="example-btn" onClick={() => setInput('오늘 할 일 추천해줘')}>
-                    오늘 할 일 추천해줘
-                  </button>
-                  <button className="example-btn" onClick={() => setInput('작업 우선순위를 어떻게 정해야 할까?')}>
-                    작업 우선순위를 어떻게 정해야 할까?
-                  </button>
-                  <button className="example-btn" onClick={() => setInput('에너지가 낮을 때 뭐 하면 좋을까?')}>
-                    에너지가 낮을 때 뭐 하면 좋을까?
-                  </button>
+                <div className="flex flex-col gap-2">
+                  {[
+                    '오늘 할 일 추천해줘',
+                    '작업 우선순위를 어떻게 정해야 할까?',
+                    '에너지가 낮을 때 뭐 하면 좋을까?',
+                  ].map((example) => (
+                    <button
+                      key={example}
+                      className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-4 py-2 text-left text-sm font-semibold text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-text)]"
+                      onClick={() => setInput(example)}
+                    >
+                      {example}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
 
-            {messages.map((msg, index) => (
-              <div
-                key={msg.id}
-                className={`fullscreen-message ${msg.role} fade-in`}
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="message-avatar">
-                  {msg.role === 'user' ? '👤' : '🤖'}
-                </div>
-                <div className="message-bubble">
-                  <div className="message-text">{msg.text}</div>
-                  <div className="message-time">
-                    {new Date(msg.timestamp).toLocaleTimeString('ko-KR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </div>
-                </div>
-              </div>
-            ))}
+            {messages.length > 0 && (
+              <>
+                {messages.map((msg, index) => {
+                  const isUser = msg.role === 'user';
+                  const bubbleClasses = [
+                    'max-w-[70%] rounded-[18px] border px-4 py-3 text-sm leading-relaxed transition-transform duration-200',
+                    isUser
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-[0_10px_25px_rgba(99,102,241,0.2)]'
+                      : 'border border-[var(--color-border)] bg-[var(--color-bg-surface)] text-[var(--color-text)]',
+                  ].join(' ');
+
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex gap-4 ${isUser ? 'flex-row-reverse' : ''}`}
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                    >
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-xl shadow-[0_8px_20px_rgba(0,0,0,0.25)]">
+                        {isUser ? '👤' : '🤖'}
+                      </div>
+                      <div className={`animate-[slideInUp_0.4s_ease-out] ${bubbleClasses}`}>
+                        <div className="text-[var(--color-text)]">{msg.text}</div>
+                        <div className="mt-2 text-[0.65rem] text-[var(--color-text-tertiary)]">
+                          {new Date(msg.timestamp).toLocaleTimeString('ko-KR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
 
             {loading && (
-              <div className="fullscreen-message model fade-in">
-                <div className="message-avatar">🤖</div>
-                <div className="message-bubble">
-                  <div className="message-loading">
-                    <span className="loading-dot"></span>
-                    <span className="loading-dot"></span>
-                    <span className="loading-dot"></span>
+              <div className="flex gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-xl">
+                  🤖
+                </div>
+                <div className="flex animate-[slideInUp_0.4s_ease-out] items-center rounded-[18px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+                  <div className="flex gap-2 text-[var(--color-primary)]">
+                    <span className="animate-loadingDot rounded-full bg-[var(--color-primary)] p-2 text-transparent">·</span>
+                    <span className="animate-loadingDot rounded-full bg-[var(--color-primary)] p-2 text-transparent animation-delay-[0.2s]">·</span>
+                    <span className="animate-loadingDot rounded-full bg-[var(--color-primary)] p-2 text-transparent animation-delay-[0.4s]">·</span>
                   </div>
                 </div>
               </div>
             )}
 
             {error && (
-              <div className="chat-error">
-                <span>⚠️ {error}</span>
+              <div className="rounded-2xl border border-[var(--color-danger)] bg-[rgba(239,68,68,0.15)] px-4 py-3 text-sm text-[var(--color-danger)] shadow-[0_12px_30px_rgba(239,68,68,0.35)]">
+                ⚠️ {error}
               </div>
             )}
-
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} className="h-0" />
           </div>
 
-          {/* 입력 영역 */}
-          <div className="fullscreen-input-container">
+          <div className="flex flex-col gap-3 border-t border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6 py-5 md:flex-row">
             <input
               ref={inputRef}
               type="text"
-              className="fullscreen-input"
+              className="flex-1 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/40"
               placeholder="메시지를 입력하세요... (Enter로 전송, ESC로 닫기)"
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -367,11 +421,11 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
               disabled={loading}
             />
             <button
-              className="btn-send-fullscreen"
+              className="rounded-2xl bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleSend}
               disabled={loading || !input.trim()}
             >
-              {loading ? '⏳' : '📤'}
+              {loading ? '⏳' : '📤 전송'}
             </button>
           </div>
         </div>

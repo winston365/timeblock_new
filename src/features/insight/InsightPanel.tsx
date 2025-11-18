@@ -263,61 +263,66 @@ export default function InsightPanel() {
   const progress = totalTime > 0 ? ((totalTime - timeLeft) / totalTime) * 100 : 0;
 
   return (
-    <aside className="insight-panel" role="complementary" aria-label="오늘의 인사이트">
-      <div className="insight-panel-header">
-        <div className="insight-header-top">
-          <h3>💡 오늘의 인사이트</h3>
-          <button
-            className="insight-refresh-btn"
-            onClick={() => generateInsight(false)}
-            disabled={loading}
-            aria-label="인사이트 새로고침"
-          >
-            🔄
-          </button>
-        </div>
-        {/* 타이머 프로그레스 바 */}
-        {totalTime > 0 && !loading && (
-          <div className="insight-timer-container">
-            <div className="insight-timer-progress" style={{ width: `${progress}%` }} />
-            <span className="insight-timer-text">
-              다음 갱신까지 {Math.floor(timeLeft / 60)}분 {timeLeft % 60}초
-            </span>
-          </div>
-        )}
+    <aside
+      className="flex w-full max-w-[320px] flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 shadow-[0_20px_40px_rgba(0,0,0,0.45)]"
+      role="complementary"
+      aria-label="오늘의 인사이트"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-lg font-semibold tracking-tight text-[var(--color-text)]">💡 오늘의 인사이트</h3>
+        <button
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] text-sm transition hover:border-[var(--color-primary)]"
+          onClick={() => generateInsight(false)}
+          disabled={loading}
+          aria-label="인사이트 새로고침"
+        >
+          🔄
+        </button>
       </div>
 
-      <div className="insight-content">
+      {totalTime > 0 && !loading && (
+        <div className="flex flex-col gap-1 text-[var(--color-text-secondary)]">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[rgba(255,255,255,0.05)]">
+            <div
+              className="h-full rounded-full bg-[var(--color-primary)] transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="text-xs">
+            다음 갱신까지 {Math.floor(timeLeft / 60)}분 {timeLeft % 60}초
+          </span>
+        </div>
+      )}
+
+      <div className="min-h-[140px] rounded-2xl border border-[var(--color-border-light)] bg-[var(--color-bg)] p-3 text-sm leading-relaxed text-[var(--color-text-secondary)]">
         {loading && (
-          <div className="insight-loading">
-            <div className="insight-loading-icon">🤔</div>
+          <div className="flex flex-col items-center gap-2 text-[var(--color-text-secondary)]">
+            <span className="text-2xl">🤔</span>
             <p>인사이트 생성 중...</p>
           </div>
         )}
 
-        {error && !loading && (
-          <div className="insight-error" style={{ whiteSpace: 'pre-line' }}>
-            {error}
-          </div>
+        {!loading && error && (
+          <div className="whitespace-pre-line text-[var(--color-danger)]">{error}</div>
         )}
 
-        {!insight && !loading && !error && (
-          <div className="insight-empty">
-            <div className="insight-empty-icon">💡</div>
+        {!loading && !error && !insight && (
+          <div className="flex flex-col items-center gap-2 text-[var(--color-text-secondary)]">
+            <span className="text-2xl">💡</span>
             <p>새로고침 버튼을 눌러 인사이트를 생성하세요</p>
           </div>
         )}
 
-        {insight && !loading && !error && (
+        {!loading && !error && insight && (
           <div
-            className="insight-text"
+            className="space-y-2 text-[var(--color-text)]"
             dangerouslySetInnerHTML={{ __html: parsedHtml }}
           />
         )}
       </div>
 
       {lastUpdated && settings && (
-        <div className="insight-footer">
+        <div className="text-xs uppercase tracking-wide text-[var(--color-text-secondary)]">
           마지막 업데이트: {lastUpdated.toLocaleTimeString('ko-KR')} • {settings.autoMessageInterval || 15}분마다 자동 갱신
         </div>
       )}

@@ -26,37 +26,45 @@ export default function RightPanel({
   onTabChange,
   onShopPurchaseSuccess
 }: RightPanelProps) {
+  const tabClassBase =
+    'flex-1 rounded-2xl border px-3 py-2 text-left text-sm font-semibold transition-colors';
+
   return (
-    <aside className="right-panel" aria-label="퀘스트 및 상점 패널" role="complementary">
-      <div className="right-panel-tabs" role="tablist">
+    <aside
+      className="flex h-full min-h-0 flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 shadow-[0_20px_40px_rgba(0,0,0,0.35)]"
+      aria-label="퀘스트 및 상점 패널"
+      role="complementary"
+    >
+      <div className="flex gap-2" role="tablist">
         <button
-          className={`right-panel-tab ${activeTab === 'quest' ? 'active' : ''}`}
+          className={`${tabClassBase} ${activeTab === 'quest' ? 'border-[var(--color-primary)] bg-[var(--color-bg)] text-[var(--color-text)] shadow-inner' : 'border-transparent bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'}`}
           onClick={() => onTabChange('quest')}
           role="tab"
           aria-selected={activeTab === 'quest'}
           aria-controls="right-panel-quest"
           id="tab-quest"
         >
-          <span aria-hidden="true">🎯</span> 퀘스트
+          <span aria-hidden="true" className="mr-1">🎯</span> 퀘스트
         </button>
         <button
-          className={`right-panel-tab ${activeTab === 'shop' ? 'active' : ''}`}
+          className={`${tabClassBase} ${activeTab === 'shop' ? 'border-[var(--color-primary)] bg-[var(--color-bg)] text-[var(--color-text)] shadow-inner' : 'border-transparent bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'}`}
           onClick={() => onTabChange('shop')}
           role="tab"
           aria-selected={activeTab === 'shop'}
           aria-controls="right-panel-shop"
           id="tab-shop"
         >
-          <span aria-hidden="true">🛒</span> 상점
+          <span aria-hidden="true" className="mr-1">🛒</span> 상점
         </button>
       </div>
 
-      <div className="right-panel-content">
+      <div className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border-light)] bg-[var(--color-bg)] p-3">
         {activeTab === 'quest' && (
           <div
             role="tabpanel"
             id="right-panel-quest"
             aria-labelledby="tab-quest"
+            className="h-full min-h-[320px]"
           >
             <QuestsPanel />
           </div>
@@ -67,6 +75,7 @@ export default function RightPanel({
             role="tabpanel"
             id="right-panel-shop"
             aria-labelledby="tab-shop"
+            className="h-full min-h-[320px]"
           >
             <ShopPanel onPurchaseSuccess={onShopPurchaseSuccess} />
           </div>

@@ -52,9 +52,35 @@ const config: Config = {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(100%)' },
         },
+        fadeIn: {
+          '0%': { opacity: 0 },
+          '100%': { opacity: 1 },
+        },
+        fadeInScale: {
+          '0%': { opacity: 0, transform: 'scale(0.9)' },
+          '100%': { opacity: 1, transform: 'scale(1)' },
+        },
+        slideInUp: {
+          '0%': { opacity: 0, transform: 'translateY(20px)' },
+          '100%': { opacity: 1, transform: 'translateY(0)' },
+        },
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-5px)' },
+          '20%, 40%, 60%, 80%': { transform: 'translateX(5px)' },
+        },
+        loadingDot: {
+          '0%, 60%, 100%': { transform: 'translateY(0)', opacity: 0.5 },
+          '30%': { transform: 'translateY(-10px)', opacity: 1 },
+        },
       },
       animation: {
         shimmer: 'shimmer 2s infinite linear',
+        fadeIn: 'fadeIn 0.35s ease-out',
+        fadeInScale: 'fadeInScale 0.6s ease-out',
+        slideInUp: 'slideInUp 0.4s ease-out',
+        shake: 'shake 0.4s ease-out',
+        loadingDot: 'loadingDot 1.4s infinite ease-in-out',
       },
     },
   },

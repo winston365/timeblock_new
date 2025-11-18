@@ -411,187 +411,184 @@ const TimeBlock = memo(function TimeBlock({
       onDrop={handleDropWrapper}
       style={blockStyle}
     >
-      <div className={blockHeaderClass} onClick={() => setIsExpanded(!isExpanded)}>
-        <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          {/* 왼쪽: 잠금 버튼 / 타이머 버튼 */}
-          <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-text-secondary)]">
-            {state?.isLocked ? (
-              // 잠긴 상태
-              <button
-                className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-emerald-400/60 bg-emerald-500/15 text-xl text-emerald-100 shadow-lg transition hover:scale-105 disabled:cursor-not-allowed"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!isPastBlock) {
-                    onToggleLock?.();
-                  }
-                }}
-                disabled={isPastBlock}
-                title={isPastBlock ? "지난 시간대는 잠금 해제할 수 없습니다" : "잠금 해제 (패널티: -40 XP)"}
-              >
-                🔒
-              </button>
-            ) : state?.lockTimerStartedAt ? (
-              // 타이머 진행 중
-              <div className="flex flex-wrap items-center gap-3" onClick={(e) => e.stopPropagation()}>
+    <div className="relative z-20 flex flex-col gap-2">
+        <div className={blockHeaderClass} onClick={() => setIsExpanded(!isExpanded)}>
+          <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            {/* 왼쪽: 잠금 버튼 / 타이머 버튼 */}
+            <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-text-secondary)]">
+              {state?.isLocked ? (
+                // 잠긴 상태
                 <button
-                  className="rounded-2xl border-2 border-rose-400/60 bg-rose-500/20 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:scale-105"
-                  onClick={handleCancelLockTimer}
-                  title="타이머 취소"
+                  className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-emerald-400/60 bg-emerald-500/15 text-xl text-emerald-100 shadow-lg transition hover:scale-105 disabled:cursor-not-allowed"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isPastBlock) {
+                      onToggleLock?.();
+                    }
+                  }}
+                  disabled={isPastBlock}
+                  title={isPastBlock ? "지난 시간대는 잠금 해제할 수 없습니다" : "잠금 해제 (패널티: -40 XP)"}
                 >
-                  ❌
+                  🔒
                 </button>
-                <div className="flex flex-col items-center gap-2 rounded-2xl border-2 border-indigo-400/60 bg-indigo-500/15 px-4 py-3 text-center text-sm text-[var(--color-text)] shadow-[0_10px_30px_rgba(79,70,229,0.25)]">
-                  <span className="text-xl">⏰</span>
-                  <span className="font-mono text-lg tracking-[0.2em] text-white">{formatRemainingTime()}</span>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/30">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-indigo-300 via-indigo-400 to-violet-400 transition-all duration-300"
-                      style={{ width: `${getTimerProgress()}%` }}
-                    />
+              ) : state?.lockTimerStartedAt ? (
+                // 타이머 진행 중
+                <div className="flex flex-wrap items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className="rounded-2xl border-2 border-rose-400/60 bg-rose-500/20 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:scale-105"
+                    onClick={handleCancelLockTimer}
+                    title="타이머 취소"
+                  >
+                    ❌
+                  </button>
+                  <div className="flex flex-col items-center gap-2 rounded-2xl border-2 border-indigo-400/60 bg-indigo-500/15 px-4 py-3 text-center text-sm text-[var(--color-text)] shadow-[0_10px_30px_rgba(79,70,229,0.25)]">
+                    <span className="text-xl">⏰</span>
+                    <span className="font-mono text-lg tracking-[0.2em] text-white">{formatRemainingTime()}</span>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/30">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-indigo-300 via-indigo-400 to-violet-400 transition-all duration-300"
+                        style={{ width: `${getTimerProgress()}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : isPastBlock ? (
-              // 지난 블록
-              <button className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-white/10 text-xl text-white/40" disabled title="지난 시간대는 잠금할 수 없습니다">
-                🔓
-              </button>
-            ) : (
-              // 타이머 시작 버튼
-              <button
-                className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg transition hover:translate-y-[-1px] hover:shadow-xl"
-                onClick={handleStartLockTimer}
-                title="3분 후 자동 잠금 시작 (완벽 달성 시: +40 XP)"
-              >
-                <span>⏰</span>
-                <span>3분 뒤 잠금</span>
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2 text-sm text-[var(--color-text-secondary)] sm:flex-row sm:items-center sm:gap-4">
-            <span className="text-2xl font-bold tracking-[0.08em] text-[var(--color-text)]">{block.start.toString().padStart(2, '0')}-{block.end.toString().padStart(2, '0')}</span>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-              {state?.isLocked ? (
-                // 잠긴 블록: 과거 블록이면서 미완료 작업이 있으면 "계획 실패"
-                isPastBlock && tasks.some(t => !t.completed) ? (
-                  <span className="rounded-full border border-rose-400/50 bg-rose-500/10 px-3 py-1 text-rose-100">❌ 계획 실패</span>
-                ) : (
-                  <span className="rounded-full border border-amber-300/50 bg-amber-500/10 px-3 py-1 text-amber-100">✨ 40 XP 보너스 도전 중!</span>
-                )
+              ) : isPastBlock ? (
+                // 지난 블록
+                <button className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-white/10 text-xl text-white/40" disabled title="지난 시간대는 잠금할 수 없습니다">
+                  🔓
+                </button>
               ) : (
-                <>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">📋 {tasks.length}</span>
-                  {maxXP > 0 && <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">✨ ~{maxXP}XP</span>}
-                  {!isPastBlock && !state?.lockTimerStartedAt && <span className="rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1 text-amber-100">⚠️ 잠금 필요</span>}
-                </>
+                // 타이머 시작 버튼
+                <button
+                  className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg transition hover:translate-y-[-1px] hover:shadow-xl"
+                  onClick={handleStartLockTimer}
+                  title="3분 후 자동 잠금 시작 (완벽 달성 시: +40 XP)"
+                >
+                  <span>⏰</span>
+                  <span>3분 뒤 잠금</span>
+                </button>
               )}
             </div>
+
+            <div className="flex flex-col gap-2 text-sm text-[var(--color-text-secondary)] sm:flex-row sm:items-center sm:gap-4">
+              <span className="text-2xl font-bold tracking-[0.08em] text-[var(--color-text)]">{block.start.toString().padStart(2, '0')}-{block.end.toString().padStart(2, '0')}</span>
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                {state?.isLocked ? (
+                  isPastBlock && tasks.some(t => !t.completed) ? (
+                    <span className="rounded-full border border-rose-400/50 bg-rose-500/10 px-3 py-1 text-rose-100">❌ 계획 실패</span>
+                  ) : (
+                    <span className="rounded-full border border-amber-300/50 bg-amber-500/10 px-3 py-1 text-amber-100">✨ 40 XP 보너스 도전 중!</span>
+                  )
+                ) : (
+                  <>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">📋 {tasks.length}</span>
+                    {maxXP > 0 && <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">✨ ~{maxXP}XP</span>}
+                    {!isPastBlock && !state?.lockTimerStartedAt && <span className="rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1 text-amber-100">⚠️ 잠금 필요</span>}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end">
+            {isCurrentBlock && timeRemaining && (
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-[var(--color-text-secondary)] shadow-inner" data-tooltip={getTooltipText()}>
+                <div className="flex flex-col gap-3">
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border text-2xl ${statusStyle.icon}`}>
+                    {getStatusIcon()}
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className="w-14 text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">📋 계획</span>
+                      <div className="flex-1">
+                        <div
+                          className={`h-full rounded-full bg-gradient-to-r ${statusStyle.fill}`}
+                          style={{ width: `${plannedWidth}%` }}
+                        />
+                      </div>
+                      <span className="w-14 text-right font-semibold text-[var(--color-text)]">{formatMinutesToHM(pendingDuration)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="w-14 text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">⏱️ 남은</span>
+                      <div className="flex-1">
+                        <div
+                          className={`h-full rounded-full bg-gradient-to-r from-indigo-300 via-indigo-400 to-violet-400`}
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <span className="w-14 text-right font-semibold text-[var(--color-text)]">{formatMinutesToHM(remainingMinutes)}</span>
+                    </div>
+                  </div>
+
+                  <div className={`mt-3 inline-flex w-full items-center justify-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.4em] ${statusStyle.badge}`}>
+                    {getStatusText()}
+                  </div>
+                  <p className="mt-2 text-center text-[10px] uppercase tracking-[0.4em] text-[var(--color-text-tertiary)]">
+                    {getTooltipText()}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center justify-end">
-          {/* 오른쪽: 시간 표시 (현재 시간대 블록만) */}
-          {isCurrentBlock && timeRemaining && (
-            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-[var(--color-text-secondary)] shadow-inner" data-tooltip={getTooltipText()}>
-              <div className="flex flex-col gap-3">
-                {/* 상태 아이콘 */}
-                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border text-2xl ${statusStyle.icon}`}>
-                  {getStatusIcon()}
-                </div>
+        {state?.isPerfect && (
+          <div className="absolute right-4 top-4 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100 shadow-inner">✨ 완벽한 계획!</div>
+        )}
+        {state?.isFailed && (
+          <div className="absolute right-4 top-4 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1 text-xs font-semibold text-rose-100 shadow-inner">❌ 계획 실패</div>
+        )}
 
-                {/* 시간 정보와 바 */}
-                <div className="space-y-3">
-                  {/* 계획 시간 바 */}
-                  <div className="flex items-center gap-3">
-                    <span className="w-14 text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">📋 계획</span>
-                    <div className="flex-1">
-                      <div
-                        className={`h-full rounded-full bg-gradient-to-r ${statusStyle.fill}`}
-                        style={{ width: `${plannedWidth}%` }}
-                      />
-                    </div>
-                    <span className="w-14 text-right font-semibold text-[var(--color-text)]">{formatMinutesToHM(pendingDuration)}</span>
-                  </div>
-
-                  {/* 남은 시간 바 */}
-                  <div className="flex items-center gap-3">
-                    <span className="w-14 text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">⏱️ 남은</span>
-                    <div className="flex-1">
-                      <div
-                        className={`h-full rounded-full bg-gradient-to-r from-indigo-300 via-indigo-400 to-violet-400`}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-                    <span className="w-14 text-right font-semibold text-[var(--color-text)]">{formatMinutesToHM(remainingMinutes)}</span>
-                  </div>
-                </div>
-
-                {/* 상태 텍스트 */}
-                <div className={`mt-3 inline-flex w-full items-center justify-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.4em] ${statusStyle.badge}`}>
-                  {getStatusText()}
-                </div>
-                <p className="mt-2 text-center text-[10px] uppercase tracking-[0.4em] text-[var(--color-text-tertiary)]">
-                  {getTooltipText()}
-                </p>
-              </div>
-            </div>
-          )}
+        <div className="h-2 w-full overflow-hidden rounded-full bg-black/30">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-indigo-400 to-fuchsia-400 transition-all duration-500"
+            style={{ width: `${completionPercentage}%` }}
+          />
         </div>
+
+        {isExpanded && (
+          <div className="flex flex-col gap-3 border-t border-[var(--color-border)] bg-[var(--color-bg-base)]/40 px-4 py-4" onClick={handleBlockContentClick}>
+            {Array.from({ length: block.end - block.start }, (_, i) => block.start + i).map(hour => {
+              const hourTasks = tasks.filter(task => task.hourSlot === hour);
+
+              return (
+                <HourBar
+                  key={hour}
+                  hour={hour}
+                  blockId={block.id as TimeBlockId}
+                  tasks={hourTasks}
+                  isLocked={state?.isLocked || false}
+                  onCreateTask={async (text, targetHour) => {
+                    if (onCreateTask) {
+                      await onCreateTask(text, block.id as TimeBlockId, targetHour);
+                    }
+                  }}
+                  onEditTask={onEditTask}
+                  onUpdateTask={(taskId, updates) => {
+                    if (onUpdateTask) {
+                      onUpdateTask(taskId, updates);
+                    }
+                  }}
+                  onDeleteTask={onDeleteTask}
+                  onToggleTask={handleTaskToggle}
+                  onDropTask={(taskId, targetHour) => {
+                    if (onUpdateTask) {
+                      onUpdateTask(taskId, { hourSlot: targetHour, timeBlock: block.id as TimeBlockId });
+                    }
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
-
-      {state?.isPerfect && (
-        <div className="absolute right-4 top-4 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100 shadow-inner">✨ 완벽한 계획!</div>
-      )}
-      {state?.isFailed && (
-        <div className="absolute right-4 top-4 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1 text-xs font-semibold text-rose-100 shadow-inner">❌ 계획 실패</div>
-      )}
-
-      <div className="h-2 w-full overflow-hidden rounded-full bg-black/30">
+      {isPastBlock && (
         <div
-          className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-indigo-400 to-fuchsia-400 transition-all duration-500"
-          style={{ width: `${completionPercentage}%` }}
+          className="pointer-events-none absolute inset-0 z-40 rounded-2xl border border-[rgba(255,255,255,0.04)] bg-[rgba(5,7,15,0.75)] backdrop-blur-sm transition duration-300"
+          aria-hidden="true"
         />
-      </div>
-
-      {isExpanded && (
-        <div className="flex flex-col gap-3 border-t border-[var(--color-border)] bg-[var(--color-bg-base)]/40 px-4 py-4" onClick={handleBlockContentClick}>
-          {/* 시간대별 HourBar 렌더링 */}
-          {Array.from({ length: block.end - block.start }, (_, i) => block.start + i).map(hour => {
-            // 해당 hour의 작업들 필터링
-            const hourTasks = tasks.filter(task => task.hourSlot === hour);
-
-            return (
-              <HourBar
-                key={hour}
-                hour={hour}
-                blockId={block.id as TimeBlockId}
-                tasks={hourTasks}
-                isLocked={state?.isLocked || false}
-                onCreateTask={async (text, targetHour) => {
-                  if (onCreateTask) {
-                    // 작업 생성 시 targetHour를 직접 전달 (race condition 방지)
-                    await onCreateTask(text, block.id as TimeBlockId, targetHour);
-                  }
-                }}
-                onEditTask={onEditTask}
-                onUpdateTask={(taskId, updates) => {
-                  if (onUpdateTask) {
-                    onUpdateTask(taskId, updates);
-                  }
-                }}
-                onDeleteTask={onDeleteTask}
-                onToggleTask={handleTaskToggle}
-                onDropTask={(taskId, targetHour) => {
-                  // hourSlot 업데이트
-                  if (onUpdateTask) {
-                    onUpdateTask(taskId, { hourSlot: targetHour, timeBlock: block.id as TimeBlockId });
-                  }
-                }}
-              />
-            );
-          })}
-        </div>
       )}
     </div>
   );
