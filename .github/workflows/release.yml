@@ -28,88 +28,56 @@ jobs:
 
       # 3. Install dependencies
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      # 4. Fetch latest release version from GitHub
-      - name: Read latest version from GitHub Releases
-        id: ghver
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 4. Configure Git (npm version 이 commit & tag 할 수 있게)
+      - name: Configure Git
         run: |
-          echo "📥 Fetching latest GitHub release..."
-          LATEST=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
 
-          if [ -z "$LATEST" ]; then
-            echo "⚠ No releases found. Using package.json version."
-            echo "latest=none" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # Remove prefix 'v'
-          CLEAN=${LATEST#v}
-
-          echo "latest=$CLEAN" >> $GITHUB_OUTPUT
-          echo "Latest GitHub release version = $CLEAN"
-
-      # 5. Sync package.json version to GitHub release version (if exists)
-      - name: Sync package.json version to GitHub latest
-        if: steps.ghver.outputs.latest != 'none'
-        shell: bash
-        run: |
-          LATEST=${{ steps.ghver.outputs.latest }}
-          echo "🔄 Syncing package.json version → $LATEST"
-
-          # Overwrite package.json version
-          node -e "
-          let fs=require('fs');
-          let pj=require('./package.json');
-          pj.version='$LATEST';
-          fs.writeFileSync('./package.json', JSON.stringify(pj,null,2));
-          "
-
-      # 6. Clean git working directory
-      - name: Clean untracked files
-        run: |
-          git reset --hard
-          git clean -fd
-
-      # 7. Delete existing tag if exists
-      - name: Delete existing tag
-        shell: bash
-        run: |
-          NEW="v$(node -p "require('./package.json').version")"
-
-          if git ls-remote --tags origin | grep -q "refs/tags/$NEW"; then
-            git push --delete origin $NEW || true
-          fi
-
-          if git tag | grep -q "$NEW"; then
-            git tag -d $NEW || true
-          fi
-
-      # 8. Bump version (patch)
+      # 5. Bump patch version (1.0.14 -> 1.0.15)
       - name: Bump version
         id: bump
+        shell: bash
         run: |
+          echo "Current version: $(node -p "require('./package.json').version")"
+
+          # 버전 올리면서 커밋 + 태그 생성 (npm이 알아서 함)
           npm version patch -m "chore: bump version to %s"
 
-      # 9. Push changes
-      - name: Push changes
-        run: git push origin main --follow-tags
+          # 변경된 버전 읽어서 output으로 저장
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "New version: $NEW_VERSION"
 
-      # 10. Build Electron app
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      # 6. Push commit + tag
+      - name: Push changes
+        run: |
+          git push origin HEAD:main --follow-tags
+
+      # 7. Build Electron app (Windows)
       - name: Build Electron app
         run: npm run dist:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 11. Create Release
+      # 8. Create GitHub Release (exe + blockmap + latest.yml 업로드)
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.bump.outputs.newversion }}
-          name: Release ${{ steps.bump.outputs.newversion }}
+          tag_name: ${{ steps.bump.outputs.tag }}
+          name: Release ${{ steps.bump.outputs.tag }}
+          body: |
+            ## TimeBlock Planner ${{ steps.bump.outputs.version }}
+
+            자동 빌드 및 배포.
+
+          draft: false
+          prerelease: false
           files: |
             release/*.exe
             release/*.exe.blockmap
@@ -117,9 +85,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 12. Upload CI artifacts
+      # 9. Upload CI artifacts (백업용)
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-build
+          name: windows-build-${{ steps.bump.outputs.version }}
           path: release/
