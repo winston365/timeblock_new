@@ -16,7 +16,6 @@ import { TimerConfirmModal } from './TimerConfirmModal';
 import { CompletionCelebrationModal } from './CompletionCelebrationModal';
 import { MemoModal } from './MemoModal';
 import { useGameState } from '@/shared/hooks';
-import { addXP } from '@/data/repositories/gameStateRepository';
 import { useDragDropManager } from './hooks/useDragDropManager';
 
 interface TaskCardProps {
@@ -55,8 +54,8 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0); // 초 단위
 
-  // 게임 상태에서 퀘스트 업데이트 함수 가져오기
-  const { updateQuestProgress } = useGameState();
+  // 게임 상태에서 XP 및 퀘스트 업데이트 함수 가져오기
+  const { addXP, updateQuestProgress } = useGameState();
 
   // 통합 드래그 앤 드롭 관리 훅
   const { setDragData } = useDragDropManager();
@@ -161,14 +160,8 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
       const baseXP = xp;
       const totalXP = baseXP + TIMER_BONUS;
 
-      // 타이머 보너스 XP 추가
-      const result = await addXP(TIMER_BONUS, task.timeBlock || undefined, 'timer_bonus');
-
-      // 이벤트 처리 (UI 업데이트)
-      if (result.events.length > 0) {
-        const { gameStateEventHandler } = await import('@/shared/services/gameState');
-        await gameStateEventHandler.handleEvents(result.events);
-      }
+      // ✅ 타이머 보너스 XP 추가 (store 메서드 사용 → 자동으로 UI 업데이트)
+      await addXP(TIMER_BONUS, task.timeBlock || undefined);
 
       setCelebrationXP(totalXP);
       setTimerBonus(TIMER_BONUS);
