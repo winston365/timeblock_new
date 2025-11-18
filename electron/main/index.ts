@@ -62,6 +62,7 @@ function createWindow(): void {
       preload: path.join(__dirname, '../preload/index.cjs'),
     },
     // UI 설정
+    icon: path.join(__dirname, '../resources/icon.ico'),  // 앱 아이콘
     backgroundColor: '#0a0e1a',      // Dark mode 배경
     show: false,                     // 준비될 때까지 숨김
     autoHideMenuBar: !isDev,         // 개발 모드에서만 메뉴바 표시
@@ -112,6 +113,7 @@ function createQuickAddWindow(): void {
       sandbox: true,
       preload: path.join(__dirname, '../preload/index.cjs'),
     },
+    icon: path.join(__dirname, '../resources/icon.ico'),  // 앱 아이콘
     backgroundColor: '#0a0e1a',
     show: false,
     title: '빠른 작업 추가',
@@ -463,7 +465,7 @@ ipcMain.handle('show-notification', (event, title: string, body: string) => {
       const notification = new Notification({
         title,
         body,
-        icon: path.join(__dirname, '../resources/icon.png'), // 앱 아이콘 사용
+        icon: path.join(__dirname, '../resources/icon.ico'), // 앱 아이콘 사용
       });
       notification.show();
       console.log(`[Notification] Shown: ${title} - ${body}`);
