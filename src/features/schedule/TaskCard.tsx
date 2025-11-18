@@ -21,6 +21,7 @@ interface TaskCardProps {
   onDragEnd?: () => void;
   hideMetadata?: boolean;
   blockIsLocked?: boolean;
+  compact?: boolean;
 }
 
 const RESISTANCE_COLORS: Record<Resistance, string> = {
@@ -39,6 +40,7 @@ export default function TaskCard({
   onDragEnd,
   hideMetadata = false,
   blockIsLocked,
+  compact = false,
 }: TaskCardProps) {
   const [showResistancePicker, setShowResistancePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
@@ -147,7 +149,8 @@ export default function TaskCard({
   };
 
   const cardClassName = [
-    'group relative rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)]/80 p-4 text-left transition-all duration-200',
+    'group relative rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)]/80 text-left transition-all duration-200',
+    compact ? 'p-3' : 'p-4',
     task.completed ? 'opacity-70' : 'hover:border-[var(--color-primary)] hover:shadow-lg',
     isPrepared ? 'border-emerald-400/60 bg-gradient-to-r from-emerald-500/10 via-transparent to-transparent' : '',
     isDragging ? 'scale-[1.01] border-[var(--color-primary)] shadow-xl' : '',
@@ -157,6 +160,71 @@ export default function TaskCard({
     'flex h-7 w-7 items-center justify-center rounded-xl border border-[var(--color-border)] text-base transition',
     task.completed ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200' : 'bg-white/5 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-text)]',
   ].join(' ');
+
+  if (compact) {
+    return (
+      <>
+        <div
+          className={cardClassName}
+          draggable
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest('[data-task-interactive="true"]')) {
+              return;
+            }
+            onEdit();
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className={checkboxClasses}
+              onClick={handleToggleClick}
+              aria-label={task.completed ? '완료 취소' : '완료'}
+              data-task-interactive="true"
+            >
+              {task.completed ? '✓' : ''}
+            </button>
+
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-[var(--color-text)] truncate">{task.text}</p>
+              {task.memo && <p className="text-xs text-[var(--color-text-tertiary)] truncate">{task.memo}</p>}
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+              <span>{task.adjustedDuration}m</span>
+              {xp > 0 && <span>✨{xp}</span>}
+              <button
+                type="button"
+                className="rounded-full border border-white/10 px-2 py-1 text-[var(--color-text)] transition hover:border-[var(--color-primary)]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                aria-label="작업 편집"
+              >
+                ✎
+              </button>
+              <button
+                type="button"
+                className="rounded-full border border-white/10 px-2 py-1 text-[var(--color-text)] transition hover:border-rose-400/50 hover:text-rose-200"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                aria-label="작업 삭제"
+              >
+                🗑
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {showMemoModal && <MemoModal memo={task.memo} onSave={(newMemo) => onUpdateTask?.({ memo: newMemo })} onClose={() => setShowMemoModal(false)} />}
+      </>
+    );
+  }
 
   return (
     <>

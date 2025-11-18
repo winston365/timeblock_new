@@ -223,6 +223,7 @@ export default function InboxTab() {
                   setTimeout(() => refreshInboxTasks(), 500);
                 }}
                 hideMetadata={true}
+                compact
               />
             ))}
           </div>
