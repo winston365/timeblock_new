@@ -2,166 +2,124 @@ name: Build and Release
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   contents: write
   packages: write
 
-concurrency:
-  group: timeblock-release-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   release:
     runs-on: windows-latest
 
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     steps:
-      # 1. Repo 체크아웃
+      # 1. Checkout
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: true
 
-      # 2. Node 20 세팅
+      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: npm
 
-      # 3. node_modules 캐시
-      - name: Cache node modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            node_modules
-            ~/.cache/electron
-            ~/.cache/electron-builder
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      # 4. 의존성 설치 (npm ci → lockfile 안 건드림)
+      # 3. Install dependencies
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      # 5. Git 사용자 설정
-      - name: Configure Git
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-
-      # 6. (옵션) 현재 버전 태그 있으면 삭제
-      - name: Delete existing tag if exists
+      # 4. Fetch latest release version from GitHub
+      - name: Read latest version from GitHub Releases
+        id: ghver
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          TAG="v$CURRENT_VERSION"
+          echo "📥 Fetching latest GitHub release..."
+          LATEST=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
 
-          echo "Checking existing tag: $TAG"
-
-          # remote tag 삭제
-          if git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
-            echo "Deleting remote tag $TAG ..."
-            git push --delete origin $TAG || true
+          if [ -z "$LATEST" ]; then
+            echo "⚠ No releases found. Using package.json version."
+            echo "latest=none" >> $GITHUB_OUTPUT
+            exit 0
           fi
 
-          # local tag 삭제
-          if git tag | grep -q "^$TAG$"; then
-            echo "Deleting local tag $TAG ..."
-            git tag -d $TAG || true
-          fi
+          # Remove prefix 'v'
+          CLEAN=${LATEST#v}
 
-      # 7-A. Clean working directory before bump
-      - name: Clean working directory
+          echo "latest=$CLEAN" >> $GITHUB_OUTPUT
+          echo "Latest GitHub release version = $CLEAN"
+
+      # 5. Sync package.json version to GitHub release version (if exists)
+      - name: Sync package.json version to GitHub latest
+        if: steps.ghver.outputs.latest != 'none'
         shell: bash
+        run: |
+          LATEST=${{ steps.ghver.outputs.latest }}
+          echo "🔄 Syncing package.json version → $LATEST"
+
+          # Overwrite package.json version
+          node -e "
+          let fs=require('fs');
+          let pj=require('./package.json');
+          pj.version='$LATEST';
+          fs.writeFileSync('./package.json', JSON.stringify(pj,null,2));
+          "
+
+      # 6. Clean git working directory
+      - name: Clean untracked files
         run: |
           git reset --hard
-          git clean -fdx
+          git clean -fd
 
-
-      # 7. 버전 올리기 (npm run bump → npm version patch)
-      - name: Bump version
-        id: version
+      # 7. Delete existing tag if exists
+      - name: Delete existing tag
         shell: bash
         run: |
-          # bump 이전 버전 (로그용)
-          BEFORE_VERSION=$(node -p "require('./package.json').version")
-          echo "Current version: $BEFORE_VERSION"
+          NEW="v$(node -p "require('./package.json').version")"
 
-          # 여기서 npm version patch 실행 (package.json + package-lock.json 수정 + commit + tag)
-          npm run bump
-
-          # bump 이후 버전
-          NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "New version: $NEW_VERSION"
-
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
-
-      # 8. 버전 커밋 + 태그 푸시
-      - name: Push version commit and tag
-        shell: bash
-        run: |
-          git push origin main --follow-tags
-
-      # 9. Electron 윈도우 빌드 (electron-builder 사용)
-      #   package.json 에서 예를 들어:
-      #   "dist:win": "electron-builder --win --publish always"
-      - name: Build Electron app (Windows)
-        run: npm run dist:win
-
-      # 10. 빌드 산출물 확인
-      - name: Verify build artifacts
-        shell: bash
-        run: |
-          echo "==== release/ contents ===="
-          ls -la release/ || { echo "release/ folder missing"; exit 1; }
-
-          echo "Checking for installer (.exe)..."
-          ls release/*.exe || { echo "ERROR: No .exe found in release/"; exit 1; }
-
-          echo "Checking for latest.yml (auto-update metadata)..."
-          if ! ls release/latest.yml >/dev/null 2>&1; then
-            echo "WARNING: latest.yml not found. Auto-update may not work."
+          if git ls-remote --tags origin | grep -q "refs/tags/$NEW"; then
+            git push --delete origin $NEW || true
           fi
 
-          echo "Build verification completed."
+          if git tag | grep -q "$NEW"; then
+            git tag -d $NEW || true
+          fi
 
-      # 11. (선택) 별도 GitHub Release 생성 + 파일 업로드
-      # electron-builder 가 이미 GitHub Publish 하는 경우
-      # 이 스텝은 '보기 좋은 Release 페이지용' 보너스라고 보면 됨
-      - name: Create GitHub Release
+      # 8. Bump version (patch)
+      - name: Bump version
+        id: bump
+        run: |
+          npm version patch -m "chore: bump version to %s"
+
+      # 9. Push changes
+      - name: Push changes
+        run: git push origin main --follow-tags
+
+      # 10. Build Electron app
+      - name: Build Electron app
+        run: npm run dist:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 11. Create Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: Release ${{ steps.version.outputs.tag }}
-          body: |
-            ## TimeBlock Planner ${{ steps.version.outputs.version }}
-
-            - 자동 업데이트 지원 (electron-updater + GitHub Releases)
-            - Windows 설치 프로그램 포함
-
-            자세한 변경 내용은 커밋 로그를 참고하세요.
-          draft: false
-          prerelease: false
+          tag_name: ${{ steps.bump.outputs.newversion }}
+          name: Release ${{ steps.bump.outputs.newversion }}
           files: |
             release/*.exe
             release/*.exe.blockmap
             release/latest.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 12. CI 아티팩트 업로드 (백업 / 디버깅용)
+      # 12. Upload CI artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-build-${{ steps.version.outputs.version }}
+          name: windows-build
           path: release/
-          retention-days: 30
