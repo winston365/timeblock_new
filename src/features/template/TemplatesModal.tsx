@@ -43,6 +43,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [showUpcomingOnly, setShowUpcomingOnly] = useState(false); // 7일 이내 주기 필터
+  const [showDailyOnly, setShowDailyOnly] = useState(true); // 매일 주기 필터 (기본값: true)
   const [categories, setCategories] = useState<string[]>([]);
 
   // ESC 키로 모달 닫기
@@ -163,6 +164,13 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
       filtered = filtered.filter(template => template.isFavorite);
     }
 
+    // 매일 주기 필터
+    if (showDailyOnly) {
+      filtered = filtered.filter(template =>
+        template.autoGenerate && template.recurrenceType === 'daily'
+      );
+    }
+
     // 7일 이내 다음 주기 필터
     if (showUpcomingOnly) {
       filtered = filtered.filter(template => {
@@ -182,7 +190,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     }
 
     return filtered;
-  }, [templates, searchQuery, selectedCategory, showFavoritesOnly, showUpcomingOnly]);
+  }, [templates, searchQuery, selectedCategory, showFavoritesOnly, showDailyOnly, showUpcomingOnly]);
 
   const handleAddTemplate = () => {
     setEditingTemplate(null);
@@ -445,6 +453,15 @@ const formatRelativeDate = (date: Date): string => {
 
             {/* 필터 버튼 */}
             <div className="templates-filters">
+              {/* 매일 주기 토글 */}
+              <button
+                className={`filter-btn filter-btn-daily ${showDailyOnly ? 'active' : ''}`}
+                onClick={() => setShowDailyOnly(!showDailyOnly)}
+                title="매일 반복 템플릿만 표시"
+              >
+                {showDailyOnly ? '🔄 매일' : '🔄 매일'}
+              </button>
+
               {/* 즐겨찾기 토글 */}
               <button
                 className={`filter-btn ${showFavoritesOnly ? 'active' : ''}`}
@@ -503,7 +520,12 @@ const formatRelativeDate = (date: Date): string => {
           ) : (
             <div className="templates-grid">
               {filteredTemplates.map(template => (
-                <div key={template.id} className="template-card">
+                <div
+                  key={template.id}
+                  className="template-card"
+                  onDoubleClick={() => handleEditTemplate(template)}
+                  title="더블클릭하여 편집"
+                >
                   {/* 카드 헤더 */}
                   <div className="template-card-header">
                     <div className="template-card-title-row">
