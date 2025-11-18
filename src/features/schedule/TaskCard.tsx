@@ -13,7 +13,6 @@ import type { Task, Resistance } from '@/shared/types/domain';
 import { RESISTANCE_LABELS } from '@/shared/types/domain';
 import { formatDuration, calculateTaskXP } from '@/shared/lib/utils';
 import { TimerConfirmModal } from './TimerConfirmModal';
-import { CompletionCelebrationModal } from './CompletionCelebrationModal';
 import { MemoModal } from './MemoModal';
 import { useGameState } from '@/shared/hooks';
 import { useDragDropManager } from './hooks/useDragDropManager';
@@ -45,17 +44,14 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const [isDragging, setIsDragging] = useState(false);
   const [showMemoModal, setShowMemoModal] = useState(false);
   const [showTimerConfirm, setShowTimerConfirm] = useState(false);
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [celebrationXP, setCelebrationXP] = useState(0);
-  const [timerBonus, setTimerBonus] = useState(0);
   const [isEditingText, setIsEditingText] = useState(false);
   const [editedText, setEditedText] = useState(task.text);
   const [timerIconActive, setTimerIconActive] = useState(false); // 타이머 아이콘 상태 (▶️ ↔ ⏰)
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0); // 초 단위
 
-  // 게임 상태에서 XP 및 퀘스트 업데이트 함수 가져오기
-  const { addXP, updateQuestProgress } = useGameState();
+  // 게임 상태에서 퀘스트 업데이트 함수 가져오기
+  const { updateQuestProgress } = useGameState();
 
   // 통합 드래그 앤 드롭 관리 훅
   const { setDragData } = useDragDropManager();
@@ -140,38 +136,20 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const handleTimerConfirm = async (timerUsed: boolean) => {
     setShowTimerConfirm(false);
 
-    // 1. 먼저 완료 처리 (가장 중요)
+    // 1. 먼저 timerUsed 업데이트 (완료 처리 전에 실행)
+    if (onUpdateTask) {
+      await onUpdateTask({ timerUsed });
+    }
+
+    // 2. 완료 처리 (이제 task.timerUsed가 업데이트된 상태)
+    // taskCompletionService가 calculateTaskXP를 호출하여 타이머 보너스 포함 XP 계산
     onToggle();
 
-    // 2. 완료 처리가 완전히 끝날 때까지 대기 후 timerUsed 업데이트
-    // race condition 방지를 위한 짧은 지연
-    setTimeout(() => {
-      if (onUpdateTask) {
-        onUpdateTask({ timerUsed, completed: true });
-      }
-    }, 100);
-
-    // 3. 타이머를 사용한 경우에만 보너스 처리
+    // 3. 타이머 사용 시 퀘스트 업데이트만 수행
+    // (XP는 taskCompletionService에서 자동으로 처리됨)
     if (timerUsed) {
-      // 타이머 퀘스트 진행도 업데이트
       await updateQuestProgress('use_timer', 1);
-
-      const TIMER_BONUS = 20;
-      const baseXP = xp;
-      const totalXP = baseXP + TIMER_BONUS;
-
-      // ✅ 타이머 보너스 XP 추가 (store 메서드 사용 → 자동으로 UI 업데이트)
-      await addXP(TIMER_BONUS, task.timeBlock || undefined);
-
-      setCelebrationXP(totalXP);
-      setTimerBonus(TIMER_BONUS);
-      setShowCelebration(true);
     }
-  };
-
-  // 축하 모달 닫기
-  const handleCelebrationClose = () => {
-    setShowCelebration(false);
   };
 
   // 메모 모달 핸들러
@@ -417,16 +395,6 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
         <TimerConfirmModal
           taskName={task.text}
           onConfirm={handleTimerConfirm}
-        />
-      )}
-
-      {/* 축하 모달 */}
-      {showCelebration && (
-        <CompletionCelebrationModal
-          task={task}
-          xpGained={celebrationXP}
-          timerBonus={timerBonus}
-          onClose={handleCelebrationClose}
         />
       )}
 
