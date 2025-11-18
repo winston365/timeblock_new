@@ -41,8 +41,15 @@ const electronAPI = {
     return ipcRenderer.invoke('check-for-updates');
   },
 
-  // 필요에 따라 추가 API 정의
-  // 예: openExternal, showNotification 등
+  // QuickAdd 창 닫기
+  closeQuickAddWindow: (): Promise<{ success: boolean; message?: string }> => {
+    return ipcRenderer.invoke('close-quickadd-window');
+  },
+
+  // 윈도우 알림 표시
+  showNotification: (title: string, body: string): Promise<{ success: boolean; message?: string }> => {
+    return ipcRenderer.invoke('show-notification', title, body);
+  },
 };
 
 // ============================================================================

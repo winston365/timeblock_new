@@ -100,8 +100,8 @@ function createQuickAddWindow(): void {
   }
 
   quickAddWindow = new BrowserWindow({
-    width: 600,
-    height: 700,
+    width: 900,      // 600 → 900 (2컬럼 레이아웃에 충분한 공간)
+    height: 750,     // 700 → 750 (여유 공간 확보)
     resizable: false,
     frame: true,
     alwaysOnTop: true,
@@ -430,5 +430,50 @@ ipcMain.handle('check-for-updates', async () => {
       error: error.message,
       errorStack: error.stack,
     };
+  }
+});
+
+// ============================================================================
+// QuickAdd & Notification IPC Handlers
+// ============================================================================
+
+/**
+ * QuickAdd 창 닫기
+ */
+ipcMain.handle('close-quickadd-window', () => {
+  try {
+    if (quickAddWindow && !quickAddWindow.isDestroyed()) {
+      quickAddWindow.close();
+      console.log('[IPC] QuickAdd window closed');
+      return { success: true };
+    }
+    return { success: false, message: 'QuickAdd window not found' };
+  } catch (error: any) {
+    console.error('[IPC] Failed to close QuickAdd window:', error);
+    return { success: false, message: error.message };
+  }
+});
+
+/**
+ * 윈도우 알림 표시
+ */
+ipcMain.handle('show-notification', (event, title: string, body: string) => {
+  try {
+    if (Notification.isSupported()) {
+      const notification = new Notification({
+        title,
+        body,
+        icon: path.join(__dirname, '../resources/icon.png'), // 앱 아이콘 사용
+      });
+      notification.show();
+      console.log(`[Notification] Shown: ${title} - ${body}`);
+      return { success: true };
+    } else {
+      console.warn('[Notification] Not supported on this platform');
+      return { success: false, message: 'Notifications not supported' };
+    }
+  } catch (error: any) {
+    console.error('[Notification] Failed to show notification:', error);
+    return { success: false, message: error.message };
   }
 });

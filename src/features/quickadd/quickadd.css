@@ -9,11 +9,11 @@
    QuickAdd 전용 모달 크기 설정
    ============================================================================ */
 
-/* QuickAdd 모달 콘텐츠 - 넓은 모달 (2컬럼 레이아웃용) */
+/* QuickAdd 모달 콘텐츠 - 창 전체 활용 (900x750 윈도우에 최적화) */
 .quickadd-modal-content {
-  max-width: 900px; /* 충분한 공간 확보 */
-  width: 90%;
-  max-height: 90vh;
+  max-width: none;  /* 윈도우 크기에 맞춤 */
+  width: 95%;       /* 좌우 여백 최소화 */
+  max-height: 95vh; /* 상하 여백 최소화 */
   overflow: visible !important; /* 스크롤 허용 */
 }
 

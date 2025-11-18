@@ -123,6 +123,18 @@ export default function InsightPanel() {
       // 와이푸 컴패니언 연동 - 인사이트 생성 성공 시 와이푸가 배달
       showWaifu(`💡 새로운 인사이트가 도착했어요!`);
 
+      // 윈도우 알림 표시 (Electron 환경에서만)
+      if (window.electronAPI) {
+        try {
+          await window.electronAPI.showNotification(
+            '💡 오늘의 인사이트 생성 완료',
+            '새로운 인사이트가 준비되었습니다!'
+          );
+        } catch (notifError) {
+          console.warn('Failed to show notification:', notifError);
+        }
+      }
+
       // 토큰 사용량 저장 (전체 로그에 기록)
       if (tokenUsage) {
         await addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens);
