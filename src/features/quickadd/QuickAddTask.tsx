@@ -176,11 +176,14 @@ export default function QuickAddTask() {
         }
       }
 
+      // 저장 완료 상태로 변경
+      setSaving(false);
+
       // 윈도우 닫기 (Electron API 사용)
       if (window.electronAPI) {
         setTimeout(async () => {
           await window.electronAPI.closeQuickAddWindow();
-        }, 500); // 0.5초 후 닫기 (알림을 볼 시간 제공)
+        }, 300); // 0.3초 후 닫기 (저장 완료 확인)
       }
     } catch (error) {
       console.error('❌ Failed to add task:', error);
@@ -197,7 +200,7 @@ export default function QuickAddTask() {
 
   return (
     <div className="modal-overlay" style={{ position: 'fixed', inset: 0 }}>
-      <div className="modal-content modal-content-wide">
+      <div className="modal-content quickadd-modal-content">
         <div className="modal-header">
           <h3>⚡ 빠른 작업 추가</h3>
           <button className="modal-close-btn" onClick={handleClose} disabled={saving}>
@@ -205,7 +208,7 @@ export default function QuickAddTask() {
           </button>
         </div>
 
-        <form className="modal-form modal-form-two-column" onSubmit={handleSubmit}>
+        <form className="quickadd-form" onSubmit={handleSubmit}>
           {/* 왼쪽 컬럼: 기본 작업 정보 */}
           <div className="form-column form-column-left">
             <div className="form-group">
