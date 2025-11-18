@@ -12,9 +12,7 @@ import { useState, useEffect } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
 import { RESISTANCE_LABELS } from '@/shared/types/domain';
 import { formatDuration, calculateTaskXP } from '@/shared/lib/utils';
-import { TimerConfirmModal } from './TimerConfirmModal';
 import { MemoModal } from './MemoModal';
-import { useGameState } from '@/shared/hooks';
 import { useDragDropManager } from './hooks/useDragDropManager';
 
 interface TaskCardProps {
@@ -43,15 +41,11 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showMemoModal, setShowMemoModal] = useState(false);
-  const [showTimerConfirm, setShowTimerConfirm] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
   const [editedText, setEditedText] = useState(task.text);
   const [timerIconActive, setTimerIconActive] = useState(false); // 타이머 아이콘 상태 (▶️ ↔ ⏰)
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0); // 초 단위
-
-  // 게임 상태에서 퀘스트 업데이트 함수 가져오기
-  const { updateQuestProgress } = useGameState();
 
   // 통합 드래그 앤 드롭 관리 훅
   const { setDragData } = useDragDropManager();
@@ -128,28 +122,8 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
       return;
     }
 
-    // 완료하려는 경우 - 타이머 확인 모달 표시
-    setShowTimerConfirm(true);
-  };
-
-  // 타이머 확인 모달에서 선택한 경우
-  const handleTimerConfirm = async (timerUsed: boolean) => {
-    setShowTimerConfirm(false);
-
-    // 1. 먼저 timerUsed 업데이트 (완료 처리 전에 실행)
-    if (onUpdateTask) {
-      await onUpdateTask({ timerUsed });
-    }
-
-    // 2. 완료 처리 (이제 task.timerUsed가 업데이트된 상태)
-    // taskCompletionService가 calculateTaskXP를 호출하여 타이머 보너스 포함 XP 계산
+    // 완료 처리
     onToggle();
-
-    // 3. 타이머 사용 시 퀘스트 업데이트만 수행
-    // (XP는 taskCompletionService에서 자동으로 처리됨)
-    if (timerUsed) {
-      await updateQuestProgress('use_timer', 1);
-    }
   };
 
   // 메모 모달 핸들러
@@ -389,14 +363,6 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
         </div>
       )}
       </div>
-
-      {/* 타이머 확인 모달 */}
-      {showTimerConfirm && (
-        <TimerConfirmModal
-          taskName={task.text}
-          onConfirm={handleTimerConfirm}
-        />
-      )}
 
       {/* 메모 모달 */}
       {showMemoModal && (
