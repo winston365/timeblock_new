@@ -71,7 +71,7 @@ const TimeBlock = memo(function TimeBlock({
     undefined // hourSlot 없음 (블록 레벨 드롭)
   );
 
-  // 5분 타이머 상태
+  // 3분 타이머 상태
   const [timerElapsed, setTimerElapsed] = useState(0); // 경과 시간 (초)
 
   // 블록 총 XP 계산 (현재 미사용)
@@ -217,7 +217,7 @@ const TimeBlock = memo(function TimeBlock({
 
     const updateTimer = async () => {
       const elapsed = Math.floor((Date.now() - state.lockTimerStartedAt!) / 1000);
-      const duration = (state.lockTimerDuration || 300000) / 1000; // 기본 5분
+      const duration = (state.lockTimerDuration || 180000) / 1000; // 기본 3분
 
       if (elapsed >= duration) {
         // 타이머 완료 - 자동 잠금
@@ -261,7 +261,7 @@ const TimeBlock = memo(function TimeBlock({
       try {
         await onUpdateBlockState(block.id, {
           lockTimerStartedAt: Date.now(),
-          lockTimerDuration: 300000, // 5분
+          lockTimerDuration: 180000, // 3분
         });
       } catch (error) {
         console.error('Failed to start lock timer:', error);
@@ -288,14 +288,14 @@ const TimeBlock = memo(function TimeBlock({
   // 타이머 진행률 계산
   const getTimerProgress = (): number => {
     if (!state?.lockTimerStartedAt) return 0;
-    const duration = (state.lockTimerDuration || 300000) / 1000;
+    const duration = (state.lockTimerDuration || 180000) / 1000;
     return Math.min((timerElapsed / duration) * 100, 100);
   };
 
   // 남은 시간 포맷팅 (MM:SS)
   const formatRemainingTime = (): string => {
-    if (!state?.lockTimerStartedAt) return '5:00';
-    const duration = (state.lockTimerDuration || 300000) / 1000;
+    if (!state?.lockTimerStartedAt) return '3:00';
+    const duration = (state.lockTimerDuration || 180000) / 1000;
     const remaining = Math.max(duration - timerElapsed, 0);
     const mins = Math.floor(remaining / 60);
     const secs = Math.floor(remaining % 60);
@@ -376,7 +376,7 @@ const TimeBlock = memo(function TimeBlock({
                   }
                 }}
                 disabled={isPastBlock}
-                title={isPastBlock ? "지난 시간대는 잠금 해제할 수 없습니다" : "잠금 해제 (베팅한 15 XP는 돌려받지 못함)"}
+                title={isPastBlock ? "지난 시간대는 잠금 해제할 수 없습니다" : "잠금 해제 (패널티: -40 XP)"}
               >
                 🔒
               </button>
@@ -411,10 +411,10 @@ const TimeBlock = memo(function TimeBlock({
               <button
                 className="lock-timer-start-btn"
                 onClick={handleStartLockTimer}
-                title="5분 후 자동 잠금 시작 (비용: 15 XP / 완벽 달성 시: +40 XP)"
+                title="3분 후 자동 잠금 시작 (완벽 달성 시: +40 XP)"
               >
                 <span className="timer-start-icon">⏰</span>
-                <span className="timer-start-text">5분 뒤 잠금</span>
+                <span className="timer-start-text">3분 뒤 잠금</span>
               </button>
             )}
           </div>

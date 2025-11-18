@@ -476,11 +476,10 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
       // 잠금 -> 해제
       if (blockState.isLocked) {
-        // 잠금 해제 시 40 XP 추가 소모 (베팅한 15 XP + 패널티 40 XP)
+        // 잠금 해제 시 40 XP 패널티
         const confirmUnlock = confirm(
           '⚠️ 블록 잠금을 해제하시겠습니까?\n\n' +
-          '- 베팅한 15 XP는 돌려받지 못합니다.\n' +
-          '- 추가로 40 XP를 소모합니다. (총 손실: 55 XP)\n\n' +
+          '- 40 XP를 소모합니다.\n\n' +
           '정말로 해제하시겠습니까?'
         );
 
@@ -504,7 +503,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         await spendXP(40);
         await updateBlockStateInRepo(blockId, { isLocked: false }, currentDate);
       }
-      // 해제 -> 잠금 (베팅)
+      // 해제 -> 잠금 (무료)
       else {
         // 블록에 작업이 없으면 잠금 불가
         if (blockTasks.length === 0) {
@@ -523,8 +522,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
           },
         });
 
-        // ✅ 백그라운드에서 XP 소모 및 DB 저장
-        await spendXP(15);
+        // ✅ 백그라운드에서 DB 저장 (XP 소모 없음)
         await updateBlockStateInRepo(blockId, { isLocked: true }, currentDate);
         await updateQuestProgress('lock_blocks', 1);
       }

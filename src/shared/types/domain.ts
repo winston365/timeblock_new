@@ -54,7 +54,7 @@ export interface TimeBlockState {
   isPerfect: boolean; // 완벽 완료 여부
   isFailed: boolean; // 실패 여부
   lockTimerStartedAt?: number | null; // 잠금 타이머 시작 시각 (타임스탬프)
-  lockTimerDuration?: number; // 타이머 지속 시간 (밀리초, 기본 300000 = 5분)
+  lockTimerDuration?: number; // 타이머 지속 시간 (밀리초, 기본 180000 = 3분)
 }
 
 /**

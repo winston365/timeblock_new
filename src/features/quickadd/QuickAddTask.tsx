@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
 import { calculateAdjustedDuration, generateId } from '@/shared/lib/utils';
 import { addInboxTask } from '@/data/repositories/inboxRepository';
+import { initializeDatabase } from '@/data/db/dexieClient';
 import './quickadd.css';
 
 /**
@@ -34,6 +35,7 @@ export default function QuickAddTask() {
   const [preparation3, setPreparation3] = useState('');
   const [saving, setSaving] = useState(false);
   const [memoRows, setMemoRows] = useState(3);
+  const [dbInitialized, setDbInitialized] = useState(false);
 
   // 자동 태그 파싱 함수 (스페이스 입력 시에만 실행)
   const parseAndApplyTags = (inputText: string) => {
@@ -110,6 +112,33 @@ export default function QuickAddTask() {
     setMemoRows(Math.min(Math.max(lineCount, 3), 10));
   };
 
+  // 데이터베이스 초기화
+  useEffect(() => {
+    let mounted = true;
+
+    const initDB = async () => {
+      try {
+        console.log('[QuickAdd] Initializing database...');
+        await initializeDatabase();
+        if (mounted) {
+          console.log('[QuickAdd] Database initialized successfully');
+          setDbInitialized(true);
+        }
+      } catch (error) {
+        console.error('[QuickAdd] Failed to initialize database:', error);
+        if (mounted) {
+          alert('데이터베이스 초기화에 실패했습니다.\n\n앱을 다시 시작해주세요.');
+        }
+      }
+    };
+
+    initDB();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // Ctrl+Enter로 저장, ESC로 닫기
   useEffect(() => {
     const handleKeyboard = (e: KeyboardEvent) => {
@@ -133,6 +162,11 @@ export default function QuickAddTask() {
 
     if (!text.trim()) {
       alert('작업 제목을 입력해주세요.');
+      return;
+    }
+
+    if (!dbInitialized) {
+      alert('데이터베이스가 아직 준비되지 않았습니다.\n\n잠시 후 다시 시도해주세요.');
       return;
     }
 

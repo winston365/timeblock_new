@@ -13,8 +13,10 @@
 .quickadd-modal-content {
   max-width: none;  /* 윈도우 크기에 맞춤 */
   width: 95%;       /* 좌우 여백 최소화 */
-  max-height: 95vh; /* 상하 여백 최소화 */
-  overflow: visible !important; /* 스크롤 허용 */
+  max-height: 720px; /* 750px 윈도우 - 여백 */
+  overflow-y: auto; /* 스크롤 허용 */
+  display: flex;
+  flex-direction: column;
 }
 
 /* QuickAdd 2컬럼 폼 레이아웃 */
@@ -24,7 +26,8 @@
   gap: var(--spacing-lg);
   padding: var(--spacing-md);
   overflow-y: auto; /* 스크롤 가능 */
-  max-height: calc(90vh - 120px); /* 헤더와 하단 버튼 공간 확보 */
+  flex: 1;
+  min-height: 0; /* Flexbox overflow 수정 */
 }
 
 .quickadd-form .form-column {

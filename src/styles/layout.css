@@ -598,16 +598,15 @@
 /* 패널 토글 버튼 */
 .panel-toggle-btn {
   position: fixed;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 1000;
-  width: 32px;
-  height: 64px;
+  top: 80px;
+  z-index: 100;
+  width: 24px;
+  height: 48px;
   background: var(--color-primary);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 0;
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: bold;
   cursor: pointer;
   display: flex;
@@ -621,11 +620,11 @@
 .panel-toggle-btn:hover {
   background: var(--color-primary-dark);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  width: 36px;
+  width: 28px;
 }
 
 .panel-toggle-btn:active {
-  transform: translateY(-50%) scale(0.95);
+  transform: scale(0.95);
 }
 
 /* 좌측 토글 버튼 */
