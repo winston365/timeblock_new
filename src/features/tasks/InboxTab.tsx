@@ -133,10 +133,53 @@ export default function InboxTab() {
 
   const handleToggleTask = async (taskId: string) => {
     try {
-      await toggleInboxTaskCompletion(taskId);
+      console.log('[InboxTab] 🎯 Toggling inbox task:', taskId);
+
+      // Get current task state before toggle
+      const currentTasks = await loadInboxTasks();
+      const task = currentTasks.find(t => t.id === taskId);
+
+      if (!task) {
+        console.error('[InboxTab] Task not found:', taskId);
+        return;
+      }
+
+      const wasCompleted = task.completed;
+      console.log('[InboxTab] Task state before toggle:', { wasCompleted, taskText: task.text });
+
+      // Toggle completion status
+      const updatedTask = await toggleInboxTaskCompletion(taskId);
+      console.log('[InboxTab] Task toggled:', { completed: updatedTask.completed });
+
+      // If task was just completed (not uncompleted), trigger task completion service
+      if (!wasCompleted && updatedTask.completed) {
+        console.log('[InboxTab] 🎮 Calling taskCompletionService for inbox task...');
+
+        const { taskCompletionService } = await import('@/shared/services/taskCompletion');
+        const result = await taskCompletionService.handleTaskCompletion({
+          task: updatedTask,
+          wasCompleted,
+          date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+          blockState: undefined, // Inbox tasks don't have block state
+          blockTasks: undefined,
+        });
+
+        console.log('[InboxTab] ✅ Task completion processed:', result);
+
+        // Refresh gameState to show updated XP
+        const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
+        await useGameStateStore.getState().refresh();
+      } else {
+        console.log('[InboxTab] ⏭️ Skipping taskCompletionService', {
+          wasCompleted,
+          completed: updatedTask.completed,
+          reason: wasCompleted ? 'Task was already completed' : 'Task is now uncompleted'
+        });
+      }
+
       await refreshInboxTasks(); // 목록 새로고침
     } catch (error) {
-      console.error('Failed to toggle task:', error);
+      console.error('[InboxTab] ❌ Failed to toggle task:', error);
     }
   };
 

@@ -161,9 +161,11 @@ export async function saveData<T>(
 
   try {
     // 1. IndexedDB에 저장
+    // ✅ CRITICAL FIX: key must come AFTER ...data to override any existing key field
+    // If data has a 'key' field and we put it first, spreading data would overwrite it!
     await table.put({
-      key,
       ...data,
+      key,  // This MUST be after ...data to ensure correct primary key
     });
 
     // 2. localStorage에 저장
