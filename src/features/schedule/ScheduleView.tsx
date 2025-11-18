@@ -20,7 +20,6 @@ import { generateId } from '@/shared/lib/utils';
 import { db } from '@/data/db/dexieClient';
 import TimeBlock from './TimeBlock';
 import TaskModal from './TaskModal';
-import './schedule.css';
 
 /**
  * 타임블록 스케줄러 메인 화면
