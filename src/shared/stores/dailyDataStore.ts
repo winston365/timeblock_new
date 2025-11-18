@@ -280,47 +280,45 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
   },
 
   /**
-   * Task 완료 토글 (서비스 레이어에 위임)
+   * Task 완료 토글 (모바일/인박스에 위임)
    */
   toggleTaskCompletion: async (taskId: string) => {
     const { currentDate, dailyData, loadData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
 
-    // 원본 백업
     const originalTasks = dailyData.tasks;
     const originalBlockStates = dailyData.timeBlockStates;
 
     try {
-      // Task 확인 (dailyData에 없으면 글로벌 인박스 등에서 바로 처리)
-      const task = dailyData.tasks.find(t => t.id === taskId);
+      const taskInDaily = dailyData.tasks.find(t => t.id === taskId);
+      let wasCompleted = false;
+      let optimisticTasks = dailyData.tasks;
+      let blockState: TimeBlockState | undefined;
+      let blockTasks: Task[] | undefined;
 
-      if (!task) {
-        await toggleTaskInRepo(taskId, currentDate);
-        return;
+      if (taskInDaily) {
+        wasCompleted = taskInDaily.completed;
+        optimisticTasks = updateTaskInArray(dailyData.tasks, taskId, {
+          completed: !taskInDaily.completed,
+          completedAt: !taskInDaily.completed ? new Date().toISOString() : null,
+        });
+        set(createOptimisticTaskUpdate(dailyData, optimisticTasks));
+      } else {
+        const inboxTask = await db.globalInbox.get(taskId);
+        if (!inboxTask) {
+          throw new Error(`Task not found: ${taskId}`);
+        }
+        wasCompleted = inboxTask.completed;
       }
 
-      const wasCompleted = task.completed;
-
-      // ✅ Optimistic Update
-      const optimisticTasks = updateTaskInArray(dailyData.tasks, taskId, {
-        completed: !task.completed,
-        completedAt: !task.completed ? new Date().toISOString() : null,
-      });
-      set(createOptimisticTaskUpdate(dailyData, optimisticTasks));
-
-      // ✅ Repository 호출
       const updatedTask = await toggleTaskInRepo(taskId, currentDate);
 
-      // ✅ 완료 처리 (미완료 → 완료만)
       if (!wasCompleted && updatedTask.completed) {
-        const blockState = updatedTask.timeBlock
-          ? dailyData.timeBlockStates[updatedTask.timeBlock]
-          : undefined;
-        const blockTasks = updatedTask.timeBlock
-          ? optimisticTasks.filter(t => t.timeBlock === updatedTask.timeBlock)
-          : undefined;
+        if (taskInDaily && updatedTask.timeBlock) {
+          blockState = dailyData.timeBlockStates[updatedTask.timeBlock];
+          blockTasks = optimisticTasks.filter(t => t.timeBlock === updatedTask.timeBlock);
+        }
 
-        // 🎯 TaskCompletionService에 위임
         const result = await taskCompletionService.handleTaskCompletion({
           task: updatedTask,
           wasCompleted,
@@ -329,12 +327,10 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
           blockTasks,
         });
 
-        // ✅ GameStateStore 강제 새로고침
         const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
         await useGameStateStore.getState().refresh();
 
-        // 완벽한 블록 달성 시 UI 업데이트
-        if (result.isPerfectBlock && updatedTask.timeBlock && blockState) {
+        if (taskInDaily && result.isPerfectBlock && updatedTask.timeBlock && blockState) {
           set({
             dailyData: createUpdatedDailyData(dailyData, {
               tasks: optimisticTasks,
@@ -349,17 +345,15 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
           });
         }
 
-        console.log('[DailyDataStore] ✅ Task completion processed:', result);
+        console.log('[DailyDataStore] Task completion processed:', result);
       }
 
-      // ✅ 목표 연결 시 진행률 재계산
       if (updatedTask.goalId) {
         await recalculateGoalProgress(currentDate, updatedTask.goalId);
         await loadData(currentDate, true);
       }
     } catch (err) {
       console.error('[DailyDataStore] Failed to toggle task completion, rolling back:', err);
-      // ❌ Rollback (Task + BlockState)
       set(createFullRollbackState(dailyData, originalTasks, originalBlockStates, err as Error));
       throw err;
     }
