@@ -734,6 +734,91 @@ const result = await callAI({
 
 ## Important Implementation Details
 
+## ⚠️ CRITICAL PATTERNS (Must Follow to Avoid Bugs)
+
+### 1. Task Completion MUST Use taskCompletionService
+**ALWAYS** use `taskCompletionService.handleTaskCompletion()` when completing tasks, regardless of where they are (inbox or time block).
+
+**Why Critical**: Bypassing this service causes XP not to be awarded, quests not to update, and waifu affection not to change.
+
+**Correct Pattern** (`InboxTab.tsx:134-184`, `dailyDataStore.ts:286-386`):
+```typescript
+// ✅ CORRECT: Get task state before toggle
+const task = await getTask(taskId);
+const wasCompleted = task.completed;
+
+// Toggle completion
+const updatedTask = await toggleTaskCompletion(taskId);
+
+// ✅ CRITICAL: Call service if just completed (not uncompleted)
+if (!wasCompleted && updatedTask.completed) {
+  await taskCompletionService.handleTaskCompletion({
+    task: updatedTask,
+    wasCompleted,
+    date: currentDate,
+    blockState,      // undefined for inbox tasks
+    blockTasks,      // undefined for inbox tasks
+  });
+
+  // Refresh gameState to show updated XP
+  await useGameStateStore.getState().refresh();
+}
+```
+
+**Wrong Pattern** (causes bugs):
+```typescript
+// ❌ WRONG: Bypassing service - XP won't be awarded!
+await toggleTaskCompletion(taskId);
+await refreshTasks();
+```
+
+### 2. baseRepository Object Spread Order is Critical
+When saving data with `baseRepository.saveData()`, the `key` parameter MUST come AFTER spreading data.
+
+**Why Critical**: If data contains a 'key' field (like gameState loaded from IndexedDB), putting key first will cause it to be overwritten by the spread, potentially saving data under the wrong primary key or with stale values. This causes data to not persist after page refresh.
+
+**Correct Pattern** (`baseRepository.ts:166-168`):
+```typescript
+// ✅ CORRECT: key comes AFTER ...data
+await table.put({
+  ...data,
+  key,  // This MUST be after ...data to ensure correct primary key
+});
+```
+
+**Wrong Pattern** (causes data persistence bugs):
+```typescript
+// ❌ WRONG: key before ...data - will be overwritten!
+await table.put({
+  key,       // If data has 'key' field, this gets overwritten
+  ...data,   // Overwrites the key parameter!
+});
+```
+
+**Historical Bug**: Before fix (commit 57a2d05), XP changes persisted to memory but not to IndexedDB, causing XP to reset on page refresh.
+
+### 3. Global Inbox vs Time Block Tasks: Different Code Paths
+Tasks exist in two separate locations with different repositories:
+
+**Global Inbox Tasks** (`timeBlock === null`):
+- Table: `db.globalInbox` (date-independent)
+- Repository: `inboxRepository.ts`
+- Functions: `loadInboxTasks()`, `addInboxTask()`, `updateInboxTask()`, `toggleInboxTaskCompletion()`
+- Store: Managed separately in component state (not in dailyDataStore)
+- No block state or block-specific features
+
+**Time Block Tasks** (`timeBlock !== null`):
+- Table: `db.dailyData` (date-specific)
+- Repository: `dailyDataRepository.ts`
+- Functions: `loadDailyData()`, `addTask()`, `updateTask()`, `toggleTaskCompletion()`
+- Store: `dailyDataStore` (Zustand)
+- Has block state, hourSlot, and block-specific features
+
+**Task Movement**:
+- Inbox → Block: `updateTask(taskId, { timeBlock: 'blockId' })` triggers automatic migration
+- Block → Inbox: `updateTask(taskId, { timeBlock: null })` triggers automatic migration
+- Migration handled automatically by `dailyDataRepository.updateTask()` (lines 275-356)
+
 ### Time Block System
 - Blocks defined as string literals: `'5-8' | '8-11' | '11-14' | '14-17' | '17-19' | '19-24' | null`
 - `null` = inbox (unscheduled tasks, now in globalInbox)
