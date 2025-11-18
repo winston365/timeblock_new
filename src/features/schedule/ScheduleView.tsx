@@ -31,7 +31,7 @@ import './schedule.css';
  *   - 지난 블록의 미완료 작업 자동 인박스 이동
  */
 export default function ScheduleView() {
-  const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion, toggleBlockLock } = useDailyData();
+  const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion, toggleBlockLock, updateBlockState } = useDailyData();
   const { updateQuestProgress } = useGameState();
   const { show: showWaifu } = useWaifuCompanionStore();
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
@@ -368,6 +368,7 @@ export default function ScheduleView() {
               onDeleteTask={handleDeleteTask}
               onToggleTask={handleToggleTask}
               onToggleLock={() => handleToggleLock(block.id)}
+              onUpdateBlockState={updateBlockState}
               onDropTask={handleDropTask}
             />
           );

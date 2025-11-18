@@ -327,7 +327,17 @@ export async function updateTask(taskId: string, updates: Partial<Task>, date: s
         }
 
         const todayData = await loadDailyData(date);
-        todayData.tasks.push(movedTask);
+
+        // ✅ 중복 방지: 이미 존재하는 작업인지 확인
+        const existingTaskIndex = todayData.tasks.findIndex(t => t.id === taskId);
+        if (existingTaskIndex !== -1) {
+          // 이미 존재하면 업데이트만
+          todayData.tasks[existingTaskIndex] = movedTask;
+        } else {
+          // 존재하지 않으면 추가
+          todayData.tasks.push(movedTask);
+        }
+
         await saveDailyData(date, todayData.tasks, todayData.timeBlockStates);
         return;
       }
