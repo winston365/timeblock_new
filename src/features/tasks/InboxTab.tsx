@@ -13,12 +13,12 @@
 
 import { useState, useEffect } from 'react';
 import { useGameState } from '@/shared/hooks/useGameState';
+import { useDailyData } from '@/shared/hooks/useDailyData';
 import {
   loadInboxTasks,
   addInboxTask,
   updateInboxTask,
   deleteInboxTask,
-  toggleInboxTaskCompletion,
 } from '@/data/repositories/inboxRepository';
 import type { Task } from '@/shared/types/domain';
 import { generateId } from '@/shared/lib/utils';
@@ -37,6 +37,7 @@ import './tasks.css';
  */
 export default function InboxTab() {
   const { updateQuestProgress } = useGameState();
+  const { toggleTaskCompletion } = useDailyData();
   const { getDragData } = useDragDropManager();
   const [inboxTasks, setInboxTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +134,7 @@ export default function InboxTab() {
 
   const handleToggleTask = async (taskId: string) => {
     try {
-      await toggleInboxTaskCompletion(taskId);
+      await toggleTaskCompletion(taskId);
       await refreshInboxTasks(); // 목록 새로고침
     } catch (error) {
       console.error('Failed to toggle task:', error);
