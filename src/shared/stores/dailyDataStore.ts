@@ -364,6 +364,10 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
           blockTasks,
         });
 
+        // ✅ gameStateStore 강제 새로고침 (XP, 레벨, 퀘스트 UI 반영)
+        const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
+        await useGameStateStore.getState().refresh();
+
         // 완벽한 블록 달성 시 UI 상태 업데이트
         if (result.isPerfectBlock && updatedTask.timeBlock && blockState) {
           set({
