@@ -49,6 +49,7 @@ export async function loadTemplates(): Promise<Template[]> {
         preparation3: template.preparation3 ?? '',
         category: template.category ?? '',
         isFavorite: template.isFavorite ?? false,
+        imageUrl: template.imageUrl ?? '',
       }));
     }
 
@@ -62,6 +63,7 @@ export async function loadTemplates(): Promise<Template[]> {
         preparation1: template.preparation1 ?? '',
         preparation2: template.preparation2 ?? '',
         preparation3: template.preparation3 ?? '',
+        imageUrl: template.imageUrl ?? '',
       }));
 
       // localStorage 데이터를 IndexedDB에 저장
@@ -82,6 +84,7 @@ export async function loadTemplates(): Promise<Template[]> {
           preparation3: template.preparation3 ?? '',
           category: template.category ?? '',
           isFavorite: template.isFavorite ?? false,
+          imageUrl: template.imageUrl ?? '',
         }));
 
         // Firebase 데이터를 IndexedDB와 localStorage에 저장
@@ -118,6 +121,7 @@ export async function loadTemplates(): Promise<Template[]> {
  * @param {number} intervalDays - N일 주기
  * @param {string} category - 카테고리
  * @param {boolean} isFavorite - 즐겨찾기 여부
+ * @param {string} imageUrl - 이미지 URL
  * @returns {Promise<Template>} 생성된 템플릿
  * @throws {Error} IndexedDB 또는 localStorage 저장 실패 시
  * @sideEffects
@@ -140,7 +144,8 @@ export async function createTemplate(
   weeklyDays?: number[],
   intervalDays?: number,
   category?: string,
-  isFavorite?: boolean
+  isFavorite?: boolean,
+  imageUrl?: string
 ): Promise<Template> {
   try {
     const template: Template = {
@@ -160,6 +165,7 @@ export async function createTemplate(
       preparation3: preparation3 || '',
       category: category || '',
       isFavorite: isFavorite || false,
+      imageUrl: imageUrl || '',
     };
 
     // 1. IndexedDB에 저장
@@ -219,6 +225,7 @@ export async function updateTemplate(
       preparation1: updates.preparation1 ?? template.preparation1 ?? '',
       preparation2: updates.preparation2 ?? template.preparation2 ?? '',
       preparation3: updates.preparation3 ?? template.preparation3 ?? '',
+      imageUrl: updates.imageUrl ?? template.imageUrl ?? '',
     };
 
     const updatedTemplate = { ...template, ...sanitizedUpdates };

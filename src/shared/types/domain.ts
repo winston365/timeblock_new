@@ -163,6 +163,7 @@ export interface Template {
   preparation3?: string; // 준비 사항 3 (예상 방해물 또는 대처 환경)
   category?: string; // 사용자 정의 카테고리
   isFavorite?: boolean; // 즐겨찾기 여부
+  imageUrl?: string; // 템플릿 썸네일 이미지 URL
 }
 
 /**

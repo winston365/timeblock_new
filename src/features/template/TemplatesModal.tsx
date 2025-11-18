@@ -567,28 +567,18 @@ const formatRelativeDate = (date: Date): string => {
 
                   {/* 카드 바디 */}
                   <div className="template-card-body">
-                    {template.memo && (
-                      <div className="template-card-memo">
-                        <span className="template-card-memo-icon">💭</span>
-                        <span dangerouslySetInnerHTML={{ __html: linkifyText(template.memo) }} />
+                    {/* 이미지 썸네일 */}
+                    {template.imageUrl && (
+                      <div className="template-card-image">
+                        <img
+                          src={template.imageUrl}
+                          alt={template.text}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
                       </div>
                     )}
-
-                    {/* 메타 정보 */}
-                    <div className="template-card-meta">
-                      <div className="template-meta-item">
-                        <span className="template-meta-icon">⏱️</span>
-                        <span>{template.baseDuration}분</span>
-                      </div>
-                      <div className="template-meta-item">
-                        <span className="template-meta-icon">🎯</span>
-                        <span>{RESISTANCE_LABELS[template.resistance]}</span>
-                      </div>
-                      <div className="template-meta-item">
-                        <span className="template-meta-icon">📍</span>
-                        <span>{getTimeBlockLabel(template.timeBlock)}</span>
-                      </div>
-                    </div>
                   </div>
 
                   {/* 카드 액션 */}
