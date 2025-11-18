@@ -1,44 +1,21 @@
-/**
- * EnergyTab
- *
- * @role 에너지 수준 입력 및 통계 표시 탭 컴포넌트. 시간대별 평균 에너지 분석 제공
- * @input 없음 (useEnergyState 훅으로 데이터 로드)
- * @output 에너지 입력 폼, 통계 카드, 시간대별 평균, 오늘 기록 목록
- * @external_dependencies
- *   - useEnergyState: 에너지 데이터 및 CRUD 훅
- */
-
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useEnergyState } from '@/shared/hooks';
-import './energy.css';
 
-/**
- * 에너지 탭
- *
- * @returns {JSX.Element} 에너지 탭 UI
- * @sideEffects
- *   - 에너지 레벨 추가/삭제 시 데이터 저장
- */
 const ACTIVITY_OPTIONS = [
-  { value: '', label: '선택 안함' },
-  { value: '💼 업무', label: '💼 업무' },
-  { value: '👥 회의', label: '👥 회의' },
-  { value: '🏃 운동', label: '🏃 운동' },
-  { value: '🍽️ 식사', label: '🍽️ 식사' },
-  { value: '☕ 휴식', label: '☕ 휴식' },
-  { value: '📚 학습', label: '📚 학습' },
-  { value: '🎨 창의적 작업', label: '🎨 창의적 작업' },
-  { value: '🚗 출퇴근', label: '🚗 출퇴근' },
-  { value: '😴 수면', label: '😴 수면' },
+  { value: '', label: '선택 없음' },
+  { value: '사무 업무', label: '사무 업무' },
+  { value: '미팅/회의', label: '미팅/회의' },
+  { value: '운동 활동', label: '운동 활동' },
+  { value: '식사/휴식', label: '식사/휴식' },
+  { value: '딥 워크', label: '딥 워크' },
+  { value: '창의 작업', label: '창의 작업' },
+  { value: '이동/통근', label: '이동/통근' },
+  { value: '학습', label: '학습' },
+  { value: '수면', label: '수면' },
 ];
 
-/**
- * 에너지 탭 메인 컴포넌트
- *
- * @returns {JSX.Element} 에너지 탭 UI
- * @sideEffects
- *   - 에너지 레벨 추가/삭제 시 저장소 업데이트
- */
+const TIME_BLOCKS = ['5-8', '8-11', '11-14', '14-17', '17-19', '19-24'];
+
 export default function EnergyTab() {
   const {
     energyLevels,
@@ -68,33 +45,34 @@ export default function EnergyTab() {
 
   if (loading) {
     return (
-      <div className="energy-tab">
-        <div className="tab-content">
-          <p>로딩 중...</p>
+      <div className="flex h-full flex-col">
+        <div className="flex-1 overflow-y-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 text-center text-[var(--color-text-secondary)]">
+          로딩 중...
         </div>
       </div>
     );
   }
 
   return (
-    <div className="energy-tab">
-      <div className="tab-header">
-        <h3>⚡ 에너지</h3>
+    <div className="flex h-full flex-col">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-xl font-semibold text-[var(--color-text)]">에너지</h3>
         <button
-          className="btn-primary"
-          onClick={() => setShowInput(!showInput)}
-          aria-label={showInput ? '입력 폼 닫기' : '에너지 입력'}
+          className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--color-primary-dark)]"
+          onClick={() => setShowInput((prev) => !prev)}
+          aria-label={showInput ? '입력 닫기' : '에너지 기록'}
         >
-          {showInput ? '취소' : '➕ 입력'}
+          {showInput ? '취소' : '새 기록'}
         </button>
       </div>
 
-      <div className="tab-content">
-        {/* 에너지 입력 폼 */}
+      <div className="flex-1 space-y-6 overflow-y-auto">
         {showInput && (
-          <form className="energy-input-form" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="energy-level">에너지 수준: {energy}%</label>
+          <form className="space-y-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-4 shadow-sm" onSubmit={handleSubmit}>
+            <div className="space-y-2">
+              <label htmlFor="energy-level" className="text-sm font-medium text-[var(--color-text)]">
+                에너지 레벨: {energy}%
+              </label>
               <input
                 id="energy-level"
                 type="range"
@@ -103,17 +81,19 @@ export default function EnergyTab() {
                 step="5"
                 value={energy}
                 onChange={(e) => setEnergy(Number(e.target.value))}
-                className="energy-slider"
+                className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-500"
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="energy-activity">활동</label>
+            <div className="space-y-2">
+              <label htmlFor="energy-activity" className="text-sm font-medium text-[var(--color-text)]">
+                활동
+              </label>
               <select
                 id="energy-activity"
                 value={activity}
                 onChange={(e) => setActivity(e.target.value)}
-                className="form-select"
+                className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
               >
                 {ACTIVITY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -123,77 +103,68 @@ export default function EnergyTab() {
               </select>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="energy-context">상황/맥락 (선택)</label>
+            <div className="space-y-2">
+              <label htmlFor="energy-context" className="text-sm font-medium text-[var(--color-text)]">
+                상황/맥락 (선택)
+              </label>
               <input
                 id="energy-context"
                 type="text"
                 value={context}
                 onChange={(e) => setContext(e.target.value)}
-                placeholder="예: 점심 먹고 졸림, 운동 후 상쾌함"
-                className="form-input"
+                placeholder="점심 식사 후 집중이 떨어짐"
+                className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
               />
             </div>
 
-            <button type="submit" className="btn-primary btn-full">
-              ✅ 기록하기
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-dark)]"
+            >
+              기록 저장
             </button>
           </form>
         )}
 
-        {/* 통계 */}
-        <div className="energy-stats">
-          <div className="stat-card">
-            <div className="stat-label">현재 에너지</div>
-            <div className="stat-value" style={{ color: getEnergyColor(currentEnergy) }}>
-              {currentEnergy}%
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">오늘 평균</div>
-            <div className="stat-value">{todayAverage}%</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">전체 평균</div>
-            <div className="stat-value">{overallAverage}%</div>
-          </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <StatCard label="현재 에너지" value={`${currentEnergy}%`} valueColor={getEnergyColor(currentEnergy)} />
+          <StatCard label="오늘 평균" value={`${todayAverage}%`} />
+          <StatCard label="전체 평균" value={`${overallAverage}%`} />
         </div>
 
-        {/* 5일간 시간대별 에너지 통계 (그리드 형식) */}
-        {recentTimeBlockStats && recentTimeBlockStats.length > 0 && (
-          <div className="energy-section">
-            <h4>5일간 시간대별 에너지 통계</h4>
-            <div className="timeblock-grid-container">
-              <table className="timeblock-grid-table">
+        {recentTimeBlockStats?.length ? (
+          <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 shadow-sm">
+            <h4 className="mb-3 text-base font-semibold text-[var(--color-text)]">5일간 시간대별 에너지</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr>
-                    <th className="timeblock-header">시간대</th>
-                    {recentTimeBlockStats.map((dayStat) => (
-                      <th key={dayStat.date} className="date-header">
-                        {dayStat.date.substring(5)}
+                  <tr className="bg-[var(--color-bg)] text-[var(--color-text)]">
+                    <th className="rounded-l-md px-3 py-2 text-left">시간대</th>
+                    {recentTimeBlockStats.map((day) => (
+                      <th key={day.date} className="px-3 py-2 text-center text-xs font-semibold">
+                        {day.date.substring(5)}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {['5-8', '8-11', '11-14', '14-17', '17-19', '19-24'].map((blockId) => (
-                    <tr key={blockId}>
-                      <td className="timeblock-label">{getBlockLabel(blockId)}</td>
-                      {recentTimeBlockStats.map((dayStat) => {
-                        const avg = dayStat.timeBlocks[blockId];
-                        const energyValue = avg !== undefined ? avg : null;
+                  {TIME_BLOCKS.map((blockId) => (
+                    <tr key={blockId} className="border-t border-[var(--color-border)]">
+                      <td className="bg-[var(--color-bg)] px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)]">
+                        {getBlockLabel(blockId)}
+                      </td>
+                      {recentTimeBlockStats.map((day) => {
+                        const value = day.timeBlocks[blockId];
                         return (
                           <td
-                            key={`${dayStat.date}-${blockId}`}
-                            className="timeblock-cell"
+                            key={`${day.date}-${blockId}`}
+                            className="px-3 py-2 text-center text-xs font-semibold text-white"
                             style={{
-                              background: energyValue !== null
-                                ? getEnergyColor(energyValue)
-                                : 'transparent',
-                              opacity: energyValue !== null ? 0.7 : 1,
+                              background: value !== undefined ? getEnergyColor(value) : 'transparent',
+                              opacity: value !== undefined ? 0.75 : 1,
                             }}
                           >
-                            {energyValue !== null ? `${energyValue}%` : '-'}
+                            {value !== undefined ? `${value}%` : '-'}
                           </td>
                         );
                       })}
@@ -202,70 +173,72 @@ export default function EnergyTab() {
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          </section>
+        ) : null}
 
-        {/* 시간대별 평균 (오늘) */}
         {Object.keys(timeBlockAverages).length > 0 && (
-          <div className="energy-section">
-            <h4>오늘 시간대별 평균 에너지</h4>
-            <div className="timeblock-energy-list">
-              {Object.entries(timeBlockAverages).map(([blockId, avg]) => (
-                <div key={blockId} className="timeblock-energy-item">
-                  <span className="timeblock-label">{getBlockLabel(blockId)}</span>
-                  <div className="energy-bar-container">
+          <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 shadow-sm">
+            <h4 className="mb-3 text-base font-semibold text-[var(--color-text)]">오늘 시간대 평균</h4>
+            <div className="space-y-3">
+              {Object.entries(timeBlockAverages).map(([block, avg]) => (
+                <div key={block} className="flex items-center gap-3">
+                  <span className="w-24 text-sm text-[var(--color-text-secondary)]">{getBlockLabel(block)}</span>
+                  <div className="flex-1 overflow-hidden rounded-full bg-[var(--color-bg)]">
                     <div
-                      className="energy-bar-fill"
-                      style={{
-                        width: `${avg}%`,
-                        background: getEnergyColor(avg),
-                      }}
+                      className="h-3 rounded-full"
+                      style={{ width: `${avg}%`, background: getEnergyColor(avg) }}
                     />
                   </div>
-                  <span className="energy-value">{avg}%</span>
+                  <span className="w-10 text-right text-sm font-semibold text-[var(--color-text)]">{avg}%</span>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* 오늘 기록된 에너지 */}
-        {energyLevels.length > 0 && (
-          <div className="energy-section">
-            <h4>오늘 기록 ({energyLevels.length}개)</h4>
-            <div className="energy-records-list">
+        {energyLevels.length > 0 ? (
+          <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 shadow-sm">
+            <h4 className="mb-3 text-base font-semibold text-[var(--color-text)]">오늘 기록 ({energyLevels.length})</h4>
+            <div className="space-y-3">
               {[...energyLevels].reverse().map((level) => (
-                <div key={level.timestamp} className="energy-record-item">
-                  <div className="record-time">
-                    {new Date(level.timestamp).toLocaleTimeString('ko-KR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                <div key={level.timestamp} className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-3">
+                  <div className="text-sm text-[var(--color-text-secondary)]">
+                    {new Date(level.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                   </div>
-                  <div className="record-energy" style={{ color: getEnergyColor(level.energy) }}>
+                  <div className="text-base font-semibold" style={{ color: getEnergyColor(level.energy) }}>
                     {level.energy}%
                   </div>
-                  {level.activity && <div className="record-activity">{level.activity}</div>}
-                  {level.context && <div className="record-context">{level.context}</div>}
+                  {level.activity && <div className="text-sm text-[var(--color-text)]">{level.activity}</div>}
+                  {level.context && <div className="text-sm text-[var(--color-text-secondary)]">{level.context}</div>}
                   <button
-                    className="btn-delete"
+                    type="button"
+                    className="ml-auto rounded border border-red-500 px-2 py-1 text-xs text-red-400 transition hover:bg-red-500/10"
                     onClick={() => deleteEnergyLevel(level.timestamp)}
-                    aria-label="삭제"
+                    aria-label="기록 삭제"
                   >
-                    🗑️
+                    삭제
                   </button>
                 </div>
               ))}
             </div>
+          </section>
+        ) : !showInput ? (
+          <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-8 text-center text-[var(--color-text-secondary)]">
+            <p className="text-base font-semibold text-[var(--color-text)]">오늘 기록된 에너지가 없습니다.</p>
+            <p className="text-sm">오른쪽 버튼을 눌러 에너지를 기록해 보세요!</p>
           </div>
-        )}
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
-        {energyLevels.length === 0 && !showInput && (
-          <div className="energy-empty">
-            <p>오늘 기록된 에너지가 없습니다.</p>
-            <p>➕ 버튼을 눌러 에너지를 기록해보세요!</p>
-          </div>
-        )}
+function StatCard({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+  return (
+    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-center shadow-sm">
+      <div className="text-sm text-[var(--color-text-secondary)]">{label}</div>
+      <div className="text-2xl font-bold" style={{ color: valueColor || 'var(--color-text)' }}>
+        {value}
       </div>
     </div>
   );
@@ -284,9 +257,9 @@ function getBlockLabel(blockId: string): string {
 }
 
 function getEnergyColor(energy: number): string {
-  if (energy >= 80) return '#10b981'; // Green
-  if (energy >= 60) return '#3b82f6'; // Blue
-  if (energy >= 40) return '#f59e0b'; // Amber
-  if (energy >= 20) return '#f97316'; // Orange
-  return '#ef4444'; // Red
+  if (energy >= 80) return '#10b981';
+  if (energy >= 60) return '#3b82f6';
+  if (energy >= 40) return '#f59e0b';
+  if (energy >= 20) return '#f97316';
+  return '#ef4444';
 }

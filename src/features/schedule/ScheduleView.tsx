@@ -62,26 +62,6 @@ export default function ScheduleView() {
   const currentBlockId = getCurrentBlockId();
 
   // 활성 블록 강조 표시 업데이트
-  useEffect(() => {
-    const updateActiveBlock = (hour: number) => {
-      const allActiveBlocks = document.querySelectorAll('.time-block.active-block');
-      allActiveBlocks.forEach(blockElement => {
-        blockElement.classList.remove('active-block');
-      });
-
-      const activeBlock = TIME_BLOCKS.find(b => hour >= b.start && hour < b.end);
-
-      if (activeBlock) {
-        const targetElement = document.querySelector(`.time-block[data-block-id="${activeBlock.id}"]`);
-        if (targetElement) {
-          targetElement.classList.add('active-block');
-        }
-      }
-    };
-
-    updateActiveBlock(currentHour);
-  }, [currentHour]);
-
   // 지난 블록의 미완료 작업을 인박스로 이동
   useEffect(() => {
     const movePastIncompleteTasks = async () => {
@@ -322,31 +302,35 @@ export default function ScheduleView() {
   // 첫 로딩 시에만 로딩 메시지 표시 (데이터 업데이트 시에는 UI 유지)
   if (loading && !dailyData) {
     return (
-      <div className="schedule-view">
-        <div className="loading-message">데이터 로딩 중...</div>
+      <div className="flex h-full flex-col overflow-y-auto p-6">
+        <div className="flex flex-1 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm text-[var(--color-text-secondary)]">
+          데이터 로딩 중...
+        </div>
       </div>
     );
   }
 
   if (!dailyData) {
     return (
-      <div className="schedule-view">
-        <div className="error-message">데이터를 불러올 수 없습니다.</div>
+      <div className="flex h-full flex-col overflow-y-auto p-6">
+        <div className="flex flex-1 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm text-[var(--color-text-secondary)]">
+          데이터를 불러오지 못했습니다.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="schedule-view">
-      <div className="schedule-header">
-        <h2>📅 오늘의 타임블럭</h2>
-        <div className="schedule-stats">
+    <div className="flex h-full flex-col overflow-y-auto p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <h2 className="text-2xl font-semibold text-[var(--color-text)]">오늘의 타임블록</h2>
+        <div className="flex items-center gap-4 text-sm text-[var(--color-text-secondary)]">
           <span>전체 {dailyData.tasks.length}개</span>
           <span>완료 {dailyData.tasks.filter(t => t.completed).length}개</span>
         </div>
       </div>
 
-      <div className="timeblocks-grid">
+      <div className="space-y-4">
         {TIME_BLOCKS.map(block => {
           const blockTasks = dailyData.tasks.filter(task => task.timeBlock === block.id);
           const blockState = dailyData.timeBlockStates[block.id];

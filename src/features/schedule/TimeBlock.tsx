@@ -353,22 +353,70 @@ const TimeBlock = memo(function TimeBlock({
     });
   };
 
+  const statusStyles: Record<
+    'comfortable' | 'balanced' | 'tight' | 'critical',
+    { icon: string; fill: string; badge: string }
+  > = {
+    comfortable: {
+      icon: 'border-emerald-400/60 bg-emerald-500/10 text-emerald-200',
+      fill: 'from-emerald-300 via-emerald-400 to-emerald-300',
+      badge: 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100',
+    },
+    balanced: {
+      icon: 'border-indigo-400/60 bg-indigo-500/10 text-indigo-200',
+      fill: 'from-indigo-300 via-indigo-400 to-violet-300',
+      badge: 'border-indigo-400/40 bg-indigo-500/10 text-indigo-100',
+    },
+    tight: {
+      icon: 'border-amber-400/60 bg-amber-500/10 text-amber-100',
+      fill: 'from-amber-300 via-amber-400 to-amber-500',
+      badge: 'border-amber-400/40 bg-amber-500/10 text-amber-100',
+    },
+    critical: {
+      icon: 'border-rose-400/60 bg-rose-500/10 text-rose-100',
+      fill: 'from-rose-300 via-rose-500 to-red-500',
+      badge: 'border-rose-400/40 bg-rose-500/10 text-rose-100',
+    },
+  };
+
+  const statusStyle = statusStyles[timeStatus];
+  const plannedWidth = remainingMinutes ? Math.min((pendingDuration / (remainingMinutes || 1)) * 100, 100) : 0;
+  const completionPercentage = totalDuration > 0 ? (completedDuration / totalDuration) * 100 : 0;
+
+  const blockClassName = [
+    'time-block',
+    isCurrentBlock ? 'current-block' : '',
+    isPastBlock ? 'past-block' : '',
+    isExpanded ? 'expanded' : 'collapsed',
+    isDragOver ? 'drag-over' : '',
+    'relative flex min-h-[72px] flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] transition-all duration-300',
+    isExpanded ? 'shadow-lg' : 'hover:shadow-md',
+    isCurrentBlock ? 'border-[var(--color-primary)] ring-4 ring-[rgba(99,102,241,0.12)]' : '',
+    isDragOver ? 'ring-2 ring-offset-2 ring-[var(--color-primary)]/70' : '',
+    isPastBlock ? 'opacity-95' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const blockHeaderClass =
+    'block-header flex flex-col gap-4 cursor-pointer border-b border-[var(--color-border)] bg-gradient-to-br from-[var(--color-bg-surface)] via-[var(--color-bg-elevated)] to-[var(--color-bg-elevated)] px-4 py-4 select-none lg:flex-row lg:items-start lg:justify-between';
+
   return (
     <div
-      className={`time-block ${isCurrentBlock ? 'current-block' : ''} ${isPastBlock ? 'past-block' : ''} ${isExpanded ? 'expanded' : 'collapsed'} ${isDragOver ? 'drag-over' : ''}`}
+      className={blockClassName}
       data-block-id={block.id}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDropWrapper}
     >
-      <div className="block-header" onClick={() => setIsExpanded(!isExpanded)}>
-        <div className="block-primary-info">
+      <div className={blockHeaderClass} onClick={() => setIsExpanded(!isExpanded)}>
+        <div className="block-primary-info flex flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {/* 왼쪽: 잠금 버튼 / 타이머 버튼 */}
-          <div className="block-lock-section">
+          <div className="block-lock-section flex flex-wrap items-center gap-3 text-sm text-[var(--color-text-secondary)]">
             {state?.isLocked ? (
               // 잠긴 상태
               <button
-                className="lock-icon-btn locked"
+                className="lock-icon-btn locked flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-emerald-400/60 bg-emerald-500/15 text-xl text-emerald-100 shadow-lg transition hover:scale-105 disabled:cursor-not-allowed"
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!isPastBlock) {
@@ -382,20 +430,20 @@ const TimeBlock = memo(function TimeBlock({
               </button>
             ) : state?.lockTimerStartedAt ? (
               // 타이머 진행 중
-              <div className="lock-timer-active">
+              <div className="lock-timer-active flex flex-wrap items-center gap-3" onClick={(e) => e.stopPropagation()}>
                 <button
-                  className="lock-timer-cancel"
+                  className="lock-timer-cancel rounded-2xl border-2 border-rose-400/60 bg-rose-500/20 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:scale-105"
                   onClick={handleCancelLockTimer}
                   title="타이머 취소"
                 >
                   ❌
                 </button>
-                <div className="lock-timer-display">
-                  <span className="timer-icon">⏰</span>
-                  <span className="timer-text">{formatRemainingTime()}</span>
-                  <div className="timer-progress-bar">
+                <div className="lock-timer-display flex flex-col items-center gap-2 rounded-2xl border-2 border-indigo-400/60 bg-indigo-500/15 px-4 py-3 text-center text-sm text-[var(--color-text)] shadow-[0_10px_30px_rgba(79,70,229,0.25)]">
+                  <span className="timer-icon text-xl">⏰</span>
+                  <span className="timer-text font-mono text-lg tracking-[0.2em] text-white">{formatRemainingTime()}</span>
+                  <div className="timer-progress-bar h-1.5 w-full overflow-hidden rounded-full bg-black/30">
                     <div
-                      className="timer-progress-fill"
+                      className="timer-progress-fill h-full rounded-full bg-gradient-to-r from-indigo-300 via-indigo-400 to-violet-400 transition-all duration-300"
                       style={{ width: `${getTimerProgress()}%` }}
                     />
                   </div>
@@ -403,13 +451,13 @@ const TimeBlock = memo(function TimeBlock({
               </div>
             ) : isPastBlock ? (
               // 지난 블록
-              <button className="lock-icon-btn past" disabled title="지난 시간대는 잠금할 수 없습니다">
+              <button className="lock-icon-btn past flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-white/10 text-xl text-white/40" disabled title="지난 시간대는 잠금할 수 없습니다">
                 🔓
               </button>
             ) : (
               // 타이머 시작 버튼
               <button
-                className="lock-timer-start-btn"
+                className="lock-timer-start-btn flex items-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg transition hover:translate-y-[-1px] hover:shadow-xl"
                 onClick={handleStartLockTimer}
                 title="3분 후 자동 잠금 시작 (완벽 달성 시: +40 XP)"
               >
@@ -419,68 +467,71 @@ const TimeBlock = memo(function TimeBlock({
             )}
           </div>
 
-          <div className="block-time-group">
-            <span className="block-time-range-large">{block.start.toString().padStart(2, '0')}-{block.end.toString().padStart(2, '0')}</span>
-            <div className="block-stats-inline">
+          <div className="block-time-group flex flex-col gap-2 text-sm text-[var(--color-text-secondary)] sm:flex-row sm:items-center sm:gap-4">
+            <span className="block-time-range-large text-2xl font-bold tracking-[0.08em] text-[var(--color-text)]">{block.start.toString().padStart(2, '0')}-{block.end.toString().padStart(2, '0')}</span>
+            <div className="block-stats-inline flex flex-wrap items-center gap-2 text-xs font-semibold">
               {state?.isLocked ? (
                 // 잠긴 블록: 과거 블록이면서 미완료 작업이 있으면 "계획 실패"
                 isPastBlock && tasks.some(t => !t.completed) ? (
-                  <span className="stat-compact failed-plan">❌ 계획 실패</span>
+                  <span className="stat-compact failed-plan rounded-full border border-rose-400/50 bg-rose-500/10 px-3 py-1 text-rose-100">❌ 계획 실패</span>
                 ) : (
-                  <span className="stat-compact locked-bonus">✨ 40 XP 보너스 도전 중!</span>
+                  <span className="stat-compact locked-bonus rounded-full border border-amber-300/50 bg-amber-500/10 px-3 py-1 text-amber-100">✨ 40 XP 보너스 도전 중!</span>
                 )
               ) : (
                 <>
-                  <span className="stat-compact">📋 {tasks.length}</span>
-                  {maxXP > 0 && <span className="stat-compact">✨ ~{maxXP}XP</span>}
-                  {!isPastBlock && !state?.lockTimerStartedAt && <span className="stat-compact lock-warning">⚠️ 잠금 필요</span>}
+                  <span className="stat-compact rounded-full border border-white/10 bg-white/5 px-3 py-1">📋 {tasks.length}</span>
+                  {maxXP > 0 && <span className="stat-compact rounded-full border border-white/10 bg-white/5 px-3 py-1">✨ ~{maxXP}XP</span>}
+                  {!isPastBlock && !state?.lockTimerStartedAt && <span className="stat-compact lock-warning rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1 text-amber-100">⚠️ 잠금 필요</span>}
                 </>
               )}
             </div>
           </div>
         </div>
 
-        <div className="block-actions">
+        <div className="block-actions flex items-center justify-end">
           {/* 오른쪽: 시간 표시 (현재 시간대 블록만) */}
           {isCurrentBlock && timeRemaining && (
-            <div className="time-bar-wrapper" data-tooltip={getTooltipText()}>
-              <div className="time-bar-container">
+            <div className="time-bar-wrapper rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-[var(--color-text-secondary)] shadow-inner" data-tooltip={getTooltipText()}>
+              <div className="time-bar-container flex flex-col gap-3">
                 {/* 상태 아이콘 */}
-                <div className={`status-icon-large status-${timeStatus}`}>
+                <div className={`status-icon-large status-${timeStatus} flex h-12 w-12 items-center justify-center rounded-2xl border text-2xl ${statusStyle.icon}`}>
                   {getStatusIcon()}
                 </div>
 
                 {/* 시간 정보와 바 */}
-                <div className="time-info-bars">
+                <div className="time-info-bars space-y-3">
                   {/* 계획 시간 바 */}
-                  <div className="time-bar-row">
-                    <span className="time-label">📋 계획</span>
-                    <div className="time-bar-track">
+                  <div className="time-bar-row flex items-center gap-3">
+                    <span className="time-label w-14 text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">📋 계획</span>
+                    <div className="time-bar-track flex-1">
                       <div
-                        className={`time-bar-fill planned status-${timeStatus}`}
-                        style={{ width: `${Math.min((pendingDuration / (remainingMinutes || 1)) * 100, 100)}%` }}
+                        className={`time-bar-fill planned status-${timeStatus} h-full rounded-full bg-gradient-to-r ${statusStyle.fill}`}
+                        style={{ width: `${plannedWidth}%` }}
                       />
                     </div>
-                    <span className="time-value">{formatMinutesToHM(pendingDuration)}</span>
+                    <span className="time-value w-14 text-right font-semibold text-[var(--color-text)]">{formatMinutesToHM(pendingDuration)}</span>
                   </div>
 
                   {/* 남은 시간 바 */}
-                  <div className="time-bar-row">
-                    <span className="time-label">⏱️ 남은</span>
-                    <div className="time-bar-track">
+                  <div className="time-bar-row flex items-center gap-3">
+                    <span className="time-label w-14 text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">⏱️ 남은</span>
+                    <div className="time-bar-track flex-1">
                       <div
-                        className={`time-bar-fill remaining status-${timeStatus}`}
+                        className={`time-bar-fill remaining status-${timeStatus} h-full rounded-full bg-gradient-to-r from-indigo-300 via-indigo-400 to-violet-400`}
                         style={{ width: '100%' }}
                       />
                     </div>
-                    <span className="time-value">{formatMinutesToHM(remainingMinutes)}</span>
+                    <span className="time-value w-14 text-right font-semibold text-[var(--color-text)]">{formatMinutesToHM(remainingMinutes)}</span>
                   </div>
                 </div>
 
                 {/* 상태 텍스트 */}
-                <div className={`status-text-badge status-${timeStatus}`}>
+                <div className={`status-text-badge status-${timeStatus} mt-3 inline-flex w-full items-center justify-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.4em] ${statusStyle.badge}`}>
                   {getStatusText()}
                 </div>
+                <p className="mt-2 text-center text-[10px] uppercase tracking-[0.4em] text-[var(--color-text-tertiary)]">
+                  {getTooltipText()}
+                </p>
               </div>
             </div>
           )}
@@ -488,23 +539,21 @@ const TimeBlock = memo(function TimeBlock({
       </div>
 
       {state?.isPerfect && (
-        <div className="block-badge perfect">✨ 완벽한 계획!</div>
+        <div className="block-badge perfect absolute right-4 top-4 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100 shadow-inner">✨ 완벽한 계획!</div>
       )}
       {state?.isFailed && (
-        <div className="block-badge failed">❌ 계획 실패</div>
+        <div className="block-badge failed absolute right-4 top-4 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1 text-xs font-semibold text-rose-100 shadow-inner">❌ 계획 실패</div>
       )}
 
-      <div className="block-progress">
+      <div className="block-progress h-2 w-full overflow-hidden rounded-full bg-black/30">
         <div
-          className="block-progress-bar"
-          style={{
-            width: totalDuration > 0 ? `${(completedDuration / totalDuration) * 100}%` : '0%',
-          }}
+          className="block-progress-bar h-full rounded-full bg-gradient-to-r from-emerald-400 via-indigo-400 to-fuchsia-400 transition-all duration-500"
+          style={{ width: `${completionPercentage}%` }}
         />
       </div>
 
       {isExpanded && (
-        <div className="block-content" onClick={handleBlockContentClick}>
+        <div className="block-content flex flex-col gap-3 border-t border-[var(--color-border)] bg-[var(--color-bg-base)]/40 px-4 py-4" onClick={handleBlockContentClick}>
           {/* 시간대별 HourBar 렌더링 */}
           {Array.from({ length: block.end - block.start }, (_, i) => block.start + i).map(hour => {
             // 해당 hour의 작업들 필터링

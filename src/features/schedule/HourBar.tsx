@@ -1,9 +1,7 @@
-/**
- * HourBar - 1시간 단위 시간대 바
+﻿/**
+ * HourBar - 1시간 단위 작업 영역
  *
- * @role 타임블록 내부의 1시간 단위 시간대 관리 (50분 몰입 + 10분 휴식)
- * @input hour, tasks, onCreateTask, onEditTask, onUpdateTask, onDeleteTask, onToggleTask, onDropTask
- * @output 시간대 프로그레스 바 + 작업 리스트 + 인라인 입력
+ * @role 타임블록 내부의 1시간 구간을 시각화하고 작업을 관리합니다.
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -12,10 +10,10 @@ import TaskCard from './TaskCard';
 import { useDragDrop } from './hooks/useDragDrop';
 
 interface HourBarProps {
-  hour: number; // 시간 (예: 5, 6, 7)
-  blockId: TimeBlockId; // 속한 타임블록 ID
-  tasks: Task[]; // 해당 시간대의 작업들
-  isLocked: boolean; // 블록 잠금 여부
+  hour: number;
+  blockId: TimeBlockId;
+  tasks: Task[];
+  isLocked: boolean;
   onCreateTask: (text: string, hour: number) => Promise<void>;
   onEditTask: (task: Task) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
@@ -24,9 +22,6 @@ interface HourBarProps {
   onDropTask: (taskId: string, targetHour: number) => void;
 }
 
-/**
- * 1시간 단위 시간대 바 컴포넌트
- */
 export default function HourBar({
   hour,
   blockId,
@@ -37,46 +32,35 @@ export default function HourBar({
   onUpdateTask,
   onDeleteTask,
   onToggleTask,
-  onDropTask: _onDropTask, // 사용하지 않음 (useDragDrop 훅으로 대체)
+  onDropTask: _onDropTask,
 }: HourBarProps) {
-  const [progress, setProgress] = useState(0); // 0-100% (50분 기준)
+  const [progress, setProgress] = useState(0);
   const [inlineInputValue, setInlineInputValue] = useState('');
   const inlineInputRef = useRef<HTMLInputElement>(null);
 
-  // 통합 드래그 앤 드롭 훅 사용
-  const { isDragOver, handleDragOver, handleDragLeave, handleDrop } = useDragDrop(
-    blockId,
-    hour
-  );
+  const { isDragOver, handleDragOver, handleDragLeave, handleDrop } = useDragDrop(blockId, hour);
 
-  // 실시간 프로그레스 계산 (50분 몰입 시간 기준)
   useEffect(() => {
     const updateProgress = () => {
       const now = new Date();
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
 
-      // 현재 시간대가 이 hour와 일치하는지 확인
       if (currentHour === hour) {
-        // 50분 기준 (0-50분)
         const focusProgress = Math.min((currentMinute / 50) * 100, 100);
         setProgress(focusProgress);
       } else if (currentHour > hour) {
-        // 지난 시간대는 100%
         setProgress(100);
       } else {
-        // 미래 시간대는 0%
         setProgress(0);
       }
     };
 
     updateProgress();
-    const interval = setInterval(updateProgress, 1000); // 1초마다 업데이트
-
+    const interval = setInterval(updateProgress, 1000);
     return () => clearInterval(interval);
   }, [hour]);
 
-  // 시간 포맷팅 with 진행 시간 (예: "05:00-06:00 (25/50)")
   const formatHourRange = () => {
     const startHour = hour.toString().padStart(2, '0');
     const endHour = (hour + 1).toString().padStart(2, '0');
@@ -91,20 +75,17 @@ export default function HourBar({
       return `${baseRange} (${elapsed}/50)`;
     } else if (currentHour > hour) {
       return `${baseRange} (완료)`;
-    } else {
-      return `${baseRange}`;
     }
+    return baseRange;
   };
 
-  // 인라인 입력 핸들러
   const handleInlineInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && inlineInputValue.trim()) {
       e.preventDefault();
-
       try {
         await onCreateTask(inlineInputValue.trim(), hour);
         setInlineInputValue('');
-        // 입력 필드 유지하여 연속 입력 가능
+        inlineInputRef.current?.focus();
       } catch (err) {
         console.error('Failed to create task:', err);
       }
@@ -113,44 +94,41 @@ export default function HourBar({
     }
   };
 
-  // 드롭 핸들러 래퍼 (onUpdateTask를 handleDrop에 전달)
   const handleDropWrapper = async (e: React.DragEvent) => {
-    if (!onUpdateTask) return;
-
     await handleDrop(e, async (taskId, updates) => {
       onUpdateTask(taskId, updates);
     });
   };
 
+  const containerClasses = [
+    'rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 transition hover:border-[var(--color-primary)]',
+    isDragOver ? 'ring-2 ring-[var(--color-primary)]/70' : '',
+  ].join(' ');
+
   return (
     <div
-      className={`hour-bar ${isDragOver ? 'drag-over' : ''}`}
+      className={containerClasses}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDropWrapper}
       data-hour={hour}
     >
-      {/* 시간대 헤더 + 프로그레스 바 */}
-      <div className="hour-bar-header">
-        <div className="hour-time-label">{formatHourRange()}</div>
+      <div className="mb-3 flex items-center justify-between text-sm font-semibold text-[var(--color-text-secondary)]">
+        <span className="font-mono text-xs tracking-[0.2em] text-[var(--color-text-secondary)]">{formatHourRange()}</span>
+        {!isLocked && (
+          <span className="text-xs text-[var(--color-text-tertiary)]">Enter로 빠르게 작업을 추가하세요</span>
+        )}
       </div>
 
-      {/* 프로그레스 바 (50분 몰입 + 10분 휴식) */}
-      <div className="hour-progress-bar">
-        {/* 몰입 시간 (0-50분) */}
-        <div className="hour-progress-focus" style={{ width: '83.33%' }}>
-          <div
-            className="hour-progress-fill"
-            style={{ width: `${progress}%` }}
-          />
+      <div className="mb-3 flex h-2 overflow-hidden rounded-full bg-black/20 text-xs">
+        <div className="relative h-full overflow-hidden rounded-full bg-white/10" style={{ width: '83.33%' }}>
+          <div className="h-full rounded-full bg-gradient-to-r from-indigo-300 via-indigo-400 to-indigo-200 transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
-        {/* 휴식 시간 (50-60분) */}
-        <div className="hour-progress-rest" style={{ width: '16.67%' }} />
+        <div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-amber-500" style={{ width: '16.67%' }} />
       </div>
 
-      {/* 작업 리스트 */}
-      <div className="hour-tasks">
-        {tasks.map(task => (
+      <div className="flex flex-col gap-2">
+        {tasks.map((task) => (
           <TaskCard
             key={task.id}
             task={task}
@@ -162,17 +140,16 @@ export default function HourBar({
           />
         ))}
 
-        {/* 인라인 입력 필드 - 항상 표시 */}
         {!isLocked && (
-          <div className="inline-task-input">
+          <div className="w-full">
             <input
               ref={inlineInputRef}
               type="text"
               value={inlineInputValue}
               onChange={(e) => setInlineInputValue(e.target.value)}
               onKeyDown={handleInlineInputKeyDown}
-              placeholder="할 일을 입력하고 Enter를 누르세요 (기본: 15분, 🟢 쉬움)"
-              className="inline-input-field"
+              placeholder="작업을 입력하고 Enter를 눌러 추가하세요 (기본 15분)"
+              className="w-full rounded-lg border border-dashed border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
             />
           </div>
         )}

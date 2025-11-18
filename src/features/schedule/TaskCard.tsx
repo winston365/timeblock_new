@@ -1,11 +1,7 @@
 /**
  * TaskCard
  *
- * @role 개별 작업을 표시하고 인라인 편집(난이도, 시간) 및 완료/삭제 기능을 제공하는 카드 컴포넌트
- * @input task (작업 데이터), 각종 핸들러 함수들, hideMetadata (메타데이터 숨김 옵션)
- * @output 드래그 가능한 작업 카드 UI (체크박스, 제목, 난이도, 시간, XP, 메모)
- * @external_dependencies
- *   - utils: XP 계산 및 시간 포맷팅 함수
+ * Tailwind 기반 task 카드 (체크, 메타데이터, 인라인 편집, 메모, 타이머 포함)
  */
 
 import { useState, useEffect } from 'react';
@@ -23,40 +19,42 @@ interface TaskCardProps {
   onUpdateTask?: (updates: Partial<Task>) => void;
   onDragStart?: (taskId: string) => void;
   onDragEnd?: () => void;
-  hideMetadata?: boolean; // 인박스에서 난이도/XP 숨기기 옵션
-  blockIsLocked?: boolean; // 블록 잠금 여부 (인박스일 경우 undefined)
+  hideMetadata?: boolean;
+  blockIsLocked?: boolean;
 }
 
-/**
- * 작업 카드 컴포넌트
- *
- * @param {TaskCardProps} props - 컴포넌트 props
- * @returns {JSX.Element} 작업 카드 UI
- * @sideEffects
- *   - 드래그앤드롭으로 작업 이동
- *   - 인라인 난이도/시간 변경 시 즉시 업데이트
- */
-export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTask, onDragStart, onDragEnd, hideMetadata = false, blockIsLocked }: TaskCardProps) {
+const RESISTANCE_COLORS: Record<Resistance, string> = {
+  low: 'border-emerald-400/50 text-emerald-200',
+  medium: 'border-amber-400/60 text-amber-200',
+  high: 'border-rose-400/60 text-rose-200',
+};
+
+export default function TaskCard({
+  task,
+  onEdit,
+  onDelete,
+  onToggle,
+  onUpdateTask,
+  onDragStart,
+  onDragEnd,
+  hideMetadata = false,
+  blockIsLocked,
+}: TaskCardProps) {
   const [showResistancePicker, setShowResistancePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showMemoModal, setShowMemoModal] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
   const [editedText, setEditedText] = useState(task.text);
-  const [timerIconActive, setTimerIconActive] = useState(false); // 타이머 아이콘 상태 (▶️ ↔ ⏰)
+  const [timerIconActive, setTimerIconActive] = useState(false);
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
-  const [elapsedTime, setElapsedTime] = useState(0); // 초 단위
+  const [elapsedTime, setElapsedTime] = useState(0);
 
-  // 통합 드래그 앤 드롭 관리 훅
   const { setDragData } = useDragDropManager();
-
-  // XP 계산
   const xp = calculateTaskXP(task);
-
-  // 준비된 할일인지 확인 (3개 모두 채워진 경우)
   const isPrepared = !!(task.preparation1 && task.preparation2 && task.preparation3);
+  const durationOptions = [5, 10, 15, 30, 45, 60];
 
-  // 심리적부담감 변경
   const handleResistanceChange = (resistance: Resistance) => {
     if (onUpdateTask) {
       const multiplier = resistance === 'low' ? 1.0 : resistance === 'medium' ? 1.3 : 1.6;
@@ -68,7 +66,6 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     setShowResistancePicker(false);
   };
 
-  // 소요시간 변경
   const handleDurationChange = (baseDuration: number) => {
     if (onUpdateTask) {
       const multiplier = task.resistance === 'low' ? 1.0 : task.resistance === 'medium' ? 1.3 : 1.6;
@@ -80,11 +77,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     setShowDurationPicker(false);
   };
 
-  const durationOptions = [5, 10, 15, 30, 45, 60];
-
-  // 드래그 핸들러 (통합 드래그 시스템 사용)
   const handleDragStart = (e: React.DragEvent) => {
-    // 구조화된 드래그 데이터 설정 (task 전체 객체 포함)
     setDragData(
       {
         taskId: task.id,
@@ -96,55 +89,27 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     );
 
     setIsDragging(true);
-    if (onDragStart) {
-      onDragStart(task.id);
-    }
+    onDragStart?.(task.id);
   };
 
   const handleDragEnd = () => {
     setIsDragging(false);
-    if (onDragEnd) {
-      onDragEnd();
-    }
+    onDragEnd?.();
   };
 
-  // 작업 완료 체크 핸들러
-  const handleToggleClick = () => {
-    // 완료 취소하는 경우 (이미 완료된 작업)
+  const handleToggleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (task.completed) {
       onToggle();
       return;
     }
-
-    // 블록 작업인 경우 (task.timeBlock !== null) 잠금 체크
     if (task.timeBlock && blockIsLocked === false) {
-      alert('⚠️ 블록을 먼저 잠궈야 작업을 완료할 수 있습니다!\n\n블록 잠금 버튼(⚠️)을 눌러주세요. (비용: 15 XP)');
+      alert('🔒 블록을 먼저 잠궈야 작업을 완료할 수 있어요!\n\n잠금 버튼(🔒)을 눌러주세요. (비용: 15 XP)');
       return;
     }
-
-    // 완료 처리
     onToggle();
   };
 
-  // 메모 모달 핸들러
-  const handleMemoModalSave = (newMemo: string) => {
-    if (onUpdateTask) {
-      onUpdateTask({ memo: newMemo });
-    }
-  };
-
-  const handleMemoModalClose = () => {
-    setShowMemoModal(false);
-  };
-
-  // 텍스트 편집 시작
-  const handleTextClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsEditingText(true);
-    setEditedText(task.text);
-  };
-
-  // 텍스트 편집 저장
   const handleTextSave = () => {
     const trimmedText = editedText.trim();
     if (trimmedText && trimmedText !== task.text && onUpdateTask) {
@@ -153,37 +118,17 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     setIsEditingText(false);
   };
 
-  // 텍스트 편집 취소
-  const handleTextCancel = () => {
-    setEditedText(task.text);
-    setIsEditingText(false);
-  };
-
-  // 텍스트 입력 핸들러
-  const handleTextKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleTextSave();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      handleTextCancel();
-    }
-  };
-
-  // 타이머 토글 핸들러
-  const handleTimerToggle = () => {
+  const handleTimerToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!timerIconActive) {
-      // 타이머 시작
       setTimerStartTime(Date.now());
       setElapsedTime(0);
     } else {
-      // 타이머 정지
       setTimerStartTime(null);
     }
     setTimerIconActive(!timerIconActive);
   };
 
-  // 타이머 경과 시간 업데이트
   useEffect(() => {
     if (!timerIconActive || timerStartTime === null) return;
 
@@ -195,181 +140,225 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onUpdateTas
     return () => clearInterval(interval);
   }, [timerIconActive, timerStartTime]);
 
-  // 경과 시간 포맷팅 (MM:SS)
-  const formatElapsedTime = (seconds: number): string => {
+  const formatElapsedTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const cardClassName = [
+    'group relative rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)]/80 p-4 text-left transition-all duration-200',
+    task.completed ? 'opacity-70' : 'hover:border-[var(--color-primary)] hover:shadow-lg',
+    isPrepared ? 'border-emerald-400/60 bg-gradient-to-r from-emerald-500/10 via-transparent to-transparent' : '',
+    isDragging ? 'scale-[1.01] border-[var(--color-primary)] shadow-xl' : '',
+  ].join(' ');
+
+  const checkboxClasses = [
+    'flex h-7 w-7 items-center justify-center rounded-xl border border-[var(--color-border)] text-base transition',
+    task.completed ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200' : 'bg-white/5 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-text)]',
+  ].join(' ');
 
   return (
     <>
       <div
-        className={`task-card ${task.completed ? 'completed' : ''} ${isDragging ? 'dragging' : ''} ${isPrepared ? 'prepared' : ''}`}
-        draggable="true"
+        className={cardClassName}
+        draggable
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onClick={(e) => {
-          // 체크박스, 버튼 등 다른 요소를 클릭한 경우 무시
-          if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.task-details')) {
-            if (!(e.target as HTMLElement).closest('.task-inline-badges') &&
-                !(e.target as HTMLElement).closest('.task-checkbox') &&
-                !isEditingText) {
-              onEdit();
-            }
+          if ((e.target as HTMLElement).closest('[data-task-interactive="true"]')) {
+            return;
           }
+          onEdit();
         }}
       >
-      <div className="task-main">
-        <button
-          className="task-checkbox"
-          onClick={handleToggleClick}
-          aria-label={task.completed ? '완료 취소' : '완료'}
-        >
-          {task.completed ? '✅' : '⬜'}
-        </button>
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            className={checkboxClasses}
+            onClick={handleToggleClick}
+            aria-label={task.completed ? '완료 취소' : '완료'}
+            data-task-interactive="true"
+          >
+            {task.completed ? '✅' : '⬜'}
+          </button>
 
-        <div className="task-details">
-          {/* 작업명과 아이콘을 같은 행에 배치 */}
-          <div className="task-header-row">
-            <div className="task-text">
-              {isPrepared && <span className="prepared-icon" title="완벽하게 준비된 작업">⭐</span>}
-              {isEditingText ? (
-                <input
-                  type="text"
-                  value={editedText}
-                  onChange={(e) => setEditedText(e.target.value)}
-                  onBlur={handleTextSave}
-                  onKeyDown={handleTextKeyDown}
-                  autoFocus
-                  className="task-text-input"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <span onClick={handleTextClick} style={{ cursor: 'pointer' }} title="클릭하여 수정">
-                  {task.text}
-                </span>
-              )}
+          <div className="flex-1 space-y-3">
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
+                {isPrepared && (
+                  <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-200">
+                    🌟 완벽 준비
+                  </span>
+                )}
+                {isEditingText ? (
+                  <input
+                    type="text"
+                    value={editedText}
+                    onChange={(e) => setEditedText(e.target.value)}
+                    onBlur={handleTextSave}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleTextSave();
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        setEditedText(task.text);
+                        setIsEditingText(false);
+                      }
+                    }}
+                    data-task-interactive="true"
+                    autoFocus
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-1 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    data-task-interactive="true"
+                    className={`cursor-text text-left leading-snug ${task.completed ? 'text-[var(--color-text-secondary)] line-through' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditingText(true);
+                      setEditedText(task.text);
+                    }}
+                    title="클릭해서 편집"
+                  >
+                    {task.text}
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-[var(--color-text-tertiary)]">
+                예상 {formatDuration(task.adjustedDuration)} · 기본 {formatDuration(task.baseDuration)}
+              </p>
             </div>
 
-            <div className="task-inline-badges">
-              {/* 심리적부담감 - 클릭 가능 (hideMetadata가 false일 때만 표시) */}
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--color-text-secondary)]">
               {!hideMetadata && (
-                <div className="task-meta-item">
+                <div className="relative" data-task-interactive="true">
                   <button
-                    className={`resistance-badge ${task.resistance} clickable`}
+                    type="button"
+                    className={`rounded-full border px-3 py-1 transition ${RESISTANCE_COLORS[task.resistance]}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowResistancePicker(!showResistancePicker);
                     }}
-                    title="클릭하여 변경"
                   >
                     {RESISTANCE_LABELS[task.resistance]}
                   </button>
-
                   {showResistancePicker && (
-                    <div className="picker-dropdown resistance-picker">
-                      <button onClick={() => handleResistanceChange('low')}>🟢 쉬움</button>
-                      <button onClick={() => handleResistanceChange('medium')}>🟡 보통</button>
-                      <button onClick={() => handleResistanceChange('high')}>🔴 어려움</button>
+                    <div className="absolute right-0 top-9 z-20 flex min-w-[140px] flex-col gap-1 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 text-xs shadow-2xl">
+                      <button className="rounded-xl px-3 py-2 text-left hover:bg-white/5" onClick={() => handleResistanceChange('low')}>
+                        💧 쉬움 (x1.0)
+                      </button>
+                      <button className="rounded-xl px-3 py-2 text-left hover:bg-white/5" onClick={() => handleResistanceChange('medium')}>
+                        🌊 보통 (x1.3)
+                      </button>
+                      <button className="rounded-xl px-3 py-2 text-left hover:bg-white/5" onClick={() => handleResistanceChange('high')}>
+                        🌪️ 어려움 (x1.6)
+                      </button>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* 소요시간 - 클릭 가능 */}
-              <div className="task-meta-item">
+              <div className="relative" data-task-interactive="true">
                 <button
-                  className="duration-badge clickable"
+                  type="button"
+                  className="rounded-full border border-white/10 px-3 py-1 text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-text)]"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowDurationPicker(!showDurationPicker);
                   }}
-                  title="클릭하여 변경"
                 >
                   ⏱️ {formatDuration(task.baseDuration)}
                 </button>
-
                 {showDurationPicker && (
-                  <div className="picker-dropdown duration-picker">
-                    {durationOptions.map(duration => (
-                      <button key={duration} onClick={() => handleDurationChange(duration)}>
-                        {duration}분
+                  <div className="absolute right-0 top-9 z-20 grid grid-cols-2 gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-3 text-xs shadow-2xl">
+                    {durationOptions.map((duration) => (
+                      <button
+                        key={duration}
+                        className={`rounded-xl px-3 py-2 transition ${task.baseDuration === duration ? 'bg-[var(--color-primary)]/20 text-white' : 'hover:bg-white/5'}`}
+                        onClick={() => handleDurationChange(duration)}
+                      >
+                        {duration < 60 ? `${duration}분` : duration === 60 ? '1시간' : `${duration}분`}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* XP 범위 (hideMetadata가 false일 때만 표시) */}
               {!hideMetadata && (
-                <span className="xp-badge">~{xp} XP</span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[var(--color-text-secondary)]">
+                  ✨ ~{xp} XP
+                </span>
               )}
 
-              {/* 메모 아이콘 */}
               {task.memo && (
                 <button
-                  className="memo-indicator"
+                  type="button"
+                  className="rounded-full border border-sky-400/40 px-3 py-1 text-sky-100 transition hover:bg-sky-500/20"
+                  data-task-interactive="true"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowMemoModal(true);
                   }}
-                  title="메모 보기 (클릭)"
-                  aria-label="메모 보기"
                 >
-                  📝
+                  📝 메모
                 </button>
               )}
 
-              {/* 타이머 아이콘 - 토글 */}
               <button
-                className={`timer-icon-btn ${timerIconActive ? 'active' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleTimerToggle();
-                }}
-                title={timerIconActive ? `타이머 진행 중: ${formatElapsedTime(elapsedTime)}` : "타이머 시작"}
-                aria-label="타이머 토글"
+                type="button"
+                className={`rounded-full border px-3 py-1 text-xs transition ${
+                  timerIconActive
+                    ? 'border-indigo-400/60 bg-indigo-500/20 text-indigo-100'
+                    : 'border-white/10 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-text)]'
+                }`}
+                data-task-interactive="true"
+                onClick={handleTimerToggle}
               >
-                {timerIconActive ? '⏰' : '▶️'}
+                {timerIconActive ? `⏱️ ${formatElapsedTime(elapsedTime)}` : '⏱️ 타이머'}
               </button>
 
-              {/* 삭제 버튼 */}
               <button
-                className="task-delete-btn"
+                type="button"
+                className="ml-auto rounded-full border border-rose-400/60 px-2 py-1 text-rose-200 transition hover:bg-rose-500/20"
+                data-task-interactive="true"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete();
                 }}
-                title="삭제"
-                aria-label="작업 삭제"
               >
                 🗑️
               </button>
             </div>
+
+            {timerIconActive && (
+              <div className="rounded-2xl border border-indigo-400/40 bg-indigo-500/15 p-3 text-xs text-indigo-100" data-task-interactive="true">
+                <div className="flex items-center justify-between text-sm text-white">
+                  <span>집중 타이머 진행 중</span>
+                  <span className="font-mono">{formatElapsedTime(elapsedTime)}</span>
+                </div>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-black/40">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-indigo-300 via-indigo-400 to-violet-400 transition-all duration-300"
+                    style={{ width: `${Math.min((elapsedTime / 1800) * 100, 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* 타이머 진행 바 - 하단에 표시 */}
-      {timerIconActive && (
-        <div className="task-timer-progress-bar" onClick={(e) => e.stopPropagation()}>
-          <div className="timer-progress-content">
-            <span className="timer-progress-label">⏰ 타이머 진행 중</span>
-            <span className="timer-progress-time">{formatElapsedTime(elapsedTime)}</span>
-          </div>
-          <div className="timer-progress-bar-fill"></div>
-        </div>
-      )}
-      </div>
-
-      {/* 메모 모달 */}
       {showMemoModal && (
         <MemoModal
           memo={task.memo}
-          onSave={handleMemoModalSave}
-          onClose={handleMemoModalClose}
+          onSave={(newMemo) => {
+            onUpdateTask?.({ memo: newMemo });
+            setShowMemoModal(false);
+          }}
+          onClose={() => setShowMemoModal(false)}
         />
       )}
     </>

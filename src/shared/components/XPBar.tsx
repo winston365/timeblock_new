@@ -10,7 +10,6 @@
  */
 
 import { getXPToNextLevel } from '@/shared/lib/utils';
-import './XPBar.css';
 
 interface XPBarProps {
   totalXP: number;
@@ -29,21 +28,21 @@ export default function XPBar({ totalXP, level }: XPBarProps) {
   const progress = (currentLevelXP / 100) * 100;
 
   return (
-    <div className="xp-bar-container">
-      <div className="xp-bar-header">
-        <span className="xp-level">레벨 {level}</span>
-        <span className="xp-progress-text">
-          {currentLevelXP} / 100 XP
-        </span>
+    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-md">
+      <div className="mb-[var(--spacing-xs)] flex items-center justify-between">
+        <span className="text-sm font-semibold text-primary">레벨 {level}</span>
+        <span className="text-xs font-semibold text-reward">{currentLevelXP} / 100 XP</span>
       </div>
-      <div className="xp-bar-track">
+      <div className="relative mb-[var(--spacing-xs)] h-3 overflow-hidden rounded-[6px] bg-[var(--color-bg-tertiary)]">
         <div
-          className="xp-bar-fill"
+          className="relative h-full rounded-[6px] bg-[linear-gradient(90deg,var(--color-reward),var(--color-warning))] transition-[width] duration-500 ease-out"
           style={{ width: `${progress}%` }}
-        />
+        >
+          <span className="pointer-events-none absolute inset-0 block animate-shimmer bg-[linear-gradient(90deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.3)_50%,rgba(255,255,255,0)_100%)] opacity-70" />
+        </div>
       </div>
-      <div className="xp-bar-footer">
-        <span className="xp-next">다음 레벨까지 {xpToNext} XP</span>
+      <div className="flex justify-end">
+        <span className="text-xs font-medium text-reward">다음 레벨까지 {xpToNext} XP</span>
       </div>
     </div>
   );
