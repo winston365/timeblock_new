@@ -213,16 +213,6 @@ export async function addXP(
   try {
     const gameState = await loadGameState();
 
-    console.log(`[addXP] 📊 Before adding XP:`, {
-      amount,
-      blockId,
-      reason,
-      totalXP: gameState.totalXP,
-      dailyXP: gameState.dailyXP,
-      availableXP: gameState.availableXP,
-      level: gameState.level
-    });
-
     // 레벨업 감지를 위해 기존 레벨 저장
     const previousLevel = gameState.level;
 
@@ -230,13 +220,6 @@ export async function addXP(
     gameState.dailyXP += amount;
     gameState.availableXP += amount;
     gameState.level = getLevelFromXP(gameState.totalXP);
-
-    console.log(`[addXP] 📈 After adding XP:`, {
-      totalXP: gameState.totalXP,
-      dailyXP: gameState.dailyXP,
-      availableXP: gameState.availableXP,
-      level: gameState.level
-    });
 
     // 레벨업 감지
     const leveledUp = gameState.level > previousLevel;
@@ -247,7 +230,6 @@ export async function addXP(
     }
 
     await saveGameState(gameState);
-    console.log(`[addXP] ✅ GameState saved successfully`);
 
     // 이벤트 생성 (UI 로직 분리)
     const events: import('@/shared/services/gameState').GameStateEvent[] = [];

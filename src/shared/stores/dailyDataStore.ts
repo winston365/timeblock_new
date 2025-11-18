@@ -287,8 +287,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     const { currentDate, dailyData, loadData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
 
-    console.log('[DailyDataStore] 🎯 toggleTaskCompletion called', { taskId, currentDate });
-
     // 원본 백업
     const originalTasks = dailyData.tasks;
     const originalBlockStates = dailyData.timeBlockStates;
@@ -298,13 +296,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       const task = findTaskOrThrow(dailyData.tasks, taskId);
       const wasCompleted = task.completed;
 
-      console.log('[DailyDataStore] 📋 Task found', {
-        taskId: task.id,
-        text: task.text,
-        wasCompleted,
-        timeBlock: task.timeBlock
-      });
-
       // ✅ Optimistic Update
       const optimisticTasks = updateTaskInArray(dailyData.tasks, taskId, {
         completed: !task.completed,
@@ -312,21 +303,11 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       });
       set(createOptimisticTaskUpdate(dailyData, optimisticTasks));
 
-      console.log('[DailyDataStore] 🔄 Calling toggleTaskInRepo...');
-
       // ✅ Repository 호출
       const updatedTask = await toggleTaskInRepo(taskId, currentDate);
 
-      console.log('[DailyDataStore] ✅ toggleTaskInRepo returned', {
-        taskId: updatedTask.id,
-        completed: updatedTask.completed,
-        wasCompleted,
-        willCallService: !wasCompleted && updatedTask.completed
-      });
-
       // ✅ 완료 처리 (미완료 → 완료만)
       if (!wasCompleted && updatedTask.completed) {
-        console.log('[DailyDataStore] 🎮 Calling taskCompletionService...');
         const blockState = updatedTask.timeBlock
           ? dailyData.timeBlockStates[updatedTask.timeBlock]
           : undefined;
@@ -364,12 +345,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         }
 
         console.log('[DailyDataStore] ✅ Task completion processed:', result);
-      } else {
-        console.log('[DailyDataStore] ⏭️ Skipping taskCompletionService', {
-          wasCompleted,
-          'updatedTask.completed': updatedTask.completed,
-          reason: wasCompleted ? 'Task was already completed' : 'Task is not completed after toggle'
-        });
       }
 
       // ✅ 목표 연결 시 진행률 재계산
