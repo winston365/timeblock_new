@@ -37,7 +37,6 @@ import {
   updateTaskInArray,
   removeTaskFromArray,
   assertDailyDataExists,
-  findTaskOrThrow,
 } from '../lib/storeUtils';
 import { taskCompletionService } from '@/shared/services/taskCompletion';
 import { db } from '@/data/db/dexieClient';
@@ -292,8 +291,14 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     const originalBlockStates = dailyData.timeBlockStates;
 
     try {
-      // Task 확인
-      const task = findTaskOrThrow(dailyData.tasks, taskId);
+      // Task 확인 (dailyData에 없으면 글로벌 인박스 등에서 바로 처리)
+      const task = dailyData.tasks.find(t => t.id === taskId);
+
+      if (!task) {
+        await toggleTaskInRepo(taskId, currentDate);
+        return;
+      }
+
       const wasCompleted = task.completed;
 
       // ✅ Optimistic Update

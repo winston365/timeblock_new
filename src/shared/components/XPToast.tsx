@@ -1,16 +1,4 @@
-/**
- * XPToast
- *
- * @role XP 획득 시 사용자에게 축하 메시지와 획득한 XP를 표시하는 토스트 알림 컴포넌트
- * @input xp (number), message (string, optional), onClose (function)
- * @output XP 아이콘, 메시지, 획득 XP를 표시하는 토스트 UI (3초 후 자동 사라짐)
- * @external_dependencies
- *   - React hooks (useState, useEffect): 상태 관리 및 타이머 관리
- *   - XPToast.css: 스타일시트 및 애니메이션
- */
-
 import { useEffect, useState } from 'react';
-import './XPToast.css';
 
 interface XPToastProps {
   xp: number;
@@ -19,36 +7,36 @@ interface XPToastProps {
 }
 
 /**
- * XP 획득 시 축하 메시지를 표시하는 토스트 컴포넌트
- *
- * @param {XPToastProps} props - xp, message, onClose를 포함하는 props
- * @returns {JSX.Element} 토스트 알림 UI
- * @sideEffects
- *   - 3초 후 자동으로 사라짐
- *   - 타이머를 사용하여 onClose 콜백 호출
+ * XP reward toast that slides in for three seconds and automatically dismisses.
  */
 export default function XPToast({ xp, message, onClose }: XPToastProps) {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    // 3초 후 자동 닫기
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onClose, 300); // 애니메이션 후 완전 제거
+      setTimeout(onClose, 300);
     }, 3000);
 
     return () => clearTimeout(timer);
   }, [onClose]);
 
   return (
-    <div className={`xp-toast ${isVisible ? 'visible' : 'hidden'}`}>
-      <div className="xp-toast-content">
-        <div className="xp-toast-icon">✨</div>
-        <div className="xp-toast-text">
-          <div className="xp-toast-title">
+    <div
+      className={[
+        'fixed top-20 right-5 z-[9999] min-w-[280px] rounded-2xl',
+        'bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)]',
+        'px-5 py-4 text-white shadow-lg transition-all duration-300',
+        isVisible ? 'opacity-100 translate-x-0' : 'pointer-events-none opacity-0 translate-x-40',
+      ].join(' ')}
+    >
+      <div className="flex items-center gap-3">
+        <div className="text-3xl animate-bounce">🎉</div>
+        <div className="flex flex-col gap-1">
+          <div className="text-base font-semibold">
             {message || '축하합니다!'}
           </div>
-          <div className="xp-toast-xp">
+          <div className="text-xl font-bold text-[#ffd700] drop-shadow">
             +{xp} XP
           </div>
         </div>
