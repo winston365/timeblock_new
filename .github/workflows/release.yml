@@ -80,6 +80,14 @@ jobs:
             git tag -d $TAG || true
           fi
 
+      # 7-A. Clean working directory before bump
+      - name: Clean working directory
+        shell: bash
+        run: |
+          git reset --hard
+          git clean -fdx
+
+
       # 7. 버전 올리기 (npm run bump → npm version patch)
       - name: Bump version
         id: version
