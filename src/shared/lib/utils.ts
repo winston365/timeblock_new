@@ -197,6 +197,7 @@ export function isToday(task: Task): boolean {
 /**
  * 작업 완료 시 획득 XP 계산
  * 난이도에 따라 XP 배율 적용 (쉬움 1.0배, 보통 1.3배, 어려움 1.6배)
+ * 타이머 사용 시 +20 XP 보너스
  */
 export function calculateTaskXP(task: Task): number {
   // 실제 소요 시간이 있으면 그걸 사용, 없으면 조정된 시간 사용
@@ -205,7 +206,14 @@ export function calculateTaskXP(task: Task): number {
 
   // 난이도에 따른 XP 배율 적용
   const resistanceMultiplier = RESISTANCE_MULTIPLIERS[task.resistance];
-  return Math.round(baseXP * resistanceMultiplier);
+  let totalXP = Math.round(baseXP * resistanceMultiplier);
+
+  // 타이머 사용 보너스 (+20 XP)
+  if (task.timerUsed) {
+    totalXP += 20;
+  }
+
+  return totalXP;
 }
 
 /**
