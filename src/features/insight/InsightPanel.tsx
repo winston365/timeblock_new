@@ -47,10 +47,14 @@ function parseMarkdown(markdown: string): string {
     .replace(/\n/g, '<br />');
 }
 
+interface InsightPanelProps {
+  collapsed?: boolean;
+}
+
 /**
  * InsightPanel 컴포넌트
  */
-export default function InsightPanel() {
+export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
   const { dailyData } = useDailyData();
   const { gameState } = useGameState();
   const { waifuState } = useWaifuState();
@@ -264,14 +268,16 @@ export default function InsightPanel() {
 
   return (
     <aside
-      className="flex w-full max-w-[320px] flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 shadow-[0_20px_40px_rgba(0,0,0,0.45)]"
+      className={`flex h-full min-h-0 min-w-0 flex-col gap-3 overflow-hidden border-l border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 text-[var(--color-text)] transition-all duration-300 ${collapsed ? 'w-0 opacity-0 p-0 border-none' : 'w-[320px] opacity-100'
+        }`}
       role="complementary"
       aria-label="오늘의 인사이트"
+      aria-hidden={collapsed}
     >
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-lg font-semibold tracking-tight text-[var(--color-text)]">💡 오늘의 인사이트</h3>
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3 shrink-0">
+        <h3 className="text-sm font-bold text-[var(--color-text)]">💡 오늘의 인사이트</h3>
         <button
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] text-sm transition hover:border-[var(--color-primary)]"
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-xs transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
           onClick={() => generateInsight(false)}
           disabled={loading}
           aria-label="인사이트 새로고침"
@@ -281,49 +287,49 @@ export default function InsightPanel() {
       </div>
 
       {totalTime > 0 && !loading && (
-        <div className="flex flex-col gap-1 text-[var(--color-text-secondary)]">
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[rgba(255,255,255,0.05)]">
+        <div className="flex flex-col gap-1 text-[var(--color-text-secondary)] shrink-0">
+          <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--color-bg-tertiary)]">
             <div
               className="h-full rounded-full bg-[var(--color-primary)] transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <span className="text-xs">
-            다음 갱신까지 {Math.floor(timeLeft / 60)}분 {timeLeft % 60}초
+          <span className="text-[10px] text-right">
+            다음 갱신: {Math.floor(timeLeft / 60)}분 {timeLeft % 60}초
           </span>
         </div>
       )}
 
-      <div className="min-h-[140px] rounded-2xl border border-[var(--color-border-light)] bg-[var(--color-bg)] p-3 text-sm leading-relaxed text-[var(--color-text-secondary)]">
+      <div className="flex-1 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] p-4 text-sm leading-relaxed text-[var(--color-text-secondary)]">
         {loading && (
-          <div className="flex flex-col items-center gap-2 text-[var(--color-text-secondary)]">
-            <span className="text-2xl">🤔</span>
-            <p>인사이트 생성 중...</p>
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-[var(--color-text-secondary)]">
+            <span className="animate-pulse text-3xl">🔮</span>
+            <p className="text-xs">인사이트 분석 중...</p>
           </div>
         )}
 
         {!loading && error && (
-          <div className="whitespace-pre-line text-[var(--color-danger)]">{error}</div>
+          <div className="whitespace-pre-line text-xs text-[var(--color-danger)]">{error}</div>
         )}
 
         {!loading && !error && !insight && (
-          <div className="flex flex-col items-center gap-2 text-[var(--color-text-secondary)]">
-            <span className="text-2xl">💡</span>
-            <p>새로고침 버튼을 눌러 인사이트를 생성하세요</p>
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-[var(--color-text-secondary)]">
+            <span className="text-3xl">💡</span>
+            <p className="text-xs">새로고침하여 인사이트를 받아보세요</p>
           </div>
         )}
 
         {!loading && !error && insight && (
           <div
-            className="space-y-2 text-[var(--color-text)]"
+            className="prose prose-invert prose-sm max-w-none space-y-2 text-[var(--color-text)]"
             dangerouslySetInnerHTML={{ __html: parsedHtml }}
           />
         )}
       </div>
 
       {lastUpdated && settings && (
-        <div className="text-xs uppercase tracking-wide text-[var(--color-text-secondary)]">
-          마지막 업데이트: {lastUpdated.toLocaleTimeString('ko-KR')} • {settings.autoMessageInterval || 15}분마다 자동 갱신
+        <div className="text-[10px] text-[var(--color-text-tertiary)] text-center shrink-0">
+          마지막 업데이트: {lastUpdated.toLocaleTimeString('ko-KR')}
         </div>
       )}
     </aside>

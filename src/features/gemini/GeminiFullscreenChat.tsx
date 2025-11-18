@@ -53,6 +53,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
   const [error, setError] = useState<string | null>(null);
   const [waifuImagePath, setWaifuImagePath] = useState<string>('');
   const [waifuTurnState, setWaifuTurnState] = useState<'idle' | 'listening' | 'speaking'>('idle');
+  const [clickCount, setClickCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -109,6 +110,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
     const randomIndex = getRandomImageNumber(tier.name);
     const path = await getWaifuImagePathWithFallback(waifuState.affection, randomIndex);
     setWaifuImagePath(path);
+    setClickCount(0);
   };
 
   // 메시지 목록 자동 스크롤
@@ -196,8 +198,8 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
       }
 
       // Gemini 답변 후 와이푸 이미지 변경 및 "말하고 있음" 상태
-      setWaifuTurnState('speaking');
-      await changeWaifuImage();
+    setWaifuTurnState('speaking');
+    await changeWaifuImage();
 
       // 0.5초 후 idle 상태로 복귀
       setTimeout(() => {
@@ -249,16 +251,44 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
       >
         {/* 좌측: 와이푸 이미지 */}
         <div className="relative flex h-full min-h-screen items-center justify-center bg-[var(--color-bg-surface)] px-6 py-8">
+          <div className="absolute left-6 top-6 flex gap-3 rounded-2xl border border-[var(--color-border)] bg-[rgba(15,23,42,0.75)] px-4 py-3 text-[0.65rem] text-[var(--color-text-secondary)] shadow-2xl">
+            <div className="flex flex-col">
+              <span className="text-[0.55rem] uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">호감도</span>
+              <span className="text-[var(--color-text)]">{waifuState?.affection ?? 0}%</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[0.55rem] uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">레벨</span>
+              <span className="text-[var(--color-text)]">{gameState?.level ?? 1}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[0.55rem] uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">오늘 XP</span>
+              <span className="text-[var(--color-text)]">{gameState?.dailyXP ?? 0}</span>
+            </div>
+          </div>
           <div
             className="group relative flex w-full flex-col items-center justify-center overflow-hidden rounded-[32px] border border-white/5 bg-[var(--color-bg-surface)] p-6 shadow-[0_30px_70px_rgba(0,0,0,0.55)] transition duration-300 hover:-translate-y-1 hover:scale-[1.002]"
-            onClick={changeWaifuImage}
+            onClick={() => {
+              const nextCount = clickCount + 1;
+              if (nextCount >= 4) {
+                changeWaifuImage();
+                setClickCount(0);
+              } else {
+                setClickCount(nextCount);
+              }
+            }}
             role="button"
             tabIndex={0}
             aria-label={`와이푸 이미지. 클릭 시 포즈 변경. 현재 호감도: ${waifuState?.affection}%, 기분: ${currentEnergy ? '현재 에너지' : ''}`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                changeWaifuImage();
+                const nextCount = clickCount + 1;
+                if (nextCount >= 4) {
+                  changeWaifuImage();
+                  setClickCount(0);
+                } else {
+                  setClickCount(nextCount);
+                }
               }
             }}
           >
@@ -282,22 +312,6 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
               클릭하여 포즈 변경 ({clickCount}/4)
             </div>
 
-            <div className="absolute inset-x-6 top-6 rounded-2xl border border-[var(--color-border)] bg-[rgba(15,23,42,0.65)] p-4 text-[0.75rem] text-[var(--color-text-secondary)] backdrop-blur">
-              <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em]">
-                <span>호감도</span>
-                <span className="font-semibold text-[var(--color-text)]">
-                  {waifuState?.affection ?? 0}%
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em]">
-                <span>레벨</span>
-                <span className="font-semibold text-[var(--color-text)]">{gameState?.level ?? 1}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em]">
-                <span>오늘 XP</span>
-                <span className="font-semibold text-[var(--color-text)]">{gameState?.dailyXP ?? 0}</span>
-              </div>
-            </div>
           </div>
         </div>
 

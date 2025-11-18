@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TemplatesModal - 템플릿 관리 전체 화면 모달
  *
  * @role 반복 작업 템플릿을 관리하고 오늘 할 일로 추가하는 전체 화면 모달 컴포넌트
@@ -7,7 +7,7 @@
  * @external_dependencies
  *   - loadTemplates, deleteTemplate, createTemplate: 템플릿 Repository
  *   - TemplateModal: 템플릿 추가/편집 모달 컴포넌트
- *   - RESISTANCE_LABELS, TIME_BLOCKS: 도메인 타입 및 상수
+ *   - utils: XP 계산 함수
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -16,8 +16,7 @@ import { loadTemplates, deleteTemplate as deleteTemplateRepo, createTemplate } f
 import { getTemplateCategories } from '@/data/repositories/settingsRepository';
 import { TemplateModal } from './TemplateModal';
 import { RESISTANCE_LABELS, TIME_BLOCKS } from '@/shared/types/domain';
-import { linkifyText } from '@/shared/lib/utils';
-import './templatesModal.css';
+import { calculateTaskXP } from '@/shared/lib/utils';
 
 interface TemplatesModalProps {
   isOpen: boolean;
@@ -25,16 +24,6 @@ interface TemplatesModalProps {
   onTaskCreate: (template: Template) => void;
 }
 
-/**
- * 템플릿 관리 전체 화면 모달 컴포넌트
- *
- * @param {TemplatesModalProps} props - 모달 props
- * @returns {JSX.Element | null} 템플릿 모달 UI 또는 null
- * @sideEffects
- *   - 컴포넌트 마운트 시 템플릿 목록 로드
- *   - 템플릿 추가/수정/삭제 시 Firebase 동기화
- *   - "오늘 추가" 버튼 클릭 시 onTaskCreate 콜백 호출
- */
 export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: TemplatesModalProps) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
@@ -42,8 +31,8 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [showUpcomingOnly, setShowUpcomingOnly] = useState(false); // 7일 이내 주기 필터
-  const [showDailyOnly, setShowDailyOnly] = useState(true); // 매일 주기 필터 (기본값: true)
+  const [showDailyOnly, setShowDailyOnly] = useState(false);
+  const [showUpcomingOnly, setShowUpcomingOnly] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
 
   // ESC 키로 모달 닫기
@@ -77,12 +66,9 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
 
   /**
    * 다음 주기까지의 일수 계산 (필터링용)
-   * @returns 일수 (숫자) 또는 null (주기 없음)
    */
   const getDaysUntilNextOccurrence = (template: Template): number | null => {
-    if (!template.autoGenerate || template.recurrenceType === 'none') {
-      return null;
-    }
+    if (!template.autoGenerate || template.recurrenceType === 'none') return null;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -95,34 +81,19 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     let nextDate: Date;
 
     switch (template.recurrenceType) {
-      case 'daily': {
+      case 'daily':
         nextDate = new Date(lastGenerated);
         nextDate.setDate(nextDate.getDate() + 1);
         break;
-      }
-
-      case 'weekly': {
-        if (!template.weeklyDays || template.weeklyDays.length === 0) {
-          return null;
-        }
-
+      case 'weekly':
+        if (!template.weeklyDays || template.weeklyDays.length === 0) return null;
         const currentDay = today.getDay();
         const sortedDays = [...template.weeklyDays].sort((a, b) => a - b);
-
         let nextDay = sortedDays.find(day => day > currentDay);
-        let daysUntil: number;
-
-        if (nextDay !== undefined) {
-          daysUntil = nextDay - currentDay;
-        } else {
-          nextDay = sortedDays[0];
-          daysUntil = 7 - currentDay + nextDay;
-        }
-
+        let daysUntil = nextDay !== undefined ? nextDay - currentDay : (7 - currentDay + sortedDays[0]);
         nextDate = new Date(today);
         nextDate.setDate(nextDate.getDate() + daysUntil);
 
-        // 마지막 생성일이 오늘 또는 미래 → 다음 주기로 밀기
         if (template.lastGeneratedDate) {
           const lastGen = new Date(template.lastGeneratedDate);
           lastGen.setHours(0, 0, 0, 0);
@@ -131,55 +102,71 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
           }
         }
         break;
-      }
-
-      case 'interval': {
+      case 'interval':
         if (!template.intervalDays) return null;
         nextDate = new Date(lastGenerated);
         nextDate.setDate(nextDate.getDate() + template.intervalDays);
         break;
-      }
-
       default:
         return null;
     }
 
     const diffTime = nextDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays >= 0 ? diffDays : 0;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  // 검색 및 카테고리/즐겨찾기 필터링
+  /**
+   * 다음 주기 날짜 표시 문자열 생성
+   */
+  const getNextOccurrenceLabel = (template: Template): string | null => {
+    const days = getDaysUntilNextOccurrence(template);
+    if (days === null) return null;
+
+    if (days <= 0) return '오늘';
+    if (days === 1) return '내일';
+    if (days === 2) return '모레';
+    if (days < 7) return `${days}일 후`;
+
+    const today = new Date();
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + days);
+
+    const year = targetDate.getFullYear();
+    const month = targetDate.getMonth() + 1;
+    const date = targetDate.getDate();
+    const weekday = ['일', '월', '화', '수', '목', '금', '토'][targetDate.getDay()];
+
+    // 내년이면 연도 표시
+    if (year !== today.getFullYear()) {
+      return `${year}년 ${month}월 ${date}일 (${weekday})`;
+    }
+
+    return `${month}월 ${date}일 (${weekday})`;
+  };
+
+  // 필터링 로직
   const filteredTemplates = useMemo(() => {
     let filtered = templates;
 
-    // 카테고리 필터
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(template => template.category === selectedCategory);
     }
 
-    // 즐겨찾기 필터
     if (showFavoritesOnly) {
       filtered = filtered.filter(template => template.isFavorite);
     }
 
-    // 매일 주기 필터
     if (showDailyOnly) {
-      filtered = filtered.filter(template =>
-        template.autoGenerate && template.recurrenceType === 'daily'
-      );
+      filtered = filtered.filter(template => template.autoGenerate && template.recurrenceType === 'daily');
     }
 
-    // 7일 이내 다음 주기 필터
     if (showUpcomingOnly) {
       filtered = filtered.filter(template => {
-        const daysUntil = getDaysUntilNextOccurrence(template);
-        return daysUntil !== null && daysUntil <= 7;
+        const days = getDaysUntilNextOccurrence(template);
+        return days !== null && days <= 7;
       });
     }
 
-    // 검색 필터
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(template =>
@@ -206,15 +193,11 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     if (!confirm('이 템플릿을 삭제하시겠습니까?')) return;
 
     try {
-      // Optimistic UI 업데이트: 즉시 목록에서 제거
       setTemplates(prevTemplates => prevTemplates.filter(t => t.id !== id));
-
-      // 백그라운드에서 DB 업데이트
       await deleteTemplateRepo(id);
     } catch (error) {
       console.error('Failed to delete template:', error);
       alert('템플릿 삭제에 실패했습니다.');
-      // 에러 발생 시 목록 새로고침으로 복원
       await loadTemplatesData();
     }
   };
@@ -222,8 +205,6 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   const handleTemplateModalClose = async (saved: boolean) => {
     setIsTemplateModalOpen(false);
     setEditingTemplate(null);
-
-    // 저장 시에만 목록 새로고침 (추가/수정된 템플릿 반영)
     if (saved) {
       await loadTemplatesData();
     }
@@ -232,7 +213,6 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   const handleAddToToday = (template: Template) => {
     onTaskCreate(template);
   };
-
 
   const handleCloneTemplate = async (template: Template) => {
     try {
@@ -243,21 +223,18 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
         template.baseDuration,
         template.resistance,
         template.timeBlock,
-        false, // 복제 시 자동 생성은 꺼둠
+        false,
         template.preparation1,
         template.preparation2,
         template.preparation3,
-        'none', // 복제 시 주기는 없음으로 설정
+        'none',
         [],
         1,
-        template.category, // 카테고리 복사
-        false // 복제 시 즐겨찾기는 해제
+        template.category,
+        false,
+        template.imageUrl
       );
-
-      // Optimistic UI 업데이트: 즉시 목록에 추가
       setTemplates(prevTemplates => [...prevTemplates, clonedTemplate]);
-
-      // 성공 메시지
       alert('✅ 템플릿이 복제되었습니다.');
     } catch (error) {
       console.error('Failed to clone template:', error);
@@ -266,368 +243,247 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   };
 
   const getTimeBlockLabel = (blockId: string | null): string => {
-    if (!blockId) return '나중에';
+    if (!blockId) return '인박스';
     const block = TIME_BLOCKS.find(b => b.id === blockId);
-    return block ? block.label : '나중에';
+    return block ? block.label : '인박스';
   };
 
-  /**
-   * 다음 주기 날짜 계산 (표시용)
-   */
-  const getNextOccurrence = (template: Template): string | null => {
-    if (!template.autoGenerate || template.recurrenceType === 'none') {
-      return null;
-    }
-
-    // 한국어 요일
-    const koreanWeekdays = ['일', '월', '화', '수', '목', '금', '토'];
-
-    // 절대 날짜 포맷 (ex: 2월 14일 (금))
-    function formatAbsoluteDate(date: Date): string {
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      const weekday = koreanWeekdays[date.getDay()];
-      return `${month}월 ${day}일 (${weekday})`;
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const lastGenerated = template.lastGeneratedDate
-      ? new Date(template.lastGeneratedDate)
-      : new Date(today);
-    lastGenerated.setHours(0, 0, 0, 0);
-
-    switch (template.recurrenceType) {
-      /**
-       * DAILY
-       */
-      case 'daily': {
-        const nextDate = new Date(lastGenerated);
-        nextDate.setDate(nextDate.getDate() + 1);
-
-        if (nextDate <= today) {
-          return '오늘';
-        }
-
-        return formatRelativeDate(nextDate);
-      }
-
-      /**
-       * WEEKLY
-       */
-      case 'weekly': {
-        if (!template.weeklyDays || template.weeklyDays.length === 0) {
-          return null;
-        }
-
-        const currentDay = today.getDay();
-        const sortedDays = [...template.weeklyDays].sort((a, b) => a - b);
-
-        let nextDay = sortedDays.find(day => day > currentDay);
-        let daysUntil: number;
-
-        if (nextDay !== undefined) {
-          daysUntil = nextDay - currentDay;
-        } else {
-          nextDay = sortedDays[0];
-          daysUntil = 7 - currentDay + nextDay;
-        }
-
-        const nextDate = new Date(today);
-        nextDate.setDate(nextDate.getDate() + daysUntil);
-
-        // 마지막 생성일이 오늘 또는 미래 → 다음 주기로 밀기
-        if (template.lastGeneratedDate) {
-          const lastGen = new Date(template.lastGeneratedDate);
-          lastGen.setHours(0, 0, 0, 0);
-          if (lastGen.getTime() >= today.getTime()) {
-            nextDate.setDate(nextDate.getDate() + 7);
-            return formatAbsoluteDate(nextDate); 
-          }
-        }
-
-        // weekly는 무조건 절대 날짜 사용
-        return formatAbsoluteDate(nextDate);
-      }
-
-      /**
-       * INTERVAL
-       */
-      case 'interval': {
-        if (!template.intervalDays) return null;
-
-        const nextDate = new Date(lastGenerated);
-        nextDate.setDate(nextDate.getDate() + template.intervalDays);
-
-        if (nextDate <= today) {
-          return '오늘';
-        }
-
-        return formatRelativeDate(nextDate);
-      }
-
-      default:
-        return null;
-    }
+  const getEstimatedXP = (template: Template) => {
+    const tempTask: any = {
+      baseDuration: template.baseDuration,
+      adjustedDuration: template.baseDuration, // Fix: Provide adjustedDuration for calculation
+      actualDuration: 0,
+      resistance: template.resistance,
+      preparation1: template.preparation1,
+      preparation2: template.preparation2,
+      preparation3: template.preparation3,
+    };
+    return calculateTaskXP(tempTask);
   };
-
-/**
- * 상대 날짜 포맷 (오늘 / 내일 / 모레 / N일 후 / 절대 날짜)
- */
-const formatRelativeDate = (date: Date): string => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const targetDate = new Date(date);
-  targetDate.setHours(0, 0, 0, 0);
-
-  const diffTime = targetDate.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return '오늘';
-  if (diffDays === 1) return '내일';
-  if (diffDays === 2) return '모레';
-  if (diffDays < 7) return `${diffDays}일 후`;
-
-  // 🔥 1주 이상 차이나면 절대 날짜 + 요일
-  const month = targetDate.getMonth() + 1;
-  const day = targetDate.getDate();
-  const weekday = ['일', '월', '화', '수', '목', '금', '토'][targetDate.getDay()];
-
-  return `${month}월 ${day}일(${weekday})`;
-};
-
 
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay templates-modal-overlay" onClick={onClose}>
-      <div className="modal-content templates-modal-content" onClick={(e) => e.stopPropagation()}>
-        {/* 헤더 */}
-        <div className="modal-header templates-modal-header">
-          <div className="templates-modal-header-left">
-            <h2>📝 템플릿 관리</h2>
-            <p className="modal-subtitle">반복 작업을 템플릿으로 저장하고 관리하세요</p>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-8" onClick={onClose}>
+      <div className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-base)] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6 py-4">
+          <div>
+            <h2 className="text-xl font-bold text-[var(--color-text)]">📝 템플릿 관리</h2>
+            <p className="text-xs text-[var(--color-text-secondary)]">자주 사용하는 작업을 템플릿으로 저장하세요</p>
           </div>
-          <div className="templates-modal-header-actions">
+          <div className="flex gap-2">
             <button
-              className="btn-add-template-primary"
+              className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--color-primary-dark)] active:scale-95"
               onClick={handleAddTemplate}
-              title="새 템플릿 추가"
             >
-              + 템플릿 추가
+              + 추가
             </button>
-            <button className="btn-close" onClick={onClose} aria-label="닫기">
+            <button
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
+              onClick={onClose}
+            >
               ✕
             </button>
           </div>
         </div>
 
-        {/* 검색 바 */}
-        {templates.length > 0 && (
-          <div className="templates-search-container">
-            <div className="templates-search-wrapper">
-              <span className="templates-search-icon">🔍</span>
-              <input
-                type="text"
-                className="templates-search-input"
-                placeholder="템플릿 이름, 할 일, 메모로 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
+        {/* Search & Filter Bar */}
+        <div className="flex flex-col gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)]/50 px-6 py-3 md:flex-row md:items-center">
+          {/* Search */}
+          <div className="flex flex-1 items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-[var(--color-primary)]">
+            <span className="text-[var(--color-text-tertiary)]">🔍</span>
+            <input
+              type="text"
+              className="flex-1 bg-transparent text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-tertiary)]"
+              placeholder="검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]">✕</button>
+            )}
+          </div>
+
+          {/* Filters */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+            <button
+              className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${showDailyOnly
+                  ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                  : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
+                }`}
+              onClick={() => setShowDailyOnly(!showDailyOnly)}
+            >
+              🔄 매일
+            </button>
+            <button
+              className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${showUpcomingOnly
+                  ? 'border-[var(--color-success)] bg-[var(--color-success)]/10 text-[var(--color-success)]'
+                  : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
+                }`}
+              onClick={() => setShowUpcomingOnly(!showUpcomingOnly)}
+            >
+              📅 7일 이내
+            </button>
+            <button
+              className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${showFavoritesOnly
+                  ? 'border-[var(--color-warning)] bg-[var(--color-warning)]/10 text-[var(--color-warning)]'
+                  : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
+                }`}
+              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+            >
+              ⭐ 즐겨찾기
+            </button>
+
+            <select
+              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+            >
+              <option value="all">모든 카테고리</option>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto bg-[var(--color-bg-base)] p-6">
+          {filteredTemplates.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-4 text-[var(--color-text-tertiary)]">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-bg-surface)] text-3xl">
+                {searchQuery ? '🔍' : '📝'}
+              </div>
+              <p className="text-base font-medium">
+                {searchQuery ? '검색 결과가 없습니다' : '등록된 템플릿이 없습니다'}
+              </p>
+              {!searchQuery && (
                 <button
-                  className="templates-search-clear"
-                  onClick={() => setSearchQuery('')}
-                  aria-label="검색어 지우기"
+                  className="text-sm text-[var(--color-primary)] hover:underline"
+                  onClick={handleAddTemplate}
                 >
-                  ✕
+                  첫 번째 템플릿을 만들어보세요!
                 </button>
               )}
             </div>
-            <div className="templates-search-meta">
-              {filteredTemplates.length}개의 템플릿
-              {searchQuery && ` (전체 ${templates.length}개 중)`}
-            </div>
-
-            {/* 필터 버튼 */}
-            <div className="templates-filters">
-              {/* 매일 주기 토글 */}
-              <button
-                className={`filter-btn filter-btn-daily ${showDailyOnly ? 'active' : ''}`}
-                onClick={() => setShowDailyOnly(!showDailyOnly)}
-                title="매일 반복 템플릿만 표시"
-              >
-                {showDailyOnly ? '🔄 매일' : '🔄 매일'}
-              </button>
-
-              {/* 즐겨찾기 토글 */}
-              <button
-                className={`filter-btn ${showFavoritesOnly ? 'active' : ''}`}
-                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                title="즐겨찾기만 표시"
-              >
-                {showFavoritesOnly ? '⭐ 즐겨찾기' : '☆ 즐겨찾기'}
-              </button>
-
-              {/* 7일 이내 주기 토글 */}
-              <button
-                className={`filter-btn filter-btn-upcoming ${showUpcomingOnly ? 'active' : ''}`}
-                onClick={() => setShowUpcomingOnly(!showUpcomingOnly)}
-                title="7일 이내 다음 주기가 있는 템플릿만 표시"
-              >
-                {showUpcomingOnly ? '📅 7일 이내' : '📅 7일 이내'}
-              </button>
-
-              {/* 카테고리 필터 */}
-              <select
-                className="category-filter-select"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-              >
-                <option value="all">전체 카테고리</option>
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-
-        {/* 템플릿 목록 */}
-        <div className="templates-modal-body">
-          {templates.length === 0 ? (
-            <div className="templates-empty-state">
-              <div className="templates-empty-icon">📝</div>
-              <h3>등록된 템플릿이 없습니다</h3>
-              <p>반복적으로 수행하는 작업을 템플릿으로 저장하여<br />빠르게 할 일에 추가할 수 있습니다.</p>
-              <button className="btn-add-template-empty" onClick={handleAddTemplate}>
-                첫 템플릿 만들기
-              </button>
-            </div>
-          ) : filteredTemplates.length === 0 ? (
-            <div className="templates-empty-state">
-              <div className="templates-empty-icon">🔍</div>
-              <h3>검색 결과가 없습니다</h3>
-              <p>"{searchQuery}"와 일치하는 템플릿이 없습니다.</p>
-              <button className="btn-secondary" onClick={() => setSearchQuery('')}>
-                검색어 지우기
-              </button>
-            </div>
           ) : (
-            <div className="templates-grid">
-              {filteredTemplates.map(template => (
-                <div
-                  key={template.id}
-                  className="template-card"
-                  onDoubleClick={() => handleEditTemplate(template)}
-                  title="더블클릭하여 편집"
-                >
-                  {/* 카드 헤더 */}
-                  <div className="template-card-header">
-                    <div className="template-card-title-row">
-                      <h3 className="template-card-title">{template.text}</h3>
-                      {template.isFavorite && (
-                        <span className="template-favorite-icon" title="즐겨찾기">⭐</span>
-                      )}
-                    </div>
-                    <div className="template-card-badges">
-                      {template.category && (
-                        <span className="template-card-badge badge-category" title={`카테고리: ${template.category}`}>
-                          🏷️ {template.category}
-                        </span>
-                      )}
-                      {template.autoGenerate && template.recurrenceType === 'daily' && (
-                        <span className="template-card-badge badge-daily" title="매일 자동 생성">
-                          🔄 매일
-                        </span>
-                      )}
-                      {template.autoGenerate && template.recurrenceType === 'weekly' && template.weeklyDays && template.weeklyDays.length > 0 && (
-                        <span className="template-card-badge badge-weekly" title={`매주 ${template.weeklyDays.map(d => ['일','월','화','수','목','금','토'][d]).join(', ')}요일`}>
-                          🔄 매주 {template.weeklyDays.map(d => ['일','월','화','수','목','금','토'][d]).join('/')}
-                        </span>
-                      )}
-                      {template.autoGenerate && template.recurrenceType === 'interval' && template.intervalDays && (
-                        <span className="template-card-badge badge-interval" title={`${template.intervalDays}일마다 자동 생성`}>
-                          🔄 {template.intervalDays}일마다
-                        </span>
-                      )}
-                    </div>
-                    {/* 다음 주기 표시 */}
-                    {getNextOccurrence(template) && (
-                      <div className="template-next-occurrence">
-                        <span className="next-occurrence-icon">📅</span>
-                        <span className="next-occurrence-text">다음주기: {getNextOccurrence(template)}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 카드 바디 */}
-                  <div className="template-card-body">
-                    {/* 이미지 썸네일 */}
-                    {template.imageUrl && (
-                      <div className="template-card-image">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredTemplates.map(template => {
+                const nextOccurrence = getNextOccurrenceLabel(template);
+                return (
+                  <div
+                    key={template.id}
+                    className="group relative flex flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] transition-all hover:-translate-y-1 hover:border-[var(--color-primary)]/50 hover:shadow-lg"
+                    onDoubleClick={() => handleEditTemplate(template)}
+                  >
+                    {/* Thumbnail - Reduced Height */}
+                    <div className="relative h-32 w-full overflow-hidden bg-[var(--color-bg-tertiary)]">
+                      {template.imageUrl ? (
                         <img
                           src={template.imageUrl}
-                          alt={template.text}
+                          alt={template.name}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          loading="lazy"
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';
                           }}
                         />
-                      </div>
-                    )}
-                  </div>
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-3xl opacity-20">
+                          📝
+                        </div>
+                      )}
 
-                  {/* 카드 액션 */}
-                  <div className="template-card-actions">
-                    <button
-                      className="btn-template-card-add"
-                      onClick={() => handleAddToToday(template)}
-                      title="오늘 할 일로 추가"
-                    >
-                      <span>+</span> 오늘 추가
-                    </button>
-                    <div className="template-card-secondary-actions">
+                      {/* Badges overlay */}
+                      <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+                        {template.isFavorite && (
+                          <span className="rounded bg-yellow-500/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                            ⭐
+                          </span>
+                        )}
+                        {template.autoGenerate && (
+                          <span className="rounded bg-[var(--color-primary)]/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                            🔄 자동
+                          </span>
+                        )}
+                        {nextOccurrence && (
+                          <span className="rounded bg-[var(--color-bg-elevated)]/90 px-1.5 py-0.5 text-[10px] font-bold text-[var(--color-text)] shadow-sm ring-1 ring-[var(--color-border)]">
+                            📅 {nextOccurrence}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Content - Reduced Padding */}
+                    <div className="flex flex-1 flex-col gap-2 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        {/* Allowed 2 lines for title */}
+                        <h3 className="text-sm font-bold text-[var(--color-text)] line-clamp-2 leading-tight" title={template.name}>
+                          {template.name}
+                        </h3>
+                        <span className="shrink-0 rounded bg-[var(--color-bg-elevated)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--color-reward)]">
+                          💎 {getEstimatedXP(template)}
+                        </span>
+                      </div>
+
+                      {/* Compact Badges */}
+                      <div className="flex flex-wrap gap-1 text-[10px] font-medium text-[var(--color-text-tertiary)]">
+                        <span className="rounded bg-[var(--color-bg-elevated)] px-1.5 py-0.5">
+                          ⏱️ {template.baseDuration}분
+                        </span>
+                        <span className="rounded bg-[var(--color-bg-elevated)] px-1.5 py-0.5">
+                          ⚡ {RESISTANCE_LABELS[template.resistance]}
+                        </span>
+                        <span className="rounded bg-[var(--color-bg-elevated)] px-1.5 py-0.5">
+                          📍 {getTimeBlockLabel(template.timeBlock)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions (Hover only) - Compact */}
+                    <div className="flex items-center justify-between border-t border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="flex gap-1">
+                        <button
+                          className="rounded p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]"
+                          onClick={() => handleEditTemplate(template)}
+                          title="수정"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          className="rounded p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]"
+                          onClick={() => handleCloneTemplate(template)}
+                          title="복제"
+                        >
+                          📋
+                        </button>
+                        <button
+                          className="rounded p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-danger)]/10 hover:text-[var(--color-danger)]"
+                          onClick={() => handleDeleteTemplate(template.id)}
+                          title="삭제"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                       <button
-                        className="btn-template-card-action"
-                        onClick={() => handleCloneTemplate(template)}
-                        title="템플릿 복제"
+                        className="rounded bg-[var(--color-primary)] px-2 py-1 text-xs font-bold text-white shadow-sm hover:bg-[var(--color-primary-dark)]"
+                        onClick={() => handleAddToToday(template)}
                       >
-                        📋
-                      </button>
-                      <button
-                        className="btn-template-card-action"
-                        onClick={() => handleEditTemplate(template)}
-                        title="템플릿 편집"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        className="btn-template-card-action btn-template-card-delete"
-                        onClick={() => handleDeleteTemplate(template.id)}
-                        title="템플릿 삭제"
-                      >
-                        🗑️
+                        추가
                       </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* 푸터 */}
-        <div className="modal-actions templates-modal-footer">
-          <div className="templates-modal-footer-info">
-            총 {templates.length}개의 템플릿
-          </div>
-          <button className="btn-secondary" onClick={onClose}>
-            닫기
-          </button>
+        {/* Footer */}
+        <div className="border-t border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6 py-3 text-xs text-[var(--color-text-tertiary)]">
+          총 {templates.length}개의 템플릿
         </div>
       </div>
 

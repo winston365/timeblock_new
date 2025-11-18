@@ -467,13 +467,14 @@ export default function AppShell() {
         >
           {leftSidebarCollapsed ? '⟨' : '〈'}
         </button>
-        <LeftSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <LeftSidebar activeTab={activeTab} onTabChange={setActiveTab} collapsed={leftSidebarCollapsed} />
         <CenterContent activeTab={activeTab} dailyData={null} />
-        <InsightPanel />
+        <InsightPanel collapsed={rightPanelsCollapsed} />
         <RightPanel
           activeTab={rightPanelTab}
           onTabChange={setRightPanelTab}
           onShopPurchaseSuccess={handleShopPurchaseSuccess}
+          collapsed={rightPanelsCollapsed}
         />
         <button
           className="panel-toggle-btn right-toggle absolute top-[80px] z-50 flex h-12 w-12 items-center justify-center rounded border bg-[var(--color-primary)] text-white shadow"
@@ -502,7 +503,14 @@ export default function AppShell() {
         onClose={() => setShowTemplates(false)}
         onTaskCreate={handleTaskCreateFromTemplate}
       />
-      <button className="settings-fab" onClick={() => setShowSettings(true)} title="설정" aria-label="설정 이동">⚙️</button>
+      <button
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-primary)] text-2xl text-white shadow-lg transition hover:bg-[var(--color-primary-dark)] hover:shadow-xl"
+        onClick={() => setShowSettings(true)}
+        title="설정"
+        aria-label="설정 이동"
+      >
+        ⚙️
+      </button>
       {toasts.map((toast: { id: string; xp: number; message?: string }) => (
         <XPToast
           key={toast.id}

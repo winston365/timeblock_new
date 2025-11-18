@@ -14,7 +14,6 @@ import type { Task, Resistance } from '@/shared/types/domain';
 import { calculateAdjustedDuration, generateId } from '@/shared/lib/utils';
 import { addInboxTask } from '@/data/repositories/inboxRepository';
 import { initializeDatabase } from '@/data/db/dexieClient';
-import './quickadd.css';
 
 /**
  * 글로벌 단축키용 빠른 작업 추가 컴포넌트
@@ -233,20 +232,28 @@ export default function QuickAddTask() {
   };
 
   return (
-    <div className="modal-overlay" style={{ position: 'fixed', inset: 0 }}>
-      <div className="modal-content quickadd-modal-content">
-        <div className="modal-header">
-          <h3>⚡ 빠른 작업 추가</h3>
-          <button className="modal-close-btn" onClick={handleClose} disabled={saving}>
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur">
+      <div className="flex h-[min(95vh,760px)] w-full max-w-[960px] flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-[0_35px_80px_rgba(0,0,0,0.45)]">
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
+          <h3 className="text-xl font-semibold text-[var(--color-text)]">⚡ 빠른 작업 추가</h3>
+          <button
+            className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1 text-lg font-semibold text-[var(--color-text)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-white)]"
+            onClick={handleClose}
+            disabled={saving}
+          >
             ✕
           </button>
         </div>
 
-        <form className="quickadd-form" onSubmit={handleSubmit}>
-          {/* 왼쪽 컬럼: 기본 작업 정보 */}
-          <div className="form-column form-column-left">
-            <div className="form-group">
-              <label htmlFor="task-text">작업 제목 *</label>
+        <form
+          className="grid flex-1 gap-6 overflow-hidden px-6 py-5 lg:grid-cols-[1fr_1fr]"
+          onSubmit={handleSubmit}
+        >
+          <div className="flex flex-col gap-5 overflow-y-auto pr-1 lg:pr-3">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-semibold text-[var(--color-text-secondary)]" htmlFor="task-text">
+                작업 제목 *
+              </label>
               <input
                 id="task-text"
                 type="text"
@@ -255,14 +262,17 @@ export default function QuickAddTask() {
                 placeholder="무엇을 할까요? (예: T30 D2 보고서 작성)"
                 autoFocus
                 required
+                className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/30"
               />
             </div>
 
-            <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label htmlFor="task-memo">메모</label>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-sm font-semibold text-[var(--color-text-secondary)]" htmlFor="task-memo">
+                  메모
+                </label>
                 {memo.split('\n').length > 10 && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                  <span className="text-[0.65rem] text-[var(--color-text-tertiary)]">
                     {memo.split('\n').length}줄 (10줄 초과)
                   </span>
                 )}
@@ -273,36 +283,47 @@ export default function QuickAddTask() {
                 onChange={handleMemoChange}
                 placeholder="추가 메모 (선택사항)"
                 rows={memoRows}
-                style={{
-                  resize: 'vertical',
-                  minHeight: '60px',
-                  maxHeight: '200px'
-                }}
+                className="min-h-[120px] max-h-[220px] rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/30 resize-none"
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="task-duration">예상 시간</label>
-              <div className="duration-buttons">
+            <div className="flex flex-col gap-3">
+              <label className="text-sm font-semibold text-[var(--color-text-secondary)]">
+                예상 시간
+              </label>
+              <div className="flex flex-wrap gap-2">
                 {[5, 10, 15, 30, 45, 60, 90, 120].map(duration => (
                   <button
                     key={duration}
                     type="button"
-                    className={`duration-btn ${baseDuration === duration ? 'active' : ''}`}
+                    className={`rounded-2xl border px-3 py-1 text-xs font-semibold transition ${
+                      baseDuration === duration
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-lg'
+                        : 'border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-text)]'
+                    }`}
                     onClick={() => setBaseDuration(duration)}
                   >
-                    {duration < 60 ? `${duration}분` : duration === 60 ? '1시간' : duration === 90 ? '1시간 30분' : '2시간'}
+                    {duration < 60
+                      ? `${duration}분`
+                      : duration === 60
+                        ? '1시간'
+                        : duration === 90
+                          ? '1시간 30분'
+                          : '2시간'}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="task-resistance">난이도</label>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-semibold text-[var(--color-text-secondary)]" htmlFor="task-resistance">
+                난이도
+              </label>
               <select
                 id="task-resistance"
                 value={resistance}
                 onChange={e => setResistance(e.target.value as Resistance)}
+                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/30"
               >
                 <option value="low">🟢 쉬움 (x1.0)</option>
                 <option value="medium">🟡 보통 (x1.3)</option>
@@ -310,93 +331,67 @@ export default function QuickAddTask() {
               </select>
             </div>
 
-            <div className="adjusted-duration-info">
-              조정된 예상 시간: <strong>{calculateAdjustedDuration(baseDuration, resistance)}분</strong>
+            <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg)] p-3 text-xs text-[var(--color-text-secondary)]">
+              조정된 예상 시간: <strong className="text-[var(--color-text)]">{calculateAdjustedDuration(baseDuration, resistance)}분</strong>
             </div>
           </div>
 
-          {/* 오른쪽 컬럼: 준비 사항 */}
-          <div className="form-column form-column-right">
-            <div className="preparation-section">
-              <div className="preparation-header">
-                <h4 className="preparation-title">💡 작업 준비하기</h4>
-                <p className="preparation-description">
-                  방해물을 예상하고 대처 환경을 준비하면<br />
-                  작업 성공률이 높아집니다
-                </p>
+          <div className="flex flex-col gap-4 overflow-y-auto pl-1 lg:pl-3">
+            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 shadow-inner">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold tracking-[0.3em] text-[var(--color-text-secondary)]">💡 작업 준비하기</h4>
+                <p className="text-[0.65rem] text-[var(--color-text-tertiary)]">환경을 정리하고 방해 요소 대비</p>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="preparation-1" className="preparation-label">
-                  ⚠️ 예상되는 방해물 #1
-                </label>
-                <input
-                  id="preparation-1"
-                  type="text"
-                  value={preparation1}
-                  onChange={e => setPreparation1(e.target.value)}
-                  placeholder="예: 스마트폰 알림, 배고픔, 피로..."
-                  className="preparation-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="preparation-2" className="preparation-label">
-                  ⚠️ 예상되는 방해물 #2
-                </label>
-                <input
-                  id="preparation-2"
-                  type="text"
-                  value={preparation2}
-                  onChange={e => setPreparation2(e.target.value)}
-                  placeholder="예: 불편한 자세, 소음, 다른 업무..."
-                  className="preparation-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="preparation-3" className="preparation-label">
-                  ✅ 대처 환경/전략
-                </label>
-                <input
-                  id="preparation-3"
-                  type="text"
-                  value={preparation3}
-                  onChange={e => setPreparation3(e.target.value)}
-                  placeholder="예: 집중 모드 켜기, 간식 준비, 휴식 계획..."
-                  className="preparation-input"
-                />
+              <div className="mt-4 flex flex-col gap-3">
+                {[
+                  { id: 'preparation-1', label: '⚠️ 예상되는 방해물 #1', value: preparation1, setter: setPreparation1, placeholder: '예: 스마트폰 알림, 배고픔, 피로...' },
+                  { id: 'preparation-2', label: '⚠️ 예상되는 방해물 #2', value: preparation2, setter: setPreparation2, placeholder: '예: 불편한 자세, 소음, 다른 업무...' },
+                  { id: 'preparation-3', label: '✅ 대처 환경/전략', value: preparation3, setter: setPreparation3, placeholder: '예: 집중 모드 켜기, 간식 준비, 휴식 계획...' },
+                ].map(field => (
+                  <label key={field.id} className="flex flex-col gap-1 text-xs font-semibold text-[var(--color-text-secondary)]">
+                    <span>{field.label}</span>
+                    <input
+                      id={field.id}
+                      type="text"
+                      value={field.value}
+                      onChange={e => field.setter(e.target.value)}
+                      placeholder={field.placeholder}
+                      className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/30"
+                    />
+                  </label>
+                ))}
               </div>
 
               {preparation1 && preparation2 && preparation3 && (
-                <div className="preparation-complete-badge">
+                <div className="mt-4 rounded-2xl border border-emerald-500 bg-emerald-500/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-100">
                   ⭐ 완벽하게 준비된 작업입니다!
                 </div>
               )}
             </div>
           </div>
 
-          {/* 하단 액션 버튼 (전체 너비) */}
-          <div className="modal-actions modal-actions-full">
-            <button type="button" className="btn btn-secondary" onClick={handleClose} disabled={saving}>
+          <div className="col-span-full flex items-center justify-end gap-3 border-t border-[var(--color-border)] pt-4">
+            <button
+              type="button"
+              className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-5 py-2 text-sm font-semibold text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-text)]"
+              onClick={handleClose}
+              disabled={saving}
+            >
               취소
             </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
+            <button
+              type="submit"
+              className="rounded-2xl bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] px-5 py-2 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={saving}
+            >
               {saving ? '저장 중...' : '추가'}
             </button>
           </div>
         </form>
 
-        <div style={{
-          marginTop: 'var(--spacing-2)',
-          padding: 'var(--spacing-2)',
-          background: 'rgba(99, 102, 241, 0.1)',
-          borderRadius: 'var(--radius-md)',
-          fontSize: '0.75rem',
-          color: 'var(--color-text-tertiary)',
-          textAlign: 'center'
-        }}>
-          💡 <strong>팁:</strong> T30, D2와 같은 태그로 빠르게 설정 | ESC: 취소, Ctrl+Enter: 저장
+        <div className="border-t border-[var(--color-border)] px-6 py-3 text-center text-xs text-[var(--color-text-tertiary)]">
+          💡 <strong className="text-[var(--color-text)]">팁:</strong> T30, D2와 같은 태그로 빠르게 설정 | ESC: 취소, Ctrl+Enter: 저장
         </div>
       </div>
     </div>

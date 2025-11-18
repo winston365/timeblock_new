@@ -6,14 +6,12 @@
  * @output 텍스트 입력 영역, 기본 설정 옵션, 파싱된 작업 미리보기, 추가 버튼을 포함한 모달 UI
  * @external_dependencies
  *   - TIME_BLOCKS, RESISTANCE_MULTIPLIERS: 도메인 타입 및 상수
- *   - bulkAdd.css: 스타일시트
  */
 
 import { useState, useRef, useEffect } from 'react';
 import type { Task, TimeBlockId, Resistance } from '@/shared/types/domain';
 import { TIME_BLOCKS, RESISTANCE_MULTIPLIERS } from '@/shared/types/domain';
 import { generateId } from '@/shared/lib/utils';
-import './bulkAdd.css';
 
 interface BulkAddModalProps {
   isOpen: boolean;
@@ -211,24 +209,32 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content bulk-add-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="flex w-[800px] max-w-[95vw] max-h-[90vh] flex-col rounded-xl border border-border bg-surface shadow-xl md:rounded-xl md:h-auto h-full w-full md:w-[800px]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* 헤더 */}
-        <div className="modal-header">
+        <div className="flex items-center justify-between border-b border-border p-4">
           <div>
-            <h2>📝 대량 할 일 추가</h2>
-            <p className="modal-subtitle">한 줄에 하나씩 작업을 입력하세요</p>
+            <h2 className="text-lg font-semibold text-text-primary">📝 대량 할 일 추가</h2>
+            <p className="mt-1 text-sm text-text-secondary">한 줄에 하나씩 작업을 입력하세요</p>
           </div>
-          <button className="btn-close" onClick={onClose} aria-label="닫기">
+          <button
+            className="flex h-8 w-8 items-center justify-center rounded-full text-text-secondary hover:bg-bg-tertiary hover:text-text-primary transition-colors"
+            onClick={onClose}
+            aria-label="닫기"
+          >
             ✕
           </button>
         </div>
 
         {/* 설정 */}
-        <div className="bulk-add-settings">
-          <div className="setting-item">
-            <label>기본 블록:</label>
+        <div className="flex flex-wrap gap-4 border-b border-border bg-bg-secondary px-6 py-4 md:flex-row flex-col">
+          <div className="flex items-center gap-2">
+            <label className="whitespace-nowrap text-sm font-medium text-text-secondary">기본 블록:</label>
             <select
+              className="cursor-pointer rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-primary transition-all hover:border-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10"
               value={defaultTimeBlock || ''}
               onChange={(e) => setDefaultTimeBlock((e.target.value || null) as TimeBlockId)}
             >
@@ -241,9 +247,10 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
             </select>
           </div>
 
-          <div className="setting-item">
-            <label>기본 저항도:</label>
+          <div className="flex items-center gap-2">
+            <label className="whitespace-nowrap text-sm font-medium text-text-secondary">기본 저항도:</label>
             <select
+              className="cursor-pointer rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-primary transition-all hover:border-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10"
               value={defaultResistance}
               onChange={(e) => setDefaultResistance(e.target.value as Resistance)}
             >
@@ -253,9 +260,10 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
             </select>
           </div>
 
-          <div className="setting-item">
-            <label>기본 시간:</label>
+          <div className="flex items-center gap-2">
+            <label className="whitespace-nowrap text-sm font-medium text-text-secondary">기본 시간:</label>
             <select
+              className="cursor-pointer rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-primary transition-all hover:border-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10"
               value={defaultDuration}
               onChange={(e) => setDefaultDuration(Number(e.target.value))}
             >
@@ -270,10 +278,10 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
         </div>
 
         {/* 입력 영역 */}
-        <div className="bulk-add-input-container">
+        <div className="flex flex-1 flex-col overflow-hidden p-6">
           <textarea
             ref={textareaRef}
-            className="bulk-add-textarea"
+            className="h-full min-h-[300px] w-full resize-y rounded-lg border border-border bg-surface p-4 font-mono text-sm leading-relaxed text-text-primary transition-all placeholder:text-text-tertiary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10 md:min-h-[200px]"
             placeholder={`작업을 한 줄에 하나씩 입력하세요.
 
 예시:
@@ -296,23 +304,37 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
 
         {/* 미리보기 */}
         {previewTasks.length > 0 && (
-          <div className="bulk-add-preview">
-            <h3>미리보기 ({previewTasks.length}개)</h3>
-            <div className="preview-list">
+          <div className="max-h-[300px] overflow-y-auto border-t border-border bg-bg-secondary p-6 md:max-h-[200px]">
+            <h3 className="mb-4 text-base font-semibold text-text-primary">미리보기 ({previewTasks.length}개)</h3>
+            <div className="flex flex-col gap-2">
               {previewTasks.map((task, index) => (
-                <div key={index} className="preview-item">
-                  <span className="preview-number">{index + 1}.</span>
-                  <div className="preview-content">
-                    <div className="preview-title">{task.text}</div>
-                    <div className="preview-meta">
-                      <span className={`resistance-badge ${task.resistance}`}>
+                <div
+                  key={index}
+                  className="flex gap-2 rounded-md border border-border bg-surface p-2 transition-all hover:shadow-sm"
+                >
+                  <span className="min-w-[24px] text-xs font-semibold text-text-tertiary">{index + 1}.</span>
+                  <div className="flex flex-1 flex-col gap-1">
+                    <div className="text-sm font-medium text-text-primary">{task.text}</div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-xs ${task.resistance === 'low'
+                            ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                            : task.resistance === 'medium'
+                              ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                              : 'bg-red-500/10 text-red-600 dark:text-red-400'
+                          }`}
+                      >
                         {task.resistance === 'low' ? '🟢' : task.resistance === 'medium' ? '🟡' : '🔴'}
                       </span>
                       <span>⏱️ {task.baseDuration}분</span>
                       {task.timeBlock && (
                         <span>📍 {TIME_BLOCKS.find((b) => b.id === task.timeBlock)?.label}</span>
                       )}
-                      {task.memo && <span className="preview-memo">📝 {task.memo}</span>}
+                      {task.memo && (
+                        <span className="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap italic text-text-tertiary">
+                          📝 {task.memo}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -322,19 +344,23 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
         )}
 
         {/* 안내 */}
-        <div className="bulk-add-footer">
-          <small>
+        <div className="border-t border-border bg-bg-secondary px-6 py-2 text-center">
+          <small className="text-xs text-text-tertiary">
             💡 Tip: Ctrl/Cmd + Enter로 빠르게 추가할 수 있습니다.
           </small>
         </div>
 
         {/* 버튼 */}
-        <div className="modal-actions">
-          <button className="btn-secondary" onClick={onClose} disabled={loading}>
+        <div className="flex justify-end gap-2 border-t border-border p-6">
+          <button
+            className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-bg-tertiary disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={onClose}
+            disabled={loading}
+          >
             취소
           </button>
           <button
-            className="btn-primary"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-primary-dark hover:shadow-md hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleSubmit}
             disabled={loading || previewTasks.length === 0}
           >

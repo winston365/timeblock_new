@@ -1,41 +1,31 @@
-/**
+﻿/**
  * TemplatePanel
  *
  * @role 반복 작업 템플릿을 관리하고 오늘 할 일로 추가하는 패널 컴포넌트
  * @input onTaskCreate (function) - 템플릿에서 작업 생성 시 콜백
- * @output 템플릿 목록, 자동 생성 배지, 추가/편집/삭제 버튼을 포함한 UI
+ * @output 템플릿 목록, 카테고리 탭, 추가/편집/삭제 버튼을 포함한 UI
  * @external_dependencies
  *   - loadTemplates, deleteTemplate: 템플릿 Repository
  *   - TemplateModal: 템플릿 추가/편집 모달 컴포넌트
- *   - RESISTANCE_LABELS, TIME_BLOCKS: 도메인 타입 및 상수
- *   - template.css: 스타일시트
+ *   - utils: XP 계산 함수
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Template } from '@/shared/types/domain';
 import { loadTemplates, deleteTemplate as deleteTemplateRepo } from '@/data/repositories';
 import { TemplateModal } from './TemplateModal';
 import { RESISTANCE_LABELS, TIME_BLOCKS } from '@/shared/types/domain';
-import './template.css';
+import { calculateTaskXP } from '@/shared/lib/utils';
 
 interface TemplatePanelProps {
   onTaskCreate: (template: Template) => void;
 }
 
-/**
- * 템플릿 패널 컴포넌트
- *
- * @param {TemplatePanelProps} props - onTaskCreate를 포함하는 props
- * @returns {JSX.Element} 템플릿 패널 UI
- * @sideEffects
- *   - 컴포넌트 마운트 시 템플릿 목록 로드
- *   - 템플릿 추가/수정/삭제 시 Firebase 동기화
- *   - "오늘 추가" 버튼 클릭 시 onTaskCreate 콜백 호출
- */
 export default function TemplatePanel({ onTaskCreate }: TemplatePanelProps) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('전체');
 
   // 템플릿 로드
   useEffect(() => {
@@ -46,6 +36,18 @@ export default function TemplatePanel({ onTaskCreate }: TemplatePanelProps) {
     const data = await loadTemplates();
     setTemplates(data);
   };
+
+  // 카테고리 목록 추출 (중복 제거 + '전체' 포함)
+  const categories = useMemo(() => {
+    const cats = new Set(templates.map(t => t.category || '기타').filter(Boolean));
+    return ['전체', ...Array.from(cats).sort()];
+  }, [templates]);
+
+  // 필터링된 템플릿 목록
+  const filteredTemplates = useMemo(() => {
+    if (activeCategory === '전체') return templates;
+    return templates.filter(t => (t.category || '기타') === activeCategory);
+  }, [templates, activeCategory]);
 
   const handleAddTemplate = () => {
     setEditingTemplate(null);
@@ -61,15 +63,11 @@ export default function TemplatePanel({ onTaskCreate }: TemplatePanelProps) {
     if (!confirm('이 템플릿을 삭제하시겠습니까?')) return;
 
     try {
-      // Optimistic UI 업데이트: 즉시 목록에서 제거
       setTemplates(prevTemplates => prevTemplates.filter(t => t.id !== id));
-
-      // 백그라운드에서 DB 업데이트
       await deleteTemplateRepo(id);
     } catch (error) {
       console.error('Failed to delete template:', error);
       alert('템플릿 삭제에 실패했습니다.');
-      // 에러 발생 시 목록 새로고침으로 복원
       await loadTemplatesData();
     }
   };
@@ -77,8 +75,6 @@ export default function TemplatePanel({ onTaskCreate }: TemplatePanelProps) {
   const handleModalClose = async (saved: boolean) => {
     setIsModalOpen(false);
     setEditingTemplate(null);
-
-    // 저장 시에만 목록 새로고침 (추가/수정된 템플릿 반영)
     if (saved) {
       await loadTemplatesData();
     }
@@ -89,84 +85,143 @@ export default function TemplatePanel({ onTaskCreate }: TemplatePanelProps) {
   };
 
   const getTimeBlockLabel = (blockId: string | null): string => {
-    if (!blockId) return '나중에';
+    if (!blockId) return '인박스';
     const block = TIME_BLOCKS.find(b => b.id === blockId);
-    return block ? block.label : '나중에';
+    return block ? block.label : '인박스';
+  };
+
+  // 예상 XP 계산 (Task로 변환하여 계산)
+  const getEstimatedXP = (template: Template) => {
+    const tempTask: any = {
+      baseDuration: template.baseDuration,
+      adjustedDuration: template.baseDuration, // Fix: Provide adjustedDuration
+      actualDuration: 0,
+      resistance: template.resistance,
+      preparation1: template.preparation1,
+      preparation2: template.preparation2,
+      preparation3: template.preparation3,
+    };
+    return calculateTaskXP(tempTask);
   };
 
   return (
-    <div className="template-panel">
-      <div className="template-header">
-        <h3>📝 템플릿</h3>
+    <div className="flex h-full flex-col gap-4 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] p-4 text-[var(--color-text)]">
+      {/* Header & Add Button */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold">📝 템플릿</h3>
         <button
-          className="btn-add-template"
+          className="rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--color-primary-dark)] active:scale-95"
           onClick={handleAddTemplate}
-          title="템플릿 추가"
         >
           + 추가
         </button>
       </div>
 
-      {templates.length === 0 ? (
-        <div className="template-empty">
-          <p>등록된 템플릿이 없습니다.</p>
-          <p className="template-hint">반복 작업을 템플릿으로 저장하세요!</p>
+      {/* Category Tabs */}
+      {categories.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {categories.map(cat => (
+            <button
+              key={cat}
+              className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors ${activeCategory === cat
+                  ? 'bg-[var(--color-primary)] text-white'
+                  : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
+                }`}
+              onClick={() => setActiveCategory(cat)}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Template List */}
+      {filteredTemplates.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg-surface)]/50 px-6 py-10 text-center text-xs text-[var(--color-text-secondary)]">
+          <p className="font-medium text-[var(--color-text)]">템플릿이 없습니다</p>
+          <p>자주 하는 작업을 템플릿으로 등록해보세요!</p>
         </div>
       ) : (
-        <div className="template-list">
-          {templates.map(template => (
-            <div key={template.id} className="template-item">
-              <div className="template-item-header">
-                <strong className="template-name">{template.name}</strong>
-                {template.autoGenerate && (
-                  <span className="template-auto-badge" title="매일 자동 생성">
-                    🔄
-                  </span>
-                )}
-              </div>
-
-              <div className="template-item-body">
-                <p className="template-text">{template.text}</p>
-                {template.memo && (
-                  <p className="template-memo">💭 {template.memo}</p>
-                )}
-
-                <div className="template-details">
-                  <span className="template-duration">
-                    ⏱️ {template.baseDuration}분
-                  </span>
-                  <span className="template-resistance">
-                    {RESISTANCE_LABELS[template.resistance]}
-                  </span>
-                  <span className="template-timeblock">
-                    📍 {getTimeBlockLabel(template.timeBlock)}
-                  </span>
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
+          {filteredTemplates.map(template => (
+            <div
+              key={template.id}
+              className="group relative flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 transition-all hover:border-[var(--color-primary)]/50 hover:shadow-sm"
+            >
+              {/* Header: Name & Auto Badge */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <strong className="text-sm font-bold text-[var(--color-text)]">{template.name}</strong>
+                  {template.autoGenerate && (
+                    <span className="rounded-md bg-[var(--color-primary)]/10 px-1.5 py-0.5 text-[10px] font-bold text-[var(--color-primary)]">
+                      매일 반복
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <button
+                    className="rounded p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)]"
+                    onClick={() => handleEditTemplate(template)}
+                    title="수정"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    className="rounded p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-danger)]/10 hover:text-[var(--color-danger)]"
+                    onClick={() => handleDeleteTemplate(template.id)}
+                    title="삭제"
+                  >
+                    🗑️
+                  </button>
                 </div>
               </div>
 
-              <div className="template-item-actions">
-                <button
-                  className="btn-template-add-today"
-                  onClick={() => handleAddToToday(template)}
-                  title="오늘 할 일로 추가"
-                >
-                  오늘 추가
-                </button>
-                <button
-                  className="btn-template-edit"
-                  onClick={() => handleEditTemplate(template)}
-                  title="템플릿 편집"
-                >
-                  ✏️
-                </button>
-                <button
-                  className="btn-template-delete"
-                  onClick={() => handleDeleteTemplate(template.id)}
-                  title="템플릿 삭제"
-                >
-                  🗑️
-                </button>
+              {/* Thumbnail Image */}
+              {template.imageUrl && (
+                <div className="relative h-32 w-full overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-base)]">
+                  <img
+                    src={template.imageUrl}
+                    alt={template.name}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Content: Text & Memo */}
+              <div className="flex flex-col gap-1">
+                <p className="text-xs text-[var(--color-text-secondary)] line-clamp-2">{template.text}</p>
+                {template.memo && (
+                  <p className="text-[10px] text-[var(--color-text-tertiary)] line-clamp-1">💭 {template.memo}</p>
+                )}
               </div>
+
+              {/* Metadata Badges */}
+              <div className="flex flex-wrap gap-2 text-[10px] font-medium text-[var(--color-text-secondary)]">
+                <span className="flex items-center gap-1 rounded bg-[var(--color-bg-elevated)] px-1.5 py-0.5">
+                  ⏱️ {template.baseDuration}분
+                </span>
+                <span className="flex items-center gap-1 rounded bg-[var(--color-bg-elevated)] px-1.5 py-0.5">
+                  ⚡ {RESISTANCE_LABELS[template.resistance]}
+                </span>
+                <span className="flex items-center gap-1 rounded bg-[var(--color-bg-elevated)] px-1.5 py-0.5">
+                  📍 {getTimeBlockLabel(template.timeBlock)}
+                </span>
+                <span className="flex items-center gap-1 rounded bg-[var(--color-bg-elevated)] px-1.5 py-0.5 text-[var(--color-reward)]">
+                  💎 {getEstimatedXP(template)} XP
+                </span>
+              </div>
+
+              {/* Action Button */}
+              <button
+                className="mt-1 w-full rounded-lg bg-[var(--color-bg-elevated)] py-2 text-xs font-bold text-[var(--color-primary)] transition hover:bg-[var(--color-primary)] hover:text-white active:scale-[0.98]"
+                onClick={() => handleAddToToday(template)}
+              >
+                오늘 할 일에 추가
+              </button>
             </div>
           ))}
         </div>

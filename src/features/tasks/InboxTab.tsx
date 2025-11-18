@@ -187,38 +187,52 @@ export default function InboxTab() {
   }
 
   const tabContentClass = [
-    'flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-5 transition-all',
+    'flex flex-1 flex-col gap-3 overflow-y-auto px-3 py-4 transition-all',
     isDragOver
-      ? 'border-2 border-[var(--color-primary)]/80 bg-[rgba(99,102,241,0.1)]'
-      : 'border border-transparent',
+      ? 'bg-[var(--color-primary)]/5 ring-2 ring-inset ring-[var(--color-primary)]/50'
+      : '',
   ].join(' ');
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3">
-        <h3 className="text-base font-semibold text-[var(--color-text)]">📥 인박스</h3>
+    <div className="flex h-full flex-col bg-[var(--color-bg-base)]">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-bold text-[var(--color-text)]">📥 인박스</h3>
+          <span className="rounded-full bg-[var(--color-bg-elevated)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-text-secondary)]">
+            {inboxTasks.length}
+          </span>
+        </div>
         <button
-          className="rounded-2xl bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:opacity-90"
+          className="flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[var(--color-primary-dark)] hover:shadow-md active:scale-95"
           onClick={handleAddTask}
         >
-          ➕ 추가
+          <span>+</span>
+          <span>추가</span>
         </button>
       </div>
 
+      {/* 리스트 영역 */}
       <div
         className={tabContentClass}
-        style={{ maxHeight: 'calc(100vh - 220px)' }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         {inboxTasks.length === 0 ? (
-          <div className="flex h-full flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 text-center text-sm text-[var(--color-text-secondary)]">
-            <p className="text-lg font-semibold text-[var(--color-text)]">📭 인박스가 비어있습니다</p>
-            <p className="text-xs text-[var(--color-text-tertiary)]">할 일을 추가하거나 블록에서 이동하세요</p>
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg-surface)]/50 p-8 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-bg-elevated)] text-2xl">
+              📭
+            </div>
+            <div>
+              <p className="text-sm font-medium text-[var(--color-text)]">인박스가 비어있습니다</p>
+              <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
+                할 일을 추가하거나<br />시간표에서 드래그하여 보관하세요
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 pb-4">
             {inboxTasks.map(task => (
               <TaskCard
                 key={task.id}

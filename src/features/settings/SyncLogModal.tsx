@@ -1,14 +1,3 @@
-/**
- * SyncLogModal
- *
- * @role 동기화 로그와 Gemini 토큰 사용량을 탭으로 구분하여 표시하는 모달 컴포넌트
- * @input isOpen (모달 표시 여부), onClose (모달 닫기 핸들러)
- * @output 동기화 로그 목록과 Gemini 토큰 사용량 통계를 탭으로 표시하는 모달 UI
- * @external_dependencies
- *   - syncLogger: 동기화 로그 관리 및 구독
- *   - chatHistoryRepository: 토큰 사용량 데이터 로드
- */
-
 import { useState, useEffect } from 'react';
 import {
   getSyncLogs,
@@ -20,64 +9,66 @@ import {
 } from '@/shared/services/syncLogger';
 import { loadAllTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import type { DailyTokenUsage } from '@/shared/types/domain';
-import './syncLog.css';
 
-type TabType = 'sync' | 'tokens';
+const PRICE_PER_MILLION_INPUT = 1.25;
+const PRICE_PER_MILLION_OUTPUT = 10.0;
 
-// Gemini 2.5 Flash 가격 (2025-01 기준)
-const PRICE_PER_MILLION_INPUT = 1.25; // US$ 1.25 per 1M input tokens
-const PRICE_PER_MILLION_OUTPUT = 10.0; // US$ 10.00 per 1M output tokens
+const overlayClass =
+  'fixed inset-0 z-[1000] flex items-start justify-center bg-[color:var(--modal-backdrop)] px-4 py-6 backdrop-blur-sm md:items-center';
+const containerClass =
+  'flex h-[min(90vh,840px)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-[var(--modal-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text)] shadow-[var(--modal-shadow)]';
+const tabButtonClass =
+  'flex-1 rounded-2xl px-4 py-2 text-sm font-semibold text-[var(--color-text-secondary)] transition';
+const selectClass =
+  'rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/30';
+const secondaryButtonClass =
+  'inline-flex items-center justify-center rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-bg-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/30';
+const dangerButtonClass =
+  'inline-flex items-center justify-center rounded-full border border-[var(--color-danger)] px-4 py-2 text-sm font-semibold text-[var(--color-danger)] transition hover:bg-[var(--color-danger)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]/30';
 
-/**
- * 토큰 비용 계산
- *
- * @param {number} promptTokens - 입력 토큰 수
- * @param {number} candidatesTokens - 출력 토큰 수
- * @returns {{ inputCost: number; outputCost: number; totalCost: number }} 입력/출력/총 비용 (USD)
- */
-function calculateTokenCost(promptTokens: number, candidatesTokens: number): { inputCost: number; outputCost: number; totalCost: number } {
+function calculateTokenCost(promptTokens: number, candidatesTokens: number) {
   const inputCost = (promptTokens / 1_000_000) * PRICE_PER_MILLION_INPUT;
   const outputCost = (candidatesTokens / 1_000_000) * PRICE_PER_MILLION_OUTPUT;
   const totalCost = inputCost + outputCost;
   return { inputCost, outputCost, totalCost };
 }
 
-/**
- * 비용 포맷팅
- *
- * @param {number} cost - USD 비용
- * @returns {string} 포맷팅된 비용 문자열
- */
-function formatCost(cost: number): string {
-  if (cost < 0.01) {
-    return `$${cost.toFixed(4)}`;
-  }
-  return `$${cost.toFixed(2)}`;
+function formatCost(cost: number) {
+  return cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
 }
+
+const getActionIcon = (action: SyncAction) => {
+  switch (action) {
+    case 'save':
+      return '💾';
+    case 'load':
+      return '📥';
+    case 'sync':
+      return '🔁';
+    case 'error':
+      return '⚠️';
+    default:
+      return 'ℹ️';
+  }
+};
+
+const getTypeBadgeClass = (type: SyncType) =>
+  type === 'dexie'
+    ? 'bg-[rgba(34,197,94,0.15)] text-[var(--color-success,#22c55e)]'
+    : 'bg-[rgba(99,102,241,0.15)] text-[var(--color-primary)]';
 
 interface SyncLogModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-/**
- * 동기화 로그 및 Gemini 토큰 사용량 모달
- *
- * @param {SyncLogModalProps} props - 컴포넌트 props
- * @returns {JSX.Element | null} 모달 컴포넌트 또는 null
- * @sideEffects
- *   - 동기화 로그 실시간 구독
- *   - 토큰 사용량 로드
- *   - 로그 삭제 시 로컬 스토리지 업데이트
- */
 export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('sync');
+  const [activeTab, setActiveTab] = useState<'sync' | 'tokens'>('sync');
   const [logs, setLogs] = useState<SyncLogEntry[]>([]);
   const [tokenUsage, setTokenUsage] = useState<DailyTokenUsage[]>([]);
   const [filterType, setFilterType] = useState<SyncType | 'all'>('all');
   const [filterAction, setFilterAction] = useState<SyncAction | 'all'>('all');
 
-  // ESC 키로 모달 닫기
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -88,26 +79,18 @@ export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
-  // 로그 및 토큰 사용량 로드
   useEffect(() => {
     if (!isOpen) return;
 
-    // 초기 로그 로드 (설정 관련 로그 제외)
-    const allLogs = getSyncLogs();
-    const filteredLogs = allLogs.filter(log =>
-      !log.message.toLowerCase().includes('settings') &&
-      !log.message.toLowerCase().includes('설정')
+    const sanitizedLogs = getSyncLogs().filter(
+      log => !log.message.toLowerCase().includes('settings') && !log.message.includes('설정')
     );
-    setLogs(filteredLogs);
-
-    // 토큰 사용량 로드
+    setLogs(sanitizedLogs);
     loadAllTokenUsage().then(setTokenUsage).catch(console.error);
 
-    // 실시간 업데이트 구독
-    const unsubscribe = subscribeSyncLogs((newLogs) => {
-      const filtered = newLogs.filter(log =>
-        !log.message.toLowerCase().includes('settings') &&
-        !log.message.toLowerCase().includes('설정')
+    const unsubscribe = subscribeSyncLogs(newLogs => {
+      const filtered = newLogs.filter(
+        log => !log.message.toLowerCase().includes('settings') && !log.message.includes('설정')
       );
       setLogs(filtered);
     });
@@ -115,264 +98,217 @@ export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
     return unsubscribe;
   }, [isOpen]);
 
-  // 로그 필터링
-  const filteredLogs = logs.filter((log) => {
+  const filteredLogs = logs.filter(log => {
     if (filterType !== 'all' && log.type !== filterType) return false;
     if (filterAction !== 'all' && log.action !== filterAction) return false;
     return true;
   });
 
-  // 로그 초기화
   const handleClearLogs = () => {
-    if (confirm('모든 동기화 로그를 삭제하시겠습니까?')) {
+    if (confirm('모든 동기화 로그를 삭제할까요?')) {
       clearSyncLogs();
     }
   };
 
-  // 시간 포맷팅
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('ko-KR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  };
+  const formatTime = (timestamp: number) =>
+    new Date(timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-  // 액션 아이콘
-  const getActionIcon = (action: SyncAction) => {
-    switch (action) {
-      case 'save':
-        return '💾';
-      case 'load':
-        return '📥';
-      case 'sync':
-        return '🔄';
-      case 'error':
-        return '❌';
-      default:
-        return '📝';
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
     }
   };
 
-  // 타입 뱃지 색상
-  const getTypeBadgeClass = (type: SyncType) => {
-    return type === 'dexie' ? 'type-badge-dexie' : 'type-badge-firebase';
-  };
+  const totalMessages = tokenUsage.reduce((sum, t) => sum + t.messageCount, 0);
+  const totalPromptTokens = tokenUsage.reduce((sum, t) => sum + t.promptTokens, 0);
+  const totalOutputTokens = tokenUsage.reduce((sum, t) => sum + t.candidatesTokens, 0);
+  const totalTokens = tokenUsage.reduce((sum, t) => sum + t.totalTokens, 0);
+  const aggregateCost = calculateTokenCost(totalPromptTokens, totalOutputTokens);
 
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content sync-log-modal" onClick={(e) => e.stopPropagation()}>
-        {/* 헤더 */}
-        <div className="modal-header">
+    <div className={overlayClass} onClick={handleOverlayClick}>
+      <div className={containerClass}>
+        <div className="flex items-start justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6 py-4">
           <div>
-            <h2>📊 전체 로그</h2>
-            <p className="modal-subtitle">동기화 로그 및 Gemini 토큰 사용량</p>
+            <h2 className="text-xl font-semibold">📡 동기화 로그</h2>
+            <p className="text-sm text-[var(--color-text-secondary)]">Firebase / Dexie 동기화와 Gemini 토큰 사용량을 확인하세요.</p>
           </div>
-          <button className="btn-close" onClick={onClose} aria-label="닫기">
+          <button
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-lg text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
+            onClick={onClose}
+            aria-label="닫기"
+          >
             ✕
           </button>
         </div>
 
-        {/* 탭 */}
-        <div className="log-tabs">
-          <button
-            className={`tab-btn ${activeTab === 'sync' ? 'active' : ''}`}
-            onClick={() => setActiveTab('sync')}
-          >
-            🔄 동기화 로그
-          </button>
-          <button
-            className={`tab-btn ${activeTab === 'tokens' ? 'active' : ''}`}
-            onClick={() => setActiveTab('tokens')}
-          >
-            🪙 Gemini 토큰
-          </button>
+        <div className="flex gap-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-6 py-3">
+          {(['sync', 'tokens'] as const).map(tab => (
+            <button
+              key={tab}
+              className={`${tabButtonClass} ${activeTab === tab ? 'bg-[var(--color-bg)] text-[var(--color-text)] shadow-inner' : ''}`}
+              onClick={() => setActiveTab(tab)}
+              type="button"
+            >
+              {tab === 'sync' ? '동기화 로그' : '토큰 사용'}
+            </button>
+          ))}
         </div>
 
-        {/* 동기화 로그 탭 */}
-        {activeTab === 'sync' && (
+        {activeTab === 'sync' ? (
           <>
-            {/* 필터 */}
-            <div className="sync-log-filters">
-          <div className="filter-group">
-            <label>타입:</label>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value as SyncType | 'all')}
-            >
-              <option value="all">전체</option>
-              <option value="dexie">Dexie</option>
-              <option value="firebase">Firebase</option>
-            </select>
-          </div>
+            <div className="flex flex-wrap items-center gap-4 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-6 py-4 text-sm text-[var(--color-text-secondary)]">
+              <div className="flex items-center gap-2">
+                <label>출처</label>
+                <select value={filterType} onChange={e => setFilterType(e.target.value as SyncType | 'all')} className={selectClass}>
+                  <option value="all">전체</option>
+                  <option value="dexie">Dexie</option>
+                  <option value="firebase">Firebase</option>
+                </select>
+              </div>
 
-          <div className="filter-group">
-            <label>액션:</label>
-            <select
-              value={filterAction}
-              onChange={(e) => setFilterAction(e.target.value as SyncAction | 'all')}
-            >
-              <option value="all">전체</option>
-              <option value="save">저장</option>
-              <option value="load">로드</option>
-              <option value="sync">동기화</option>
-              <option value="error">에러</option>
-            </select>
-          </div>
-
-          <div className="filter-stats">
-            <span className="stat-badge">
-              총 {filteredLogs.length}개
-            </span>
-            <span className="stat-badge">
-              Dexie {logs.filter((l) => l.type === 'dexie').length}
-            </span>
-            <span className="stat-badge">
-              Firebase {logs.filter((l) => l.type === 'firebase').length}
-            </span>
-          </div>
-
-          <button className="btn-clear-logs" onClick={handleClearLogs}>
-            🗑️ 로그 삭제
-          </button>
-        </div>
-
-        {/* 로그 목록 */}
-        <div className="sync-log-content">
-          {filteredLogs.length === 0 ? (
-            <div className="sync-log-empty">
-              {logs.length === 0 ? '동기화 로그가 없습니다.' : '필터 조건에 맞는 로그가 없습니다.'}
-            </div>
-          ) : (
-            <div className="sync-log-list">
-              {filteredLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className={`sync-log-item ${log.action === 'error' ? 'log-error' : ''}`}
+              <div className="flex items-center gap-2">
+                <label>액션</label>
+                <select
+                  value={filterAction}
+                  onChange={e => setFilterAction(e.target.value as SyncAction | 'all')}
+                  className={selectClass}
                 >
-                  <div className="log-header">
-                    <div className="log-meta">
-                      <span className="log-icon">{getActionIcon(log.action)}</span>
-                      <span className={`log-type-badge ${getTypeBadgeClass(log.type)}`}>
-                        {log.type.toUpperCase()}
-                      </span>
-                      <span className="log-time">{formatTime(log.timestamp)}</span>
-                    </div>
-                  </div>
+                  <option value="all">전체</option>
+                  <option value="save">저장</option>
+                  <option value="load">로드</option>
+                  <option value="sync">동기화</option>
+                  <option value="error">오류</option>
+                </select>
+              </div>
 
-                  <div className="log-message">{log.message}</div>
+              <div className="ml-auto flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+                <span className="rounded-full bg-[var(--color-bg)] px-3 py-1">총 {filteredLogs.length}건</span>
+                <span className="rounded-full bg-[var(--color-bg)] px-3 py-1">Dexie {logs.filter(l => l.type === 'dexie').length}</span>
+                <span className="rounded-full bg-[var(--color-bg)] px-3 py-1">
+                  Firebase {logs.filter(l => l.type === 'firebase').length}
+                </span>
+              </div>
 
-                  {log.data && (
-                    <div className="log-data">
-                      <strong>Data:</strong> {log.data}
-                    </div>
-                  )}
-
-                  {log.error && (
-                    <div className="log-error-message">
-                      <strong>Error:</strong> {log.error}
-                    </div>
-                  )}
-                </div>
-              ))}
+              <button className={dangerButtonClass} onClick={handleClearLogs}>
+                로그 초기화
+              </button>
             </div>
-          )}
-        </div>
-          </>
-        )}
 
-        {/* Gemini 토큰 탭 */}
-        {activeTab === 'tokens' && (
-          <div className="token-usage-content">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {filteredLogs.length === 0 ? (
+                <div className="flex h-full items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-12 text-sm text-[var(--color-text-secondary)]">
+                  {logs.length === 0 ? '수집된 로그가 없습니다.' : '필터 조건에 맞는 로그가 없습니다.'}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredLogs.map(log => (
+                    <div
+                      key={log.id}
+                      className={`rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 shadow-sm ${
+                        log.action === 'error' ? 'border-l-4 border-[var(--color-danger)]' : ''
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+                          <span className="text-base">{getActionIcon(log.action)}</span>
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getTypeBadgeClass(log.type)}`}>
+                            {log.type.toUpperCase()}
+                          </span>
+                          <span>{formatTime(log.timestamp)}</span>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-sm">{log.message}</div>
+                      {log.data && (
+                        <div className="mt-2 text-xs text-[var(--color-text-secondary)]">
+                          <strong className="text-[var(--color-text)]">Data:</strong> {log.data}
+                        </div>
+                      )}
+                      {log.error && (
+                        <div className="mt-2 text-xs text-[var(--color-danger)]">
+                          <strong>Error:</strong> {log.error}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
             {tokenUsage.length === 0 ? (
-              <div className="sync-log-empty">
+              <div className="flex h-full items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-12 text-sm text-[var(--color-text-secondary)]">
                 토큰 사용 기록이 없습니다.
               </div>
             ) : (
-              <div className="token-usage-list">
-                {/* 통계 요약 */}
-                <div className="token-stats-summary">
-                  <div className="stat-card">
-                    <div className="stat-label">총 메시지</div>
-                    <div className="stat-value">
-                      {tokenUsage.reduce((sum, t) => sum + t.messageCount, 0)}개
-                    </div>
+              <>
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-center">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">총 메시지</p>
+                    <p className="text-2xl font-bold text-[var(--color-text)]">{totalMessages.toLocaleString()}</p>
                   </div>
-                  <div className="stat-card">
-                    <div className="stat-label">총 입력 토큰</div>
-                    <div className="stat-value">
-                      {tokenUsage.reduce((sum, t) => sum + t.promptTokens, 0).toLocaleString()}
-                    </div>
-                    <div className="stat-sublabel">
-                      {formatCost(calculateTokenCost(tokenUsage.reduce((sum, t) => sum + t.promptTokens, 0), 0).inputCost)}
-                    </div>
+                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-center">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">입력 토큰</p>
+                    <p className="text-2xl font-bold">{totalPromptTokens.toLocaleString()}</p>
+                    <p className="text-xs text-[var(--color-text-secondary)]">{formatCost(aggregateCost.inputCost)}</p>
                   </div>
-                  <div className="stat-card">
-                    <div className="stat-label">총 출력 토큰</div>
-                    <div className="stat-value">
-                      {tokenUsage.reduce((sum, t) => sum + t.candidatesTokens, 0).toLocaleString()}
-                    </div>
-                    <div className="stat-sublabel">
-                      {formatCost(calculateTokenCost(0, tokenUsage.reduce((sum, t) => sum + t.candidatesTokens, 0)).outputCost)}
-                    </div>
+                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-center">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">출력 토큰</p>
+                    <p className="text-2xl font-bold">{totalOutputTokens.toLocaleString()}</p>
+                    <p className="text-xs text-[var(--color-text-secondary)]">{formatCost(aggregateCost.outputCost)}</p>
                   </div>
-                  <div className="stat-card">
-                    <div className="stat-label">총합</div>
-                    <div className="stat-value primary">
-                      {tokenUsage.reduce((sum, t) => sum + t.totalTokens, 0).toLocaleString()}
-                    </div>
-                    <div className="stat-sublabel">
-                      {formatCost(calculateTokenCost(
-                        tokenUsage.reduce((sum, t) => sum + t.promptTokens, 0),
-                        tokenUsage.reduce((sum, t) => sum + t.candidatesTokens, 0)
-                      ).totalCost)}
-                    </div>
+                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-center">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">총 사용량</p>
+                    <p className="text-2xl font-bold text-[var(--color-primary)]">{totalTokens.toLocaleString()}</p>
+                    <p className="text-xs text-[var(--color-text-secondary)]">{formatCost(aggregateCost.totalCost)}</p>
                   </div>
                 </div>
 
-                {/* 일별 목록 */}
-                <div className="token-usage-table">
-                  <table>
+                <div className="overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)]">
+                  <table className="w-full border-collapse text-sm">
                     <thead>
-                      <tr>
-                        <th>날짜</th>
-                        <th>메시지</th>
-                        <th>입력 토큰</th>
-                        <th>출력 토큰</th>
-                        <th>총 토큰</th>
-                        <th>예상 비용</th>
+                      <tr className="bg-[var(--color-bg-secondary)] text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
+                        <th className="border border-[var(--color-border)] px-3 py-2 text-left">날짜</th>
+                        <th className="border border-[var(--color-border)] px-3 py-2 text-right">메시지</th>
+                        <th className="border border-[var(--color-border)] px-3 py-2 text-right">입력 토큰</th>
+                        <th className="border border-[var(--color-border)] px-3 py-2 text-right">출력 토큰</th>
+                        <th className="border border-[var(--color-border)] px-3 py-2 text-right">총 토큰</th>
+                        <th className="border border-[var(--color-border)] px-3 py-2 text-right">예상 비용</th>
                       </tr>
                     </thead>
                     <tbody>
                       {tokenUsage
                         .sort((a, b) => b.date.localeCompare(a.date))
-                        .map((usage) => {
-                          const cost = calculateTokenCost(usage.promptTokens, usage.candidatesTokens);
+                        .map(entry => {
+                          const cost = calculateTokenCost(entry.promptTokens, entry.candidatesTokens);
                           return (
-                            <tr key={usage.date}>
-                              <td className="date-cell">{usage.date}</td>
-                              <td>{usage.messageCount}개</td>
-                              <td>{usage.promptTokens.toLocaleString()}</td>
-                              <td>{usage.candidatesTokens.toLocaleString()}</td>
-                              <td className="total-cell">{usage.totalTokens.toLocaleString()}</td>
-                              <td className="cost-cell">{formatCost(cost.totalCost)}</td>
+                            <tr key={entry.date} className="text-[var(--color-text)]">
+                              <td className="border border-[var(--color-border)] px-3 py-2 font-mono text-sm">{entry.date}</td>
+                              <td className="border border-[var(--color-border)] px-3 py-2 text-right">{entry.messageCount.toLocaleString()}</td>
+                              <td className="border border-[var(--color-border)] px-3 py-2 text-right">{entry.promptTokens.toLocaleString()}</td>
+                              <td className="border border-[var(--color-border)] px-3 py-2 text-right">{entry.candidatesTokens.toLocaleString()}</td>
+                              <td className="border border-[var(--color-border)] px-3 py-2 text-right font-semibold text-[var(--color-primary)]">
+                                {entry.totalTokens.toLocaleString()}
+                              </td>
+                              <td className="border border-[var(--color-border)] px-3 py-2 text-right text-[var(--color-text-secondary)]">
+                                {formatCost(cost.totalCost)}
+                              </td>
                             </tr>
                           );
                         })}
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </>
             )}
           </div>
         )}
 
-        {/* 푸터 */}
-        <div className="modal-actions">
-          <button className="btn-secondary" onClick={onClose}>
+        <div className="flex items-center justify-end border-t border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6 py-4">
+          <button className={secondaryButtonClass} onClick={onClose}>
             닫기
           </button>
         </div>

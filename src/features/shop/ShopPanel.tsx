@@ -8,7 +8,6 @@
  *   - loadShopItems, deleteShopItem, purchaseShopItem: 상점 아이템 Repository
  *   - useGameState: 게임 상태 훅 (보유 XP 확인)
  *   - ShopModal: 아이템 추가/편집 모달 컴포넌트
- *   - shop.css: 스타일시트
  */
 
 import { useState, useEffect } from 'react';
@@ -16,7 +15,6 @@ import type { ShopItem } from '@/shared/types/domain';
 import { loadShopItems, deleteShopItem, purchaseShopItem, useShopItem } from '@/data/repositories';
 import { useGameState, useWaifuState } from '@/shared/hooks';
 import { ShopModal } from './ShopModal';
-import './shop.css';
 
 interface ShopPanelProps {
   onPurchaseSuccess?: (message: string, waifuMessage?: string) => void;
@@ -24,13 +22,6 @@ interface ShopPanelProps {
 
 /**
  * 상점 패널 컴포넌트
- *
- * @param {ShopPanelProps} props - onPurchaseSuccess를 포함하는 props
- * @returns {JSX.Element} 상점 패널 UI
- * @sideEffects
- *   - 컴포넌트 마운트 시 상점 아이템 로드
- *   - 구매 시 XP 차감 및 Firebase 동기화
- *   - 구매 성공 시 와이푸 메시지 표시 (콜백 호출)
  */
 export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
@@ -101,7 +92,7 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
       if (result.success) {
         alert(result.message);
 
-        // Optimistic UI 업데이트: 구매한 아이템의 quantity만 즉시 업데이트
+        // Optimistic UI 업데이트
         setShopItems(prevItems =>
           prevItems.map(i =>
             i.id === item.id
@@ -110,13 +101,9 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
           )
         );
 
-        // GameState 새로고침 (보유 XP 즉시 업데이트)
         await refreshGameState();
-
-        // WaifuState 새로고침 (호감도 즉시 업데이트)
         await refreshWaifuState();
 
-        // 부모 컴포넌트에 구매 성공 알림 (와이푸 메시지 표시)
         if (onPurchaseSuccess && result.waifuMessage) {
           onPurchaseSuccess(result.message, result.waifuMessage);
         }
@@ -152,7 +139,6 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
       if (result.success) {
         alert(result.message);
 
-        // Optimistic UI 업데이트: 사용한 아이템의 quantity만 즉시 감소
         setShopItems(prevItems =>
           prevItems.map(i =>
             i.id === item.id
@@ -161,7 +147,6 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
           )
         );
 
-        // 부모 컴포넌트에 사용 성공 알림 (와이푸 메시지 표시)
         if (onPurchaseSuccess && result.waifuMessage) {
           onPurchaseSuccess(result.message, result.waifuMessage);
         }
@@ -175,11 +160,11 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
   };
 
   return (
-    <div className="shop-panel">
-      <div className="shop-header">
-        <h3>🛒 상점</h3>
+    <div className="flex h-full flex-col gap-4">
+      <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4 py-3">
+        <h3 className="text-sm font-bold text-[var(--color-text)]">🛒 상점</h3>
         <button
-          className="btn-add-shop-item"
+          className="rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--color-primary-dark)] active:scale-95"
           onClick={handleAddItem}
           title="상품 추가"
         >
@@ -188,73 +173,81 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
       </div>
 
       {gameState && (
-        <div className="shop-xp-display">
-          <span className="shop-xp-label">보유 XP:</span>
-          <span className="shop-xp-value">{gameState.availableXP}</span>
+        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-4 py-3 text-xs font-medium text-[var(--color-text-secondary)]">
+          <span>보유 XP</span>
+          <span className="text-sm font-bold text-[var(--color-reward)]">{gameState.availableXP.toLocaleString()} XP</span>
         </div>
       )}
 
       {shopItems.length === 0 ? (
-        <div className="shop-empty">
-          <p>등록된 상품이 없습니다.</p>
-          <p className="shop-hint">XP로 구매할 수 있는 보상을 추가하세요!</p>
+        <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg-surface)]/50 px-6 py-12 text-center text-xs text-[var(--color-text-secondary)]">
+          <p className="text-sm font-medium text-[var(--color-text)]">등록된 상품이 없습니다</p>
+          <p className="mt-1">XP로 구매할 수 있는 보상을 추가하세요!</p>
         </div>
       ) : (
-        <div className="shop-list">
-          {shopItems.map(item => (
-            <div
-              key={item.id}
-              className={`shop-item ${!canAfford(item.price) ? 'shop-item-disabled' : ''}`}
-            >
-              {item.image && (
-                <div className="shop-item-image">
-                  <img src={item.image} alt={item.name} />
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
+          {shopItems.map(item => {
+            const affordable = canAfford(item.price);
+            return (
+              <div
+                key={item.id}
+                className={`flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 transition-all hover:border-[var(--color-primary)]/30 ${!affordable ? 'opacity-70' : ''
+                  }`}
+              >
+                {item.image && (
+                  <div className="flex h-32 items-center justify-center overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-base)]">
+                    <img src={item.image} alt={item.name} className="max-h-full max-w-full object-contain" />
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <strong className="text-sm text-[var(--color-text)]">{item.name}</strong>
+                    <span className="text-xs font-bold text-[var(--color-reward)]">{item.price.toLocaleString()} XP</span>
+                  </div>
+                  {item.quantity !== undefined && item.quantity > 0 && (
+                    <span className="text-[10px] font-medium text-[var(--color-primary)]">보유: {item.quantity}개</span>
+                  )}
                 </div>
-              )}
 
-              <div className="shop-item-body">
-                <strong className="shop-item-name">{item.name}</strong>
-                <p className="shop-item-price">💰 {item.price} XP</p>
-                {item.quantity !== undefined && item.quantity > 0 && (
-                  <p className="shop-item-quantity">보유: {item.quantity}개</p>
-                )}
-              </div>
-
-              <div className="shop-item-actions">
-                <button
-                  className="btn-shop-purchase"
-                  onClick={() => handlePurchase(item)}
-                  disabled={!canAfford(item.price) || isPurchasing}
-                  title={canAfford(item.price) ? '구매하기' : 'XP 부족'}
-                >
-                  {canAfford(item.price) ? '구매' : '💰 부족'}
-                </button>
-                {item.quantity !== undefined && item.quantity > 0 && (
+                <div className="flex gap-2">
                   <button
-                    className="btn-shop-use"
-                    onClick={() => handleUseItem(item)}
-                    title="사용하기"
+                    className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold text-white transition-all active:scale-95 ${affordable
+                        ? 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] shadow-sm'
+                        : 'bg-[var(--color-bg-interactive)] cursor-not-allowed text-[var(--color-text-tertiary)]'
+                      }`}
+                    onClick={() => handlePurchase(item)}
+                    disabled={!affordable || isPurchasing}
                   >
-                    사용
+                    {affordable ? '구매' : '부족'}
                   </button>
-                )}
-                <button
-                  className="btn-shop-edit"
-                  onClick={() => handleEditItem(item)}
-                  title="상품 편집"
-                >
-                  ✏️
-                </button>
-                <button
-                  className="btn-shop-delete"
-                  onClick={() => handleDeleteItem(item.id)}
-                  title="상품 삭제"
-                >
-                  🗑️
-                </button>
+
+                  {item.quantity !== undefined && item.quantity > 0 && (
+                    <button
+                      className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-2 text-xs font-medium text-[var(--color-text)] transition hover:border-[var(--color-primary)]"
+                      onClick={() => handleUseItem(item)}
+                    >
+                      사용
+                    </button>
+                  )}
+
+                  <button
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-2.5 py-2 text-xs text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-text)]"
+                    onClick={() => handleEditItem(item)}
+                  >
+                    ✏️
+                  </button>
+
+                  <button
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-2.5 py-2 text-xs text-[var(--color-danger)] transition hover:bg-[var(--color-danger)]/10"
+                    onClick={() => handleDeleteItem(item.id)}
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
