@@ -14,7 +14,7 @@
 import { saveToStorage, getFromStorage } from '@/shared/lib/utils';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
-import { fetchFromFirebase, type SyncStrategy } from '@/shared/services/sync/firebase/syncCore';
+import { fetchFromFirebase, syncToFirebase, type SyncStrategy } from '@/shared/services/sync/firebase/syncCore';
 
 // ============================================================================
 // Types
@@ -177,6 +177,14 @@ export async function saveData<T>(
     // 3. SyncLog 기록
     if (logSync) {
       addSyncLog('dexie', 'save', `${prefix} saved`, { key });
+    }
+
+    // 4. Firebase에 저장 (firebaseStrategy가 있을 때만)
+    if (syncFirebase && firebaseStrategy && isFirebaseInitialized()) {
+      // 비동기로 실행하여 UI 블로킹 방지
+      syncToFirebase(firebaseStrategy, data, key.toString()).catch((err) => {
+        console.error(`Failed to sync ${prefix} to Firebase:`, err);
+      });
     }
 
 
@@ -364,6 +372,17 @@ export async function saveCollection<T>(
     // 3. SyncLog 기록
     if (logSync) {
       addSyncLog('dexie', 'save', `${prefix} collection saved`, { count: items.length });
+    }
+
+    // 4. Firebase에 저장 (firebaseStrategy가 있을 때만)
+    if (syncFirebase && config.firebaseStrategy && isFirebaseInitialized()) {
+      console.log(`🔥 [Sync] Syncing ${prefix} collection to Firebase...`);
+      // 비동기로 실행하여 UI 블로킹 방지
+      syncToFirebase(config.firebaseStrategy, items, 'all').catch((err) => {
+        console.error(`Failed to sync ${prefix} collection to Firebase:`, err);
+      });
+    } else {
+      console.log(`⚠️ [Sync] Skipping Firebase sync for ${prefix}:`, { syncFirebase, hasStrategy: !!config.firebaseStrategy, initialized: isFirebaseInitialized() });
     }
 
 

@@ -68,7 +68,7 @@ export class SyncEngine {
         // 3. Templates (Collection sync)
         this.registerHooks(db.templates, async () => {
             const allTemplates = await db.templates.toArray();
-            await syncToFirebase(templateStrategy, allTemplates, 'all');
+            await syncToFirebase(templateStrategy, allTemplates);
         });
 
         // 4. ShopItems (Collection sync)

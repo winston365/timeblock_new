@@ -35,7 +35,7 @@ interface WaifuPanelProps {
  */
 export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
   const { waifuState, loading, currentMood, currentDialogue, currentAudio } = useWaifu();
-  const { message: companionMessage, audioPath: companionAudio, isPinned, togglePin } = useWaifuCompanionStore();
+  const { message: companionMessage, isPinned, togglePin } = useWaifuCompanionStore();
   const [displayImagePath, setDisplayImagePath] = useState<string>('');
   const [clickCount, setClickCount] = useState(0);
   const [waifuMode, setWaifuMode] = useState<WaifuMode>('characteristic');
@@ -213,18 +213,6 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
           <p>{companionMessage || currentDialogue}</p>
           <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 border-x-8 border-x-transparent border-t-8 border-t-[var(--color-border)]" />
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              togglePin();
-            }}
-            className={`absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[0.65rem] shadow-sm transition hover:bg-[var(--color-bg-tertiary)] ${isPinned ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-tertiary)]'
-              }`}
-            title={isPinned ? '고정 해제' : '패널 고정'}
-            aria-label={isPinned ? '패널 고정 해제' : '패널 고정'}
-          >
-            {isPinned ? '📌' : '📍'}
-          </button>
         </div>
 
         <div role="region" aria-label="와이푸 통계">

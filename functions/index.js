@@ -56,7 +56,7 @@ function createTaskFromTemplate(template, date) {
   );
 
   // timeBlock이 설정되어 있으면 해당 블록의 첫 번째 시간대(start hour)를 hourSlot으로 설정
-  let hourSlot = undefined;
+  let hourSlot = null;
   if (template.timeBlock) {
     const block = TIME_BLOCKS.find((b) => b.id === template.timeBlock);
     if (block) {
@@ -196,8 +196,10 @@ exports.dailyTemplateGeneration = onSchedule({
         shouldGenerate: shouldGenerateToday(template, today),
       });
 
-      if (shouldGenerateToday(template, today)) {
-        logger.info(`✅ Generating task from template: ${template.name} (${template.recurrenceType})`);
+      const isTestTemplate = template.category === "TEST";
+
+      if (isTestTemplate || shouldGenerateToday(template, today)) {
+        logger.info(`✅ Generating task from template: ${template.name} (${template.recurrenceType}) [TEST: ${isTestTemplate}]`);
 
         // Task 생성
         const newTask = createTaskFromTemplate(template, today);

@@ -87,7 +87,11 @@ export default function AppShell() {
   const { visibility } = useWaifuCompanionStore();
 
   const waifuVisibilityClass =
-    visibility === 'visible' ? 'translate-x-0' : visibility === 'peeking' ? 'translate-x-[90%]' : 'translate-x-full';
+    visibility === 'visible'
+      ? 'translate-x-0 opacity-100 pointer-events-auto scale-100'
+      : visibility === 'peeking'
+        ? 'translate-x-[calc(100%-0.35rem)] opacity-60 pointer-events-none scale-95'
+        : 'translate-x-[calc(100%+2rem)] opacity-0 pointer-events-none scale-95';
 
   // 패널 토글 핸들러
   const toggleLeftSidebar = () => {
@@ -254,13 +258,23 @@ export default function AppShell() {
         </button>
       </main>
       <aside
-        className={`waifu-panel-container fixed bottom-0 right-0 w-[320px] transition-transform duration-300 ${waifuVisibilityClass}`}
+        className="waifu-panel-container pointer-events-none fixed bottom-0 right-0 z-40 p-4"
         data-visibility={visibility}
-        aria-label="와이푸 동반자"
+        aria-label="와이푸 패널"
         role="complementary"
-        aria-hidden={visibility === 'hidden'}
+        aria-hidden={visibility !== 'visible'}
       >
-        <WaifuPanel />
+        <div className={`waifu-panel-shell relative w-[320px] transform transition-all duration-300 ${waifuVisibilityClass}`}>
+          {visibility !== 'visible' && (
+            <div
+              aria-hidden="true"
+              className="absolute left-[-2.5rem] top-1/2 flex min-w-[2.2rem] -translate-y-1/2 flex-col items-center justify-center rounded-full border border-white/10 bg-[var(--color-bg-secondary)]/90 px-2 py-3 text-center text-[0.5rem] font-semibold uppercase tracking-[0.25em] text-white/80 shadow-[0_12px_35px_rgba(0,0,0,0.55)] backdrop-blur-md"
+            >
+              <span className="rotate-90 text-[0.6rem] text-white/70">와이푸</span>
+            </div>
+          )}
+          <WaifuPanel />
+        </div>
       </aside>
       <GeminiFullscreenChat isOpen={showGeminiChat} onClose={() => setShowGeminiChat(false)} />
       <BulkAddModal isOpen={showBulkAdd} onClose={() => setShowBulkAdd(false)} onAddTasks={handleBulkAddTasks} />

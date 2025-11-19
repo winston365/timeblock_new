@@ -64,19 +64,46 @@ export default function HourBar({
   const formatHourRange = () => {
     const startHour = hour.toString().padStart(2, '0');
     const endHour = (hour + 1).toString().padStart(2, '0');
-    const baseRange = `${startHour}:00-${endHour}:00`;
+    return `${startHour}:00-${endHour}:00`;
+  };
 
+  type HourStatus =
+    | { type: 'current'; label: string }
+    | { type: 'past'; label: string }
+    | { type: 'upcoming'; label: string; detail?: string };
+
+  const hourStatus: HourStatus = (() => {
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
+    const currentTotalMinutes = currentHour * 60 + currentMinute;
+    const hourStartMinutes = hour * 60;
 
     if (currentHour === hour) {
-      const elapsed = Math.min(currentMinute, 50);
-      return `${baseRange} (${elapsed}/50)`;
-    } else if (currentHour > hour) {
-      return `${baseRange} (완료)`;
+      return {
+        type: 'current',
+        label: `현재 ${Math.min(currentMinute, 50)}분 진행 중`
+      };
     }
-    return baseRange;
+
+    if (currentHour > hour) {
+      return {
+        type: 'past',
+        label: '지난 시간'
+      };
+    }
+
+    const minutesUntilStart = Math.max(hourStartMinutes - currentTotalMinutes, 0);
+    return {
+      type: 'upcoming',
+      label: '앞선 시간',
+      detail: minutesUntilStart > 0 ? `${minutesUntilStart}분 후 시작` : undefined
+    };
+  })();
+
+  const statusBadgeClasses: Record<'past' | 'upcoming', string> = {
+    past: 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]',
+    upcoming: 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/40'
   };
 
   const handleInlineInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -113,11 +140,34 @@ export default function HourBar({
       onDrop={handleDropWrapper}
       data-hour={hour}
     >
-      <div className="mb-3 flex items-center justify-between text-sm font-semibold text-[var(--color-text-secondary)]">
-        <span className="font-mono text-xs tracking-[0.2em] text-[var(--color-text-secondary)]">{formatHourRange()}</span>
-        {!isLocked && (
-          <span className="text-xs text-[var(--color-text-tertiary)]">Enter로 빠르게 작업을 추가하세요</span>
-        )}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-[var(--color-text-secondary)]">
+        <span className="font-mono text-xs tracking-[0.2em] text-[var(--color-text-secondary)]">
+          {formatHourRange()}
+        </span>
+        <div className="flex flex-col items-end gap-1 text-right text-xs font-medium sm:flex-row sm:items-center sm:gap-2">
+          {hourStatus.type === 'current' ? (
+            <span className="flex items-center gap-1 text-[var(--color-text-secondary)]">
+              <span role="img" aria-label="clock">
+                🕒
+              </span>
+              {hourStatus.label}
+            </span>
+          ) : (
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusBadgeClasses[hourStatus.type]}`}
+            >
+              {hourStatus.label}
+            </span>
+          )}
+          {hourStatus.type === 'upcoming' && hourStatus.detail && (
+            <span className="text-[11px] font-normal text-[var(--color-text-tertiary)]">{hourStatus.detail}</span>
+          )}
+          {!isLocked && (
+            <span className="text-[11px] font-normal text-[var(--color-text-tertiary)]">
+              Enter로 빠르게 작업을 추가하세요
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="mb-3 flex h-2 overflow-hidden rounded-full bg-black/20 text-xs">

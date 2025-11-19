@@ -136,11 +136,11 @@ export const useWaifuCompanionStore = create<WaifuCompanionState>((set, get) => 
       }
       set({ isPinned: true, visibility: 'visible', autoHideTimer: null });
     } else {
-      // 고정 해제: 3초 후 peeking으로 전환하는 타이머 시작
-      const timer = window.setTimeout(() => {
-        set({ visibility: 'peeking', autoHideTimer: null });
-      }, 3000);
-      set({ isPinned: false, autoHideTimer: timer });
+      // 고정 해제 시 즉시 peeking 상태로 복귀
+      if (state.autoHideTimer !== null) {
+        clearTimeout(state.autoHideTimer);
+      }
+      set({ isPinned: false, visibility: 'peeking', autoHideTimer: null });
     }
   },
 

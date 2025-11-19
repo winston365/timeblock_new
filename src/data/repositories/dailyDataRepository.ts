@@ -75,7 +75,10 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
         const timeBlockStates = firebaseData.timeBlockStates || {};
 
         const sanitizedData: DailyData = {
-          tasks,
+          tasks: tasks.map(task => ({
+            ...task,
+            timeBlock: task.timeBlock ?? null, // Firebase에서 null이 삭제되어 undefined로 올 경우 null로 복원
+          })),
           goals,
           timeBlockStates,
           updatedAt: firebaseData.updatedAt || Date.now(),
