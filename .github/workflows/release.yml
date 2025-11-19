@@ -36,22 +36,47 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-      # 5. Bump patch version (1.0.14 -> 1.0.15)
+      # 5. Bump patch version (Smart Bump)
       - name: Bump version
         id: bump
         shell: bash
         run: |
-          echo "Current version: $(node -p "require('./package.json').version")"
+          # 모든 태그 가져오기
+          git fetch --tags
 
-          # 버전 올리면서 커밋 + 태그 생성 (npm이 알아서 함)
-          npm version patch -m "chore: bump version to %s"
+          # 현재 버전 가져오기
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current package.json version: $CURRENT_VERSION"
 
-          # 변경된 버전 읽어서 output으로 저장
-          NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "New version: $NEW_VERSION"
+          # 버전 파싱 (Major.Minor.Patch)
+          IFS='.' read -r -a parts <<< "$CURRENT_VERSION"
+          MAJOR="${parts[0]}"
+          MINOR="${parts[1]}"
+          PATCH="${parts[2]}"
 
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
+          # 다음 버전 찾기 루프
+          NEXT_PATCH=$((PATCH + 1))
+          while true; do
+            CANDIDATE_VERSION="$MAJOR.$MINOR.$NEXT_PATCH"
+            CANDIDATE_TAG="v$CANDIDATE_VERSION"
+            
+            if git rev-parse "$CANDIDATE_TAG" >/dev/null 2>&1; then
+              echo "Tag $CANDIDATE_TAG already exists. Skipping..."
+              NEXT_PATCH=$((NEXT_PATCH + 1))
+            else
+              echo "Found available version: $CANDIDATE_VERSION"
+              break
+            fi
+          done
+
+          # npm version 명령어로 버전 업데이트 및 태그 생성
+          # --no-git-tag-version을 먼저 써서 package.json만 바꾸고, 나중에 커밋할 수도 있지만
+          # 여기서는 npm version이 커밋+태그까지 하게 하되, 우리가 찾은 버전을 명시적으로 지정함
+          npm version "$CANDIDATE_VERSION" -m "chore: bump version to %s"
+
+          # output 설정
+          echo "version=$CANDIDATE_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$CANDIDATE_VERSION" >> $GITHUB_OUTPUT
 
       # 6. Push commit + tag
       - name: Push changes
