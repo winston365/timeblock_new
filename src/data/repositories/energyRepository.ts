@@ -14,12 +14,12 @@
 import { db } from '../db/dexieClient';
 import type { EnergyLevel } from '@/shared/types/domain';
 import { getLocalDate } from '@/shared/lib/utils';
-import { addSyncLog } from '@/shared/services/syncLogger';
-import { isFirebaseInitialized } from '@/shared/services/firebaseService';
-import { syncToFirebase, fetchFromFirebase } from '@/shared/services/firebase/syncCore';
-import { energyLevelsStrategy } from '@/shared/services/firebase/strategies';
+import { addSyncLog } from '@/shared/services/sync/syncLogger';
+import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
+import { fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
+import { energyLevelsStrategy } from '@/shared/services/sync/firebase/strategies';
 
-const STORAGE_KEY_PREFIX = 'energyLevels_';
+
 
 // ============================================================================
 // EnergyLevel CRUD
@@ -50,29 +50,12 @@ export async function loadEnergyLevels(date: string = getLocalDate()): Promise<E
       return levels;
     }
 
-    // 2. localStorage에서 조회 (IndexedDB 실패 시)
-    const localData = localStorage.getItem(`${STORAGE_KEY_PREFIX}${date}`);
-    if (localData) {
-      try {
-        const parsedLevels: EnergyLevel[] = JSON.parse(localData);
-
-        // localStorage 데이터를 IndexedDB에 저장
-        if (parsedLevels.length > 0) {
-          await saveEnergyLevels(date, parsedLevels);
-        }
-
-        return parsedLevels;
-      } catch (parseError) {
-        console.warn('Failed to parse energy levels from localStorage:', parseError);
-      }
-    }
-
-    // 3. Firebase에서 조회
+    // 2. Firebase에서 조회 (IndexedDB 실패 시)
     if (isFirebaseInitialized()) {
       const firebaseLevels = await fetchFromFirebase<EnergyLevel[]>(energyLevelsStrategy, date);
 
       if (firebaseLevels && firebaseLevels.length > 0) {
-        // Firebase 데이터를 IndexedDB와 localStorage에 저장
+        // Firebase 데이터를 IndexedDB에 저장
         await saveEnergyLevels(date, firebaseLevels);
 
         addSyncLog('firebase', 'load', `Loaded ${firebaseLevels.length} energy levels for ${date} from Firebase`);
@@ -127,17 +110,7 @@ export async function saveEnergyLevels(
 
     addSyncLog('dexie', 'save', `EnergyLevels saved for ${date}`, { count: levels.length });
 
-    // 2. localStorage에 백업
-    try {
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}${date}`, JSON.stringify(levels));
-    } catch (storageError) {
-      console.warn('Failed to save to localStorage:', storageError);
-    }
 
-    // 3. Firebase에 비동기 동기화
-    if (await isFirebaseInitialized()) {
-      await syncToFirebase(energyLevelsStrategy, levels, date);
-    }
   } catch (error) {
     console.error(`Failed to save energy levels for ${date}:`, error);
     addSyncLog('dexie', 'error', `Failed to save energy levels for ${date}`, undefined, error as Error);

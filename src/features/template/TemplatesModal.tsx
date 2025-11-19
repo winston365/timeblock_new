@@ -136,7 +136,6 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     const date = targetDate.getDate();
     const weekday = ['일', '월', '화', '수', '목', '금', '토'][targetDate.getDay()];
 
-    // 내년이면 연도 표시
     if (year !== today.getFullYear()) {
       return `${year}년 ${month}월 ${date}일 (${weekday})`;
     }
@@ -251,7 +250,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   const getEstimatedXP = (template: Template) => {
     const tempTask: any = {
       baseDuration: template.baseDuration,
-      adjustedDuration: template.baseDuration, // Fix: Provide adjustedDuration for calculation
+      adjustedDuration: template.baseDuration,
       actualDuration: 0,
       resistance: template.resistance,
       preparation1: template.preparation1,
@@ -417,7 +416,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
                     </div>
 
                     {/* Content - Reduced Padding */}
-                    <div className="flex flex-1 flex-col gap-2 p-3">
+                    <div className="flex flex-1 flex-col gap-2 p-3 pb-4"> {/* Added pb-4 for better spacing */}
                       <div className="flex items-start justify-between gap-2">
                         {/* Allowed 2 lines for title */}
                         <h3 className="text-sm font-bold text-[var(--color-text)] line-clamp-2 leading-tight" title={template.name}>
@@ -442,8 +441,8 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
                       </div>
                     </div>
 
-                    {/* Actions (Hover only) - Compact */}
-                    <div className="flex items-center justify-between border-t border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 opacity-0 transition-opacity group-hover:opacity-100">
+                    {/* Actions (Hover only) - Absolute Positioned to remove layout space */}
+                    <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between border-t border-[var(--color-border)] bg-[var(--color-bg-base)]/95 px-3 py-2 backdrop-blur-sm transition-transform duration-300 translate-y-full group-hover:translate-y-0">
                       <div className="flex gap-1">
                         <button
                           className="rounded p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]"

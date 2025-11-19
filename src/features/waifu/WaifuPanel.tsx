@@ -10,10 +10,11 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useWaifuState } from '@/shared/hooks';
+import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier } from './waifuImageUtils';
 import { loadSettings } from '@/data/repositories/settingsRepository';
+import { audioService } from '@/shared/services/media/audioService';
 import type { WaifuMode } from '@/shared/types/domain';
 import baseImage from './base.png';
 
@@ -33,8 +34,8 @@ interface WaifuPanelProps {
  *   - 호감도 변경 시 이미지 자동 업데이트
  */
 export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
-  const { waifuState, loading, currentMood, currentDialogue } = useWaifuState();
-  const { message: companionMessage } = useWaifuCompanionStore();
+  const { waifuState, loading, currentMood, currentDialogue, currentAudio } = useWaifu();
+  const { message: companionMessage, audioPath: companionAudio, isPinned, togglePin } = useWaifuCompanionStore();
   const [displayImagePath, setDisplayImagePath] = useState<string>('');
   const [clickCount, setClickCount] = useState(0);
   const [waifuMode, setWaifuMode] = useState<WaifuMode>('characteristic');
@@ -95,6 +96,13 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     return () => clearInterval(interval);
   }, [waifuState, changeImage]);
 
+  // 오디오 재생 (일반 대화용)
+  useEffect(() => {
+    if (currentAudio && !companionMessage) {
+      audioService.play(currentAudio);
+    }
+  }, [currentAudio, companionMessage]);
+
   // 클릭 핸들러 - 4번 클릭마다 이미지 변경 (호감도 변화는 제거)
   const handleClick = useCallback(() => {
     if (!waifuState) return;
@@ -139,7 +147,21 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
   };
 
   return (
-    <section className="flex h-full min-h-0 flex-col gap-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-[0_45px_80px_rgba(0,0,0,0.5)]">
+    <section className="relative flex h-full min-h-0 flex-col gap-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-[0_45px_80px_rgba(0,0,0,0.5)]">
+      {/* Side Pin Button (Visible when folded) */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          togglePin();
+        }}
+        className={`absolute -left-12 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-l-xl border-y border-l border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-lg transition hover:bg-[var(--color-bg-tertiary)] ${isPinned ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-tertiary)]'
+          }`}
+        title={isPinned ? '고정 해제' : '패널 고정'}
+        aria-label={isPinned ? '패널 고정 해제' : '패널 고정'}
+      >
+        {isPinned ? '📌' : '📍'}
+      </button>
+
       <div
         className="group relative -mr-5 -ml-10 flex cursor-pointer justify-center overflow-hidden rounded-[30px] border border-white/5 bg-[var(--color-bg-tertiary)] px-6 py-4 shadow-[inset_0_-50px_120px_rgba(0,0,0,0.35)] transition duration-200 hover:-translate-y-1 hover:scale-[1.005]"
         onClick={handleClick}
@@ -190,6 +212,19 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
         >
           <p>{companionMessage || currentDialogue}</p>
           <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 border-x-8 border-x-transparent border-t-8 border-t-[var(--color-border)]" />
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePin();
+            }}
+            className={`absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[0.65rem] shadow-sm transition hover:bg-[var(--color-bg-tertiary)] ${isPinned ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-tertiary)]'
+              }`}
+            title={isPinned ? '고정 해제' : '패널 고정'}
+            aria-label={isPinned ? '패널 고정 해제' : '패널 고정'}
+          >
+            {isPinned ? '📌' : '📍'}
+          </button>
         </div>
 
         <div role="region" aria-label="와이푸 통계">

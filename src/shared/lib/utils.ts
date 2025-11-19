@@ -288,6 +288,7 @@ export function objectToArray<T>(obj: Record<string, T> | null | undefined): T[]
 
 /**
  * localStorage에서 JSON 파싱하여 가져오기
+ * @deprecated 도메인 데이터(DailyData, GameState 등)에는 사용하지 마세요. UI 설정(테마, 사이드바 등)에만 사용하세요.
  */
 export function getFromStorage<T>(key: string, defaultValue: T): T {
   try {
@@ -301,6 +302,7 @@ export function getFromStorage<T>(key: string, defaultValue: T): T {
 
 /**
  * localStorage에 JSON 저장
+ * @deprecated 도메인 데이터(DailyData, GameState 등)에는 사용하지 마세요. UI 설정(테마, 사이드바 등)에만 사용하세요.
  */
 export function saveToStorage<T>(key: string, value: T): void {
   try {

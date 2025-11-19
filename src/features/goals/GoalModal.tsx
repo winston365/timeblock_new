@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { addGlobalGoal, updateGlobalGoal } from '@/data/repositories/globalGoalRepository';
+import { addGlobalGoal, updateGlobalGoal } from '@/data/repositories';
 import type { DailyGoal } from '@/shared/types/domain';
 
 interface GoalModalProps {
@@ -9,14 +9,23 @@ interface GoalModalProps {
   onSaved?: () => void;
 }
 
-const GOAL_ICONS = ['💡', '📚', '🧠', '📝', '🧘', '🏋️', '🧹', '🧾', '📖', '💻', '🎧', '📈'];
-const GOAL_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+const GOAL_PRESETS = [
+  { title: '독서', icon: '📚', color: '#6366f1', minutes: 30 },
+  { title: '운동', icon: '💪', color: '#ef4444', minutes: 60 },
+  { title: '공부', icon: '✏️', color: '#f59e0b', minutes: 120 },
+  { title: '코딩', icon: '💻', color: '#10b981', minutes: 180 },
+  { title: '명상', icon: '🧘', color: '#8b5cf6', minutes: 15 },
+  { title: '청소', icon: '🧹', color: '#06b6d4', minutes: 30 },
+];
+
+const GOAL_ICONS = ['💡', '📚', '🧠', '📝', '🧘', '🏋️', '🧹', '🧾', '📖', '💻', '🎧', '📈', '🎨', '🎸', '🍳', '💤'];
+const GOAL_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#64748b', '#f43f5e'];
 
 export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalProps) {
   const isEditMode = !!goal;
   const [title, setTitle] = useState('');
   const [targetHours, setTargetHours] = useState(0);
-  const [targetMinutes, setTargetMinutes] = useState(0);
+  const [targetMinutes, setTargetMinutes] = useState(30);
   const [selectedIcon, setSelectedIcon] = useState('💡');
   const [selectedColor, setSelectedColor] = useState('#6366f1');
   const [saving, setSaving] = useState(false);
@@ -24,31 +33,37 @@ export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalP
   useEffect(() => {
     if (goal) {
       setTitle(goal.title);
-      const hours = Math.floor(goal.targetMinutes / 60);
-      const mins = goal.targetMinutes % 60;
-      setTargetHours(hours);
-      setTargetMinutes(mins);
+      setTargetHours(Math.floor(goal.targetMinutes / 60));
+      setTargetMinutes(goal.targetMinutes % 60);
       setSelectedIcon(goal.icon || '💡');
       setSelectedColor(goal.color || '#6366f1');
     } else {
+      // Reset for new goal
       setTitle('');
       setTargetHours(0);
-      setTargetMinutes(0);
+      setTargetMinutes(30);
       setSelectedIcon('💡');
       setSelectedColor('#6366f1');
     }
   }, [goal, isOpen]);
 
+  // ESC key handler
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !saving) {
-        onClose();
-      }
+      if (e.key === 'Escape' && !saving) onClose();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [isOpen, saving, onClose]);
+
+  const handlePresetClick = (preset: typeof GOAL_PRESETS[0]) => {
+    setTitle(preset.title);
+    setSelectedIcon(preset.icon);
+    setSelectedColor(preset.color);
+    setTargetHours(Math.floor(preset.minutes / 60));
+    setTargetMinutes(preset.minutes % 60);
+  };
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -64,20 +79,17 @@ export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalP
 
     try {
       setSaving(true);
+      const goalData = {
+        title: title.trim(),
+        targetMinutes: totalMinutes,
+        icon: selectedIcon,
+        color: selectedColor,
+      };
+
       if (isEditMode && goal) {
-        await updateGlobalGoal(goal.id, {
-          title: title.trim(),
-          targetMinutes: totalMinutes,
-          icon: selectedIcon,
-          color: selectedColor,
-        });
+        await updateGlobalGoal(goal.id, goalData);
       } else {
-        await addGlobalGoal({
-          title: title.trim(),
-          targetMinutes: totalMinutes,
-          icon: selectedIcon,
-          color: selectedColor,
-        });
+        await addGlobalGoal(goalData);
       }
       onSaved?.();
       onClose();
@@ -91,85 +103,105 @@ export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalP
 
   if (!isOpen) return null;
 
+  const inputClass = "w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all";
+  const labelClass = "text-xs font-bold text-[var(--color-text-secondary)] mb-1 block";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6" onClick={onClose}>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
       <div
-        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-2xl"
+        className="w-full max-w-md overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-[var(--color-text)]">{isEditMode ? '목표 수정' : '새 목표 추가'}</h2>
-          <button
-            type="button"
-            className="rounded-full border border-transparent p-2 text-[var(--color-text-secondary)] transition hover:border-[var(--color-border)]"
-            onClick={onClose}
-            disabled={saving}
-            aria-label="모달 닫기"
-          >
-            ✕
-          </button>
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
+          <h2 className="text-lg font-bold text-[var(--color-text)]">
+            {isEditMode ? '목표 수정' : '새 목표 추가'}
+          </h2>
+          <button onClick={onClose} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]">✕</button>
         </div>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[var(--color-text)]" htmlFor="goal-title">목표 이름 *</label>
-            <input
-              id="goal-title"
-              type="text"
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
-              placeholder="새 책 읽기, 프로젝트 진행 등"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              disabled={saving}
-              autoFocus
-            />
+        <div className="flex flex-col gap-5 p-5">
+
+          {/* Presets (New Goal Only) */}
+          {!isEditMode && (
+            <div>
+              <label className={labelClass}>빠른 선택</label>
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {GOAL_PRESETS.map((preset) => (
+                  <button
+                    key={preset.title}
+                    type="button"
+                    onClick={() => handlePresetClick(preset)}
+                    className="flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text)] transition hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-base)]"
+                  >
+                    <span>{preset.icon}</span>
+                    <span>{preset.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Title Input */}
+          <div>
+            <label className={labelClass}>목표 이름</label>
+            <div className="flex gap-2">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-base)] text-xl">
+                {selectedIcon}
+              </div>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="예: 책 읽기, 운동하기"
+                className={inputClass}
+                autoFocus
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[var(--color-text)]">목표 시간 *</label>
+          {/* Time Input */}
+          <div>
+            <label className={labelClass}>목표 시간</label>
             <div className="flex gap-3">
-              <div className="flex flex-1 items-center gap-2">
+              <div className="relative flex-1">
                 <input
                   type="number"
                   min="0"
                   max="23"
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
-                  value={targetHours || ''}
+                  value={targetHours}
                   onChange={(e) => setTargetHours(Math.max(0, parseInt(e.target.value) || 0))}
-                  disabled={saving}
+                  className={inputClass}
                 />
-                <span className="text-sm text-[var(--color-text-secondary)]">시간</span>
+                <span className="absolute right-3 top-2.5 text-xs text-[var(--color-text-tertiary)]">시간</span>
               </div>
-              <div className="flex flex-1 items-center gap-2">
+              <div className="relative flex-1">
                 <input
                   type="number"
                   min="0"
                   max="59"
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
-                  value={targetMinutes || ''}
+                  value={targetMinutes}
                   onChange={(e) => setTargetMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
-                  disabled={saving}
+                  className={inputClass}
                 />
-                <span className="text-sm text-[var(--color-text-secondary)]">분</span>
+                <span className="absolute right-3 top-2.5 text-xs text-[var(--color-text-tertiary)]">분</span>
               </div>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[var(--color-text)]">아이콘</label>
-            <div className="grid grid-cols-6 gap-2">
+          {/* Icon Picker */}
+          <div>
+            <label className={labelClass}>아이콘</label>
+            <div className="grid grid-cols-8 gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] p-3">
               {GOAL_ICONS.map((icon) => (
                 <button
-                  type="button"
                   key={icon}
-                  className={`rounded-lg border px-2 py-2 text-lg transition ${
-                    selectedIcon === icon
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10'
-                      : 'border-[var(--color-border)] hover:border-[var(--color-primary)]'
-                  }`}
+                  type="button"
                   onClick={() => setSelectedIcon(icon)}
-                  disabled={saving}
-                  aria-label={`아이콘 ${icon} 선택`}
+                  className={`flex aspect-square items-center justify-center rounded-lg text-lg transition ${selectedIcon === icon
+                    ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                    : 'hover:bg-[var(--color-bg-elevated)]'
+                    }`}
                 >
                   {icon}
                 </button>
@@ -177,42 +209,40 @@ export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalP
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[var(--color-text)]">색상</label>
-            <div className="grid grid-cols-8 gap-2">
+          {/* Color Picker */}
+          <div>
+            <label className={labelClass}>색상</label>
+            <div className="flex flex-wrap gap-3">
               {GOAL_COLORS.map((color) => (
                 <button
-                  type="button"
                   key={color}
-                  className={`h-9 rounded-full border-2 transition ${
-                    selectedColor === color ? 'border-white' : 'border-transparent'
-                  }`}
-                  style={{ backgroundColor: color }}
+                  type="button"
                   onClick={() => setSelectedColor(color)}
-                  disabled={saving}
-                  aria-label={`색상 ${color} 선택`}
+                  className={`h-8 w-8 rounded-full transition-transform hover:scale-110 ${selectedColor === color ? 'ring-2 ring-[var(--color-text)] ring-offset-2 ring-offset-[var(--color-bg-surface)]' : ''
+                    }`}
+                  style={{ backgroundColor: color }}
                 />
               ))}
             </div>
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-3">
+        {/* Footer */}
+        <div className="flex justify-end gap-2 border-t border-[var(--color-border)] bg-[var(--color-bg-base)] px-5 py-4">
           <button
             type="button"
-            className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-bg)]"
             onClick={onClose}
-            disabled={saving}
+            className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)]"
           >
             취소
           </button>
           <button
             type="button"
-            className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-dark)] disabled:opacity-60"
             onClick={handleSave}
             disabled={saving}
+            className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-[var(--color-primary-dark)] disabled:opacity-50"
           >
-            {saving ? '저장 중...' : isEditMode ? '수정' : '추가'}
+            {saving ? '저장 중...' : '완료'}
           </button>
         </div>
       </div>

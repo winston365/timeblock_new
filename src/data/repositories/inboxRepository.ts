@@ -12,10 +12,10 @@
 
 import { db } from '../db/dexieClient';
 import type { Task } from '@/shared/types/domain';
-import { addSyncLog } from '@/shared/services/syncLogger';
-import { isFirebaseInitialized } from '@/shared/services/firebaseService';
-import { syncToFirebase, fetchFromFirebase } from '@/shared/services/firebase/syncCore';
-import { globalInboxStrategy } from '@/shared/services/firebase/strategies';
+import { addSyncLog } from '@/shared/services/sync/syncLogger';
+import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
+import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
+import { globalInboxStrategy } from '@/shared/services/sync/firebase/strategies';
 
 // ============================================================================
 // Global Inbox CRUD

@@ -6,7 +6,7 @@ import {
   type SyncLogEntry,
   type SyncType,
   type SyncAction,
-} from '@/shared/services/syncLogger';
+} from '@/shared/services/sync/syncLogger';
 import { loadAllTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import type { DailyTokenUsage } from '@/shared/types/domain';
 

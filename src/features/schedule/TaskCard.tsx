@@ -150,8 +150,8 @@ export default function TaskCard({
   };
 
   const cardClassName = [
-    'group relative rounded-2xl border transition-all duration-300 ease-out',
-    compact ? 'p-3' : 'p-4',
+    'group relative rounded-xl border transition-all duration-300 ease-out',
+    compact ? 'p-2' : 'p-2.5',
     // 기본 스타일: 유리 질감
     'bg-[var(--color-bg-elevated)]/80 backdrop-blur-sm',
     'border-[var(--color-border)]',
@@ -164,10 +164,10 @@ export default function TaskCard({
   ].join(' ');
 
   const checkboxClasses = [
-    'flex h-6 w-6 items-center justify-center rounded-lg border transition-all duration-200',
+    'relative flex items-center justify-center shrink-0 w-6 h-6 rounded-lg border-2 transition-all duration-300 ease-in-out',
     task.completed
-      ? 'border-emerald-500 bg-emerald-500 text-white scale-110'
-      : 'border-[var(--color-border)] bg-white/5 text-transparent hover:border-[var(--color-primary)] hover:scale-105',
+      ? 'bg-[var(--color-primary)] border-transparent rotate-12 shadow-[0_0_10px_var(--color-primary)]/30'
+      : 'bg-[var(--color-bg-elevated)] border-[var(--color-primary)]/50 hover:border-[var(--color-primary)] hover:shadow-[0_0_10px_var(--color-primary)]/20',
   ].join(' ');
 
   if (compact) {
@@ -193,7 +193,18 @@ export default function TaskCard({
               aria-label={task.completed ? '완료 취소' : '완료'}
               data-task-interactive="true"
             >
-              ✓
+              <svg
+                className={`w-4 h-4 text-white transition-opacity duration-300 ${task.completed ? 'opacity-100' : 'opacity-0'}`}
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
             </button>
 
             <div className="flex-1 min-w-0">
@@ -249,7 +260,7 @@ export default function TaskCard({
           onEdit();
         }}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-2">
           <button
             type="button"
             className={checkboxClasses}
@@ -257,13 +268,24 @@ export default function TaskCard({
             aria-label={task.completed ? '완료 취소' : '완료'}
             data-task-interactive="true"
           >
-            ✓
+            <svg
+              className={`w-4 h-4 text-white transition-opacity duration-300 ${task.completed ? 'opacity-100' : 'opacity-0'}`}
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
           </button>
 
           <div className="flex-1 space-y-2">
             {/* 상단: 텍스트 및 핵심 정보 */}
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
+            <div className="flex items-start justify-between gap-1.5">
+              <div className="flex-1 min-w-0">
                 {isEditingText ? (
                   <input
                     type="text"
@@ -301,7 +323,7 @@ export default function TaskCard({
                 )}
 
                 {/* 핵심 메타데이터 (항상 표시) */}
-                <div className="mt-1 flex items-center gap-2 text-xs text-[var(--color-text-tertiary)]">
+                <div className="mt-0.5 flex items-center gap-2 text-[10px] text-[var(--color-text-tertiary)]">
                   <span className="flex items-center gap-1">
                     ⏱️ {formatDuration(task.adjustedDuration)}
                   </span>
@@ -330,8 +352,7 @@ export default function TaskCard({
             </div>
 
             {/* 하단: 상세 컨트롤 (Progressive Disclosure - Hover 시 등장) */}
-            {/* 단, 타이머가 활성화되어 있거나 모바일 환경 등을 고려해 일부는 항상 표시할 수도 있지만, 요청대로 '점진적 공개' 적용 */}
-            <div className={`flex flex-wrap items-center gap-2 pt-1 transition-all duration-300 ${timerIconActive ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden group-hover:h-auto group-hover:opacity-100'}`}>
+            <div className={`flex flex-wrap items-center gap-1.5 pt-0.5 transition-all duration-300 ${timerIconActive ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden group-hover:h-auto group-hover:opacity-100'}`}>
 
               {/* 난이도 뱃지 */}
               {!hideMetadata && (
@@ -406,8 +427,8 @@ export default function TaskCard({
               <button
                 type="button"
                 className={`rounded-md border px-2 py-0.5 text-[10px] transition-colors ${timerIconActive
-                    ? 'border-indigo-500/50 bg-indigo-500/20 text-indigo-200'
-                    : 'border-white/10 text-[var(--color-text-tertiary)] hover:text-indigo-300'
+                  ? 'border-indigo-500/50 bg-indigo-500/20 text-indigo-200'
+                  : 'border-white/10 text-[var(--color-text-tertiary)] hover:text-indigo-300'
                   }`}
                 data-task-interactive="true"
                 onClick={handleTimerToggle}

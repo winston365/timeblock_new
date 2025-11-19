@@ -12,10 +12,10 @@
 
 import { db } from '../db/dexieClient';
 import type { DailyGoal } from '@/shared/types/domain';
-import { addSyncLog } from '@/shared/services/syncLogger';
-import { isFirebaseInitialized } from '@/shared/services/firebaseService';
-import { syncToFirebase, fetchFromFirebase } from '@/shared/services/firebase/syncCore';
-import { globalGoalStrategy } from '@/shared/services/firebase/strategies';
+import { addSyncLog } from '@/shared/services/sync/syncLogger';
+import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
+import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
+import { globalGoalStrategy } from '@/shared/services/sync/firebase/strategies';
 import { generateId } from '@/shared/lib/utils';
 
 // ============================================================================

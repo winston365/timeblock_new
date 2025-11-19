@@ -14,12 +14,11 @@
 
 import { db } from '../db/dexieClient';
 import type { ShopItem } from '@/shared/types/domain';
-import { saveToStorage, getFromStorage } from '@/shared/lib/utils';
-import { STORAGE_KEYS } from '@/shared/lib/constants';
+
 import { loadGameState, spendXP } from './gameStateRepository';
 import { increaseAffectionFromTask, saveWaifuState, loadWaifuState } from './waifuRepository';
-import { syncToFirebase, fetchFromFirebase } from '@/shared/services/firebase/syncCore';
-import { shopItemsStrategy } from '@/shared/services/firebase/strategies';
+import { fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
+import { shopItemsStrategy } from '@/shared/services/sync/firebase/strategies';
 
 // ============================================================================
 // ShopItem CRUD
@@ -44,16 +43,7 @@ export async function loadShopItems(): Promise<ShopItem[]> {
       return items;
     }
 
-    // 2. localStorage에서 조회
-    const localItems = getFromStorage<ShopItem[]>(STORAGE_KEYS.SHOP_ITEMS, []);
-
-    if (localItems.length > 0) {
-      // localStorage 데이터를 IndexedDB에 저장
-      await db.shopItems.bulkPut(localItems);
-      return localItems;
-    }
-
-    // 3. Firebase에서 조회 (cross-device fallback)
+    // 2. Firebase에서 조회 (cross-device fallback)
     const firebaseItems = await fetchFromFirebase<ShopItem[]>(shopItemsStrategy, 'all');
 
     if (firebaseItems && firebaseItems.length > 0) {
@@ -98,12 +88,7 @@ export async function createShopItem(
     // IndexedDB에 저장
     await db.shopItems.put(item);
 
-    // localStorage에도 저장
-    const items = await db.shopItems.toArray();
-    saveToStorage(STORAGE_KEYS.SHOP_ITEMS, items);
 
-    // Firebase에 동기화
-    await syncToFirebase(shopItemsStrategy, items, 'all');
 
     return item;
   } catch (error) {
@@ -140,12 +125,7 @@ export async function updateShopItem(
     // IndexedDB에 저장
     await db.shopItems.put(updatedItem);
 
-    // localStorage에도 저장
-    const items = await db.shopItems.toArray();
-    saveToStorage(STORAGE_KEYS.SHOP_ITEMS, items);
 
-    // Firebase에 동기화
-    await syncToFirebase(shopItemsStrategy, items, 'all');
 
     return updatedItem;
   } catch (error) {
@@ -169,12 +149,7 @@ export async function deleteShopItem(id: string): Promise<void> {
   try {
     await db.shopItems.delete(id);
 
-    // localStorage에도 반영
-    const items = await db.shopItems.toArray();
-    saveToStorage(STORAGE_KEYS.SHOP_ITEMS, items);
 
-    // Firebase에 동기화
-    await syncToFirebase(shopItemsStrategy, items, 'all');
 
   } catch (error) {
     console.error('Failed to delete shop item:', error);

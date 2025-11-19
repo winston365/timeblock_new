@@ -11,8 +11,10 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { callAIWithContext } from '@/shared/services/aiService';
-import { useWaifuState, useGameState, useDailyData, useEnergyState } from '@/shared/hooks';
+import { callAIWithContext } from '@/shared/services/ai/aiService';
+import { useGameState, useDailyData } from '@/shared/hooks';
+import { useWaifu } from '@/features/waifu/hooks/useWaifu';
+import { useEnergy } from '@/features/energy/hooks/useEnergy';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import {
   loadTodayChatHistory,
@@ -44,8 +46,8 @@ interface GeminiFullscreenChatProps {
 export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscreenChatProps) {
   const { dailyData } = useDailyData();
   const { gameState } = useGameState();
-  const { waifuState } = useWaifuState();
-  const { currentEnergy } = useEnergyState();
+  const { waifuState } = useWaifu();
+  const { currentEnergy } = useEnergy();
   const { settings, loadData: loadSettingsData } = useSettingsStore();
   const [messages, setMessages] = useState<GeminiChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -198,8 +200,8 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
       }
 
       // Gemini 답변 후 와이푸 이미지 변경 및 "말하고 있음" 상태
-    setWaifuTurnState('speaking');
-    await changeWaifuImage();
+      setWaifuTurnState('speaking');
+      await changeWaifuImage();
 
       // 0.5초 후 idle 상태로 복귀
       setTimeout(() => {

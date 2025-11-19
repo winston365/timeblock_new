@@ -13,7 +13,8 @@
 import { useState, useEffect } from 'react';
 import type { ShopItem } from '@/shared/types/domain';
 import { loadShopItems, deleteShopItem, purchaseShopItem, useShopItem } from '@/data/repositories';
-import { useGameState, useWaifuState } from '@/shared/hooks';
+import { useGameState } from '@/shared/hooks';
+import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { ShopModal } from './ShopModal';
 
 interface ShopPanelProps {
@@ -29,7 +30,7 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
   const [editingItem, setEditingItem] = useState<ShopItem | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const { gameState, refresh: refreshGameState } = useGameState();
-  const { refresh: refreshWaifuState } = useWaifuState();
+  const { refresh: refreshWaifuState } = useWaifu();
 
   // 상점 아이템 로드
   useEffect(() => {
@@ -213,8 +214,8 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
                 <div className="flex gap-2">
                   <button
                     className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold text-white transition-all active:scale-95 ${affordable
-                        ? 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] shadow-sm'
-                        : 'bg-[var(--color-bg-interactive)] cursor-not-allowed text-[var(--color-text-tertiary)]'
+                      ? 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] shadow-sm'
+                      : 'bg-[var(--color-bg-interactive)] cursor-not-allowed text-[var(--color-text-tertiary)]'
                       }`}
                     onClick={() => handlePurchase(item)}
                     disabled={!affordable || isPurchasing}

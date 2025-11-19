@@ -194,6 +194,7 @@ export default function ScheduleView() {
           preparation1: taskData.preparation1 || '',
           preparation2: taskData.preparation2 || '',
           preparation3: taskData.preparation3 || '',
+          goalId: taskData.goalId || null,
         };
         await addTask(newTask);
 
@@ -320,7 +321,7 @@ export default function ScheduleView() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto p-6">
+    <div className="flex h-full flex-col overflow-y-auto p-6 pb-24">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-2xl font-semibold text-[var(--color-text)]">오늘의 타임블록</h2>
         <div className="flex items-center gap-4 text-sm text-[var(--color-text-secondary)]">

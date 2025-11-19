@@ -11,7 +11,7 @@
 
 import { useState, useEffect } from 'react';
 import { loadSettings, saveSettings } from '@/data/repositories/settingsRepository';
-import { initializeFirebase } from '@/shared/services/firebaseService';
+import { initializeFirebase } from '@/shared/services/sync/firebaseService';
 import type { Settings } from '@/shared/types/domain';
 import {
   getSyncLogs,
@@ -20,7 +20,7 @@ import {
   type SyncLogEntry,
   type SyncType,
   type SyncAction,
-} from '@/shared/services/syncLogger';
+} from '@/shared/services/sync/syncLogger';
 import { loadAllTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import type { DailyTokenUsage } from '@/shared/types/domain';
 

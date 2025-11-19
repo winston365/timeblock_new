@@ -4,13 +4,13 @@ async function uploadMissingDataToFirebase() {
   console.log('🔄 Starting manual upload...');
 
   const { db } = await import('./src/data/db/dexieClient');
-  const { syncToFirebase } = await import('./src/shared/services/firebase/syncCore');
+  const { syncToFirebase } = await import('./src/shared/services/sync/firebase/syncCore');
   const {
     shopItemsStrategy,
     energyLevelsStrategy,
     templateStrategy,
-  } = await import('./src/shared/services/firebase/strategies');
-  const { isFirebaseInitialized } = await import('./src/shared/services/firebaseService');
+  } = await import('./src/shared/services/sync/firebase/strategies');
+  const { isFirebaseInitialized } = await import('./src/shared/services/sync/firebaseService');
 
   if (!isFirebaseInitialized()) {
     console.error('❌ Firebase not initialized!');
@@ -65,7 +65,7 @@ async function uploadMissingDataToFirebase() {
     if (waifuState) {
       const { key, ...waifuData } = waifuState;
       console.log('📤 Uploading waifu state...');
-      const { waifuStateStrategy } = await import('./src/shared/services/firebase/strategies');
+      const { waifuStateStrategy } = await import('./src/shared/services/sync/firebase/strategies');
       await syncToFirebase(waifuStateStrategy, waifuData);
       console.log('✅ Waifu state uploaded');
     } else {

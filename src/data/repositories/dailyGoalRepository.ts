@@ -12,8 +12,8 @@
 
 import type { DailyGoal, DailyData } from '@/shared/types/domain';
 import { db } from '@/data/db/dexieClient';
-import { syncToFirebase, fetchFromFirebase } from '@/shared/services/firebase/syncCore';
-import { dailyGoalStrategy, dailyDataStrategy } from '@/shared/services/firebase/strategies';
+import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
+import { dailyGoalStrategy, dailyDataStrategy } from '@/shared/services/sync/firebase/strategies';
 import { generateId } from '@/shared/lib/utils';
 
 /**

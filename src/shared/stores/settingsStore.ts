@@ -20,7 +20,7 @@ interface SettingsStore {
   error: Error | null;
 
   // 액션
-  loadData: () => Promise<void>;
+  loadData: () => Promise<Settings>;
   updateWaifuMode: (mode: WaifuMode) => Promise<void>;
   updateApiKey: (apiKey: string) => Promise<void>;
   updateAutoMessage: (enabled: boolean, interval?: number) => Promise<void>;
@@ -63,10 +63,12 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     try {
       const settings = await loadSettings();
       set({ settings, loading: false });
+      return settings;
     } catch (error) {
       const err = error instanceof Error ? error : new Error('Failed to load settings');
       set({ error: err, loading: false });
       console.error('Settings store: Failed to load data', err);
+      throw err;
     }
   },
 

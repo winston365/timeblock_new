@@ -12,9 +12,9 @@
  */
 
 import { saveToStorage, getFromStorage } from '@/shared/lib/utils';
-import { addSyncLog } from '@/shared/services/syncLogger';
-import { isFirebaseInitialized } from '@/shared/services/firebaseService';
-import { syncToFirebase, fetchFromFirebase, type SyncStrategy } from '@/shared/services/firebase/syncCore';
+import { addSyncLog } from '@/shared/services/sync/syncLogger';
+import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
+import { fetchFromFirebase, type SyncStrategy } from '@/shared/services/sync/firebase/syncCore';
 
 // ============================================================================
 // Types
@@ -28,8 +28,8 @@ import { syncToFirebase, fetchFromFirebase, type SyncStrategy } from '@/shared/s
 export interface RepositoryConfig<T> {
   /** Dexie 테이블 */
   table: any;
-  /** localStorage 키 */
-  storageKey: string;
+  /** localStorage 키 (선택: 없으면 localStorage 저장 안 함) */
+  storageKey?: string;
   /** Firebase 동기화 전략 */
   firebaseStrategy?: SyncStrategy<T>;
   /** 초기 데이터 생성 함수 */
@@ -97,16 +97,18 @@ export async function loadData<T>(
       return sanitized;
     }
 
-    // 2. localStorage에서 조회
-    const storageFullKey = typeof key === 'string' ? `${storageKey}${key}` : storageKey;
-    const localData = getFromStorage<T | null>(storageFullKey, null);
+    // 2. localStorage에서 조회 (storageKey가 있을 때만)
+    if (storageKey) {
+      const storageFullKey = typeof key === 'string' ? `${storageKey}${key}` : storageKey;
+      const localData = getFromStorage<T | null>(storageFullKey, null);
 
-    if (localData) {
-      const sanitized = sanitize ? sanitize(localData) : localData;
-      // localStorage 데이터를 IndexedDB에 복원
-      await saveData(config, key, sanitized, { syncFirebase: false, logSync: false });
-      addSyncLog('dexie', 'load', `${prefix} restored from localStorage`, { key });
-      return sanitized;
+      if (localData) {
+        const sanitized = sanitize ? sanitize(localData) : localData;
+        // localStorage 데이터를 IndexedDB에 복원
+        await saveData(config, key, sanitized, { syncFirebase: false, logSync: false });
+        addSyncLog('dexie', 'load', `${prefix} restored from localStorage`, { key });
+        return sanitized;
+      }
     }
 
     // 3. Firebase에서 조회 (firebaseStrategy가 있을 때만)
@@ -166,8 +168,8 @@ export async function saveData<T>(
       ...data,
     });
 
-    // 2. localStorage에 저장
-    if (saveLocalStorage) {
+    // 2. localStorage에 저장 (storageKey가 있을 때만)
+    if (saveLocalStorage && storageKey) {
       const storageFullKey = typeof key === 'string' ? `${storageKey}${key}` : storageKey;
       saveToStorage(storageFullKey, data);
     }
@@ -177,12 +179,7 @@ export async function saveData<T>(
       addSyncLog('dexie', 'save', `${prefix} saved`, { key });
     }
 
-    // 4. Firebase에 비동기 동기화
-    if (syncFirebase && firebaseStrategy && isFirebaseInitialized()) {
-      syncToFirebase(firebaseStrategy, data, key.toString()).catch((err) => {
-        console.error(`Firebase sync failed for ${prefix}, but local save succeeded:`, err);
-      });
-    }
+
   } catch (error) {
     console.error(`Failed to save ${prefix} for key ${key}:`, error);
     addSyncLog('dexie', 'error', `Failed to save ${prefix}`, { key }, error as Error);
@@ -248,9 +245,11 @@ export async function deleteData<T>(
     // 1. IndexedDB에서 삭제
     await table.delete(key);
 
-    // 2. localStorage에서 삭제
-    const storageFullKey = typeof key === 'string' ? `${storageKey}${key}` : storageKey;
-    localStorage.removeItem(storageFullKey);
+    // 2. localStorage에서 삭제 (storageKey가 있을 때만)
+    if (storageKey) {
+      const storageFullKey = typeof key === 'string' ? `${storageKey}${key}` : storageKey;
+      localStorage.removeItem(storageFullKey);
+    }
 
     addSyncLog('dexie', 'save', `${prefix} deleted`, { key });
   } catch (error) {
@@ -293,15 +292,17 @@ export async function loadCollection<T>(
       return sanitize ? sanitize(items) : items;
     }
 
-    // localStorage fallback
-    const localData = getFromStorage<T[] | null>(config.storageKey, null);
-    if (localData && localData.length > 0) {
-      // IndexedDB에 복원
-      await table.bulkPut(localData);
-      addSyncLog('dexie', 'load', `${config.logPrefix || table.name} restored from localStorage`, {
-        count: localData.length,
-      });
-      return sanitize ? sanitize(localData) : localData;
+    // localStorage fallback (storageKey가 있을 때만)
+    if (config.storageKey) {
+      const localData = getFromStorage<T[] | null>(config.storageKey, null);
+      if (localData && localData.length > 0) {
+        // IndexedDB에 복원
+        await table.bulkPut(localData);
+        addSyncLog('dexie', 'load', `${config.logPrefix || table.name} restored from localStorage`, {
+          count: localData.length,
+        });
+        return sanitize ? sanitize(localData) : localData;
+      }
     }
 
     // Firebase fallback
@@ -309,7 +310,9 @@ export async function loadCollection<T>(
       const firebaseData = await fetchFromFirebase<T[]>(config.firebaseStrategy, 'all');
       if (firebaseData && firebaseData.length > 0) {
         await table.bulkPut(firebaseData);
-        saveToStorage(config.storageKey, firebaseData);
+        if (config.storageKey) {
+          saveToStorage(config.storageKey, firebaseData);
+        }
         addSyncLog('firebase', 'load', `${config.logPrefix || table.name} loaded from Firebase`, {
           count: firebaseData.length,
         });
@@ -353,8 +356,8 @@ export async function saveCollection<T>(
       await table.bulkPut(items);
     }
 
-    // 2. localStorage에 저장
-    if (saveLocalStorage) {
+    // 2. localStorage에 저장 (storageKey가 있을 때만)
+    if (saveLocalStorage && storageKey) {
       saveToStorage(storageKey, items);
     }
 
@@ -363,12 +366,7 @@ export async function saveCollection<T>(
       addSyncLog('dexie', 'save', `${prefix} collection saved`, { count: items.length });
     }
 
-    // 4. Firebase에 비동기 동기화
-    if (syncFirebase && firebaseStrategy && isFirebaseInitialized()) {
-      syncToFirebase(firebaseStrategy, items, 'all').catch((err) => {
-        console.error(`Firebase sync failed for ${prefix}, but local save succeeded:`, err);
-      });
-    }
+
   } catch (error) {
     console.error(`Failed to save ${prefix} collection:`, error);
     addSyncLog('dexie', 'error', `Failed to save ${prefix} collection`, undefined, error as Error);

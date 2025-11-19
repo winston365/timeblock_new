@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { loadGlobalGoals, deleteGlobalGoal } from '@/data/repositories/globalGoalRepository';
+import { loadGlobalGoals, deleteGlobalGoal } from '@/data/repositories';
 import type { DailyGoal } from '@/shared/types/domain';
 
 interface GoalPanelProps {
@@ -13,103 +13,103 @@ interface GoalProgressCardProps {
 }
 
 function GoalProgressCard({ goal, onEdit, onDelete }: GoalProgressCardProps) {
-  const targetProgress = goal.targetMinutes > 0
+  const percentage = goal.targetMinutes > 0
     ? Math.min(100, (goal.completedMinutes / goal.targetMinutes) * 100)
     : 0;
-  const plannedProgress = goal.targetMinutes > 0
-    ? Math.min(100, (goal.plannedMinutes / goal.targetMinutes) * 100)
-    : 0;
-
-  const formatMinutes = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours === 0) return `${mins}분`;
-    if (mins === 0) return `${hours}시간`;
-    return `${hours}시간 ${mins}분`;
-  };
 
   const isCompleted = goal.completedMinutes >= goal.targetMinutes;
-  const isOverPlanned = goal.plannedMinutes > goal.targetMinutes;
+
+  const formatTime = (minutes: number) => {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h > 0 && m > 0) return `${h}시간 ${m}분`;
+    if (h > 0) return `${h}시간`;
+    return `${m}분`;
+  };
+
+  // Circular Progress Calculation
+  const radius = 24;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div
-      className={`rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-4 shadow-sm transition hover:border-[var(--color-primary)] ${
-        isCompleted ? 'border-l-4 border-l-[var(--color-success)] bg-green-500/5' : 'border-l-4 border-l-[var(--color-primary)]'
-      }`}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          {goal.icon && <span className="text-xl">{goal.icon}</span>}
-          <h3 className="text-lg font-semibold" style={{ color: goal.color || 'var(--color-text)' }}>
-            {goal.title}
-          </h3>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="rounded-md border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-text)] transition hover:border-[var(--color-primary)]"
-            onClick={onEdit}
-            aria-label={`${goal.title} 수정`}
-          >
-            ✏️
-          </button>
-          <button
-            type="button"
-            className="rounded-md border border-red-500 px-2 py-1 text-xs text-red-400 transition hover:bg-red-500/10"
-            onClick={onDelete}
-            aria-label={`${goal.title} 삭제`}
-          >
-            🗑️
-          </button>
+    <div className="group relative flex items-center gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 transition-all hover:border-[var(--color-primary)] hover:shadow-md">
+      {/* Left: Circular Progress */}
+      <div className="relative flex h-16 w-16 shrink-0 items-center justify-center">
+        <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 60 60">
+          {/* Background Ring */}
+          <circle
+            cx="30"
+            cy="30"
+            r={radius}
+            fill="none"
+            stroke="var(--color-bg-tertiary)"
+            strokeWidth="6"
+          />
+          {/* Progress Ring */}
+          <circle
+            cx="30"
+            cy="30"
+            r={radius}
+            fill="none"
+            stroke={goal.color || 'var(--color-primary)'}
+            strokeWidth="6"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            className="transition-all duration-1000 ease-out"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center text-xl">
+          {isCompleted ? '🎉' : goal.icon || '🎯'}
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-4 text-sm">
-        <div>
-          <span className="text-[var(--color-text-secondary)]">목표</span>
-          <div className="font-semibold text-[var(--color-text)]">{formatMinutes(goal.targetMinutes)}</div>
+      {/* Center: Info */}
+      <div className="flex flex-1 flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-[var(--color-text)]">{goal.title}</h3>
+          <span className={`text-xs font-bold ${isCompleted ? 'text-[var(--color-success)]' : 'text-[var(--color-text-secondary)]'}`}>
+            {percentage.toFixed(0)}%
+          </span>
         </div>
-        <div>
-          <span className="text-[var(--color-text-secondary)]">계획</span>
-          <div className={`font-semibold ${isOverPlanned ? 'text-amber-400' : 'text-[var(--color-text)]'}`}>
-            {formatMinutes(goal.plannedMinutes)}
+
+        <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+          <span className="font-medium text-[var(--color-text)]">{formatTime(goal.completedMinutes)}</span>
+          <span className="text-[var(--color-text-tertiary)]">/</span>
+          <span>{formatTime(goal.targetMinutes)} 목표</span>
+        </div>
+
+        {/* Planned Info (Optional) */}
+        {goal.plannedMinutes > 0 && (
+          <div className="mt-1 flex items-center gap-1 text-[10px] text-[var(--color-text-tertiary)]">
+            <span>📅 계획: {formatTime(goal.plannedMinutes)}</span>
+            {goal.plannedMinutes < goal.targetMinutes && (
+              <span className="text-[var(--color-warning)]">
+                (부족 {formatTime(goal.targetMinutes - goal.plannedMinutes)})
+              </span>
+            )}
           </div>
-        </div>
-        <div>
-          <span className="text-[var(--color-text-secondary)]">진행</span>
-          <div className={`font-semibold ${isCompleted ? 'text-green-400' : 'text-[var(--color-text)]'}`}>
-            {formatMinutes(goal.completedMinutes)}
-          </div>
-        </div>
+        )}
       </div>
 
-      <div className="mt-4 space-y-4 text-sm">
-        <ProgressRow label="목표" progress={100} color={goal.color || 'var(--color-primary)'} suffix={formatMinutes(goal.targetMinutes)} />
-        <ProgressRow
-          label="계획"
-          progress={plannedProgress}
-          color={isOverPlanned ? '#f97316' : goal.color || 'var(--color-primary)'}
-          suffix={`${plannedProgress.toFixed(0)}%`}
-        />
-        <ProgressRow
-          label="진행"
-          progress={targetProgress}
-          color={isCompleted ? '#22c55e' : goal.color || 'var(--color-primary)'}
-          suffix={`${targetProgress.toFixed(0)}%`}
-        />
+      {/* Right: Actions (Hover) */}
+      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <button
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          className="rounded p-1.5 text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]"
+          title="수정"
+        >
+          ✏️
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="rounded p-1.5 text-[var(--color-text-tertiary)] hover:bg-[var(--color-danger)]/10 hover:text-[var(--color-danger)]"
+          title="삭제"
+        >
+          🗑️
+        </button>
       </div>
-    </div>
-  );
-}
-
-function ProgressRow({ label, progress, color, suffix }: { label: string; progress: number; color: string; suffix: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-14 text-[var(--color-text-secondary)]">{label}</span>
-      <div className="flex-1 overflow-hidden rounded-full bg-[var(--color-bg)]">
-        <div className="h-3 rounded-full transition-[width]" style={{ width: `${progress}%`, background: color }} />
-      </div>
-      <span className="text-xs font-semibold text-[var(--color-text)]">{suffix}</span>
     </div>
   );
 }
@@ -141,19 +141,12 @@ export default function GoalPanel({ onOpenModal }: GoalPanelProps) {
   };
 
   const handleDelete = async (goalId: string) => {
-    const goal = goals.find((g) => g.id === goalId);
-    if (!goal) return;
-
-    if (!confirm(`"${goal.title}" 목표를 삭제하시겠습니까?`)) {
-      return;
-    }
-
+    if (!confirm('정말 이 목표를 삭제하시겠습니까?')) return;
     try {
       await deleteGlobalGoal(goalId);
       await loadGoals();
     } catch (error) {
       console.error('[GoalPanel] Failed to delete goal:', error);
-      alert('목표 삭제에 실패했습니다.');
     }
   };
 
@@ -165,36 +158,38 @@ export default function GoalPanel({ onOpenModal }: GoalPanelProps) {
     onOpenModal?.(undefined);
   };
 
-  if (loading) {
-    return (
-      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 text-center text-[var(--color-text-secondary)]">
-        목표 로딩 중...
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4">
+    <div className="flex h-full flex-col gap-4 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] p-4 text-[var(--color-text)]">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-[var(--color-text)]">오늘의 목표</h2>
+        <h3 className="text-lg font-bold">🎯 오늘의 목표</h3>
         <button
-          className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-dark)]"
+          className="rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--color-primary-dark)] active:scale-95"
           onClick={handleAddNew}
-          aria-label="신규 목표 추가"
         >
-          + 목표 추가
+          + 추가
         </button>
       </div>
 
-      {goals.length === 0 ? (
-        <div className="rounded-lg border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-8 text-center text-[var(--color-text-secondary)]">
-          <p className="text-base font-semibold text-[var(--color-text)]">등록된 목표가 없습니다.</p>
-          <p className="text-sm">목표를 추가해 하루 계획을 세워보세요!</p>
+      {/* Content */}
+      {loading ? (
+        <div className="flex flex-1 items-center justify-center text-sm text-[var(--color-text-tertiary)]">
+          로딩 중...
+        </div>
+      ) : goals.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg-surface)]/50 px-6 py-10 text-center text-xs text-[var(--color-text-secondary)]">
+          <p className="font-medium text-[var(--color-text)]">목표가 없습니다</p>
+          <p>오늘 달성하고 싶은 목표를 추가해보세요!</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
           {goals.map((goal) => (
-            <GoalProgressCard key={goal.id} goal={goal} onEdit={() => handleEdit(goal)} onDelete={() => handleDelete(goal.id)} />
+            <GoalProgressCard
+              key={goal.id}
+              goal={goal}
+              onEdit={() => handleEdit(goal)}
+              onDelete={() => handleDelete(goal.id)}
+            />
           ))}
         </div>
       )}

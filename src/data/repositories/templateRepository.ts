@@ -14,12 +14,11 @@
 import { db } from '../db/dexieClient';
 import type { Template, Task, TimeBlockId, Resistance, RecurrenceType } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
-import { saveToStorage, getFromStorage, generateId } from '@/shared/lib/utils';
-import { STORAGE_KEYS } from '@/shared/lib/constants';
-import { isFirebaseInitialized } from '@/shared/services/firebaseService';
-import { syncToFirebase, fetchFromFirebase } from '@/shared/services/firebase/syncCore';
-import { templateStrategy } from '@/shared/services/firebase/strategies';
-import { addSyncLog } from '@/shared/services/syncLogger';
+import { generateId } from '@/shared/lib/utils';
+import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
+import { fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
+import { templateStrategy } from '@/shared/services/sync/firebase/strategies';
+import { addSyncLog } from '@/shared/services/sync/syncLogger';
 
 // ============================================================================
 // Template CRUD
@@ -53,25 +52,7 @@ export async function loadTemplates(): Promise<Template[]> {
       }));
     }
 
-    // 2. localStorage에서 조회
-    const localTemplates = getFromStorage<Template[]>(STORAGE_KEYS.TEMPLATES, []);
-
-    if (localTemplates.length > 0) {
-      // preparation 필드 정제
-      const sanitizedTemplates = localTemplates.map(template => ({
-        ...template,
-        preparation1: template.preparation1 ?? '',
-        preparation2: template.preparation2 ?? '',
-        preparation3: template.preparation3 ?? '',
-        imageUrl: template.imageUrl ?? '',
-      }));
-
-      // localStorage 데이터를 IndexedDB에 저장
-      await db.templates.bulkPut(sanitizedTemplates);
-      return sanitizedTemplates;
-    }
-
-    // 3. Firebase에서 조회
+    // 2. Firebase에서 조회 (IndexedDB 실패 시)
     if (isFirebaseInitialized()) {
       const firebaseTemplates = await fetchFromFirebase<Template[]>(templateStrategy, 'all');
 
@@ -87,9 +68,8 @@ export async function loadTemplates(): Promise<Template[]> {
           imageUrl: template.imageUrl ?? '',
         }));
 
-        // Firebase 데이터를 IndexedDB와 localStorage에 저장
+        // Firebase 데이터를 IndexedDB에 저장
         await db.templates.bulkPut(sanitizedTemplates);
-        saveToStorage(STORAGE_KEYS.TEMPLATES, sanitizedTemplates);
 
         addSyncLog('firebase', 'load', `Loaded ${sanitizedTemplates.length} templates from Firebase`);
         return sanitizedTemplates;
@@ -171,22 +151,13 @@ export async function createTemplate(
     // 1. IndexedDB에 저장
     await db.templates.put(template);
 
-    // 2. localStorage에도 저장
-    const templates = await loadTemplates();
-    saveToStorage(STORAGE_KEYS.TEMPLATES, templates);
-
     addSyncLog('dexie', 'save', 'Template created', {
       id: template.id,
       name: template.name,
       autoGenerate: template.autoGenerate
     });
 
-    // 3. Firebase에 비동기 동기화
-    if (isFirebaseInitialized()) {
-      syncToFirebase(templateStrategy, templates, 'all').catch(err => {
-        console.error('Firebase sync failed, but local save succeeded:', err);
-      });
-    }
+
 
     return template;
   } catch (error) {
@@ -219,35 +190,17 @@ export async function updateTemplate(
       throw new Error(`Template not found: ${id}`);
     }
 
-    // preparation 필드의 undefined를 빈 문자열로 정제
-    const sanitizedUpdates = {
-      ...updates,
-      preparation1: updates.preparation1 ?? template.preparation1 ?? '',
-      preparation2: updates.preparation2 ?? template.preparation2 ?? '',
-      preparation3: updates.preparation3 ?? template.preparation3 ?? '',
-      imageUrl: updates.imageUrl ?? template.imageUrl ?? '',
-    };
-
-    const updatedTemplate = { ...template, ...sanitizedUpdates };
+    const updatedTemplate = { ...template, ...updates };
 
     // 1. IndexedDB에 저장
     await db.templates.put(updatedTemplate);
-
-    // 2. localStorage에도 저장
-    const templates = await loadTemplates();
-    saveToStorage(STORAGE_KEYS.TEMPLATES, templates);
 
     addSyncLog('dexie', 'save', 'Template updated', {
       id: updatedTemplate.id,
       name: updatedTemplate.name
     });
 
-    // 3. Firebase에 비동기 동기화
-    if (isFirebaseInitialized()) {
-      syncToFirebase(templateStrategy, templates, 'all').catch(err => {
-        console.error('Firebase sync failed, but local save succeeded:', err);
-      });
-    }
+
 
     return updatedTemplate;
   } catch (error) {
@@ -273,18 +226,9 @@ export async function deleteTemplate(id: string): Promise<void> {
     // 1. IndexedDB에서 삭제
     await db.templates.delete(id);
 
-    // 2. localStorage에도 반영
-    const templates = await loadTemplates();
-    saveToStorage(STORAGE_KEYS.TEMPLATES, templates);
-
     addSyncLog('dexie', 'save', 'Template deleted', { id });
 
-    // 3. Firebase에 비동기 동기화
-    if (isFirebaseInitialized()) {
-      syncToFirebase(templateStrategy, templates, 'all').catch(err => {
-        console.error('Firebase sync failed, but local delete succeeded:', err);
-      });
-    }
+
 
   } catch (error) {
     console.error('Failed to delete template:', error);

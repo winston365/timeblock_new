@@ -16,9 +16,8 @@
 import { db } from '../db/dexieClient';
 import type { GameState, Quest, Task } from '@/shared/types/domain';
 import { getLocalDate, getLevelFromXP } from '@/shared/lib/utils';
-import { STORAGE_KEYS } from '@/shared/lib/constants';
 import { generateQuestTarget, calculateQuestReward } from '@/shared/utils/gamification';
-import { gameStateStrategy } from '@/shared/services/firebase/strategies';
+import { gameStateStrategy } from '@/shared/services/sync/firebase/strategies';
 import { loadData, saveData, type RepositoryConfig } from './baseRepository';
 
 // ============================================================================
@@ -30,7 +29,6 @@ import { loadData, saveData, type RepositoryConfig } from './baseRepository';
  */
 const gameStateConfig: RepositoryConfig<GameState> = {
   table: db.gameState,
-  storageKey: STORAGE_KEYS.GAME_STATE,
   firebaseStrategy: gameStateStrategy,
   createInitial: () => ({
     level: 1,
@@ -208,8 +206,8 @@ export async function saveGameState(gameState: GameState): Promise<void> {
 export async function addXP(
   amount: number,
   blockId?: string,
-  reason: import('@/shared/services/gameState').XPGainReason = 'other'
-): Promise<import('@/shared/services/gameState').GameStateChangeResult> {
+  reason: import('@/shared/services/gameplay/gameState').XPGainReason = 'other'
+): Promise<import('@/shared/services/gameplay/gameState').GameStateChangeResult> {
   try {
     const gameState = await loadGameState();
 
@@ -232,7 +230,7 @@ export async function addXP(
     await saveGameState(gameState);
 
     // 이벤트 생성 (UI 로직 분리)
-    const events: import('@/shared/services/gameState').GameStateEvent[] = [];
+    const events: import('@/shared/services/gameplay/gameState').GameStateEvent[] = [];
 
     // XP 획득 이벤트
     events.push({

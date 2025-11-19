@@ -20,10 +20,10 @@ import {
   deleteTask as deleteTaskFromRepo,
   toggleTaskCompletion as toggleTaskInRepo,
   updateBlockState as updateBlockStateInRepo,
-  spendXP,
-  updateQuestProgress,
-  recalculateGoalProgress,
 } from '@/data/repositories';
+import { recalculateGlobalGoalProgress } from '@/data/repositories';
+import { useGameStateStore } from '@/shared/stores/gameStateStore';
+import { useRealityCheckStore } from '@/shared/stores/realityCheckStore';
 import { getLocalDate } from '../lib/utils';
 import {
   sanitizeTaskUpdates,
@@ -38,7 +38,7 @@ import {
   removeTaskFromArray,
   assertDailyDataExists,
 } from '../lib/storeUtils';
-import { taskCompletionService } from '@/shared/services/taskCompletion';
+import { taskCompletionService } from '@/shared/services/gameplay/taskCompletion';
 import { db } from '@/data/db/dexieClient';
 
 interface DailyDataStore {
@@ -162,7 +162,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
       // ✅ 목표 연결 시 진행률 재계산
       if (task.goalId) {
-        await recalculateGoalProgress(currentDate, task.goalId);
+        await recalculateGlobalGoalProgress(task.goalId, currentDate);
         await loadData(currentDate, true);
       }
     } catch (err) {
@@ -235,7 +235,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
       if (affectedGoalIds.size > 0) {
         for (const goalId of affectedGoalIds) {
-          await recalculateGoalProgress(currentDate, goalId);
+          await recalculateGlobalGoalProgress(goalId, currentDate);
         }
         await loadData(currentDate, true);
       }
@@ -268,7 +268,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
       // ✅ 목표 연결 시 진행률 재계산
       if (deletedTask?.goalId) {
-        await recalculateGoalProgress(currentDate, deletedTask.goalId);
+        await recalculateGlobalGoalProgress(deletedTask.goalId, currentDate);
         await loadData(currentDate, true);
       }
     } catch (err) {
@@ -346,10 +346,20 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         }
 
         console.log('[DailyDataStore] Task completion processed:', result);
+
+        // 📊 Reality Check Trigger
+        // Only trigger for tasks with a duration > 10 mins to avoid spam
+        if (updatedTask.adjustedDuration >= 10) {
+          useRealityCheckStore.getState().openRealityCheck(
+            updatedTask.id,
+            updatedTask.text,
+            updatedTask.adjustedDuration
+          );
+        }
       }
 
       if (updatedTask.goalId) {
-        await recalculateGoalProgress(currentDate, updatedTask.goalId);
+        await recalculateGlobalGoalProgress(updatedTask.goalId, currentDate);
         await loadData(currentDate, true);
       }
     } catch (err) {
@@ -398,19 +408,20 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     const originalBlockStates = dailyData.timeBlockStates;
 
     try {
-      const blockState = dailyData.timeBlockStates[blockId];
+      let blockState = dailyData.timeBlockStates[blockId];
       const blockTasks = dailyData.tasks.filter(t => t.timeBlock === blockId);
 
       if (!blockState) {
-        throw new Error(`Block state not found: ${blockId}`);
+        console.warn(`[DailyDataStore] Block state not found for ${blockId}, initializing default.`);
+        blockState = { isLocked: false, isPerfect: false, isFailed: false };
       }
 
       // 잠금 → 해제 (40 XP 패널티)
       if (blockState.isLocked) {
         const confirmUnlock = confirm(
           '⚠️ 블록 잠금을 해제하시겠습니까?\n\n' +
-            '- 40 XP를 소모합니다.\n\n' +
-            '정말로 해제하시겠습니까?'
+          '- 40 XP를 소모합니다.\n\n' +
+          '정말로 해제하시겠습니까?'
         );
 
         if (!confirmUnlock) return;
@@ -419,7 +430,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         set(createOptimisticBlockUpdate(dailyData, blockId, { isLocked: false }));
 
         // ✅ Repository 호출
-        await spendXP(40);
+        await useGameStateStore.getState().spendXP(40);
         await updateBlockStateInRepo(blockId, { isLocked: false }, currentDate);
       }
       // 해제 → 잠금 (무료)
@@ -433,7 +444,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
         // ✅ Repository 호출
         await updateBlockStateInRepo(blockId, { isLocked: true }, currentDate);
-        await updateQuestProgress('lock_blocks', 1);
+        await useGameStateStore.getState().updateQuestProgress('lock_blocks', 1);
       }
     } catch (err) {
       console.error('[DailyDataStore] Failed to toggle block lock, rolling back:', err);

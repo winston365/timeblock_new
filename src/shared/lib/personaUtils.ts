@@ -5,19 +5,6 @@
  * @input DailyData, GameState, WaifuState, currentEnergy
  * @output PersonaContext 객체
  * @external_dependencies
- *   - getRecentDailyData: 최근 N일 데이터 로드
- *   - TIME_BLOCKS: 시간대 블록 상수
- */
-
-import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
-import { TIME_BLOCKS } from '@/shared/types/domain';
-import type { PersonaContext } from '@/shared/services/geminiApi';
-import type { Task, TimeBlockState, DailyData, GameState, WaifuState } from '@/shared/types/domain';
-
-/**
- * PersonaContext 빌드 파라미터
- */
-export interface BuildPersonaContextParams {
   dailyData: DailyData | null;
   gameState: GameState | null;
   waifuState: WaifuState | null;
@@ -49,6 +36,18 @@ export interface BuildPersonaContextParams {
  * const systemPrompt = generateWaifuPersona(personaContext);
  * ```
  */
+import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
+import type { PersonaContext } from '@/shared/services/ai/geminiApi';
+import type { DailyData, GameState, Task, TimeBlockState, WaifuState } from '@/shared/types/domain';
+import { TIME_BLOCKS } from '@/shared/types/domain';
+
+export interface BuildPersonaContextParams {
+  dailyData: DailyData | null;
+  gameState: GameState | null;
+  waifuState: WaifuState | null;
+  currentEnergy: number;
+}
+
 export async function buildPersonaContext(
   params: BuildPersonaContextParams
 ): Promise<PersonaContext> {

@@ -13,10 +13,10 @@
 import { db } from '../db/dexieClient';
 import type { ChatHistory, DailyTokenUsage, GeminiChatMessage } from '@/shared/types/domain';
 import { getLocalDate } from '@/shared/lib/utils';
-import { addSyncLog } from '@/shared/services/syncLogger';
-import { isFirebaseInitialized } from '@/shared/services/firebaseService';
-import { syncToFirebase } from '@/shared/services/firebase/syncCore';
-import { chatHistoryStrategy, tokenUsageStrategy } from '@/shared/services/firebase/strategies';
+import { addSyncLog } from '@/shared/services/sync/syncLogger';
+import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
+import { syncToFirebase } from '@/shared/services/sync/firebase/syncCore';
+import { chatHistoryStrategy, tokenUsageStrategy } from '@/shared/services/sync/firebase/strategies';
 
 // ============================================================================
 // Chat History CRUD

@@ -11,11 +11,14 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useDailyData, useGameState, useWaifuState, useEnergyState } from '@/shared/hooks';
+import { useDailyData, useGameState } from '@/shared/hooks';
+import { useWaifu } from '@/features/waifu/hooks/useWaifu';
+import { useEnergy } from '@/features/energy/hooks/useEnergy';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
-import { callAIWithContext, getInsightInstruction } from '@/shared/services/aiService';
+import { callAIWithContext, getInsightInstruction } from '@/shared/services/ai/aiService';
 import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
+import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories';
 
 /**
  * 간단한 마크다운 → HTML 변환
@@ -57,8 +60,8 @@ interface InsightPanelProps {
 export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
   const { dailyData } = useDailyData();
   const { gameState } = useGameState();
-  const { waifuState } = useWaifuState();
-  const { currentEnergy } = useEnergyState();
+  const { waifuState } = useWaifu();
+  const { currentEnergy } = useEnergy();
   const { settings, loadData: loadSettingsData } = useSettingsStore();
   const { show: showWaifu } = useWaifuCompanionStore();
 
@@ -74,10 +77,6 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
   const initialLoadRef = useRef(false);
   // 재시도 타이머 ref
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // localStorage 키
-  const LAST_INSIGHT_TIME_KEY = 'lastInsightGenerationTime';
-  const LAST_INSIGHT_TEXT_KEY = 'lastInsightText';
 
   /**
    * 인사이트 생성 함수 (재시도 로직 포함)
@@ -120,9 +119,9 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
       setLastUpdated(now);
       setRetryCount(0); // 성공 시 재시도 카운트 리셋
 
-      // 마지막 생성 시간과 텍스트를 localStorage에 저장
-      localStorage.setItem(LAST_INSIGHT_TIME_KEY, now.toISOString());
-      localStorage.setItem(LAST_INSIGHT_TEXT_KEY, text);
+      // 마지막 생성 시간과 텍스트를 Dexie에 저장
+      await setSystemState(SYSTEM_KEYS.LAST_INSIGHT_TIME, now.toISOString());
+      await setSystemState(SYSTEM_KEYS.LAST_INSIGHT_TEXT, text);
 
       // 와이푸 컴패니언 연동 - 인사이트 생성 성공 시 와이푸가 배달
       showWaifu(`💡 새로운 인사이트가 도착했어요!`);
@@ -173,13 +172,14 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
     loadSettingsData();
   }, [loadSettingsData]);
 
-  // 초기 인사이트 생성 (설정된 시간 간격에 따라)
+  // 초기 인사이트 로드 및 자동 생성 체크
   useEffect(() => {
-    if (settings?.geminiApiKey && !initialLoadRef.current) {
+    const checkAndGenerate = async () => {
+      if (!settings?.geminiApiKey || initialLoadRef.current) return;
       initialLoadRef.current = true;
 
-      // 마지막 생성 시간 확인
-      const lastTimeStr = localStorage.getItem(LAST_INSIGHT_TIME_KEY);
+      // 마지막 생성 시간 확인 (Dexie)
+      const lastTimeStr = await getSystemState<string>(SYSTEM_KEYS.LAST_INSIGHT_TIME);
       const refreshInterval = (settings.autoMessageInterval || 15) * 60 * 1000; // ms
 
       if (lastTimeStr) {
@@ -192,12 +192,12 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
           console.log('Auto-generating insight (interval passed)');
           generateInsight(false);
         } else {
-          // 간격이 안 지났으면 기존 인사이트 표시 (있다면)
+          // 간격이 안 지났으면 기존 인사이트 표시
           console.log('Skipping auto-generation (interval not passed yet)');
           setLoading(false);
 
-          // 기존 인사이트 텍스트 불러오기
-          const lastInsightText = localStorage.getItem(LAST_INSIGHT_TEXT_KEY);
+          // 기존 인사이트 텍스트 불러오기 (Dexie)
+          const lastInsightText = await getSystemState<string>(SYSTEM_KEYS.LAST_INSIGHT_TEXT);
           if (lastInsightText) {
             setInsight(lastInsightText);
             setLastUpdated(lastTime);
@@ -212,7 +212,9 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
         console.log('First time insight generation');
         generateInsight(false);
       }
-    }
+    };
+
+    checkAndGenerate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.geminiApiKey]);
 
@@ -232,7 +234,6 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
     const refreshInterval = settings.autoMessageInterval || 15;
     const totalSeconds = refreshInterval * 60;
     setTotalTime(totalSeconds);
-    setTimeLeft(totalSeconds);
 
     // 타이머 카운트다운 (1초마다)
     const countdownInterval = setInterval(() => {

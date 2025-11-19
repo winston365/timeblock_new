@@ -87,7 +87,7 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
 
       // 이벤트 처리 (UI 업데이트)
       if (result.events.length > 0) {
-        const { gameStateEventHandler } = await import('@/shared/services/gameState');
+        const { gameStateEventHandler } = await import('@/shared/services/gameplay/gameState');
         await gameStateEventHandler.handleEvents(result.events);
       }
     } catch (err) {

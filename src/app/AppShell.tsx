@@ -8,23 +8,19 @@
  */
 import { useState, useEffect, useMemo } from 'react';
 import { useGameState } from '@/shared/hooks';
-import { initializeDatabase } from '@/data/db/dexieClient';
 import { createTaskFromTemplate } from '@/data/repositories/templateRepository';
-import { loadSettings } from '@/data/repositories/settingsRepository';    
-import { getLocalDate } from '@/shared/lib/utils';  
-import {
-  initializeFirebase,
-  enableFirebaseSync
-} from '@/shared/services/firebaseService';
-import { exposeDebugToWindow } from '@/shared/services/firebase/firebaseDebug';
-import type { Template, Task, GameState } from '@/shared/types/domain';
+import { exposeDebugToWindow } from '@/shared/services/sync/firebase/firebaseDebug';
+import type { Template, Task } from '@/shared/types/domain';
 import { useXPToastStore } from '@/shared/hooks/useXPToast';
 import XPToast from '@/shared/components/XPToast';
 import SyncErrorToast from '@/shared/components/SyncErrorToast';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
-import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
-import { setErrorCallback, retryNow } from '@/shared/services/firebase/syncRetryQueue';
+import { setErrorCallback, retryNow } from '@/shared/services/sync/firebase/syncRetryQueue';
+import { useAppInitialization } from './hooks/useAppInitialization';
+import { FocusTimerOverlay } from '@/features/focus/FocusTimerOverlay';
+import { RealityCheckModal } from '@/features/feedback/RealityCheckModal';
+
 // 임시로 컴포넌트를 직접 import (나중에 features에서 가져올 것)
 import TopToolbar from './components/TopToolbar';
 import LeftSidebar from './components/LeftSidebar';
@@ -36,6 +32,7 @@ import BulkAddModal from '@/features/tasks/BulkAddModal';
 import SettingsModal from '@/features/settings/SettingsModal';
 import InsightPanel from '@/features/insight/InsightPanel';
 import TemplatesModal from '@/features/template/TemplatesModal';
+
 /**
  * 앱 셸 컴포넌트 - 전체 앱 레이아웃 및 초기화
  * @returns 앱 전체 UI
@@ -47,8 +44,10 @@ interface SyncErrorToastData {
   canRetry: boolean;
   retryId?: string;
 }
+
 export default function AppShell() {
-  const [dbInitialized, setDbInitialized] = useState(false);
+  const { isInitialized: dbInitialized, error: initError } = useAppInitialization();
+
   const [activeTab, setActiveTab] = useState<'today' | 'stats' | 'energy' | 'completed' | 'inbox'>('today');
   const [rightPanelTab, setRightPanelTab] = useState<'quest' | 'shop'>('quest');
   const [showGeminiChat, setShowGeminiChat] = useState(false);
@@ -56,6 +55,7 @@ export default function AppShell() {
   const [showSettings, setShowSettings] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [syncErrorToasts, setSyncErrorToasts] = useState<SyncErrorToastData[]>([]);
+
   // 패널 접힘 상태 (기본값: 펼침)
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('leftSidebarCollapsed');
@@ -65,6 +65,7 @@ export default function AppShell() {
     const saved = localStorage.getItem('rightPanelsCollapsed');
     return saved === 'true';
   });
+
   const gridTemplateColumns = useMemo(() => {
     if (leftSidebarCollapsed && rightPanelsCollapsed) {
       return '0 1fr 0 0';
@@ -77,13 +78,17 @@ export default function AppShell() {
     }
     return '380px minmax(600px, 1fr) 320px 336px';
   }, [leftSidebarCollapsed, rightPanelsCollapsed]);
+
   const leftToggleStyle = { left: leftSidebarCollapsed ? 0 : 380 };
   const rightToggleStyle = { right: rightPanelsCollapsed ? 0 : 656 };
+
   const { gameState, updateQuestProgress } = useGameState();
   const { toasts, removeToast } = useXPToastStore();
   const { visibility } = useWaifuCompanionStore();
+
   const waifuVisibilityClass =
     visibility === 'visible' ? 'translate-x-0' : visibility === 'peeking' ? 'translate-x-[90%]' : 'translate-x-full';
+
   // 패널 토글 핸들러
   const toggleLeftSidebar = () => {
     setLeftSidebarCollapsed(prev => {
@@ -92,6 +97,7 @@ export default function AppShell() {
       return newValue;
     });
   };
+
   const toggleRightPanels = () => {
     setRightPanelsCollapsed(prev => {
       const newValue = !prev;
@@ -99,6 +105,7 @@ export default function AppShell() {
       return newValue;
     });
   };
+
   // 동기화 에러 콜백 설정
   useEffect(() => {
     setErrorCallback((collection, message, canRetry) => {
@@ -115,10 +122,12 @@ export default function AppShell() {
       ]);
     });
   }, []);
+
   // 동기화 에러 토스트 제거
   const removeSyncErrorToast = (id: string) => {
     setSyncErrorToasts((prev: SyncErrorToastData[]) => prev.filter((toast: SyncErrorToastData) => toast.id !== id));
   };
+
   // 동기화 재시도 핸들러
   const handleSyncRetry = async (retryId: string | undefined) => {
     if (!retryId) return;
@@ -128,264 +137,14 @@ export default function AppShell() {
       console.error('Failed to retry sync:', error);
     }
   };
-  // DB 초기화 및 Firebase 설정
+
+  // 디버그 함수 노출
   useEffect(() => {
-    let isSubscribed = true;
-    const initDB = async () => {
-      try {
-        await initializeDatabase();
-        // ✅ STEP 1: Settings 및 Firebase 먼저 초기화 (Store 로드 전!)
-        console.log('🔧 Loading settings and initializing Firebase...');
-        const settings = await loadSettings();
-        let firebaseReady = false;
-        // ✅ STEP 2: Firebase 초기화 및 데이터 가져오기 (Store 로드 전!)
-        if (settings.firebaseConfig) {
-          const initialized = initializeFirebase(settings.firebaseConfig);
-          if (initialized) {
-            console.log('✅ Firebase initialized');
-            firebaseReady = true;
-            // Firebase에서 초기 데이터 가져오기
-            try {
-              const { fetchDataFromFirebase } = await import('@/shared/services/firebaseService');
-              const { saveGameState } = await import('@/data/repositories/gameStateRepository');
-              const { db } = await import('@/data/db/dexieClient');
-              const { saveToStorage } = await import('@/shared/lib/utils');
-              const { STORAGE_KEYS } = await import('@/shared/lib/constants');
-              const { syncToFirebase } = await import('@/shared/services/firebase/syncCore');
-              const { dailyDataStrategy, gameStateStrategy } = await import('@/shared/services/firebase/strategies');
-              console.log('📡 Fetching data from Firebase...');
-              const firebaseData = await fetchDataFromFirebase();
-              const localGameStateEntry = await db.gameState.get('current');
-              const localGameState = localGameStateEntry
-                ? (() => {
-                    const { key: _key, ...rest } = localGameStateEntry as GameState & { key: string };
-                    return rest as GameState;
-                  })()
-                : null;
-              let shouldUploadLocalGameState = false;
-              // GameState 동기화
-              if (firebaseData.gameState) {
-                const remoteGameState = firebaseData.gameState;
-                if (!localGameState) {
-                  console.log('📥 Saving GameState from Firebase (no local state)');
-                  await saveGameState(remoteGameState);
-                } else {
-                  const localTotalXP = localGameState.totalXP ?? 0;
-                  const remoteTotalXP = remoteGameState.totalXP ?? 0;
-                  const localAvailableXP = localGameState.availableXP ?? 0;
-                  const remoteAvailableXP = remoteGameState.availableXP ?? 0;
-                  const remoteIsNewer =
-                    remoteTotalXP > localTotalXP ||
-                    (remoteTotalXP === localTotalXP && remoteAvailableXP >= localAvailableXP);
-                  if (remoteIsNewer) {
-                    console.log('📥 Saving GameState from Firebase (remote newer)');
-                    await saveGameState(remoteGameState);
-                  } else {
-                    console.log('⚖️ Keeping local GameState (newer than Firebase)');
-                    shouldUploadLocalGameState = true;
-                  }
-                }
-              } else if (localGameState) {
-                shouldUploadLocalGameState = true;
-              }
-// DailyData 저장 (모든 날짜)
-              const dailyDataDates = Object.keys(firebaseData.dailyData);
-              if (dailyDataDates.length > 0) {
-                console.log(`💾 Saving ${dailyDataDates.length} days of data from Firebase`);
-                for (const date of dailyDataDates) {
-                  const data = firebaseData.dailyData[date];
-                  if (!data || !data.tasks) {
-                    console.warn(`⚠️ Invalid data for ${date}, skipping`);
-                    continue;
-                  }
-                  await db.dailyData.put({
-                    date,
-                    tasks: data.tasks,
-                    goals: data.goals || [],
-                    timeBlockStates: data.timeBlockStates || {},
-                    updatedAt: data.updatedAt || Date.now(),
-                  });
-                  saveToStorage(`${STORAGE_KEYS.DAILY_PLANS}${date}`, data);
-                }
-              }
-              // ✅ GlobalInbox 저장
-              if (firebaseData.globalInbox && Array.isArray(firebaseData.globalInbox)) {
-                console.log(`💾 Saving ${firebaseData.globalInbox.length} inbox tasks from Firebase`);
-                try {
-                  await db.globalInbox.clear();
-                  if (firebaseData.globalInbox.length > 0) {
-                    await db.globalInbox.bulkAdd(firebaseData.globalInbox);
-                  }
-                  const saved = await db.globalInbox.count();
-                  console.log(`✅ Verified: ${saved} inbox tasks in IndexedDB`);
-                } catch (error) {
-                  console.error('❌ Failed to bulkAdd inbox tasks:', error);
-                  // 하나씩 저장 시도
-                  let successCount = 0;
-                  for (const task of firebaseData.globalInbox) {
-                    try {
-                      await db.globalInbox.put(task);
-                      successCount++;
-                    } catch (e) {
-                      console.error(`❌ Failed to save task ${task.id}:`, e);
-                    }
-                  }
-                  console.log(`✅ Saved ${successCount}/${firebaseData.globalInbox.length} tasks individually`);
-                }
-              }
-              // ✅ EnergyLevels 저장 (모든 날짜)
-              if (firebaseData.energyLevels) {
-                const energyDates = Object.keys(firebaseData.energyLevels);
-                if (energyDates.length > 0) {
-                  console.log(`💾 Saving energy levels for ${energyDates.length} days from Firebase`);
-                  for (const date of energyDates) {
-                    const levels = firebaseData.energyLevels[date];
-                    if (Array.isArray(levels) && levels.length > 0) {
-                      try {
-                        // 기존 데이터 삭제
-                        await db.energyLevels.where('date').equals(date).delete();
-                        // 새 데이터 저장
-                        const levelsWithId = levels.map(level => ({
-                          ...level,
-                          id: `${date}_${level.timestamp}`,
-                          date,
-                        }));
-                        await db.energyLevels.bulkAdd(levelsWithId);
-                        localStorage.setItem(`energyLevels_${date}`, JSON.stringify(levels));
-                        console.log(`✅ Saved ${levels.length} energy levels for ${date}`);
-                      } catch (error) {
-                        console.error(`❌ Failed to save energy levels for ${date}:`, error);
-                      }
-                    }
-                  }
-                }
-              }
-              // ✅ ShopItems 저장
-              if (firebaseData.shopItems && Array.isArray(firebaseData.shopItems)) {
-                console.log(`💾 Saving ${firebaseData.shopItems.length} shop items from Firebase`);
-                try {
-                  await db.shopItems.clear();
-                  if (firebaseData.shopItems.length > 0) {
-                    await db.shopItems.bulkAdd(firebaseData.shopItems);
-                  }
-                  saveToStorage(STORAGE_KEYS.SHOP_ITEMS, firebaseData.shopItems);
-                  const saved = await db.shopItems.count();
-                  console.log(`✅ Verified: ${saved} shop items in IndexedDB`);
-                } catch (error) {
-                  console.error('❌ Failed to save shop items:', error);
-                }
-              }
-              // ✅ WaifuState 저장
-              if (firebaseData.waifuState) {
-                console.log('💾 Saving WaifuState from Firebase');
-                try {
-                  await db.waifuState.put({
-                    key: 'current',
-                    ...firebaseData.waifuState,
-                  });
-                  saveToStorage(STORAGE_KEYS.WAIFU_STATE, firebaseData.waifuState);
-                  console.log('✅ Verified: WaifuState saved');
-                } catch (error) {
-                  console.error('❌ Failed to save WaifuState:', error);
-                }
-              } else {
-                console.log('ℹ️ No WaifuState in Firebase');
-              }
-              // ✅ Templates 저장
-              if (firebaseData.templates && Array.isArray(firebaseData.templates)) {
-                console.log(`💾 Saving ${firebaseData.templates.length} templates from Firebase`);
-                try {
-                  await db.templates.clear();
-                  if (firebaseData.templates.length > 0) {
-                    await db.templates.bulkAdd(firebaseData.templates);
-                  }
-                  saveToStorage(STORAGE_KEYS.TEMPLATES, firebaseData.templates);
-                  const saved = await db.templates.count();
-                  console.log(`✅ Verified: ${saved} templates in IndexedDB`);
-                } catch (error) {
-                  console.error('❌ Failed to save templates:', error);
-                }
-              } else {
-                console.log('ℹ️ No Templates in Firebase');
-              }
-              // 로컬 데이터를 Firebase로 업로드 (Firebase에 없는 것만)
-              const allLocalDailyData = await db.dailyData.toArray();
-              const firebaseDates = new Set(Object.keys(firebaseData.dailyData));
-              for (const localData of allLocalDailyData) {
-                if (firebaseDates.has(localData.date)) continue;
-                try {
-                  await syncToFirebase(dailyDataStrategy, {
-                    tasks: localData.tasks || [],
-                    goals: localData.goals || [],
-                    timeBlockStates: localData.timeBlockStates || {},
-                    updatedAt: localData.updatedAt || Date.now(),
-                  }, localData.date);
-                } catch (syncError) {
-                  console.error(`❌ Failed to upload ${localData.date}:`, syncError);
-                }
-              }
-              // GameState 동기화
-              if (shouldUploadLocalGameState && localGameState) {
-                try {
-                  await syncToFirebase(gameStateStrategy, localGameState);
-                } catch (syncError) {
-                  console.error('❌ Failed to upload GameState:', syncError);
-                }
-              }
-              console.log('✅ Firebase data sync completed');
-            } catch (error) {
-              console.error('❌ Failed to fetch from Firebase:', error);
-            }
-          } else {
-            console.warn('⚠️ Firebase initialization failed, working offline');
-          }
-        } else {
-          console.log('ℹ️ No Firebase config, working offline');
-        }
-        if (!isSubscribed) return;
-        // ✅ STEP 3: Store 로드 (이제 IndexedDB에 Firebase 데이터가 있음)
-        console.log('📦 Loading stores from IndexedDB...');
-        const dailyDataStore = useDailyDataStore.getState();
-        const gameStateStore = useGameStateStore.getState();
-        await Promise.all([
-          dailyDataStore.loadData(),
-          gameStateStore.loadData(),
-        ]);
-        console.log('✅ Stores loaded');
-        if (!isSubscribed) return;
-        // ✅ STEP 4: 모든 데이터 로드 후 UI 표시
-        setDbInitialized(true);
-        // 디버그 함수를 window에 노출
-        exposeDebugToWindow();
-        // ✅ STEP 5: Firebase 실시간 동기화 활성화
-        if (firebaseReady) {
-          const unsubscribe = enableFirebaseSync(
-            async () => {
-              await dailyDataStore.refresh();
-            },
-            async () => {
-              await gameStateStore.refresh();
-            }
-          );
-          // 컴포넌트 언마운트 시 동기화 해제
-          return () => {
-            isSubscribed = false;
-            unsubscribe();
-          };
-        }
-      } catch (error) {
-        console.error('❌ Failed to initialize:', error);
-        if (isSubscribed) {
-          // 에러가 발생해도 UI는 표시 (데이터 없이)
-          setDbInitialized(true);
-        }
-      }
-    };
-    initDB();
-    return () => {
-      isSubscribed = false;
-    };
-  }, []); // 빈 배열 - 한 번만 실행
+    if (dbInitialized) {
+      exposeDebugToWindow();
+    }
+  }, [dbInitialized]);
+
   // F1 단축키: 대량 할 일 추가 모달 열기
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -397,29 +156,34 @@ export default function AppShell() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
   // 템플릿에서 작업 생성 핸들러
   const handleTaskCreateFromTemplate = async (template: Template) => {
     try {
       const task = createTaskFromTemplate(template);
       const dailyDataStore = useDailyDataStore.getState();
       await dailyDataStore.addTask(task);
+
       // 준비된 작업이면 퀘스트 진행
       const isPrepared = !!(task.preparation1 && task.preparation2 && task.preparation3);
       if (isPrepared) {
         await updateQuestProgress('prepare_tasks', 1);
       }
+
       alert(`"${template.name}" 템플릿에서 작업이 추가되었습니다!`);
     } catch (error) {
       console.error('Failed to create task from template:', error);
       alert('작업 추가에 실패했습니다.');
     }
   };
+
   // 상점 구매 성공 핸들러 (와이푸 메시지 표시용)
   const handleShopPurchaseSuccess = (_message: string, waifuMessage?: string) => {
     if (waifuMessage) {
       // TODO: 와이푸에게 메시지를 전달하는 로직 추가
     }
   };
+
   // 대량 작업 추가 핸들러
   const handleBulkAddTasks = async (tasks: Task[]) => {
     try {
@@ -432,7 +196,8 @@ export default function AppShell() {
       throw error;
     }
   };
-      if (!dbInitialized) {
+
+  if (!dbInitialized) {
     return (
       <div
         className="flex h-screen flex-col items-center justify-center gap-2 bg-[var(--color-bg-base)] text-[var(--color-text)]"
@@ -441,12 +206,14 @@ export default function AppShell() {
         aria-label="환경 설정 로딩 중"
       >
         <div className="text-lg font-semibold">데이터베이스 초기화 중...</div>
+        {initError && <div className="text-sm text-red-500">오류 발생: {initError.message}</div>}
         <div className="text-xs text-[var(--color-text-tertiary)]">개발자 도구(F12)를 열어 로그를 확인해주세요</div>
       </div>
     );
   }
+
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-bg-base)] text-[var(--color-text)]">
+    <div className="flex h-screen flex-col bg-[var(--color-bg-base)] text-[var(--color-text)]">
       <a href="#main-content" className="skip-to-content">스케줄로 이동</a>
       <TopToolbar
         gameState={gameState}
@@ -487,7 +254,7 @@ export default function AppShell() {
         </button>
       </main>
       <aside
-        className={`waifu-panel-container fixed bottom-0 right-0 w-[320px] max-h-[70vh] overflow-hidden rounded-t-3xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-2xl transition-transform duration-300 ${waifuVisibilityClass}`}        
+        className={`waifu-panel-container fixed bottom-0 right-0 w-[320px] transition-transform duration-300 ${waifuVisibilityClass}`}
         data-visibility={visibility}
         aria-label="와이푸 동반자"
         role="complementary"
@@ -528,6 +295,9 @@ export default function AppShell() {
           />
         </div>
       ))}
+      {/* Focus Mode Overlay */}
+      <FocusTimerOverlay />
+      <RealityCheckModal />
     </div>
   );
 }

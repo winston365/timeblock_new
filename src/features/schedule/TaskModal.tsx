@@ -11,11 +11,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import type { Task, Resistance, TimeBlockId, DailyGoal } from '@/shared/types/domain';
 import { calculateAdjustedDuration } from '@/shared/lib/utils';
-import { generateTaskBreakdown } from '@/shared/services/geminiApi';
-import { useWaifuState } from '@/shared/hooks';
+import { generateTaskBreakdown, suggestTaskEmoji } from '@/shared/services/ai/geminiApi';
+import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
-import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
-import { loadDailyGoals } from '@/data/repositories/dailyGoalRepository';
+import { loadGlobalGoals } from '@/data/repositories';
 import { MemoModal } from './MemoModal';
 
 interface TaskModalProps {
@@ -79,22 +78,22 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
   const [showMemoModal, setShowMemoModal] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const { waifuState } = useWaifuState();
+  const { waifuState } = useWaifu();
   const { settings } = useSettingsStore();
-  const { currentDate } = useDailyDataStore();
+
 
   // 목표 목록 로드
   useEffect(() => {
     const fetchGoals = async () => {
       try {
-        const loadedGoals = await loadDailyGoals(currentDate);
+        const loadedGoals = await loadGlobalGoals();
         setGoals(loadedGoals.sort((a, b) => a.order - b.order));
       } catch (error) {
         console.error('[TaskModal] Failed to load goals:', error);
       }
     };
     fetchGoals();
-  }, [currentDate]);
+  }, []);
 
   // 기존 작업 데이터로 초기화
   useEffect(() => {
@@ -229,6 +228,23 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
     }
   };
 
+  const handleAutoEmoji = async () => {
+    if (!text.trim()) return;
+    if (!settings?.geminiApiKey) {
+      setError('Gemini API 키가 필요합니다.');
+      return;
+    }
+
+    try {
+      const emoji = await suggestTaskEmoji(text, settings.geminiApiKey);
+      if (emoji) {
+        setText(`${emoji} ${text}`);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!text.trim()) {
@@ -310,15 +326,25 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
                 <label htmlFor="task-text" className="text-sm font-semibold text-[var(--color-text)]">
                   작업 제목 <span className="text-rose-400">*</span>
                 </label>
-                <input
-                  id="task-text"
-                  type="text"
-                  value={text}
-                  onChange={handleTextChange}
-                  placeholder="무엇을 할까요? (예: T30 D2 보고서 작성)"
-                  autoFocus
-                  className={baseFieldClasses}
-                />
+                <div className="flex gap-2">
+                  <input
+                    id="task-text"
+                    type="text"
+                    value={text}
+                    onChange={handleTextChange}
+                    placeholder="무엇을 할까요? (예: T30 D2 보고서 작성)"
+                    autoFocus
+                    className={baseFieldClasses}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAutoEmoji}
+                    className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-xl hover:bg-[var(--color-bg-surface)] transition-colors"
+                    title="AI 이모지 추천"
+                  >
+                    ✨
+                  </button>
+                </div>
               </div>
 
               {/* Duration Selection (Redesigned) */}

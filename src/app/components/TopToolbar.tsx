@@ -3,10 +3,13 @@
  */
 
 import type { GameState } from '@/shared/types/domain';
-import { useEnergyState, useWaifuState } from '@/shared/hooks';
+import { useEnergy } from '@/features/energy/hooks/useEnergy';
+import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { getAffectionColor } from '@/features/waifu/waifuImageUtils';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { getDialogueFromAffection } from '@/data/repositories/waifuRepository';
+import { audioService } from '@/shared/services/media/audioService';
+import { useFocusStore } from '@/shared/stores/focusStore';
 
 interface TopToolbarProps {
   gameState: GameState | null;
@@ -15,14 +18,20 @@ interface TopToolbarProps {
 }
 
 export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplates }: TopToolbarProps) {
-  const { currentEnergy } = useEnergyState();
-  const { waifuState, currentMood } = useWaifuState();
+  const { currentEnergy } = useEnergy();
+  const { waifuState, currentMood } = useWaifu();
   const { show } = useWaifuCompanionStore();
+  const { toggleFocusMode } = useFocusStore();
 
   const handleCallWaifu = () => {
     if (waifuState) {
       const dialogue = getDialogueFromAffection(waifuState.affection, waifuState.tasksCompletedToday);
-      show(dialogue);
+
+      if (dialogue.audio) {
+        audioService.play(dialogue.audio);
+      }
+
+      show(dialogue.text, dialogue.audio);
     } else {
       show('하루야~ 오늘도 힘내자!');
     }
@@ -88,14 +97,21 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
       </div>
 
       <div className="flex flex-wrap gap-[var(--spacing-sm)] md:ml-auto">
+        <button
+          className={toolbarButtonClass}
+          onClick={toggleFocusMode}
+          title="Zen Mode (Focus)"
+        >
+          🧘 Zen Mode
+        </button>
         <button className={toolbarButtonClass} onClick={handleCallWaifu} title="와이푸 호출">
-          와이푸 불러오기
+          💬 Waifu
         </button>
         <button className={toolbarButtonClass} onClick={onOpenTemplates} title="템플릿 관리">
-          목표 템플릿
+          📋 Templates
         </button>
         <button className={toolbarButtonClass} onClick={onOpenGeminiChat} title="AI 대화">
-          Gemini AI 대화
+          ✨ AI Chat
         </button>
       </div>
     </header>

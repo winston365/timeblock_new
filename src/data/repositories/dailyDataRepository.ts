@@ -14,12 +14,11 @@
 import { db } from '../db/dexieClient';
 import type { DailyData, Task, TimeBlockStates, TimeBlockState } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
-import { getLocalDate, saveToStorage, getFromStorage } from '@/shared/lib/utils';
-import { STORAGE_KEYS } from '@/shared/lib/constants';
-import { addSyncLog } from '@/shared/services/syncLogger';
-import { isFirebaseInitialized } from '@/shared/services/firebaseService';
-import { syncToFirebase, fetchFromFirebase } from '@/shared/services/firebase/syncCore';
-import { dailyDataStrategy } from '@/shared/services/firebase/strategies';
+import { getLocalDate } from '@/shared/lib/utils';
+import { addSyncLog } from '@/shared/services/sync/syncLogger';
+import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
+import { fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
+import { dailyDataStrategy } from '@/shared/services/sync/firebase/strategies';
 import {
   moveInboxTaskToBlock,
   moveTaskToInbox,
@@ -65,16 +64,7 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
       };
     }
 
-    // 2. localStorage에서 조회 (IndexedDB 실패 시)
-    const localData = getFromStorage<DailyData | null>(`${STORAGE_KEYS.DAILY_PLANS}${date}`, null);
-
-    if (localData) {
-      // localStorage 데이터를 IndexedDB에 저장
-      await saveDailyData(date, localData.tasks, localData.timeBlockStates);
-      return localData;
-    }
-
-    // 3. Firebase에서 조회
+    // 2. Firebase에서 조회 (IndexedDB 실패 시)
     if (isFirebaseInitialized()) {
       const firebaseData = await fetchFromFirebase<DailyData>(dailyDataStrategy, date);
 
@@ -91,7 +81,7 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
           updatedAt: firebaseData.updatedAt || Date.now(),
         };
 
-        // Firebase 데이터를 IndexedDB와 localStorage에 저장
+        // Firebase 데이터를 IndexedDB에 저장
         await saveDailyData(date, sanitizedData.tasks, sanitizedData.timeBlockStates);
 
         addSyncLog('firebase', 'load', `Loaded daily data for ${date} from Firebase`, { taskCount: tasks.length });
@@ -145,10 +135,8 @@ export async function saveDailyData(
 
     return {
       ...task,
-      preparation1: task.preparation1 ?? '',
-      preparation2: task.preparation2 ?? '',
-      preparation3: task.preparation3 ?? '',
-      hourSlot: hourSlot !== undefined ? hourSlot : null,  // 최종 null fallback
+      // 로컬 데이터 무결성을 위한 최소한의 보정
+      hourSlot: hourSlot !== undefined ? hourSlot : null,
     };
   });
 
@@ -166,20 +154,12 @@ export async function saveDailyData(
       ...data,
     });
 
-    // 2. localStorage에도 저장 (빠른 접근용)
-    saveToStorage(`${STORAGE_KEYS.DAILY_PLANS}${date}`, data);
-
     addSyncLog('dexie', 'save', `DailyData saved for ${date}`, {
       taskCount: sanitizedTasks.length,
       completedTasks: sanitizedTasks.filter(t => t.completed).length
     });
 
-    // 3. Firebase에 동기화 (비동기, 실패해도 로컬은 성공)
-    if (isFirebaseInitialized()) {
-      syncToFirebase(dailyDataStrategy, data, date).catch(err => {
-        console.error('Firebase sync failed, but local save succeeded:', err);
-      });
-    }
+
   } catch (error) {
     console.error(`Failed to save daily data for ${date}:`, error);
     addSyncLog('dexie', 'error', `Failed to save daily data for ${date}`, undefined, error as Error);
@@ -227,7 +207,6 @@ export function createEmptyDailyData(): DailyData {
 export async function deleteDailyData(date: string): Promise<void> {
   try {
     await db.dailyData.delete(date);
-    localStorage.removeItem(`${STORAGE_KEYS.DAILY_PLANS}${date}`);
   } catch (error) {
     console.error(`Failed to delete daily data for ${date}:`, error);
     throw error;
