@@ -1,7 +1,12 @@
 /**
- * Firebase Cloud Functions for Timeblock App
+ * Firebase Cloud Functions for Timeblock App - Server-First Strategy
  *
- * @role 매일 자동으로 템플릿에서 작업 생성
+ * @role 매일 자동으로 템플릿에서 작업 생성 (Primary Source of Truth)
+ * @architecture Option A: Server-First Strategy
+ *   - Firebase Function이 매일 00:00 KST에 실행되어 작업 생성
+ *   - 클라이언트는 Observer 역할 (Firebase에서 데이터 읽기)
+ *   - Idempotency 보장 (중복 방지)
+ *   - 시스템 상태 추적 (lastTemplateGeneration 마커)
  */
 
 const { onSchedule } = require("firebase-functions/v2/scheduler");
@@ -9,6 +14,13 @@ const { logger } = require("firebase-functions");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
+
+// ============================================================================
+// Configuration Constants
+// ============================================================================
+
+const IS_PRODUCTION = process.env.GCLOUD_PROJECT !== undefined;
+const ALLOW_TEST_TEMPLATES = !IS_PRODUCTION; // 프로덕션에서는 TEST 템플릿 비활성화
 
 /**
  * UUID 생성 함수 (클라이언트와 동일한 방식)
@@ -34,16 +46,26 @@ const TIME_BLOCKS = [
   { id: "19-24", label: "19:00-24:00", start: 19, end: 24 },
 ];
 
+// ============================================================================
+// Shared Constants (동기화: src/shared/types/domain.ts)
+// ============================================================================
+
+/**
+ * 저항도 배율 (클라이언트와 동일한 값 사용)
+ * @sync src/shared/types/domain.ts:RESISTANCE_MULTIPLIERS
+ * TODO: 공통 패키지로 추출 권장
+ */
+const RESISTANCE_MULTIPLIERS = {
+  low: 1.0,    // 🟢 쉬움
+  medium: 1.3, // 🟡 보통
+  high: 1.6,   // 🔴 어려움
+};
+
 /**
  * 저항도 배율 가져오기
  */
 function getResistanceMultiplier(resistance) {
-  const multipliers = {
-    low: 1.0,
-    medium: 1.3,
-    high: 1.6,
-  };
-  return multipliers[resistance] || 1.0;
+  return RESISTANCE_MULTIPLIERS[resistance] || 1.0;
 }
 
 /**
@@ -134,14 +156,24 @@ function shouldGenerateToday(template, today) {
 
 /**
  * 매일 00:00 KST에 실행되는 Cloud Function
- * 모든 사용자의 템플릿을 확인하고 자동 생성
+ * Server-First 전략: Firebase Function이 Primary Source of Truth
+ *
+ * @architecture
+ *   1. Idempotency Check: 오늘 이미 실행되었는지 확인
+ *   2. Template Generation: 조건에 맞는 템플릿에서 작업 생성
+ *   3. State Tracking: 시스템 상태 업데이트 (lastTemplateGeneration)
+ *   4. Error Handling: 실패 시 롤백 및 로깅
  */
 exports.dailyTemplateGeneration = onSchedule({
   schedule: "0 15 * * *", // UTC 15:00 = KST 00:00 (다음날)
   timeZone: "UTC",
   region: "asia-northeast3", // 서울 리전
 }, async (event) => {
-  logger.info("Daily template generation started", { time: new Date().toISOString() });
+  const startTime = Date.now();
+  logger.info("🚀 Daily template generation started", {
+    time: new Date().toISOString(),
+    isProduction: IS_PRODUCTION
+  });
 
   const db = admin.database();
 
@@ -149,21 +181,39 @@ exports.dailyTemplateGeneration = onSchedule({
   const nowKST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
   const today = nowKST.toISOString().split("T")[0]; // YYYY-MM-DD (KST 기준)
 
-  logger.info("Current date (KST):", { today, nowKST: nowKST.toISOString() });
+  logger.info("📅 Current date (KST):", { today, nowKST: nowKST.toISOString() });
 
   try {
-    // 단일 사용자 구조 (현재 앱은 users/user 경로 사용)
-    let generatedCount = 0;
-    let updatedTemplateCount = 0;
+    // ========================================================================
+    // Step 1: Idempotency Check - 오늘 이미 실행되었는지 확인
+    // ========================================================================
+    const systemStateRef = db.ref("users/user/system/lastTemplateGeneration");
+    const lastGenSnapshot = await systemStateRef.once("value");
+    const lastGenData = lastGenSnapshot.val();
 
-    // 템플릿 가져오기 (users/user 존재 여부 확인 불필요)
+    if (lastGenData && lastGenData.date === today && lastGenData.success) {
+      logger.warn("⚠️ Template generation already completed today (idempotency)", {
+        date: today,
+        previousRun: lastGenData.timestamp,
+        source: lastGenData.source
+      });
+      return {
+        success: true,
+        skipped: true,
+        message: "Already completed today",
+        date: today,
+        previousRun: lastGenData
+      };
+    }
+
+    // ========================================================================
+    // Step 2: Load Templates
+    // ========================================================================
     const templatesSnapshot = await db.ref("users/user/templates").once("value");
     const templatesData = templatesSnapshot.val();
-
-    // SyncData 구조에서 실제 데이터 추출
     const templates = templatesData?.data;
 
-    logger.info("Templates snapshot received:", {
+    logger.info("📋 Templates snapshot received:", {
       exists: templatesSnapshot.exists(),
       hasData: !!templatesData,
       hasTemplates: !!templates,
@@ -172,23 +222,41 @@ exports.dailyTemplateGeneration = onSchedule({
     });
 
     if (!templates || !Array.isArray(templates)) {
-      logger.info("No templates found or invalid format", {
+      logger.warn("⚠️ No templates found or invalid format", {
         templatesData: JSON.stringify(templatesData).substring(0, 200),
       });
+
+      // Mark as completed even if no templates (prevent retries)
+      await systemStateRef.set({
+        date: today,
+        success: true,
+        source: "firebase-function",
+        timestamp: Date.now(),
+        generatedCount: 0,
+        message: "No templates found"
+      });
+
       return {
-        success: false,
+        success: true,
         message: "No templates found",
         date: today,
+        generatedCount: 0
       };
     }
 
-    logger.info(`Found ${templates.length} templates for date: ${today}`);
+    logger.info(`✅ Found ${templates.length} templates for date: ${today}`);
 
-    // 각 템플릿 확인
+    // ========================================================================
+    // Step 3: Generate Tasks from Templates
+    // ========================================================================
+    let generatedCount = 0;
+    let updatedTemplateCount = 0;
+    const generatedTaskIds = [];
+
     for (let i = 0; i < templates.length; i++) {
       const template = templates[i];
 
-      logger.info(`Checking template ${i + 1}/${templates.length}:`, {
+      logger.info(`🔍 Checking template ${i + 1}/${templates.length}:`, {
         name: template.name,
         recurrenceType: template.recurrenceType,
         autoGenerate: template.autoGenerate,
@@ -196,10 +264,20 @@ exports.dailyTemplateGeneration = onSchedule({
         shouldGenerate: shouldGenerateToday(template, today),
       });
 
-      const isTestTemplate = template.category === "TEST";
+      // TEST 템플릿 처리 (프로덕션에서는 비활성화)
+      const isTestTemplate = ALLOW_TEST_TEMPLATES && template.category === "TEST";
+
+      if (isTestTemplate) {
+        logger.info("🧪 TEST template detected (allowed in development):", {
+          name: template.name,
+          category: template.category
+        });
+      }
 
       if (isTestTemplate || shouldGenerateToday(template, today)) {
-        logger.info(`✅ Generating task from template: ${template.name} (${template.recurrenceType}) [TEST: ${isTestTemplate}]`);
+        logger.info(`✅ Generating task from template: ${template.name} (${template.recurrenceType})`, {
+          isTest: isTestTemplate
+        });
 
         // Task 생성
         const newTask = createTaskFromTemplate(template, today);
@@ -231,7 +309,7 @@ exports.dailyTemplateGeneration = onSchedule({
         dailyData.tasks.push(newTask);
         dailyData.updatedAt = Date.now();
 
-        logger.info(`Adding task to dailyData/${today}:`, {
+        logger.info(`➕ Adding task to dailyData/${today}:`, {
           taskId: newTask.id,
           taskText: newTask.text,
           timeBlock: newTask.timeBlock,
@@ -246,9 +324,10 @@ exports.dailyTemplateGeneration = onSchedule({
           deviceId: "firebase-function",
         });
 
-        logger.info(`✅ Task saved to Firebase: ${newTask.text}`);
+        logger.info(`💾 Task saved to Firebase: ${newTask.text}`);
 
         generatedCount++;
+        generatedTaskIds.push(newTask.id);
 
         // 템플릿의 lastGeneratedDate 업데이트
         templates[i].lastGeneratedDate = today;
@@ -256,9 +335,11 @@ exports.dailyTemplateGeneration = onSchedule({
       }
     }
 
-    // 템플릿 배열 업데이트 (SyncData 래퍼 사용)
+    // ========================================================================
+    // Step 4: Update Templates
+    // ========================================================================
     if (updatedTemplateCount > 0) {
-      logger.info(`Updating ${updatedTemplateCount} templates with lastGeneratedDate: ${today}`);
+      logger.info(`🔄 Updating ${updatedTemplateCount} templates with lastGeneratedDate: ${today}`);
 
       await db.ref("users/user/templates").set({
         data: templates,
@@ -269,11 +350,28 @@ exports.dailyTemplateGeneration = onSchedule({
       logger.info("✅ Templates updated in Firebase");
     }
 
-    logger.info(`✅ Daily template generation completed!`, {
+    // ========================================================================
+    // Step 5: Update System State (Idempotency Marker)
+    // ========================================================================
+    await systemStateRef.set({
+      date: today,
+      success: true,
+      source: "firebase-function",
+      timestamp: Date.now(),
+      generatedCount,
+      updatedTemplateCount,
+      totalTemplates: templates.length,
+      generatedTaskIds,
+      duration: Date.now() - startTime
+    });
+
+    const duration = Date.now() - startTime;
+    logger.info(`🎉 Daily template generation completed successfully!`, {
       date: today,
       generatedCount,
       updatedTemplateCount,
       totalTemplates: templates.length,
+      duration: `${duration}ms`
     });
 
     return {
@@ -281,9 +379,32 @@ exports.dailyTemplateGeneration = onSchedule({
       date: today,
       generatedCount,
       updatedTemplateCount,
+      totalTemplates: templates.length,
+      duration
     };
   } catch (error) {
-    logger.error("Error during daily template generation:", error);
+    const duration = Date.now() - startTime;
+    logger.error("❌ Error during daily template generation:", {
+      error: error.message,
+      stack: error.stack,
+      date: today,
+      duration: `${duration}ms`
+    });
+
+    // Update system state with error
+    try {
+      await db.ref("users/user/system/lastTemplateGeneration").set({
+        date: today,
+        success: false,
+        source: "firebase-function",
+        timestamp: Date.now(),
+        error: error.message,
+        duration
+      });
+    } catch (stateError) {
+      logger.error("Failed to update error state:", stateError);
+    }
+
     throw error;
   }
 });

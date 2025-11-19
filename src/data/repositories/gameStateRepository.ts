@@ -430,10 +430,56 @@ async function migrateUncompletedInboxTasks(yesterdayDate: string, todayDate: st
 
 /**
  * 자동 생성 템플릿에서 작업 생성 (내부 헬퍼)
+ *
+ * @architecture Option A: Server-First Strategy
+ *   - Firebase Function이 이미 실행했는지 먼저 체크
+ *   - Function이 실행했다면 클라이언트는 생성하지 않음 (Observer 역할)
+ *   - Function이 실행하지 않았거나 실패했다면 Fallback으로 로컬에서 생성
  */
 async function generateTasksFromAutoTemplates(): Promise<void> {
   try {
-    // templateRepository의 함수를 동적으로 import (순환 참조 방지)
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // ========================================================================
+    // Step 1: Firebase Function이 이미 실행했는지 체크
+    // ========================================================================
+    const { isFirebaseInitialized } = await import('@/shared/services/sync/firebaseService');
+
+    if (isFirebaseInitialized()) {
+      try {
+        const { getDatabase, ref, get } = await import('firebase/database');
+        const db = getDatabase();
+        const systemStateRef = ref(db, 'users/user/system/lastTemplateGeneration');
+        const snapshot = await get(systemStateRef);
+        const lastGenData = snapshot.val();
+
+        if (lastGenData && lastGenData.date === today && lastGenData.success) {
+          console.log('✅ [Observer] Firebase Function already generated templates today', {
+            date: today,
+            source: lastGenData.source,
+            timestamp: lastGenData.timestamp,
+            generatedCount: lastGenData.generatedCount
+          });
+
+          // Firebase Function이 이미 실행했으므로 로컬 생성 스킵
+          // 클라이언트는 Observer 역할: Firebase에서 데이터만 읽어옴
+          return;
+        }
+
+        console.log('⚠️ [Fallback] Firebase Function has not run today, generating locally', {
+          date: today,
+          lastGenData: lastGenData || 'none'
+        });
+      } catch (firebaseError) {
+        console.warn('Failed to check Firebase Function state, falling back to local generation', firebaseError);
+      }
+    } else {
+      console.log('ℹ️ Firebase not initialized, generating locally');
+    }
+
+    // ========================================================================
+    // Step 2: Fallback - 로컬에서 템플릿 생성
+    // ========================================================================
     const { generateTasksFromAutoTemplates: generateTasks } = await import('./templateRepository');
     const tasks = await generateTasks();
 
@@ -442,6 +488,33 @@ async function generateTasksFromAutoTemplates(): Promise<void> {
       const { addTask } = await import('./dailyDataRepository');
       for (const task of tasks) {
         await addTask(task);
+      }
+
+      console.log(`✅ [Client] Generated ${tasks.length} tasks from templates locally`);
+    }
+
+    // ========================================================================
+    // Step 3: 로컬 생성 완료 상태를 Firebase에 기록 (선택적)
+    // ========================================================================
+    if (isFirebaseInitialized() && tasks.length > 0) {
+      try {
+        const { getDatabase, ref, set } = await import('firebase/database');
+        const db = getDatabase();
+        const systemStateRef = ref(db, 'users/user/system/lastTemplateGeneration');
+
+        await set(systemStateRef, {
+          date: today,
+          success: true,
+          source: 'client',
+          timestamp: Date.now(),
+          generatedCount: tasks.length,
+          note: 'Generated locally (fallback)'
+        });
+
+        console.log('✅ Updated Firebase system state (client-generated)');
+      } catch (updateError) {
+        console.warn('Failed to update Firebase system state', updateError);
+        // 상태 업데이트 실패는 무시 (작업 생성은 이미 완료됨)
       }
     }
   } catch (error) {
