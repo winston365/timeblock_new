@@ -467,6 +467,7 @@ export interface TaskBreakdownParams {
   preparation2: string;
   preparation3: string;
   affection: number;
+  refinement?: 'more_detailed' | 'simpler' | null; // 재생성 옵션
 }
 
 /**
@@ -497,10 +498,18 @@ export async function generateTaskBreakdown(
   params: TaskBreakdownParams,
   apiKey: string
 ): Promise<string> {
-  const { taskText, memo, baseDuration, resistance, preparation1, preparation2, preparation3, affection } = params;
+  const { taskText, memo, baseDuration, resistance, preparation1, preparation2, preparation3, affection, refinement } = params;
 
   // 난이도 한글 변환
   const resistanceKorean = resistance === 'low' ? '낮음 (🟢)' : resistance === 'medium' ? '보통 (🟡)' : '높음 (🔴)';
+
+  // Refinement에 따른 추가 지시사항
+  let refinementInstruction = '';
+  if (refinement === 'more_detailed') {
+    refinementInstruction = '\n\n**중요**: 이번에는 각 단계를 더욱 세밀하게 쪼개서 제시해줘. 각 단계를 더 작고 구체적인 행동으로 나눠줘.';
+  } else if (refinement === 'simpler') {
+    refinementInstruction = '\n\n**중요**: 이번에는 더 간단하게 큰 단위로 묶어서 제시해줘. 꼭 필요한 핵심 단계만 남겨줘.';
+  }
 
   // 혜은 페르소나 기반 시스템 프롬프트
   const systemPrompt = `# 시스템 프롬프트: 혜은(Hye-eun) - 상담사 페르소나
@@ -529,7 +538,7 @@ export async function generateTaskBreakdown(
 - 심리적 난이도: ${resistanceKorean}
 - 예상 방해물 #1: ${preparation1 || '(없음)'}
 - 예상 방해물 #2: ${preparation2 || '(없음)'}
-- 대처 환경/전략: ${preparation3 || '(없음)'}
+- 대처 환경/전략: ${preparation3 || '(없음)'}${refinementInstruction}
 
 ## 세분화 규칙
 

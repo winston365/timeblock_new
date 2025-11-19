@@ -10,7 +10,7 @@
  */
 
 import { create } from 'zustand';
-import type { Settings, WaifuMode } from '../types/domain';
+import type { Settings, WaifuMode, AIBreakdownTrigger } from '../types/domain';
 import { loadSettings, updateSettings } from '@/data/repositories/settingsRepository';
 
 interface SettingsStore {
@@ -24,6 +24,7 @@ interface SettingsStore {
   updateWaifuMode: (mode: WaifuMode) => Promise<void>;
   updateApiKey: (apiKey: string) => Promise<void>;
   updateAutoMessage: (enabled: boolean, interval?: number) => Promise<void>;
+  updateAIBreakdownTrigger: (trigger: AIBreakdownTrigger) => Promise<void>;
   refresh: () => Promise<void>;
   reset: () => void;
 }
@@ -142,6 +143,29 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       const err = error instanceof Error ? error : new Error('Failed to update auto message settings');
       set({ error: err, loading: false });
       console.error('Settings store: Failed to update auto message settings', err);
+      throw err;
+    }
+  },
+
+  /**
+   * AI 작업 세분화 트리거 설정 업데이트
+   *
+   * @param {AIBreakdownTrigger} trigger - 트리거 조건 ('always' | 'high_difficulty' | 'manual')
+   * @returns {Promise<void>}
+   * @throws {Error} 업데이트 실패 시
+   * @sideEffects
+   *   - IndexedDB/localStorage에 설정 저장
+   *   - 상태 업데이트
+   */
+  updateAIBreakdownTrigger: async (trigger: AIBreakdownTrigger) => {
+    set({ loading: true, error: null });
+    try {
+      const updatedSettings = await updateSettings({ aiBreakdownTrigger: trigger });
+      set({ settings: updatedSettings, loading: false });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Failed to update AI breakdown trigger');
+      set({ error: err, loading: false });
+      console.error('Settings store: Failed to update AI breakdown trigger', err);
       throw err;
     }
   },

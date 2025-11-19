@@ -7,7 +7,7 @@ import { useGameState } from '@/shared/hooks/useGameState';
 import { generateId } from '@/shared/lib/utils';
 import { Task } from '@/shared/types/domain';
 import { useXPToastStore } from '@/shared/hooks/useXPToast';
-import { useWaifuCompanionStore } from '@/features/waifu/stores/waifuCompanionStore';
+import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 
 export default function GlobalTaskBreakdown() {
     const { isOpen, isLoading, breakdownText, close, source, taskData } = useTaskBreakdownStore();

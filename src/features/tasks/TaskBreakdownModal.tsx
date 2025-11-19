@@ -3,7 +3,7 @@
  *
  * @role AI가 생성한 작업 세분화 결과를 보여주고, 사용자가 수정하여 적용할 수 있게 하는 모달
  * @input isOpen, onClose, onConfirm, initialText (AI 생성 결과)
- * @output 텍스트 입력 영역, 파싱된 작업 미리보기, 적용 버튼
+ * @output 텍스트 입력 영역, 파싱된 작업 미리보기 (체크박스 포함), 적용 버튼, 재생성 버튼
  * @external_dependencies
  *   - TIME_BLOCKS, RESISTANCE_MULTIPLIERS: 도메인 타입 및 상수
  */
@@ -12,6 +12,9 @@ import { useState, useRef, useEffect, useId } from 'react';
 import type { Task, TimeBlockId, Resistance } from '@/shared/types/domain';
 import { TIME_BLOCKS, RESISTANCE_MULTIPLIERS } from '@/shared/types/domain';
 import { generateId } from '@/shared/lib/utils';
+import { useTaskBreakdownStore } from './stores/breakdownStore';
+import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 
 interface TaskBreakdownModalProps {
     isOpen: boolean;
@@ -21,11 +24,13 @@ interface TaskBreakdownModalProps {
 }
 
 interface ParsedTask {
+    id: string; // 고유 ID 추가
     text: string;
     memo?: string;
     baseDuration?: number;
     resistance?: Resistance;
     timeBlock?: TimeBlockId;
+    checked: boolean; // 체크박스 상태
 }
 
 const modalOverlayClass =
@@ -59,10 +64,15 @@ export default function TaskBreakdownModal({ isOpen, onClose, onConfirm, initial
     const [defaultDuration, setDefaultDuration] = useState(30);
     const [loading, setLoading] = useState(false);
     const [previewTasks, setPreviewTasks] = useState<ParsedTask[]>([]);
+    const [regenerating, setRegenerating] = useState(false);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const titleId = useId();
     const descriptionId = useId();
+
+    const { taskData, source, triggerBreakdown } = useTaskBreakdownStore();
+    const { settings } = useSettingsStore();
+    const { waifuState } = useWaifu();
 
     // 초기 텍스트 설정
     useEffect(() => {
@@ -118,10 +128,12 @@ export default function TaskBreakdownModal({ isOpen, onClose, onConfirm, initial
             remainingText = remainingText.replace(/^\d+\.\s+/, '');
 
             const task: ParsedTask = {
+                id: generateId('parsed-task'),
                 text: '',
                 resistance: defaultResistance,
                 baseDuration: defaultDuration,
                 timeBlock: defaultTimeBlock,
+                checked: true, // 기본적으로 모두 체크
             };
 
             // 메모 추출 (| 뒤의 내용)
@@ -175,19 +187,60 @@ export default function TaskBreakdownModal({ isOpen, onClose, onConfirm, initial
     }
 
     /**
+     * 체크박스 토글
+     */
+    const toggleTaskCheck = (taskId: string) => {
+        setPreviewTasks(prev => prev.map(task =>
+            task.id === taskId ? { ...task, checked: !task.checked } : task
+        ));
+    };
+
+    /**
+     * 전체 선택/해제
+     */
+    const toggleAllChecks = () => {
+        const allChecked = previewTasks.every(task => task.checked);
+        setPreviewTasks(prev => prev.map(task => ({ ...task, checked: !allChecked })));
+    };
+
+    /**
+     * 재생성 핸들러
+     */
+    const handleRegenerate = async (refinement: 'more_detailed' | 'simpler') => {
+        if (!taskData || !source || !settings?.geminiApiKey) return;
+
+        setRegenerating(true);
+        try {
+            await triggerBreakdown(
+                taskData,
+                source,
+                settings.geminiApiKey,
+                waifuState?.affection ?? 50,
+                refinement
+            );
+        } catch (error) {
+            console.error('Failed to regenerate:', error);
+        } finally {
+            setRegenerating(false);
+        }
+    };
+
+    /**
      * 작업 적용
      */
     const handleSubmit = async () => {
-        if (previewTasks.length === 0) {
-            alert('추가할 작업이 없습니다.');
+        const checkedTasks = previewTasks.filter(task => task.checked);
+
+        if (checkedTasks.length === 0) {
+            alert('최소 1개 이상의 작업을 선택해주세요.');
             return;
         }
 
         setLoading(true);
 
         try {
-            // ParsedTask를 Task로 변환
-            const tasks: Task[] = previewTasks.map((parsed) => {
+            // ParsedTask를 Task로 변환 (체크된 것만)
+            const tasks: Task[] = checkedTasks.map((parsed) => {
                 const resistance = parsed.resistance || defaultResistance;
                 const baseDuration = parsed.baseDuration || defaultDuration;
                 const multiplier = RESISTANCE_MULTIPLIERS[resistance];
@@ -228,6 +281,9 @@ export default function TaskBreakdownModal({ isOpen, onClose, onConfirm, initial
 
     if (!isOpen) return null;
 
+    const checkedCount = previewTasks.filter(task => task.checked).length;
+    const allChecked = previewTasks.length > 0 && previewTasks.every(task => task.checked);
+
     return (
         <div className={modalOverlayClass} onClick={onClose}>
             <div
@@ -265,6 +321,26 @@ export default function TaskBreakdownModal({ isOpen, onClose, onConfirm, initial
                 <div className="flex flex-1 flex-col overflow-hidden">
                     <div className="flex-1 overflow-y-auto px-6 py-6">
                         <div className="flex flex-col gap-6">
+                            {/* 재생성 버튼 */}
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => handleRegenerate('more_detailed')}
+                                    disabled={regenerating || !taskData}
+                                    className="flex-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4 py-3 text-sm font-semibold text-[var(--color-text)] transition hover:border-[var(--color-primary)] hover:bg-[var(--color-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    🔍 더 잘게 쪼개기
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRegenerate('simpler')}
+                                    disabled={regenerating || !taskData}
+                                    className="flex-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4 py-3 text-sm font-semibold text-[var(--color-text)] transition hover:border-[var(--color-primary)] hover:bg-[var(--color-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    📦 더 간단하게 묶기
+                                </button>
+                            </div>
+
                             <div className="grid gap-4 md:grid-cols-3">
                                 <div className={controlCardClass}>
                                     <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
@@ -337,9 +413,22 @@ export default function TaskBreakdownModal({ isOpen, onClose, onConfirm, initial
 
                                 <div className={previewContainerClass}>
                                     <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
-                                        <span className="text-sm font-semibold text-[var(--color-text)]">미리보기</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-sm font-semibold text-[var(--color-text)]">미리보기</span>
+                                            {previewTasks.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={toggleAllChecks}
+                                                    className="text-xs text-[var(--color-primary)] hover:underline"
+                                                >
+                                                    {allChecked ? '전체 해제' : '전체 선택'}
+                                                </button>
+                                            )}
+                                        </div>
                                         {previewTasks.length > 0 && (
-                                            <span className="text-xs text-[var(--color-text-tertiary)]">{previewTasks.length}개 작업</span>
+                                            <span className="text-xs text-[var(--color-text-tertiary)]">
+                                                {checkedCount}/{previewTasks.length}개 선택됨
+                                            </span>
                                         )}
                                     </div>
                                     <div className="flex-1 overflow-y-auto px-4 py-4">
@@ -354,32 +443,46 @@ export default function TaskBreakdownModal({ isOpen, onClose, onConfirm, initial
 
                                                     return (
                                                         <div
-                                                            key={`${task.text}-${index}`}
-                                                            className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 shadow-[0_12px_30px_rgba(0,0,0,0.25)] transition hover:border-[var(--color-primary)]/40"
+                                                            key={task.id}
+                                                            className={`rounded-2xl border ${
+                                                                task.checked
+                                                                    ? 'border-[var(--color-primary)]/40 bg-[var(--color-bg)]'
+                                                                    : 'border-[var(--color-border)] bg-[var(--color-bg)]/50 opacity-50'
+                                                            } p-4 shadow-[0_12px_30px_rgba(0,0,0,0.25)] transition hover:border-[var(--color-primary)]/60`}
                                                         >
                                                             <div className="flex items-start gap-3">
-                                                                <span className="text-xs font-semibold text-[var(--color-text-tertiary)]">#{index + 1}</span>
-                                                                <p className="flex-1 text-sm font-semibold leading-relaxed text-[var(--color-text)]">
-                                                                    {task.text}
-                                                                </p>
-                                                            </div>
-                                                            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-secondary)]">
-                                                                <span
-                                                                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${resistanceBadgeClass[resistance]}`}
-                                                                >
-                                                                    {resistanceLabel[resistance]}
-                                                                </span>
-                                                                <span className="rounded-full bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 font-semibold text-[var(--color-text)]">
-                                                                    ⏱ {duration}분
-                                                                </span>
-                                                                {blockLabel && (
-                                                                    <span className="rounded-full bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 font-semibold text-[var(--color-text)]">
-                                                                        📅 {blockLabel}
-                                                                    </span>
-                                                                )}
-                                                                {task.memo && (
-                                                                    <span className="truncate text-[var(--color-text-tertiary)]">📝 {task.memo}</span>
-                                                                )}
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={task.checked}
+                                                                    onChange={() => toggleTaskCheck(task.id)}
+                                                                    className="mt-1 h-4 w-4 rounded border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/30 cursor-pointer"
+                                                                />
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-start gap-2">
+                                                                        <span className="text-xs font-semibold text-[var(--color-text-tertiary)]">#{index + 1}</span>
+                                                                        <p className="flex-1 text-sm font-semibold leading-relaxed text-[var(--color-text)]">
+                                                                            {task.text}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+                                                                        <span
+                                                                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${resistanceBadgeClass[resistance]}`}
+                                                                        >
+                                                                            {resistanceLabel[resistance]}
+                                                                        </span>
+                                                                        <span className="rounded-full bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 font-semibold text-[var(--color-text)]">
+                                                                            ⏱ {duration}분
+                                                                        </span>
+                                                                        {blockLabel && (
+                                                                            <span className="rounded-full bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 font-semibold text-[var(--color-text)]">
+                                                                                📅 {blockLabel}
+                                                                            </span>
+                                                                        )}
+                                                                        {task.memo && (
+                                                                            <span className="truncate text-[var(--color-text-tertiary)]">📝 {task.memo}</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     );
@@ -412,10 +515,10 @@ export default function TaskBreakdownModal({ isOpen, onClose, onConfirm, initial
                         <button
                             type="button"
                             onClick={handleSubmit}
-                            disabled={loading || previewTasks.length === 0}
+                            disabled={loading || checkedCount === 0}
                             className="rounded-2xl bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] px-6 py-3 text-sm font-semibold text-white shadow-[0_18px_45px_rgba(79,70,229,0.45)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                            {loading ? '적용 중…' : `작업 ${previewTasks.length}개 적용하기`}
+                            {loading ? '적용 중…' : `작업 ${checkedCount}개 적용하기`}
                         </button>
                     </div>
                 </div>

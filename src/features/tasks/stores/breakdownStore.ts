@@ -11,7 +11,7 @@ interface BreakdownState {
     abortController: AbortController | null;
 
     // Actions
-    triggerBreakdown: (task: Task, source: 'schedule' | 'inbox', apiKey: string, affection: number) => Promise<void>;
+    triggerBreakdown: (task: Task, source: 'schedule' | 'inbox', apiKey: string, affection: number, refinement?: 'more_detailed' | 'simpler' | null) => Promise<void>;
     cancelBreakdown: () => void;
     close: () => void;
     setBreakdownText: (text: string) => void;
@@ -25,7 +25,7 @@ export const useTaskBreakdownStore = create<BreakdownState>((set, get) => ({
     taskData: null,
     abortController: null,
 
-    triggerBreakdown: async (task, source, apiKey, affection) => {
+    triggerBreakdown: async (task, source, apiKey, affection, refinement) => {
         // Cancel previous request if exists
         const prevController = get().abortController;
         if (prevController) {
@@ -56,6 +56,7 @@ export const useTaskBreakdownStore = create<BreakdownState>((set, get) => ({
                     preparation2: task.preparation2 || '',
                     preparation3: task.preparation3 || '',
                     affection: affection,
+                    refinement: refinement || null,
                 },
                 apiKey
             );
