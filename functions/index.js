@@ -12,6 +12,7 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { logger } = require("firebase-functions");
 const admin = require("firebase-admin");
+const { RESISTANCE_MULTIPLIERS } = require("../shared/constants/resistanceMultipliers");
 
 admin.initializeApp();
 
@@ -47,22 +48,15 @@ const TIME_BLOCKS = [
 ];
 
 // ============================================================================
-// Shared Constants (동기화: src/shared/types/domain.ts)
+// Helper Functions
 // ============================================================================
 
 /**
- * 저항도 배율 (클라이언트와 동일한 값 사용)
- * @sync src/shared/types/domain.ts:RESISTANCE_MULTIPLIERS
- * TODO: 공통 패키지로 추출 권장
- */
-const RESISTANCE_MULTIPLIERS = {
-  low: 1.0,    // 🟢 쉬움
-  medium: 1.3, // 🟡 보통
-  high: 1.6,   // 🔴 어려움
-};
-
-/**
  * 저항도 배율 가져오기
+ * @param {string} resistance - 'low' | 'medium' | 'high'
+ * @returns {number} 저항도 배율 (1.0, 1.3, 1.6)
+ *
+ * @note RESISTANCE_MULTIPLIERS는 shared/constants/resistanceMultipliers.js에서 import됨
  */
 function getResistanceMultiplier(resistance) {
   return RESISTANCE_MULTIPLIERS[resistance] || 1.0;

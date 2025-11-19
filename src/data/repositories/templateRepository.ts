@@ -19,6 +19,13 @@ import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { templateStrategy } from '@/shared/services/sync/firebase/strategies';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
+import { createLogger } from '@/shared/lib/logger';
+
+// ============================================================================
+// Logger
+// ============================================================================
+
+const logger = createLogger('TemplateRepository');
 
 // ============================================================================
 // Template CRUD
