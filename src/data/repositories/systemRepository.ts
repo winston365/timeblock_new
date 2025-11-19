@@ -13,6 +13,7 @@ import { db } from '../db/dexieClient';
 export const SYSTEM_KEYS = {
     LAST_INSIGHT_TIME: 'lastInsightGenerationTime',
     LAST_INSIGHT_TEXT: 'lastInsightText',
+    PROCRASTINATION_MONITOR: 'procrastinationMonitorState',
 } as const;
 
 /**

@@ -20,6 +20,7 @@ import { setErrorCallback, retryNow } from '@/shared/services/sync/firebase/sync
 import { useAppInitialization } from './hooks/useAppInitialization';
 import { FocusTimerOverlay } from '@/features/focus/FocusTimerOverlay';
 import { RealityCheckModal } from '@/features/feedback/RealityCheckModal';
+import GlobalTaskBreakdown from '@/features/tasks/GlobalTaskBreakdown';
 
 // 임시로 컴포넌트를 직접 import (나중에 features에서 가져올 것)
 import TopToolbar from './components/TopToolbar';
@@ -92,9 +93,8 @@ export default function AppShell() {
       : visibility === 'peeking'
         ? 'translate-x-[calc(100%-0.35rem)] opacity-60 pointer-events-none scale-95'
         : 'translate-x-[calc(100%+2rem)] opacity-0 pointer-events-none scale-95';
-  const waifuContainerClass = `waifu-panel-container fixed bottom-0 right-0 z-40 p-4 ${
-    visibility === 'visible' ? '' : 'pointer-events-none'
-  }`;
+  const waifuContainerClass = `waifu-panel-container fixed bottom-0 right-0 z-40 p-4 ${visibility === 'visible' ? '' : 'pointer-events-none'
+    }`;
 
   // 패널 토글 핸들러
   const toggleLeftSidebar = () => {
@@ -315,6 +315,8 @@ export default function AppShell() {
       {/* Focus Mode Overlay */}
       <FocusTimerOverlay />
       <RealityCheckModal />
+      <GlobalTaskBreakdown />
     </div>
   );
 }
+

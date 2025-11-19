@@ -96,15 +96,37 @@ export function useAppInitialization() {
                                     const updates: Promise<any>[] = [];
                                     for (const date of dailyDataDates) {
                                         const data = firebaseData.dailyData[date];
-                                        if (data && data.tasks) {
-                                            updates.push(db.dailyData.put({
-                                                date,
-                                                tasks: data.tasks,
-                                                goals: data.goals || [],
-                                                timeBlockStates: data.timeBlockStates || {},
-                                                updatedAt: data.updatedAt || Date.now(),
-                                            }));
+                                        if (!data || !Array.isArray(data.tasks)) {
+                                            continue;
                                         }
+
+                                        updates.push((async () => {
+                                            const existing = await db.dailyData.get(date);
+                                            const remoteUpdatedAt = data.updatedAt ?? 0;
+                                            const localUpdatedAt = existing?.updatedAt ?? 0;
+
+                                            const mergedStates = {
+                                                ...(existing?.timeBlockStates || {}),
+                                                ...(data.timeBlockStates || {}),
+                                            };
+
+                                            if (!existing || remoteUpdatedAt > localUpdatedAt) {
+                                                await db.dailyData.put({
+                                                    date,
+                                                    tasks: data.tasks,
+                                                    goals: data.goals || [],
+                                                    timeBlockStates: mergedStates,
+                                                    updatedAt: remoteUpdatedAt || Date.now(),
+                                                });
+                                            } else if (remoteUpdatedAt < localUpdatedAt) {
+                                                syncToFirebase(dailyDataStrategy, {
+                                                    tasks: existing.tasks || [],
+                                                    goals: existing.goals || [],
+                                                    timeBlockStates: existing.timeBlockStates || {},
+                                                    updatedAt: existing.updatedAt || Date.now(),
+                                                }, date).catch(console.error);
+                                            }
+                                        })());
                                     }
                                     await Promise.all(updates);
                                 }

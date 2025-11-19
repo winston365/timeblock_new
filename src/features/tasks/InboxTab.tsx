@@ -35,7 +35,7 @@ import { useDragDropManager } from '@/features/schedule/hooks/useDragDropManager
  */
 export default function InboxTab() {
   const { updateQuestProgress } = useGameState();
-  const { toggleTaskCompletion } = useDailyData();
+  const { toggleTaskCompletion, updateTask } = useDailyData();
   const { getDragData } = useDragDropManager();
   const [inboxTasks, setInboxTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -152,6 +152,10 @@ export default function InboxTab() {
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    if (e.nativeEvent?.stopPropagation) {
+      e.nativeEvent.stopPropagation();
+    }
     setIsDragOver(false);
 
     // Phase 2 통합 드래그 시스템 사용 (JSON 파싱)
@@ -162,19 +166,53 @@ export default function InboxTab() {
     }
 
     try {
-      // 작업을 인박스로 이동 (timeBlock: null, hourSlot: undefined)
-      // updateTask가 자동으로 timeBlock → inbox 이동 처리 + refresh
-      const { updateTask } = await import('@/data/repositories/dailyDataRepository');
       await updateTask(dragData.taskId, {
         timeBlock: null,
         hourSlot: undefined
       });
 
-      // ✅ 인박스 새로고침 (인박스 뷰 업데이트용)
+      // 인박스를 다시 로드 (인박스 상태 업데이트)
       await refreshInboxTasks();
     } catch (error) {
       console.error('Failed to move task to inbox:', error);
-      alert('작업을 인박스로 이동하는데 실패했습니다.');
+      alert(error instanceof Error ? error.message : '작업을 인박스로 이동하는데 실패했습니다.');
+    }
+  };
+
+  // 여러 작업 일괄 추가
+  const handleSaveMultipleTasks = async (tasks: Partial<Task>[]) => {
+    try {
+      for (const taskData of tasks) {
+        const newTask: Task = {
+          id: generateId('task'),
+          text: taskData.text || '새 작업',
+          memo: taskData.memo || '',
+          baseDuration: taskData.baseDuration || 15,
+          resistance: taskData.resistance || 'low',
+          adjustedDuration: taskData.adjustedDuration || 15,
+          timeBlock: null,
+          completed: false,
+          actualDuration: 0,
+          createdAt: new Date().toISOString(),
+          completedAt: null,
+          preparation1: taskData.preparation1 || '',
+          preparation2: taskData.preparation2 || '',
+          preparation3: taskData.preparation3 || '',
+        };
+        await addInboxTask(newTask);
+
+        // 퀘스트 진행 체크
+        const isPrepared = !!(newTask.preparation1 && newTask.preparation2 && newTask.preparation3);
+        if (isPrepared) {
+          await updateQuestProgress('prepare_tasks', 1);
+        }
+      }
+      await refreshInboxTasks();
+      setIsModalOpen(false);
+      setEditingTask(null);
+    } catch (error) {
+      console.error('Failed to save multiple tasks:', error);
+      alert('작업 일괄 추가에 실패했습니다.');
     }
   };
 
@@ -258,12 +296,14 @@ export default function InboxTab() {
       {isModalOpen && (
         <TaskModal
           task={editingTask}
-          initialBlockId={null}
-          onSave={handleSaveTask}
+          initialBlockId="morning" // Inbox tasks don't have a specific block initially, but required by type
+          onSave={editingTask ? handleEditTask : handleAddTask}
+          onSaveMultiple={handleSaveMultipleTasks}
           onClose={() => {
             setIsModalOpen(false);
             setEditingTask(null);
           }}
+          source="inbox"
         />
       )}
     </div>

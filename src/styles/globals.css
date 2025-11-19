@@ -14,13 +14,18 @@
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
-  --color-reward: #ffd700; /* Gold - 보상/XP 시그니처 컬러 */
+  --color-reward: #ffd700;
+  /* Gold - 보상/XP 시그니처 컬러 */
 
   /* 배경 색상 (다크모드) - 명도 대비 강화 */
-  --color-bg-base: #0a0e1a;        /* 기본 배경 - 더 어둡게 */
-  --color-bg-surface: #1a2030;     /* 카드/패널 - 중간 */
-  --color-bg-elevated: #2d3950;    /* 모달/드롭다운 - 더 밝게 */
-  --color-bg-interactive: #3d4960; /* 호버 상태 - 가장 밝게 */
+  --color-bg-base: #0a0e1a;
+  /* 기본 배경 - 더 어둡게 */
+  --color-bg-surface: #1a2030;
+  /* 카드/패널 - 중간 */
+  --color-bg-elevated: #2d3950;
+  /* 모달/드롭다운 - 더 밝게 */
+  --color-bg-interactive: #3d4960;
+  /* 호버 상태 - 가장 밝게 */
 
   /* 하위 호환성을 위한 기존 변수 (새 변수 참조) */
   --color-bg: var(--color-bg-base);
@@ -54,15 +59,24 @@
   --spacing-xl: 2rem;
 
   /* 타이포그래피 스케일 */
-  --text-2xs: 0.6875rem;   /* 11px - 메타 정보 (XP, 시간) */
-  --text-xs: 0.75rem;      /* 12px - 보조 정보 (레이블) */
-  --text-sm: 0.8125rem;    /* 13px - 일반 텍스트 */
-  --text-base: 0.875rem;   /* 14px - 기본 */
-  --text-md: 0.9375rem;    /* 15px - 강조 텍스트 */
-  --text-lg: 1.125rem;     /* 18px - 섹션 제목 */
-  --text-xl: 1.5rem;       /* 24px - 페이지 제목, 레벨 */
-  --text-2xl: 2rem;        /* 32px - 레벨업 모달, 큰 타이틀 */
-  --text-3xl: 2.5rem;      /* 40px - 히어로 타이틀 */
+  --text-2xs: 0.6875rem;
+  /* 11px - 메타 정보 (XP, 시간) */
+  --text-xs: 0.75rem;
+  /* 12px - 보조 정보 (레이블) */
+  --text-sm: 0.8125rem;
+  /* 13px - 일반 텍스트 */
+  --text-base: 0.875rem;
+  /* 14px - 기본 */
+  --text-md: 0.9375rem;
+  /* 15px - 강조 텍스트 */
+  --text-lg: 1.125rem;
+  /* 18px - 섹션 제목 */
+  --text-xl: 1.5rem;
+  /* 24px - 페이지 제목, 레벨 */
+  --text-2xl: 2rem;
+  /* 32px - 레벨업 모달, 큰 타이틀 */
+  --text-3xl: 2.5rem;
+  /* 40px - 히어로 타이틀 */
 
   /* 라인 높이 */
   --leading-none: 1;
@@ -88,7 +102,7 @@
   --font-extrabold: 800;
 
   /* 폰트 */
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -148,38 +162,112 @@ h6 {
 }
 
 /* 텍스트 크기 유틸리티 클래스 */
-.text-2xs { font-size: var(--text-2xs); }
-.text-xs { font-size: var(--text-xs); }
-.text-sm { font-size: var(--text-sm); }
-.text-base { font-size: var(--text-base); }
-.text-md { font-size: var(--text-md); }
-.text-lg { font-size: var(--text-lg); }
-.text-xl { font-size: var(--text-xl); }
-.text-2xl { font-size: var(--text-2xl); }
-.text-3xl { font-size: var(--text-3xl); }
+.text-2xs {
+  font-size: var(--text-2xs);
+}
+
+.text-xs {
+  font-size: var(--text-xs);
+}
+
+.text-sm {
+  font-size: var(--text-sm);
+}
+
+.text-base {
+  font-size: var(--text-base);
+}
+
+.text-md {
+  font-size: var(--text-md);
+}
+
+.text-lg {
+  font-size: var(--text-lg);
+}
+
+.text-xl {
+  font-size: var(--text-xl);
+}
+
+.text-2xl {
+  font-size: var(--text-2xl);
+}
+
+.text-3xl {
+  font-size: var(--text-3xl);
+}
 
 /* 라인 높이 유틸리티 */
-.leading-none { line-height: var(--leading-none); }
-.leading-tight { line-height: var(--leading-tight); }
-.leading-snug { line-height: var(--leading-snug); }
-.leading-normal { line-height: var(--leading-normal); }
-.leading-relaxed { line-height: var(--leading-relaxed); }
-.leading-loose { line-height: var(--leading-loose); }
+.leading-none {
+  line-height: var(--leading-none);
+}
+
+.leading-tight {
+  line-height: var(--leading-tight);
+}
+
+.leading-snug {
+  line-height: var(--leading-snug);
+}
+
+.leading-normal {
+  line-height: var(--leading-normal);
+}
+
+.leading-relaxed {
+  line-height: var(--leading-relaxed);
+}
+
+.leading-loose {
+  line-height: var(--leading-loose);
+}
 
 /* 폰트 무게 유틸리티 */
-.font-light { font-weight: var(--font-light); }
-.font-normal { font-weight: var(--font-normal); }
-.font-medium { font-weight: var(--font-medium); }
-.font-semibold { font-weight: var(--font-semibold); }
-.font-bold { font-weight: var(--font-bold); }
-.font-extrabold { font-weight: var(--font-extrabold); }
+.font-light {
+  font-weight: var(--font-light);
+}
+
+.font-normal {
+  font-weight: var(--font-normal);
+}
+
+.font-medium {
+  font-weight: var(--font-medium);
+}
+
+.font-semibold {
+  font-weight: var(--font-semibold);
+}
+
+.font-bold {
+  font-weight: var(--font-bold);
+}
+
+.font-extrabold {
+  font-weight: var(--font-extrabold);
+}
 
 /* 글자 간격 유틸리티 */
-.tracking-tighter { letter-spacing: var(--tracking-tighter); }
-.tracking-tight { letter-spacing: var(--tracking-tight); }
-.tracking-normal { letter-spacing: var(--tracking-normal); }
-.tracking-wide { letter-spacing: var(--tracking-wide); }
-.tracking-wider { letter-spacing: var(--tracking-wider); }
+.tracking-tighter {
+  letter-spacing: var(--tracking-tighter);
+}
+
+.tracking-tight {
+  letter-spacing: var(--tracking-tight);
+}
+
+.tracking-normal {
+  letter-spacing: var(--tracking-normal);
+}
+
+.tracking-wide {
+  letter-spacing: var(--tracking-wide);
+}
+
+.tracking-wider {
+  letter-spacing: var(--tracking-wider);
+}
 
 button {
   font-family: inherit;
@@ -189,9 +277,13 @@ button {
   font-size: inherit;
 }
 
-input, textarea, select {
+input,
+textarea,
+select {
   font-family: inherit;
   font-size: inherit;
+  font-weight: inherit;
+  /* 폰트 굵기도 상속 */
 }
 
 #root {
@@ -225,7 +317,8 @@ input, textarea, select {
 
 /* 포커스 인디케이터 - WCAG AAA */
 *:focus {
-  outline: none; /* 기본 outline 제거 후 커스텀 적용 */
+  outline: none;
+  /* 기본 outline 제거 후 커스텀 적용 */
 }
 
 *:focus-visible {
@@ -286,6 +379,7 @@ select:focus-visible,
 
 /* 움직임 감소 모드 - WCAG AAA */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -428,6 +522,7 @@ select:disabled,
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -454,6 +549,7 @@ select:disabled,
     opacity: 0;
     transform: scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -468,7 +564,8 @@ select:disabled,
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-shrink: 0; /* 헤더 고정, 스크롤 방지 */
+  flex-shrink: 0;
+  /* 헤더 고정, 스크롤 방지 */
 }
 
 .modal-header h2,
@@ -515,6 +612,7 @@ select:disabled,
 
 /* 움직임 감소 모달 */
 @media (prefers-reduced-motion: reduce) {
+
   .modal-overlay,
   .modal-content {
     animation: none;
@@ -533,14 +631,21 @@ select:disabled,
 
 /* 테마 1: Ocean (오션 블루) - 차분하고 집중력 향상 */
 [data-theme="ocean"] {
-  --color-primary: #0ea5e9;      /* Sky Blue */
-  --color-primary-dark: #0284c7; /* Deeper Sky Blue */
-  --color-secondary: #06b6d4;    /* Cyan */
+  --color-primary: #0ea5e9;
+  /* Sky Blue */
+  --color-primary-dark: #0284c7;
+  /* Deeper Sky Blue */
+  --color-secondary: #06b6d4;
+  /* Cyan */
 
-  --color-bg-base: #0c1220;      /* 깊은 네이비 */
-  --color-bg-surface: #1a2332;   /* 미드나잇 블루 */
-  --color-bg-elevated: #2d3e50;  /* 스틸 블루 */
-  --color-bg-interactive: #3d5266; /* 라이트 스틸 */
+  --color-bg-base: #0c1220;
+  /* 깊은 네이비 */
+  --color-bg-surface: #1a2332;
+  /* 미드나잇 블루 */
+  --color-bg-elevated: #2d3e50;
+  /* 스틸 블루 */
+  --color-bg-interactive: #3d5266;
+  /* 라이트 스틸 */
 
   /* 그라데이션 */
   --gradient-brand: linear-gradient(135deg, #0ea5e9, #06b6d4);
@@ -548,98 +653,147 @@ select:disabled,
 
 /* 테마 2: Forest (포레스트 그린) - 편안하고 자연스러운 */
 [data-theme="forest"] {
-  --color-primary: #10b981;      /* Emerald */
-  --color-primary-dark: #059669; /* Dark Emerald */
-  --color-secondary: #34d399;    /* Light Emerald */
+  --color-primary: #10b981;
+  /* Emerald */
+  --color-primary-dark: #059669;
+  /* Dark Emerald */
+  --color-secondary: #34d399;
+  /* Light Emerald */
 
-  --color-bg-base: #0a1410;      /* 다크 포레스트 */
-  --color-bg-surface: #1a2e23;   /* 딥 그린 */
-  --color-bg-elevated: #2d4a3e;  /* 모스 그린 */
-  --color-bg-interactive: #3d5f4e; /* 세이지 그린 */
+  --color-bg-base: #0a1410;
+  /* 다크 포레스트 */
+  --color-bg-surface: #1a2e23;
+  /* 딥 그린 */
+  --color-bg-elevated: #2d4a3e;
+  /* 모스 그린 */
+  --color-bg-interactive: #3d5f4e;
+  /* 세이지 그린 */
 
   --gradient-brand: linear-gradient(135deg, #10b981, #34d399);
 }
 
 /* 테마 3: Sunset (석양 오렌지) - 따뜻하고 활력적인 */
 [data-theme="sunset"] {
-  --color-primary: #f59e0b;      /* Amber */
-  --color-primary-dark: #d97706; /* Dark Amber */
-  --color-secondary: #fb923c;    /* Orange */
+  --color-primary: #f59e0b;
+  /* Amber */
+  --color-primary-dark: #d97706;
+  /* Dark Amber */
+  --color-secondary: #fb923c;
+  /* Orange */
 
-  --color-bg-base: #1a0f0a;      /* 다크 초콜릿 */
-  --color-bg-surface: #2a1f1a;   /* 웜 브라운 */
-  --color-bg-elevated: #3d342d;  /* 카멜 */
-  --color-bg-interactive: #4d443d; /* 라이트 브라운 */
+  --color-bg-base: #1a0f0a;
+  /* 다크 초콜릿 */
+  --color-bg-surface: #2a1f1a;
+  /* 웜 브라운 */
+  --color-bg-elevated: #3d342d;
+  /* 카멜 */
+  --color-bg-interactive: #4d443d;
+  /* 라이트 브라운 */
 
   --gradient-brand: linear-gradient(135deg, #f59e0b, #fb923c);
 }
 
 /* 테마 4: Purple Dream (퍼플 드림) - 창의적이고 우아한 */
 [data-theme="purple"] {
-  --color-primary: #a855f7;      /* Purple */
-  --color-primary-dark: #9333ea; /* Dark Purple */
-  --color-secondary: #c084fc;    /* Light Purple */
+  --color-primary: #a855f7;
+  /* Purple */
+  --color-primary-dark: #9333ea;
+  /* Dark Purple */
+  --color-secondary: #c084fc;
+  /* Light Purple */
 
-  --color-bg-base: #0f0a1a;      /* 딥 바이올렛 */
-  --color-bg-surface: #1f1a2e;   /* 다크 퍼플 */
-  --color-bg-elevated: #342d4a;  /* 미스틱 퍼플 */
-  --color-bg-interactive: #443d5a; /* 라벤더 그레이 */
+  --color-bg-base: #0f0a1a;
+  /* 딥 바이올렛 */
+  --color-bg-surface: #1f1a2e;
+  /* 다크 퍼플 */
+  --color-bg-elevated: #342d4a;
+  /* 미스틱 퍼플 */
+  --color-bg-interactive: #443d5a;
+  /* 라벤더 그레이 */
 
   --gradient-brand: linear-gradient(135deg, #a855f7, #c084fc);
 }
 
 /* 테마 5: Rose Gold (로즈 골드) - 세련되고 모던한 */
 [data-theme="rose"] {
-  --color-primary: #ec4899;      /* Pink */
-  --color-primary-dark: #db2777; /* Dark Pink */
-  --color-secondary: #f472b6;    /* Light Pink */
+  --color-primary: #ec4899;
+  /* Pink */
+  --color-primary-dark: #db2777;
+  /* Dark Pink */
+  --color-secondary: #f472b6;
+  /* Light Pink */
 
-  --color-bg-base: #1a0a14;      /* 다크 로즈 */
-  --color-bg-surface: #2a1a23;   /* 딥 마젠타 */
-  --color-bg-elevated: #3d2d3a;  /* 더스티 로즈 */
-  --color-bg-interactive: #4d3d4a; /* 모브 그레이 */
+  --color-bg-base: #1a0a14;
+  /* 다크 로즈 */
+  --color-bg-surface: #2a1a23;
+  /* 딥 마젠타 */
+  --color-bg-elevated: #3d2d3a;
+  /* 더스티 로즈 */
+  --color-bg-interactive: #4d3d4a;
+  /* 모브 그레이 */
 
   --gradient-brand: linear-gradient(135deg, #ec4899, #f472b6);
 }
 
 /* 테마 6: Midnight (미드나잇 블루) - 깊고 프로페셔널한 */
 [data-theme="midnight"] {
-  --color-primary: #3b82f6;      /* Blue */
-  --color-primary-dark: #2563eb; /* Dark Blue */
-  --color-secondary: #60a5fa;    /* Light Blue */
+  --color-primary: #3b82f6;
+  /* Blue */
+  --color-primary-dark: #2563eb;
+  /* Dark Blue */
+  --color-secondary: #60a5fa;
+  /* Light Blue */
 
-  --color-bg-base: #030712;      /* 거의 블랙 */
-  --color-bg-surface: #111827;   /* 차콜 블루 */
-  --color-bg-elevated: #1f2937;  /* 슬레이트 그레이 */
-  --color-bg-interactive: #374151; /* 그레이 */
+  --color-bg-base: #030712;
+  /* 거의 블랙 */
+  --color-bg-surface: #111827;
+  /* 차콜 블루 */
+  --color-bg-elevated: #1f2937;
+  /* 슬레이트 그레이 */
+  --color-bg-interactive: #374151;
+  /* 그레이 */
 
   --gradient-brand: linear-gradient(135deg, #3b82f6, #60a5fa);
 }
 
 /* 테마 7: Cyberpunk (사이버펑크) - 네온과 미래적인 */
 [data-theme="cyberpunk"] {
-  --color-primary: #06ffa5;      /* Neon Green */
-  --color-primary-dark: #05d98b; /* Dark Neon */
-  --color-secondary: #ff006e;    /* Neon Pink */
+  --color-primary: #06ffa5;
+  /* Neon Green */
+  --color-primary-dark: #05d98b;
+  /* Dark Neon */
+  --color-secondary: #ff006e;
+  /* Neon Pink */
 
-  --color-bg-base: #0a0a14;      /* 딥 블랙 블루 */
-  --color-bg-surface: #1a1a2e;   /* 다크 퍼플 블루 */
-  --color-bg-elevated: #2d2d4a;  /* 일렉트릭 블루 */
-  --color-bg-interactive: #3d3d5a; /* 네온 그레이 */
+  --color-bg-base: #0a0a14;
+  /* 딥 블랙 블루 */
+  --color-bg-surface: #1a1a2e;
+  /* 다크 퍼플 블루 */
+  --color-bg-elevated: #2d2d4a;
+  /* 일렉트릭 블루 */
+  --color-bg-interactive: #3d3d5a;
+  /* 네온 그레이 */
 
   --gradient-brand: linear-gradient(135deg, #06ffa5, #ff006e);
 }
 
 /* 테마 8: Mocha (모카) - 부드럽고 눈에 편안한 */
 [data-theme="mocha"] {
-  --color-primary: #8b7355;      /* 모카 브라운 */
-  --color-primary-dark: #6b5644; /* 다크 모카 */
-  --color-secondary: #d4a574;    /* 카라멜 */
+  --color-primary: #8b7355;
+  /* 모카 브라운 */
+  --color-primary-dark: #6b5644;
+  /* 다크 모카 */
+  --color-secondary: #d4a574;
+  /* 카라멜 */
 
-  --color-bg-base: #1a1612;      /* 에스프레소 */
-  --color-bg-surface: #2a241f;   /* 다크 초콜릿 */
-  --color-bg-elevated: #3d352d;  /* 밀크 초콜릿 */
-  --color-bg-interactive: #4d453d; /* 라떼 */
+  --color-bg-base: #1a1612;
+  /* 에스프레소 */
+  --color-bg-surface: #2a241f;
+  /* 다크 초콜릿 */
+  --color-bg-elevated: #3d352d;
+  /* 밀크 초콜릿 */
+  --color-bg-interactive: #4d453d;
+  /* 라떼 */
 
   --gradient-brand: linear-gradient(135deg, #8b7355, #d4a574);
 }

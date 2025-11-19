@@ -26,7 +26,8 @@ interface LogContext {
 // Configuration
 // ============================================================================
 
-const IS_DEVELOPMENT = import.meta.env.DEV;
+const ENV = (typeof import.meta !== 'undefined' && (import.meta as any)?.env) || {};
+const IS_DEVELOPMENT = ENV.DEV ?? process.env.NODE_ENV !== 'production';
 const LOG_LEVELS: Record<LogLevel, number> = {
   debug: 0,
   info: 1,

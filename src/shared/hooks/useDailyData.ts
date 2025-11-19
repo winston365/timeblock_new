@@ -28,7 +28,7 @@ import type { Task } from '@/shared/types/domain';
  * @returns {() => Promise<void>} refresh - 데이터 새로고침
  * @returns {(tasks: Task[], timeBlockStates: object) => Promise<void>} saveData - 데이터 저장
  * @returns {(task: Task) => Promise<void>} addTask - 작업 추가
- * @returns {(taskId: string, updates: Partial<Task>) => Promise<void>} updateTask - 작업 업데이트
+ * @returns {(taskId: string, updates: Partial<Task>, options?: { skipBehaviorTracking?: boolean }) => Promise<void>} updateTask - 작업 업데이트
  * @returns {(taskId: string) => Promise<void>} deleteTask - 작업 삭제
  * @returns {(taskId: string) => Promise<void>} toggleTaskCompletion - 작업 완료 토글
  * @returns {(blockId: string, updates: Partial<TimeBlockState>) => Promise<void>} updateBlockState - 블록 상태 업데이트
@@ -112,4 +112,3 @@ export function useCompletedTasks(days: number = 7) {
 
   return { completedTasks, loading, error };
 }
-

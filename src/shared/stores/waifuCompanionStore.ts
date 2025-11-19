@@ -18,6 +18,18 @@ import { create } from 'zustand';
  */
 export type WaifuVisibility = 'hidden' | 'peeking' | 'visible';
 
+interface WaifuExpressionOverride {
+  imagePath: string;
+}
+
+interface WaifuShowOptions {
+  audioPath?: string;
+  expression?: {
+    imagePath: string;
+    durationMs?: number;
+  };
+}
+
 interface WaifuCompanionState {
   /** 현재 와이푸 표시 상태 */
   visibility: WaifuVisibility;
@@ -34,8 +46,15 @@ interface WaifuCompanionState {
   /** 자동 숨김 타이머 ID */
   autoHideTimer: number | null;
 
+
+  /** 와이푸 표정 오버라이드 */
+  expressionOverride: WaifuExpressionOverride | null;
+
+  /** 표정 오버라이드 타이머 */
+  expressionTimer: number | null;
+
   /** 와이푸를 화면에 완전히 표시 (3초 후 자동으로 peeking 상태로 전환, 고정 시 제외) */
-  show: (message?: string, audioPath?: string) => void;
+  show: (message?: string, options?: string | WaifuShowOptions) => void;
 
   /** 와이푸를 엿보기 상태로 전환 */
   peek: () => void;
@@ -51,6 +70,9 @@ interface WaifuCompanionState {
 
   /** 자동 숨김 타이머 클리어 */
   clearAutoHideTimer: () => void;
+
+  /** 와이푸 표정 오버라이드 설정 */
+  setExpressionOverride: (imagePath?: string, durationMs?: number) => void;
 }
 
 /**
@@ -68,31 +90,70 @@ export const useWaifuCompanionStore = create<WaifuCompanionState>((set, get) => 
   audioPath: undefined,
   isPinned: false,
   autoHideTimer: null,
+  expressionOverride: null,
+  expressionTimer: null,
 
-  show: (message = '', audioPath) => {
+  show: (message = '', options) => {
+
     const state = get();
 
-    // 기존 타이머가 있으면 클리어
-    if (state.autoHideTimer !== null) {
-      clearTimeout(state.autoHideTimer);
-    }
+    const opts = typeof options === 'string' ? { audioPath: options } : options;
+
+    const audioPath = opts?.audioPath;
+
+    const expressionOption = opts?.expression;
+
+
+
+    state.clearAutoHideTimer();
+
+
 
     let timer = null;
 
-    // 고정 상태가 아닐 때만 3초 후 자동으로 peeking 상태로 전환
+
+
     if (!state.isPinned) {
+
       timer = window.setTimeout(() => {
+
         set({ visibility: 'peeking', autoHideTimer: null });
+
       }, 3000);
+
     }
 
+
+
+    if (expressionOption?.imagePath) {
+
+      state.setExpressionOverride(expressionOption.imagePath, expressionOption.durationMs);
+
+    } else {
+
+      state.setExpressionOverride();
+
+    }
+
+
+
     set({
+
       visibility: 'visible',
+
       message,
+
       audioPath,
+
       autoHideTimer: timer,
+
     });
+
   },
+
+
+
+
 
   peek: () => {
     const state = get();
@@ -154,5 +215,30 @@ export const useWaifuCompanionStore = create<WaifuCompanionState>((set, get) => 
       clearTimeout(state.autoHideTimer);
       set({ autoHideTimer: null });
     }
+  },
+
+  setExpressionOverride: (imagePath?: string, durationMs = 6000) => {
+    const state = get();
+
+    if (state.expressionTimer !== null) {
+      clearTimeout(state.expressionTimer);
+    }
+
+    if (!imagePath) {
+      set({ expressionOverride: null, expressionTimer: null });
+      return;
+    }
+
+    let timer: number | null = null;
+    if (typeof window !== 'undefined') {
+      timer = window.setTimeout(() => {
+        set({ expressionOverride: null, expressionTimer: null });
+      }, durationMs);
+    }
+
+    set({
+      expressionOverride: { imagePath },
+      expressionTimer: timer,
+    });
   },
 }));

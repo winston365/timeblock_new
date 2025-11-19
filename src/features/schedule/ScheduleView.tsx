@@ -97,7 +97,7 @@ export default function ScheduleView() {
       // 미완료 작업을 인박스로 이동 (timeBlock을 null로 설정)
       for (const task of tasksToMove) {
         try {
-          await updateTask(task.id, { timeBlock: null });
+          await updateTask(task.id, { timeBlock: null }, { skipBehaviorTracking: true });
         } catch (error) {
           console.error(`Failed to move task ${task.id} to inbox:`, error);
         }
@@ -244,7 +244,7 @@ export default function ScheduleView() {
       showWaifu(`"${taskName}" 삭제했어. 괜찮아? 🤔`);
     } catch (error) {
       console.error('Failed to delete task:', error);
-      alert('작업 삭제에 실패했습니다.');
+      alert(error instanceof Error ? error.message : '작업 삭제에 실패했습니다.');
     }
   };
 
@@ -264,7 +264,7 @@ export default function ScheduleView() {
       await updateTask(taskId, updates);
     } catch (error) {
       console.error('Failed to update task:', error);
-      alert('작업 수정에 실패했습니다.');
+      alert(error instanceof Error ? error.message : '작업 수정에 실패했습니다.');
     }
   };
 
@@ -316,6 +316,49 @@ export default function ScheduleView() {
     } catch (error) {
       console.error('Failed to move task:', error);
       alert('작업 이동에 실패했습니다.');
+    }
+  };
+
+  // 여러 작업 일괄 추가
+  const handleSaveMultipleTasks = async (tasks: Partial<Task>[]) => {
+    if (!selectedBlockId) return;
+
+    try {
+      // 순차적으로 작업 추가
+      for (const taskData of tasks) {
+        const block = TIME_BLOCKS.find(b => b.id === selectedBlockId);
+        const firstHour = block ? block.start : undefined;
+
+        const newTask: Task = {
+          id: generateId('task'),
+          text: taskData.text || '새 작업',
+          memo: taskData.memo || '',
+          baseDuration: taskData.baseDuration || 15,
+          resistance: taskData.resistance || 'low',
+          adjustedDuration: taskData.adjustedDuration || 15,
+          timeBlock: selectedBlockId,
+          hourSlot: firstHour,
+          completed: false,
+          actualDuration: 0,
+          createdAt: new Date().toISOString(),
+          completedAt: null,
+          preparation1: taskData.preparation1 || '',
+          preparation2: taskData.preparation2 || '',
+          preparation3: taskData.preparation3 || '',
+          goalId: taskData.goalId || null,
+        };
+        await addTask(newTask);
+
+        // 준비된 작업이면 퀘스트 진행
+        const isPrepared = !!(newTask.preparation1 && newTask.preparation2 && newTask.preparation3);
+        if (isPrepared) {
+          await updateQuestProgress('prepare_tasks', 1);
+        }
+      }
+      handleCloseModal();
+    } catch (error) {
+      console.error('Failed to save multiple tasks:', error);
+      alert('작업 일괄 추가에 실패했습니다.');
     }
   };
 
@@ -384,6 +427,7 @@ export default function ScheduleView() {
           task={editingTask}
           initialBlockId={selectedBlockId}
           onSave={handleSaveTask}
+          onSaveMultiple={handleSaveMultipleTasks}
           onClose={handleCloseModal}
         />
       )}

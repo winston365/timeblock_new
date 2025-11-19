@@ -11,17 +11,20 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import type { Task, Resistance, TimeBlockId, DailyGoal } from '@/shared/types/domain';
 import { calculateAdjustedDuration } from '@/shared/lib/utils';
-import { generateTaskBreakdown, suggestTaskEmoji } from '@/shared/services/ai/geminiApi';
+import { suggestTaskEmoji } from '@/shared/services/ai/geminiApi';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { loadGlobalGoals } from '@/data/repositories';
 import { MemoModal } from './MemoModal';
+import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
 
 interface TaskModalProps {
   task: Task | null;
   initialBlockId: TimeBlockId;
   onSave: (taskData: Partial<Task>) => void;
+  onSaveMultiple?: (tasks: Partial<Task>[]) => void;
   onClose: () => void;
+  source?: 'schedule' | 'inbox';
 }
 
 /**
@@ -62,7 +65,7 @@ function WaifuCommentary({
 /**
  * 작업 추가/수정 모달
  */
-export default function TaskModal({ task, initialBlockId, onSave, onClose }: TaskModalProps) {
+export default function TaskModal({ task, initialBlockId, onSave, onSaveMultiple, onClose, source = 'schedule' }: TaskModalProps) {
   const [text, setText] = useState('');
   const [memo, setMemo] = useState('');
   const [baseDuration, setBaseDuration] = useState(15);
@@ -76,11 +79,12 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
   const [error, setError] = useState<string | null>(null);
   const [memoRows, setMemoRows] = useState(2);
   const [showMemoModal, setShowMemoModal] = useState(false);
+
   const formRef = useRef<HTMLFormElement>(null);
 
   const { waifuState } = useWaifu();
   const { settings } = useSettingsStore();
-
+  const { triggerBreakdown } = useTaskBreakdownStore();
 
   // 목표 목록 로드
   useEffect(() => {
@@ -189,6 +193,7 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
     return () => window.removeEventListener('keydown', handleKeyboard);
   }, [onClose, showMemoModal]);
 
+  // 수동 AI 세분화 버튼 핸들러 (이제 글로벌 스토어 사용)
   const handleAIBreakdown = async () => {
     if (!text.trim()) {
       setError('작업 제목을 먼저 입력해주세요.');
@@ -198,34 +203,20 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
       setError('Gemini API 키가 설정되지 않았습니다.');
       return;
     }
-    setAiLoading(true);
-    setError(null);
-    try {
-      const breakdown = await generateTaskBreakdown(
-        {
-          taskText: text.trim(),
-          memo: memo.trim(),
-          baseDuration,
-          resistance,
-          preparation1: preparation1.trim(),
-          preparation2: preparation2.trim(),
-          preparation3: preparation3.trim(),
-          affection: waifuState?.affection ?? 50,
-        },
-        settings.geminiApiKey
-      );
-      const newMemo = memo.trim()
-        ? `${memo.trim()}\n\n--- AI 세분화 ---\n${breakdown}`
-        : breakdown;
-      setMemo(newMemo);
-      const lineCount = newMemo.split('\n').length;
-      setMemoRows(Math.min(Math.max(lineCount, 2), 6));
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'AI 세분화에 실패했습니다.';
-      setError(errorMessage);
-    } finally {
-      setAiLoading(false);
-    }
+
+    // 현재 입력 상태로 임시 Task 객체 생성
+    const tempTask: any = {
+      text: text.trim(),
+      memo: memo.trim(),
+      baseDuration,
+      resistance,
+      preparation1: preparation1.trim(),
+      preparation2: preparation2.trim(),
+      preparation3: preparation3.trim(),
+      timeBlock: initialBlockId,
+    };
+
+    triggerBreakdown(tempTask, source, settings.geminiApiKey, waifuState?.affection ?? 50);
   };
 
   const handleAutoEmoji = async () => {
@@ -245,15 +236,16 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!text.trim()) {
       setError('작업 제목을 입력해주세요.');
       document.getElementById('task-text')?.focus();
       return;
     }
+
     const adjustedDuration = calculateAdjustedDuration(baseDuration, resistance);
-    onSave({
+    const taskData = {
       text: text.trim(),
       memo: memo.trim(),
       baseDuration,
@@ -264,7 +256,23 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
       preparation2: preparation2.trim(),
       preparation3: preparation3.trim(),
       goalId: goalId || null,
-    });
+    };
+
+    // 1. 먼저 저장 수행
+    onSave(taskData);
+
+    // 2. 모달 즉시 닫기 (비동기 저장 대기하지 않음)
+    onClose();
+
+    // 3. 난이도가 'high'이고 API 키가 있으면 비동기로 분해 트리거
+    if (resistance === 'high' && settings?.geminiApiKey) {
+      const tempTask: any = {
+        ...taskData,
+        id: task?.id || 'temp-id', // 기존 ID 또는 임시 ID
+      };
+
+      triggerBreakdown(tempTask, source, settings.geminiApiKey, waifuState?.affection ?? 50);
+    }
   };
 
   const handleOverlayClick = (e: React.MouseEvent) => {
@@ -281,282 +289,284 @@ export default function TaskModal({ task, initialBlockId, onSave, onClose }: Tas
     'w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition-all duration-200 focus:border-[var(--color-primary)] focus:bg-[var(--color-bg-surface)] focus:ring-2 focus:ring-[var(--color-primary)]/20';
 
   return (
-    <div
-      className="modal-overlay fixed inset-0 z-[1000] flex items-start justify-center bg-[color:var(--modal-backdrop)] px-4 py-8 backdrop-blur-xl md:items-center"
-      onClick={handleOverlayClick}
-    >
-      <div className="modal-content modal-content-wide relative flex w-full max-w-[900px] flex-col overflow-hidden rounded-3xl border border-[var(--modal-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text)] shadow-[var(--modal-shadow)] animate-in zoom-in-95 duration-200 max-h-[90vh]">
+    <>
+      <div
+        className="modal-overlay fixed inset-0 z-[1000] flex items-start justify-center bg-[color:var(--modal-backdrop)] px-4 py-8 backdrop-blur-xl md:items-center"
+        onClick={handleOverlayClick}
+      >
+        <div className="modal-content modal-content-wide relative flex w-full max-w-[900px] flex-col overflow-hidden rounded-3xl border border-[var(--modal-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text)] shadow-[var(--modal-shadow)] animate-in zoom-in-95 duration-200 max-h-[90vh]">
 
-        {/* Header (Fixed) */}
-        <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)]/80 px-8 py-5 backdrop-blur-md">
-          <div>
-            <h3 className="text-xl font-bold text-[var(--color-text)]">{task ? '작업 수정' : '새 작업 추가'}</h3>
-            <p className="text-xs text-[var(--color-text-tertiary)] mt-1">작업을 세분화하고 구체적으로 계획해보세요.</p>
+          {/* Header (Fixed) */}
+          <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)]/80 px-8 py-5 backdrop-blur-md">
+            <div>
+              <h3 className="text-xl font-bold text-[var(--color-text)]">{task ? '작업 수정' : '새 작업 추가'}</h3>
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-1">작업을 세분화하고 구체적으로 계획해보세요.</p>
+            </div>
+            <button
+              type="button"
+              className="group inline-flex h-9 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)]"
+              onClick={onClose}
+              aria-label="닫기"
+            >
+              <kbd className="hidden rounded bg-[var(--color-bg)] px-1.5 py-0.5 text-[10px] font-sans text-[var(--color-text-tertiary)] shadow-sm group-hover:text-[var(--color-text-secondary)] sm:inline-block">ESC</kbd>
+              <span className="text-xl leading-none">×</span>
+            </button>
           </div>
-          <button
-            type="button"
-            className="group inline-flex h-9 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)]"
-            onClick={onClose}
-            aria-label="닫기"
-          >
-            <kbd className="hidden rounded bg-[var(--color-bg)] px-1.5 py-0.5 text-[10px] font-sans text-[var(--color-text-tertiary)] shadow-sm group-hover:text-[var(--color-text-secondary)] sm:inline-block">ESC</kbd>
-            <span className="text-xl leading-none">×</span>
-          </button>
-        </div>
 
-        {/* Scrollable Content Body */}
-        <div className="flex-1 overflow-y-auto">
-          <form
-            ref={formRef}
-            className="flex flex-col lg:flex-row"
-            onSubmit={handleSubmit}
-          >
-            {/* Left Column: Basic Info */}
-            <div className="flex-1 flex flex-col gap-6 p-8 lg:border-r lg:border-[var(--color-border)]">
-              {/* Error Message */}
-              {error && (
-                <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-200 animate-in slide-in-from-top-2">
-                  <span>⚠️</span>
-                  {error}
+          {/* Scrollable Content Body */}
+          <div className="flex-1 overflow-y-auto">
+            <form
+              ref={formRef}
+              className="flex flex-col lg:flex-row"
+              onSubmit={handleSubmit}
+            >
+              {/* Left Column: Basic Info */}
+              <div className="flex-1 flex flex-col gap-6 p-8 lg:border-r lg:border-[var(--color-border)]">
+                {/* Error Message */}
+                {error && (
+                  <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-200 animate-in slide-in-from-top-2">
+                    <span>⚠️</span>
+                    {error}
+                  </div>
+                )}
+
+                {/* Title Input */}
+                <div className="space-y-2">
+                  <label htmlFor="task-text" className="text-sm font-semibold text-[var(--color-text)]">
+                    작업 제목 <span className="text-rose-400">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="task-text"
+                      type="text"
+                      value={text}
+                      onChange={handleTextChange}
+                      placeholder="무엇을 할까요? (예: T30 D2 보고서 작성)"
+                      autoFocus
+                      className={baseFieldClasses}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAutoEmoji}
+                      className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-xl hover:bg-[var(--color-bg-surface)] transition-colors"
+                      title="AI 이모지 추천"
+                    >
+                      ✨
+                    </button>
+                  </div>
                 </div>
-              )}
 
-              {/* Title Input */}
-              <div className="space-y-2">
-                <label htmlFor="task-text" className="text-sm font-semibold text-[var(--color-text)]">
-                  작업 제목 <span className="text-rose-400">*</span>
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    id="task-text"
-                    type="text"
-                    value={text}
-                    onChange={handleTextChange}
-                    placeholder="무엇을 할까요? (예: T30 D2 보고서 작성)"
-                    autoFocus
-                    className={baseFieldClasses}
+                {/* Duration Selection (Redesigned) */}
+                <div className="space-y-3">
+                  <label className="text-sm font-semibold text-[var(--color-text)]">
+                    예상 소요 시간
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[5, 10, 15, 30, 45, 60, 90, 120].map(duration => (
+                      <button
+                        key={duration}
+                        type="button"
+                        className={`
+                          relative flex flex-col items-center justify-center rounded-xl border py-3 transition-all duration-200
+                          ${baseDuration === duration
+                            ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-lg scale-[1.02] z-10'
+                            : 'border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-surface)]'
+                          }
+                        `}
+                        onClick={() => setBaseDuration(duration)}
+                      >
+                        <span className={`text-sm font-bold ${baseDuration === duration ? 'text-white' : 'text-[var(--color-text)]'}`}>
+                          {duration}분
+                        </span>
+                        {duration >= 60 && (
+                          <span className={`text-[10px] ${baseDuration === duration ? 'text-white/80' : 'text-[var(--color-text-tertiary)]'}`}>
+                            {duration / 60}시간
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-end gap-2 text-xs text-[var(--color-text-tertiary)]">
+                    <span>조정된 시간:</span>
+                    <span className="font-bold text-[var(--color-primary)]">
+                      {calculateAdjustedDuration(baseDuration, resistance)}분
+                    </span>
+                  </div>
+                </div>
+
+                {/* Resistance & Goal */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="task-resistance" className="text-sm font-semibold text-[var(--color-text)]">
+                      난이도
+                    </label>
+                    <select
+                      id="task-resistance"
+                      value={resistance}
+                      onChange={e => setResistance(e.target.value as Resistance)}
+                      className={selectFieldClasses}
+                    >
+                      <option value="low">💧 쉬움 (x1.0)</option>
+                      <option value="medium">🌊 보통 (x1.3)</option>
+                      <option value="high">🌪️ 어려움 (x1.6)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="task-goal" className="text-sm font-semibold text-[var(--color-text)]">
+                      연결된 목표
+                    </label>
+                    <select
+                      id="task-goal"
+                      value={goalId || ''}
+                      onChange={e => setGoalId(e.target.value || null)}
+                      className={selectFieldClasses}
+                    >
+                      <option value="">목표 없음</option>
+                      {goals.map(goal => (
+                        <option key={goal.id} value={goal.id}>
+                          {goal.icon} {goal.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Memo */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="task-memo" className="text-sm font-semibold text-[var(--color-text)]">
+                      메모
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowMemoModal(true)}
+                      className="text-xs text-[var(--color-primary)] hover:underline"
+                    >
+                      전체 화면 ↗
+                    </button>
+                  </div>
+                  <textarea
+                    id="task-memo"
+                    value={memo}
+                    onChange={handleMemoChange}
+                    onDoubleClick={() => setShowMemoModal(true)}
+                    placeholder="필요한 링크나 참고사항을 적어두세요."
+                    rows={memoRows}
+                    className={textareaClasses}
                   />
                   <button
                     type="button"
-                    onClick={handleAutoEmoji}
-                    className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-xl hover:bg-[var(--color-bg-surface)] transition-colors"
-                    title="AI 이모지 추천"
+                    className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-sm font-medium text-indigo-200 transition hover:bg-indigo-500/20 disabled:opacity-50"
+                    onClick={handleAIBreakdown}
+                    disabled={aiLoading || !text.trim()}
                   >
-                    ✨
+                    {aiLoading ? '⏳ AI가 분석 중...' : '🧠 AI로 작업 구체화하기'}
                   </button>
                 </div>
               </div>
 
-              {/* Duration Selection (Redesigned) */}
-              <div className="space-y-3">
-                <label className="text-sm font-semibold text-[var(--color-text)]">
-                  예상 소요 시간
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[5, 10, 15, 30, 45, 60, 90, 120].map(duration => (
-                    <button
-                      key={duration}
-                      type="button"
-                      className={`
-                        relative flex flex-col items-center justify-center rounded-xl border py-3 transition-all duration-200
-                        ${baseDuration === duration
-                          ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-lg scale-[1.02] z-10'
-                          : 'border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-surface)]'
-                        }
-                      `}
-                      onClick={() => setBaseDuration(duration)}
-                    >
-                      <span className={`text-sm font-bold ${baseDuration === duration ? 'text-white' : 'text-[var(--color-text)]'}`}>
-                        {duration}분
-                      </span>
-                      {duration >= 60 && (
-                        <span className={`text-[10px] ${baseDuration === duration ? 'text-white/80' : 'text-[var(--color-text-tertiary)]'}`}>
-                          {duration / 60}시간
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center justify-end gap-2 text-xs text-[var(--color-text-tertiary)]">
-                  <span>조정된 시간:</span>
-                  <span className="font-bold text-[var(--color-primary)]">
-                    {calculateAdjustedDuration(baseDuration, resistance)}분
-                  </span>
-                </div>
-              </div>
+              {/* Right Column: Prep & Waifu */}
+              <div className="flex-1 flex flex-col gap-6 p-8 bg-[var(--color-bg-surface)]/30">
+                <WaifuCommentary resistance={resistance} duration={baseDuration} affection={waifuState?.affection ?? 50} />
 
-              {/* Resistance & Goal */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label htmlFor="task-resistance" className="text-sm font-semibold text-[var(--color-text)]">
-                    난이도
-                  </label>
-                  <select
-                    id="task-resistance"
-                    value={resistance}
-                    onChange={e => setResistance(e.target.value as Resistance)}
-                    className={selectFieldClasses}
-                  >
-                    <option value="low">💧 쉬움 (x1.0)</option>
-                    <option value="medium">🌊 보통 (x1.3)</option>
-                    <option value="high">🌪️ 어려움 (x1.6)</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="task-goal" className="text-sm font-semibold text-[var(--color-text)]">
-                    연결된 목표
-                  </label>
-                  <select
-                    id="task-goal"
-                    value={goalId || ''}
-                    onChange={e => setGoalId(e.target.value || null)}
-                    className={selectFieldClasses}
-                  >
-                    <option value="">목표 없음</option>
-                    {goals.map(goal => (
-                      <option key={goal.id} value={goal.id}>
-                        {goal.icon} {goal.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Memo */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="task-memo" className="text-sm font-semibold text-[var(--color-text)]">
-                    메모
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowMemoModal(true)}
-                    className="text-xs text-[var(--color-primary)] hover:underline"
-                  >
-                    전체 화면 ↗
-                  </button>
-                </div>
-                <textarea
-                  id="task-memo"
-                  value={memo}
-                  onChange={handleMemoChange}
-                  onDoubleClick={() => setShowMemoModal(true)}
-                  placeholder="필요한 링크나 참고사항을 적어두세요."
-                  rows={memoRows}
-                  className={textareaClasses}
-                />
-                <button
-                  type="button"
-                  className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-sm font-medium text-indigo-200 transition hover:bg-indigo-500/20 disabled:opacity-50"
-                  onClick={handleAIBreakdown}
-                  disabled={aiLoading || !text.trim()}
-                >
-                  {aiLoading ? '⏳ AI가 분석 중...' : '🧠 AI로 작업 구체화하기'}
-                </button>
-              </div>
-            </div>
-
-            {/* Right Column: Prep & Waifu */}
-            <div className="flex-1 flex flex-col gap-6 p-8 bg-[var(--color-bg-surface)]/30">
-              <WaifuCommentary resistance={resistance} duration={baseDuration} affection={waifuState?.affection ?? 50} />
-
-              <div className="flex flex-col gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-6 shadow-sm">
-                <div className="flex items-center gap-2 pb-2 border-b border-[var(--color-border)]">
-                  <span className="text-lg">🎒</span>
-                  <h4 className="font-semibold text-[var(--color-text)]">작업 준비물 챙기기</h4>
-                </div>
-
-                <div className="space-y-4 mt-2">
-                  <div className="space-y-2">
-                    <label htmlFor="preparation-1" className="text-xs font-medium text-[var(--color-text-secondary)]">
-                      1. 물리적 준비물 (자료, 물 등)
-                    </label>
-                    <input
-                      id="preparation-1"
-                      type="text"
-                      value={preparation1}
-                      onChange={e => setPreparation1(e.target.value)}
-                      placeholder="예) 참고 자료 펴두기"
-                      className={preparationInputClasses}
-                    />
+                <div className="flex flex-col gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-6 shadow-sm">
+                  <div className="flex items-center gap-2 pb-2 border-b border-[var(--color-border)]">
+                    <span className="text-lg">🎒</span>
+                    <h4 className="font-semibold text-[var(--color-text)]">작업 준비물 챙기기</h4>
                   </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor="preparation-2" className="text-xs font-medium text-[var(--color-text-secondary)]">
-                      2. 환경 세팅 (조명, 음악)
-                    </label>
-                    <input
-                      id="preparation-2"
-                      type="text"
-                      value={preparation2}
-                      onChange={e => setPreparation2(e.target.value)}
-                      placeholder="예) 집중 플레이리스트 재생"
-                      className={preparationInputClasses}
-                    />
+                  <div className="space-y-4 mt-2">
+                    <div className="space-y-2">
+                      <label htmlFor="preparation-1" className="text-xs font-medium text-[var(--color-text-secondary)]">
+                        1. 물리적 준비물 (자료, 물 등)
+                      </label>
+                      <input
+                        id="preparation-1"
+                        type="text"
+                        value={preparation1}
+                        onChange={e => setPreparation1(e.target.value)}
+                        placeholder="예) 참고 자료 펴두기"
+                        className={preparationInputClasses}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="preparation-2" className="text-xs font-medium text-[var(--color-text-secondary)]">
+                        2. 환경 세팅 (조명, 음악)
+                      </label>
+                      <input
+                        id="preparation-2"
+                        type="text"
+                        value={preparation2}
+                        onChange={e => setPreparation2(e.target.value)}
+                        placeholder="예) 집중 플레이리스트 재생"
+                        className={preparationInputClasses}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="preparation-3" className="text-xs font-medium text-[var(--color-text-secondary)]">
+                        3. 시작 의식 (심호흡, 스트레칭)
+                      </label>
+                      <input
+                        id="preparation-3"
+                        type="text"
+                        value={preparation3}
+                        onChange={e => setPreparation3(e.target.value)}
+                        placeholder="예) 가벼운 스트레칭"
+                        className={preparationInputClasses}
+                      />
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor="preparation-3" className="text-xs font-medium text-[var(--color-text-secondary)]">
-                      3. 시작 의식 (심호흡, 스트레칭)
-                    </label>
-                    <input
-                      id="preparation-3"
-                      type="text"
-                      value={preparation3}
-                      onChange={e => setPreparation3(e.target.value)}
-                      placeholder="예) 가벼운 스트레칭"
-                      className={preparationInputClasses}
-                    />
-                  </div>
+                  {preparation1 && preparation2 && preparation3 && (
+                    <div className="mt-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-sm font-semibold text-emerald-400 animate-bounce-slow">
+                      ✨ 완벽해요! 준비가 다 되었네요.
+                    </div>
+                  )}
                 </div>
 
-                {preparation1 && preparation2 && preparation3 && (
-                  <div className="mt-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-sm font-semibold text-emerald-400 animate-bounce-slow">
-                    ✨ 완벽해요! 준비가 다 되었네요.
-                  </div>
-                )}
+                {/* Spacer for scrolling content to not be hidden by footer */}
+                <div className="h-16 lg:hidden"></div>
               </div>
+            </form>
+          </div>
 
-              {/* Spacer for scrolling content to not be hidden by footer */}
-              <div className="h-16 lg:hidden"></div>
-            </div>
-          </form>
+          {/* Footer (Fixed) */}
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[var(--color-border)] bg-[var(--color-bg-surface)]/90 px-8 py-4 backdrop-blur-md">
+            <button
+              type="button"
+              className="px-5 py-2.5 rounded-xl text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+              onClick={onClose}
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98]"
+              onClick={() => formRef.current?.requestSubmit()}
+            >
+              <span>{task ? '저장하기' : '추가하기'}</span>
+              <div className="flex items-center gap-1 rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-medium text-white/90">
+                <span>Ctrl</span>
+                <span>↵</span>
+              </div>
+            </button>
+          </div>
         </div>
 
-        {/* Footer (Fixed) */}
-        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[var(--color-border)] bg-[var(--color-bg-surface)]/90 px-8 py-4 backdrop-blur-md">
-          <button
-            type="button"
-            className="px-5 py-2.5 rounded-xl text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-            onClick={onClose}
-          >
-            취소
-          </button>
-          <button
-            type="button"
-            className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98]"
-            onClick={() => formRef.current?.requestSubmit()}
-          >
-            <span>{task ? '저장하기' : '추가하기'}</span>
-            <div className="flex items-center gap-1 rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-medium text-white/90">
-              <span>Ctrl</span>
-              <span>↵</span>
-            </div>
-          </button>
-        </div>
+        {showMemoModal && (
+          <MemoModal
+            memo={memo}
+            onSave={(newMemo) => {
+              setMemo(newMemo);
+              const lineCount = newMemo.split('\n').length;
+              setMemoRows(Math.min(Math.max(lineCount, 2), 6));
+            }}
+            onClose={() => setShowMemoModal(false)}
+          />
+        )}
       </div>
-
-      {showMemoModal && (
-        <MemoModal
-          memo={memo}
-          onSave={(newMemo) => {
-            setMemo(newMemo);
-            const lineCount = newMemo.split('\n').length;
-            setMemoRows(Math.min(Math.max(lineCount, 2), 6));
-          }}
-          onClose={() => setShowMemoModal(false)}
-        />
-      )}
-    </div>
+    </>
   );
 }

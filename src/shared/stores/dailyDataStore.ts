@@ -39,6 +39,7 @@ import {
   assertDailyDataExists,
 } from '../lib/storeUtils';
 import { taskCompletionService } from '@/shared/services/gameplay/taskCompletion';
+import { trackTaskTimeBlockChange } from '@/shared/services/behavior/procrastinationMonitor';
 import { db } from '@/data/db/dexieClient';
 
 interface DailyDataStore {
@@ -52,13 +53,17 @@ interface DailyDataStore {
   loadData: (date?: string, force?: boolean) => Promise<void>;
   saveData: (tasks: Task[], timeBlockStates: DailyData['timeBlockStates']) => Promise<void>;
   addTask: (task: Task) => Promise<void>;
-  updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
+  updateTask: (taskId: string, updates: Partial<Task>, options?: UpdateTaskOptions) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   toggleTaskCompletion: (taskId: string) => Promise<void>;
   updateBlockState: (blockId: string, updates: Partial<TimeBlockState>) => Promise<void>;
   toggleBlockLock: (blockId: string) => Promise<void>;
   refresh: () => Promise<void>;
   reset: () => void;
+}
+
+interface UpdateTaskOptions {
+  skipBehaviorTracking?: boolean;
 }
 
 /**
@@ -176,9 +181,10 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
   /**
    * Task 업데이트 (Global Inbox ↔ TimeBlock 이동 지원)
    */
-  updateTask: async (taskId: string, updates: Partial<Task>) => {
+  updateTask: async (taskId: string, updates: Partial<Task>, options?: UpdateTaskOptions) => {
     const { currentDate, dailyData, loadData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
+    const { skipBehaviorTracking = false } = options || {};
 
     // 🔧 Firebase undefined 처리 & hourSlot 자동 계산
     const sanitizedUpdates = sanitizeTaskUpdates(updates);
@@ -201,6 +207,20 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     }
 
     // 🔍 이동 타입 감지
+    if (originalTask?.timeBlock) {
+      const blockState = dailyData.timeBlockStates[originalTask.timeBlock];
+      if (blockState?.isLocked) {
+        const wantsToChangeBlock =
+          Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'timeBlock') &&
+          sanitizedUpdates.timeBlock !== undefined &&
+          sanitizedUpdates.timeBlock !== originalTask.timeBlock;
+
+        if (wantsToChangeBlock) {
+          throw new Error('잠금된 블록의 작업은 이동하거나 인박스로 보낼 수 없습니다. 잠금을 해제해주세요.');
+        }
+      }
+    }
+
     if (inboxTask && sanitizedUpdates.timeBlock !== null && sanitizedUpdates.timeBlock !== undefined) {
       isInboxToBlockMove = true;
     } else if (originalTask && sanitizedUpdates.timeBlock === null && originalTask.timeBlock !== null) {
@@ -218,6 +238,12 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         isBlockToInboxMove,
       });
     }
+
+    const shouldTrackBehavior =
+      !skipBehaviorTracking &&
+      Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'timeBlock');
+    const previousBlock = originalTask?.timeBlock ?? null;
+    const nextBlock = shouldTrackBehavior ? (sanitizedUpdates.timeBlock ?? null) : null;
 
     try {
       // ✅ Repository 호출
@@ -239,6 +265,15 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         }
         await loadData(currentDate, true);
       }
+
+      if (shouldTrackBehavior) {
+        await trackTaskTimeBlockChange({
+          taskId,
+          previousBlock,
+          nextBlock,
+          currentDate,
+        });
+      }
     } catch (err) {
       console.error('[DailyDataStore] Failed to update task, rolling back:', err);
       // ❌ Rollback
@@ -257,6 +292,13 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     // 원본 백업
     const originalTasks = dailyData.tasks;
     const deletedTask = dailyData.tasks.find(t => t.id === taskId);
+
+    if (deletedTask?.timeBlock) {
+      const blockState = dailyData.timeBlockStates[deletedTask.timeBlock];
+      if (blockState?.isLocked) {
+        throw new Error('잠금된 블록의 작업은 삭제할 수 없습니다. 잠금을 해제해주세요.');
+      }
+    }
 
     // ✅ Optimistic Update
     const optimisticTasks = removeTaskFromArray(dailyData.tasks, taskId);

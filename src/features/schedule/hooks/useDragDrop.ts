@@ -12,6 +12,8 @@ import { useState } from 'react';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { useDragDropManager } from './useDragDropManager';
 
+let lastDropEventId: number | null = null;
+
 /**
  * 드래그 앤 드롭 훅
  *
@@ -85,7 +87,24 @@ export const useDragDrop = (
     onUpdate: (taskId: string, updates: Partial<Task>) => Promise<void>
   ) => {
     e.preventDefault();
+    e.stopPropagation();
+    if (e.nativeEvent?.stopPropagation) {
+      e.nativeEvent.stopPropagation();
+    }
     setIsDragOver(false);
+
+    const eventId = e.timeStamp ?? e.nativeEvent?.timeStamp ?? null;
+    if (eventId !== null) {
+      if (lastDropEventId === eventId) {
+        return;
+      }
+      lastDropEventId = eventId;
+      setTimeout(() => {
+        if (lastDropEventId === eventId) {
+          lastDropEventId = null;
+        }
+      }, 0);
+    }
 
     const dragData = getDragData(e);
     if (!dragData) {

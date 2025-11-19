@@ -35,7 +35,7 @@ interface WaifuPanelProps {
  */
 export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
   const { waifuState, loading, currentMood, currentDialogue, currentAudio } = useWaifu();
-  const { message: companionMessage, isPinned, togglePin } = useWaifuCompanionStore();
+  const { message: companionMessage, isPinned, togglePin, expressionOverride } = useWaifuCompanionStore();
   const [displayImagePath, setDisplayImagePath] = useState<string>('');
   const [clickCount, setClickCount] = useState(0);
   const [waifuMode, setWaifuMode] = useState<WaifuMode>('characteristic');
@@ -72,12 +72,18 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
 
   // 초기 이미지 로드 및 호감도 변경 시 이미지 업데이트
   useEffect(() => {
+    if (expressionOverride?.imagePath) {
+      setDisplayImagePath(expressionOverride.imagePath);
+      lastImageChangeTime.current = Date.now();
+      return;
+    }
+
     if (imagePath) {
       setDisplayImagePath(imagePath);
     } else if (waifuState) {
       changeImage(waifuState.affection);
     }
-  }, [imagePath, waifuState?.affection, changeImage]);
+  }, [expressionOverride?.imagePath, imagePath, waifuState?.affection, changeImage]);
 
   // 10분마다 자동으로 이미지 변경
   useEffect(() => {
