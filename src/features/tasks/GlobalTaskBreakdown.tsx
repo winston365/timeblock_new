@@ -32,10 +32,8 @@ export default function GlobalTaskBreakdown() {
                 ...t,
                 id: generateId('task'),
                 createdAt: new Date().toISOString(),
-                // Inherit some properties from the original task if needed, 
-                // but TaskBreakdownModal already handles most.
-                // We need to ensure timeBlock is correct.
-                timeBlock: source === 'schedule' ? taskData.timeBlock : null,
+                // timeBlock은 TaskBreakdownModal에서 이미 사용자가 설정했으므로 그대로 유지
+                // t.timeBlock을 덮어쓰지 않음
             }));
 
             // 2. Add tasks based on source
