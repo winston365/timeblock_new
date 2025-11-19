@@ -280,22 +280,22 @@ export function getDialogueFromAffection(affection: number, _tasksCompleted: num
   // 20-40: 경계, 혐오감 완화
   if (affection >= 20) {
     const dialogues = [
-      { text: '...또 뭐야, 씨발.', audio: '/audio/또뭐야씨발.mp3' },
-      { text: '귀찮게.', audio: '/audio/귀찮게.mp3' },
-      { text: '뭐? 말 걸지 마.', audio: '/audio/뭐말걸지마.mp3' },
-      { text: '...하.', audio: '/audio/하.mp3' },
-      { text: '짜증나게.', audio: '/audio/짜증나게.mp3' },
+      { text: '...또 뭐야, 씨발.', audio: 'audio/또뭐야씨발.mp3' },
+      { text: '귀찮게.', audio: 'audio/귀찮게.mp3' },
+      { text: '뭐? 말 걸지 마.', audio: 'audio/뭐말걸지마.mp3' },
+      { text: '...하.', audio: 'audio/하.mp3' },
+      { text: '짜증나게.', audio: 'audio/짜증나게.mp3' },
     ];
     return dialogues[Math.floor(Math.random() * dialogues.length)];
   }
 
   // 0-20: 혐오, 적대
   const dialogues = [
-    { text: '꺼져. 진짜로.', audio: '/audio/꺼져진짜로.mp3' },
-    { text: '시발 또 왔네.', audio: '/audio/시발또왔네.mp3' },
-    { text: '보기 싫어. 저리 가.', audio: '/audio/보기싫어저리가.mp3' },
-    { text: '진짜 짜증나.', audio: '/audio/진짜짜증나.mp3' },
-    { text: '...개같네.', audio: '/audio/개같네.mp3' },
+    { text: '꺼져. 진짜로.', audio: 'audio/꺼져진짜로.mp3' },
+    { text: '시발 또 왔네.', audio: 'audio/시발또왔네.mp3' },
+    { text: '보기 싫어. 저리 가.', audio: 'audio/보기싫어저리가.mp3' },
+    { text: '진짜 짜증나.', audio: 'audio/진짜짜증나.mp3' },
+    { text: '...개같네.', audio: 'audio/개같네.mp3' },
   ];
   return dialogues[Math.floor(Math.random() * dialogues.length)];
 }
