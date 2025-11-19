@@ -55,6 +55,9 @@ interface TimeBlockHeaderProps {
   timeStatus: TimeStatus;
   timeRemainingLabel: string;
   completionPercentage: number;
+  needsPlanBoost: boolean;
+  planLoadRatio: number;
+  onRequestAddTask?: () => void;
   onToggleExpand: () => void;
   onToggleLock?: () => void;
   toggleFocusMode: () => void;
@@ -76,6 +79,9 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
   timeStatus,
   timeRemainingLabel,
   completionPercentage,
+  needsPlanBoost,
+  planLoadRatio,
+  onRequestAddTask,
   onToggleExpand,
   onToggleLock,
   toggleFocusMode,
@@ -90,18 +96,24 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
   const timeRangeLabel = `${block.start.toString().padStart(2, '0')}:00 - ${block.end
     .toString()
     .padStart(2, '0')}:00`;
+  const sanitize = (value: string) => value.replace(/\s|~/g, '');
+  const normalizedLabel = sanitize(block.label);
+  const normalizedRange = sanitize(timeRangeLabel);
+  const showTimeRange = normalizedLabel !== normalizedRange && !normalizedLabel.includes(normalizedRange);
+
   const contextKey = isCurrentBlock ? 'current' : isPastBlock ? 'past' : 'upcoming';
   const context = CONTEXT_META[contextKey];
   const statusBadge = STATUS_META[timeStatus];
   const showTimerControls = !state?.isLocked && !isPastBlock;
+  const showRemainingChip = !isCurrentBlock;
 
   return (
     <div className={headerClassName} onClick={onToggleExpand}>
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-baseline gap-2">
             <span className="text-lg font-semibold text-[var(--color-text)]">{block.label}</span>
-            <span className="text-sm text-[var(--color-text-tertiary)]">{timeRangeLabel}</span>
+            {showTimeRange && <span className="text-sm text-[var(--color-text-tertiary)]">{timeRangeLabel}</span>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-semibold ${context.className}`}>
@@ -111,11 +123,14 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
               <span aria-hidden="true">{statusBadge.icon}</span>
               {statusBadge.label}
             </span>
-            <span className="rounded-full bg-[var(--color-bg-tertiary)]/70 px-3 py-1 text-[12px] font-semibold text-[var(--color-text-secondary)]">
-              남은 {timeRemainingLabel}
-            </span>
+            {showRemainingChip && (
+              <span className="rounded-full bg-[var(--color-bg-tertiary)]/70 px-3 py-1 text-[12px] font-semibold text-[var(--color-text-secondary)]">
+                남은 {timeRemainingLabel}
+              </span>
+            )}
           </div>
         </div>
+
         <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-secondary)]">
           <span className="inline-flex items-center gap-1">
             <span className="text-[var(--color-text-tertiary)]">작업</span>
@@ -143,7 +158,10 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
       <div className="flex flex-wrap gap-2 pt-1" onClick={e => e.stopPropagation()}>
         <button
           type="button"
-          onClick={toggleFocusMode}
+          onClick={e => {
+            e.stopPropagation();
+            toggleFocusMode();
+          }}
           className="flex flex-1 min-w-[140px] flex-col rounded-xl border border-[var(--color-border)] px-3 py-2 text-left transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
         >
           <span className="text-xs font-semibold text-[var(--color-text)]">집중 모드</span>
@@ -198,6 +216,20 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
             />
           </div>
         </button>
+
+        {needsPlanBoost && !isPastBlock && onRequestAddTask && (
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              onRequestAddTask();
+            }}
+            className="flex flex-1 min-w-[140px] flex-col rounded-xl border border-dashed border-rose-400/60 bg-rose-500/5 px-3 py-2 text-left text-rose-100 transition hover:border-rose-400"
+          >
+            <span className="text-xs font-semibold">계획 보강 필요</span>
+            <span className="text-[11px] text-rose-100/80">{planLoadRatio.toFixed(1)}배 · 할 일 추가</span>
+          </button>
+        )}
       </div>
 
       {children}

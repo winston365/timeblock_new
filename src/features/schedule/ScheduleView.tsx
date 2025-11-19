@@ -107,6 +107,26 @@ export default function ScheduleView() {
     movePastIncompleteTasks();
   }, [currentHour, dailyData, updateTask]);
 
+  useEffect(() => {
+    if (!dailyData) return;
+    const missingBlocks = TIME_BLOCKS.filter(block => !dailyData.timeBlockStates[block.id]);
+    if (missingBlocks.length === 0) return;
+
+    (async () => {
+      for (const block of missingBlocks) {
+        try {
+          await updateBlockState(block.id as TimeBlockId, {
+            isLocked: false,
+            isPerfect: false,
+            isFailed: false,
+          });
+        } catch (error) {
+          console.error('Failed to initialize block state:', error);
+        }
+      }
+    })();
+  }, [dailyData, updateBlockState]);
+
   // 작업 추가 모달 열기
   const handleAddTask = (blockId: TimeBlockId) => {
     setSelectedBlockId(blockId);

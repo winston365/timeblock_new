@@ -51,7 +51,7 @@ const TimeBlock = memo(function TimeBlock({
   state,
   isCurrentBlock,
   isPastBlock = false,
-  onAddTask: _onAddTask,
+  onAddTask,
   onCreateTask,
   onEditTask,
   onUpdateTask,
@@ -118,7 +118,7 @@ const TimeBlock = memo(function TimeBlock({
   const completedPortion = Math.min(completedDuration, blockDurationMinutes);
   const plannedPortion = Math.min(Math.max(pendingDuration, 0), blockDurationMinutes - completedPortion);
   const idlePortion = Math.max(blockDurationMinutes - (completedPortion + plannedPortion), 0);
-  const completionSegments = [
+      const completionSegments = [
     { key: 'completed', value: completedPortion, className: 'bg-[var(--color-primary)]', label: '완료' },
     { key: 'planned', value: plannedPortion, className: 'bg-amber-400/80', label: '진행 중' },
     { key: 'idle', value: idlePortion, className: 'bg-[var(--color-bg-tertiary)]/60', label: '대기' }
@@ -126,13 +126,14 @@ const TimeBlock = memo(function TimeBlock({
     .filter(segment => segment.value > 0)
     .map(segment => ({
       ...segment,
-      width: `${(segment.value / blockDurationMinutes) * 100}%`
+      width: ${(segment.value / blockDurationMinutes) * 100}%
     }));
-  const completionTooltip = `완료 ${formatMinutesToHM(completedDuration)} / 전체 ${formatMinutesToHM(totalDuration)}`;
+  const completionTooltip = 완료  / 전체 ;
   const timeRemainingLabel = timeRemaining?.text ?? formatMinutesToHM(remainingMinutes);
   const showAlertProgress = isCurrentBlock && (timeStatus === 'tight' || timeStatus === 'critical');
-
-  const statusAccent = useMemo(() => ({
+  const planLoadRatio = remainingMinutes > 0 ? pendingDuration / remainingMinutes : 0;
+  const needsPlanBoost = planLoadRatio >= 1.6;
+const statusAccent = useMemo(() => ({
     comfortable: {
       spine: 'bg-emerald-400',
       gradient: 'from-emerald-500/20 via-emerald-500/5 to-transparent'
@@ -191,6 +192,9 @@ const TimeBlock = memo(function TimeBlock({
           timeStatus={timeStatus}
           timeRemainingLabel={timeRemainingLabel}
           completionPercentage={completionPercentage}
+          needsPlanBoost={needsPlanBoost}
+          planLoadRatio={planLoadRatio}
+          onRequestAddTask={() => onAddTask()}
           onToggleExpand={() => setIsExpanded(!isExpanded)}
           onToggleLock={onToggleLock}
           toggleFocusMode={toggleFocusMode}
