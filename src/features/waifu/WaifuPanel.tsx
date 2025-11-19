@@ -147,101 +147,96 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
   };
 
   return (
-    <section className="relative flex h-full min-h-0 flex-col gap-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-[0_45px_80px_rgba(0,0,0,0.5)]">
-      {/* Side Pin Button (Visible when folded) */}
+    <section className="relative flex h-full min-h-0 flex-col gap-4 rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/90 p-4 shadow-[0_45px_80px_rgba(0,0,0,0.5)] backdrop-blur">
       <button
         onClick={(e) => {
           e.stopPropagation();
           togglePin();
         }}
-        className={`absolute -left-12 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-l-xl border-y border-l border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-lg transition hover:bg-[var(--color-bg-tertiary)] ${isPinned ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-tertiary)]'
-          }`}
+        className={`absolute -left-12 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-l-xl border-y border-l border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-lg transition hover:bg-[var(--color-bg-tertiary)] ${isPinned ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-tertiary)]'}`}
         title={isPinned ? '고정 해제' : '패널 고정'}
         aria-label={isPinned ? '패널 고정 해제' : '패널 고정'}
       >
         {isPinned ? '📌' : '📍'}
       </button>
 
-      <div
-        className="group relative -mr-5 -ml-10 flex cursor-pointer justify-center overflow-hidden rounded-[30px] border border-white/5 bg-[var(--color-bg-tertiary)] px-6 py-4 shadow-[inset_0_-50px_120px_rgba(0,0,0,0.35)] transition duration-200 hover:-translate-y-1 hover:scale-[1.005]"
-        onClick={handleClick}
-        role="button"
-        tabIndex={0}
-        aria-label={`와이푸 이미지. 클릭 시 포즈 변경. 현재 호감도: ${waifuState.affection}%, 기분: ${currentMood}`}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleClick();
-          }
-        }}
-      >
-        <div className="relative w-full">
-          {displayImagePath ? (
-            <img
-              src={displayImagePath}
-              alt={`와이푸 (호감도 ${waifuState.affection}%)`}
-              className="mx-auto max-h-[520px] w-auto object-contain drop-shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
-            />
-          ) : (
-            <div className="flex h-[500px] flex-col items-center justify-center gap-3 rounded-[28px] border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg)] text-center text-sm text-[var(--color-text-secondary)]">
-              <span className="text-5xl opacity-70">🥰</span>
-              <div className="text-xs leading-relaxed text-[var(--color-text-tertiary)]">
-                이미지를 추가하려면<br />
-                <span className="font-semibold text-[var(--color-text)]">
-                  /public/assets/waifu/poses/
-                </span> 폴더에<br />
-                호감도별 이미지를 넣어주세요
-                <div className="text-[0.65rem] text-[var(--color-text-secondary)]">
-                  hostile/, wary/, indifferent/, interested/, affectionate/, loving/<br />
-                  각 폴더에 1.png, 2.png, 3.png...
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-black/60 px-4 py-1 text-[0.65rem] uppercase tracking-[0.3em] text-white opacity-0 transition duration-200 group-hover:opacity-100">
-            클릭하여 포즈 변경 ({clickCount}/4)
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-5">
+      <div className="relative flex h-full flex-col overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-b from-[var(--color-bg-tertiary)]/80 to-[var(--color-bg-secondary)]/90 shadow-[0_35px_70px_rgba(0,0,0,0.45)]">
         <div
-          className="relative rounded-2xl border border-[var(--color-border)] bg-gradient-to-br from-[var(--color-bg-tertiary)] to-[var(--color-bg)] p-4 text-sm text-[var(--color-text)] shadow-[0_25px_60px_rgba(0,0,0,0.25)]"
-          role="status"
-          aria-live="polite"
+          className="group relative flex flex-1 cursor-pointer flex-col items-center justify-end overflow-hidden px-8 pt-10 pb-32 text-center"
+          onClick={handleClick}
+          role="button"
+          tabIndex={0}
+          aria-label={`와이푸 이미지. 클릭 시 포즈 변경. 현재 호감도 ${waifuState.affection}%, 기분: ${currentMood}`}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleClick();
+            }
+          }}
         >
-          <p>{companionMessage || currentDialogue}</p>
-          <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 border-x-8 border-x-transparent border-t-8 border-t-[var(--color-border)]" />
-
-        </div>
-
-        <div role="region" aria-label="와이푸 통계">
-          <article className="flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 transition hover:border-[var(--color-primary)] hover:shadow-lg">
-            <header className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-[var(--color-text-secondary)]">
-              기분
-            </header>
-            <div className="flex items-center gap-3 text-lg text-[var(--color-text)]">
-              <span className="text-3xl">{currentMood}</span>
-              <span className="text-sm text-[var(--color-text-secondary)]">
-                {getMoodDescription(currentMood)}
-              </span>
-            </div>
-            <div className="flex items-center gap-3 text-[0.75rem] text-[var(--color-text-tertiary)]">
-              <span className="font-semibold text-[var(--color-primary)]">
-                호감도 {waifuState.affection}%
-              </span>
-              <span className="flex-1">
-                <div className="relative h-2 rounded-full bg-[var(--color-bg-tertiary)]">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-indigo-500 to-fuchsia-500"
-                    style={{ width: `${waifuState.affection}%` }}
-                  >
-                    <span className="pointer-events-none absolute -right-3 top-[-7px] inline-flex h-3 w-3 rounded-full bg-[var(--color-bg-secondary)] shadow-[0_4px_10px_rgba(0,0,0,0.4)]" />
+          <div className="relative w-full">
+            {displayImagePath ? (
+              <img
+                src={displayImagePath}
+                alt={`와이푸 (호감도 ${waifuState.affection}%)`}
+                className="mx-auto max-h-[520px] w-auto object-contain drop-shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
+              />
+            ) : (
+              <div className="flex h-[500px] flex-col items-center justify-center gap-3 rounded-[28px] border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg)] text-center text-sm text-[var(--color-text-secondary)]">
+                <span className="text-5xl opacity-70">📷</span>
+                <div className="text-xs leading-relaxed text-[var(--color-text-tertiary)]">
+                  이미지를 추가하려면<br />
+                  <span className="font-semibold text-[var(--color-text)]">/public/assets/waifu/poses/</span> 폴더에<br />
+                  호감도별 이미지를 넣어주세요
+                  <div className="text-[0.65rem] text-[var(--color-text-secondary)]">
+                    hostile/, wary/, indifferent/, interested/, affectionate/, loving/<br />
+                    각 폴더에 1.png, 2.png, 3.png...
                   </div>
                 </div>
-              </span>
-            </div>
-          </article>
+              </div>
+            )}
+          </div>
+
+          <div className="pointer-events-none absolute left-1/2 bottom-32 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-black/60 px-4 py-1 text-[0.65rem] uppercase tracking-[0.3em] text-white opacity-0 transition duration-200 group-hover:opacity-100">
+            포즈를 바꿔봐요({clickCount}/4)
+          </div>
+
+          <div
+            role="status"
+            aria-live="polite"
+            className="pointer-events-none absolute inset-x-6 bottom-6 rounded-2xl border border-white/10 bg-[var(--color-bg-secondary)]/90 px-5 py-4 text-left text-sm text-[var(--color-text)] shadow-[0_25px_60px_rgba(0,0,0,0.4)] backdrop-blur"
+          >
+            <p>{companionMessage || currentDialogue}</p>
+          </div>
+        </div>
+
+        <div
+          role="region"
+          aria-label="와이푸 통계"
+          className="flex flex-col gap-4 border-t border-white/10 bg-[var(--color-bg-secondary)]/80 px-6 py-5 text-[var(--color-text)]"
+        >
+          <header className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-[var(--color-text-secondary)]">
+            기분
+          </header>
+          <div className="flex items-center gap-3 text-lg">
+            <span className="text-3xl">{currentMood}</span>
+            <span className="text-sm text-[var(--color-text-secondary)]">
+              {getMoodDescription(currentMood)}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-[0.85rem] text-[var(--color-text-tertiary)]">
+            <span className="font-semibold text-[var(--color-primary)]">호감도 {waifuState.affection}%</span>
+            <span className="flex-1">
+              <div className="relative h-2 rounded-full bg-[var(--color-bg-tertiary)]">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-indigo-500 to-fuchsia-500"
+                  style={{ width: `${waifuState.affection}%` }}
+                >
+                  <span className="pointer-events-none absolute -right-3 top-[-7px] inline-flex h-3 w-3 rounded-full bg-[var(--color-bg-secondary)] shadow-[0_4px_10px_rgba(0,0,0,0.4)]" />
+                </div>
+              </div>
+            </span>
+          </div>
         </div>
       </div>
     </section>

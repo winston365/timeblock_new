@@ -120,7 +120,7 @@ const TimeBlock = memo(function TimeBlock({
   const idlePortion = Math.max(blockDurationMinutes - (completedPortion + plannedPortion), 0);
   const completionSegments = [
     { key: 'completed', value: completedPortion, className: 'bg-[var(--color-primary)]', label: '완료' },
-    { key: 'planned', value: plannedPortion, className: 'bg-amber-400/80', label: '진행중' },
+    { key: 'planned', value: plannedPortion, className: 'bg-amber-400/80', label: '진행 중' },
     { key: 'idle', value: idlePortion, className: 'bg-[var(--color-bg-tertiary)]/60', label: '대기' }
   ]
     .filter(segment => segment.value > 0)
@@ -129,6 +129,8 @@ const TimeBlock = memo(function TimeBlock({
       width: `${(segment.value / blockDurationMinutes) * 100}%`
     }));
   const completionTooltip = `완료 ${formatMinutesToHM(completedDuration)} / 전체 ${formatMinutesToHM(totalDuration)}`;
+  const timeRemainingLabel = timeRemaining?.text ?? formatMinutesToHM(remainingMinutes);
+  const showAlertProgress = isCurrentBlock && (timeStatus === 'tight' || timeStatus === 'critical');
 
   const statusAccent = useMemo(() => ({
     comfortable: {
@@ -187,7 +189,8 @@ const TimeBlock = memo(function TimeBlock({
           maxXP={maxXP}
           state={state}
           timeStatus={timeStatus}
-          timeRemainingText={timeRemaining?.text}
+          timeRemainingLabel={timeRemainingLabel}
+          completionPercentage={completionPercentage}
           onToggleExpand={() => setIsExpanded(!isExpanded)}
           onToggleLock={onToggleLock}
           toggleFocusMode={toggleFocusMode}
@@ -203,34 +206,35 @@ const TimeBlock = memo(function TimeBlock({
           )}
         </TimeBlockHeader>
 
-        {/* Completion Bar with Segments */}
-        <div className="px-5 pb-3 pt-2">
-          <div
-            className="flex items-center gap-3"
-            title={completionTooltip}
-            aria-label={completionTooltip}
-          >
-            <div className="h-4 flex-1 overflow-hidden rounded-full bg-[var(--color-bg-tertiary)]/40">
-              <div className="flex h-full w-full">
-                {completionSegments.length > 0 ? (
-                  completionSegments.map(segment => (
-                    <div
-                      key={segment.key}
-                      className={`h-full transition-all duration-500 ${segment.className}`}
-                      style={{ width: segment.width }}
-                      aria-label={`${segment.label} ${segment.width}`}
-                    />
-                  ))
-                ) : (
-                  <div className="h-full w-full bg-transparent" />
-                )}
+        {showAlertProgress && (
+          <div className="px-5 pb-3 pt-2">
+            <div
+              className="flex items-center gap-3"
+              title={completionTooltip}
+              aria-label={completionTooltip}
+            >
+              <div className="h-3 flex-1 overflow-hidden rounded-full bg-[var(--color-bg-tertiary)]/40">
+                <div className="flex h-full w-full">
+                  {completionSegments.length > 0 ? (
+                    completionSegments.map(segment => (
+                      <div
+                        key={segment.key}
+                        className={`h-full transition-all duration-500 ${segment.className}`}
+                        style={{ width: segment.width }}
+                        aria-label={`${segment.label} ${segment.width}`}
+                      />
+                    ))
+                  ) : (
+                    <div className="h-full w-full bg-transparent" />
+                  )}
+                </div>
               </div>
+              <span className="text-xs font-semibold text-[var(--color-text-tertiary)]">
+                {Math.round(completionPercentage) || 0}%
+              </span>
             </div>
-            <span className="text-xs font-semibold text-[var(--color-text-tertiary)]">
-              {Math.round(completionPercentage) || 0}%
-            </span>
           </div>
-        </div>
+        )}
 
         <TimeBlockContent
           isExpanded={isExpanded}

@@ -92,6 +92,9 @@ export default function AppShell() {
       : visibility === 'peeking'
         ? 'translate-x-[calc(100%-0.35rem)] opacity-60 pointer-events-none scale-95'
         : 'translate-x-[calc(100%+2rem)] opacity-0 pointer-events-none scale-95';
+  const waifuContainerClass = `waifu-panel-container fixed bottom-0 right-0 z-40 p-4 ${
+    visibility === 'visible' ? '' : 'pointer-events-none'
+  }`;
 
   // 패널 토글 핸들러
   const toggleLeftSidebar = () => {
@@ -258,7 +261,7 @@ export default function AppShell() {
         </button>
       </main>
       <aside
-        className="waifu-panel-container pointer-events-none fixed bottom-0 right-0 z-40 p-4"
+        className={waifuContainerClass}
         data-visibility={visibility}
         aria-label="와이푸 패널"
         role="complementary"

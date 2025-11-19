@@ -40,8 +40,8 @@ const TIME_BLOCKS = [
 function getResistanceMultiplier(resistance) {
   const multipliers = {
     low: 1.0,
-    medium: 1.5,
-    high: 2.0,
+    medium: 1.3,
+    high: 1.6,
   };
   return multipliers[resistance] || 1.0;
 }

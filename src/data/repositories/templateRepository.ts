@@ -1,19 +1,19 @@
-/**
+﻿/**
  * Template Repository
  *
- * @role ?�업 ?�플�??�이??관�?�??�동 ?�성 ?�업 처리
- * @input Template 객체, ?�플�?ID, Task ?�성 ?�청
- * @output Template 배열, Template 객체, Task 객체
+ * @role ?묒뾽 ?쒗뵆由??곗씠??愿由?諛??먮룞 ?앹꽦 ?묒뾽 泥섎━
+ * @input Template 媛앹껜, ?쒗뵆由?ID, Task ?앹꽦 ?붿껌
+ * @output Template 諛곗뿴, Template 媛앹껜, Task 媛앹껜
  * @external_dependencies
- *   - IndexedDB (db.templates): 메인 ?�?�소
- *   - localStorage (STORAGE_KEYS.TEMPLATES): 백업 ?�?�소
- *   - Firebase: ?�시�??�기??(syncToFirebase)
- *   - @/shared/types/domain: Template, Task, TimeBlockId, Resistance ?�??
+ *   - IndexedDB (db.templates): 硫붿씤 ??μ냼
+ *   - localStorage (STORAGE_KEYS.TEMPLATES): 諛깆뾽 ??μ냼
+ *   - Firebase: ?ㅼ떆媛??숆린??(syncToFirebase)
+ *   - @/shared/types/domain: Template, Task, TimeBlockId, Resistance ???
  */
 
 import { db } from '../db/dexieClient';
 import type { Template, Task, TimeBlockId, Resistance, RecurrenceType } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
+import { TIME_BLOCKS, RESISTANCE_MULTIPLIERS } from '@/shared/types/domain';
 import { generateId } from '@/shared/lib/utils';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
@@ -25,22 +25,22 @@ import { addSyncLog } from '@/shared/services/sync/syncLogger';
 // ============================================================================
 
 /**
- * 모든 ?�플�?로드
+ * 紐⑤뱺 ?쒗뵆由?濡쒕뱶
  *
- * @returns {Promise<Template[]>} ?�플�?배열
- * @throws ?�음
+ * @returns {Promise<Template[]>} ?쒗뵆由?諛곗뿴
+ * @throws ?놁쓬
  * @sideEffects
- *   - IndexedDB?�서 ?�이??조회
- *   - localStorage ?�백 ??IndexedDB???�이??복원
- *   - Firebase ?�백 ??IndexedDB???�이??복원
+ *   - IndexedDB?먯꽌 ?곗씠??議고쉶
+ *   - localStorage ?대갚 ??IndexedDB???곗씠??蹂듭썝
+ *   - Firebase ?대갚 ??IndexedDB???곗씠??蹂듭썝
  */
 export async function loadTemplates(): Promise<Template[]> {
   try {
-    // 1. IndexedDB?�서 조회
+    // 1. IndexedDB?먯꽌 議고쉶
     const templates = await db.templates.toArray();
 
     if (templates.length > 0) {
-      // preparation ?�드??undefined�?�?문자?�로 ?�제, category?� isFavorite 기본�??�정
+      // preparation ?꾨뱶??undefined瑜?鍮?臾몄옄?대줈 ?뺤젣, category? isFavorite 湲곕낯媛??ㅼ젙
       return templates.map(template => ({
         ...template,
         preparation1: template.preparation1 ?? '',
@@ -52,12 +52,12 @@ export async function loadTemplates(): Promise<Template[]> {
       }));
     }
 
-    // 2. Firebase?�서 조회 (IndexedDB ?�패 ??
+    // 2. Firebase?먯꽌 議고쉶 (IndexedDB ?ㅽ뙣 ??
     if (isFirebaseInitialized()) {
       const firebaseTemplates = await fetchFromFirebase<Template[]>(templateStrategy);
 
       if (firebaseTemplates && firebaseTemplates.length > 0) {
-        // preparation ?�드 ?�제
+        // preparation ?꾨뱶 ?뺤젣
         const sanitizedTemplates = firebaseTemplates.map(template => ({
           ...template,
           preparation1: template.preparation1 ?? '',
@@ -81,30 +81,30 @@ export async function loadTemplates(): Promise<Template[]> {
 }
 
 /**
- * ?�플�??�성
+ * ?쒗뵆由??앹꽦
  *
- * @param {string} name - ?�플�??�름
- * @param {string} text - ?�업 ?�용
- * @param {string} memo - 메모
- * @param {number} baseDuration - 기본 ?�요 ?�간 (�?
- * @param {Resistance} resistance - ?�??�� (low, medium, high)
- * @param {TimeBlockId} timeBlock - ?�?�블�?ID
- * @param {boolean} autoGenerate - ?�동 ?�성 ?��?
- * @param {string} preparation1 - 준�??�항 1
- * @param {string} preparation2 - 준�??�항 2
- * @param {string} preparation3 - 준�??�항 3
- * @param {RecurrenceType} recurrenceType - 반복 주기 ?�??
- * @param {number[]} weeklyDays - 매주 반복 ?�일 (0=?�요?? ..., 6=?�요??
- * @param {number} intervalDays - N??주기
- * @param {string} category - 카테고리
- * @param {boolean} isFavorite - 즐겨찾기 ?��?
- * @param {string} imageUrl - ?��?지 URL
- * @returns {Promise<Template>} ?�성???�플�?
- * @throws {Error} IndexedDB ?�는 localStorage ?�???�패 ??
+ * @param {string} name - ?쒗뵆由??대쫫
+ * @param {string} text - ?묒뾽 ?댁슜
+ * @param {string} memo - 硫붾え
+ * @param {number} baseDuration - 湲곕낯 ?뚯슂 ?쒓컙 (遺?
+ * @param {Resistance} resistance - ???룄 (low, medium, high)
+ * @param {TimeBlockId} timeBlock - ??꾨툝濡?ID
+ * @param {boolean} autoGenerate - ?먮룞 ?앹꽦 ?щ?
+ * @param {string} preparation1 - 以鍮??ы빆 1
+ * @param {string} preparation2 - 以鍮??ы빆 2
+ * @param {string} preparation3 - 以鍮??ы빆 3
+ * @param {RecurrenceType} recurrenceType - 諛섎났 二쇨린 ???
+ * @param {number[]} weeklyDays - 留ㅼ＜ 諛섎났 ?붿씪 (0=?쇱슂?? ..., 6=?좎슂??
+ * @param {number} intervalDays - N??二쇨린
+ * @param {string} category - 移댄뀒怨좊━
+ * @param {boolean} isFavorite - 利먭꺼李얘린 ?щ?
+ * @param {string} imageUrl - ?대?吏 URL
+ * @returns {Promise<Template>} ?앹꽦???쒗뵆由?
+ * @throws {Error} IndexedDB ?먮뒗 localStorage ????ㅽ뙣 ??
  * @sideEffects
- *   - IndexedDB???�플�??�??
- *   - localStorage??백업
- *   - Firebase??비동�??�기??
+ *   - IndexedDB???쒗뵆由????
+ *   - localStorage??諛깆뾽
+ *   - Firebase??鍮꾨룞湲??숆린??
  */
 export async function createTemplate(
   name: string,
@@ -145,7 +145,7 @@ export async function createTemplate(
       imageUrl: imageUrl || '',
     };
 
-    // 1. IndexedDB???�??
+    // 1. IndexedDB?????
     await db.templates.put(template);
 
     addSyncLog('dexie', 'save', 'Template created', {
@@ -165,16 +165,16 @@ export async function createTemplate(
 }
 
 /**
- * ?�플�??�데?�트
+ * ?쒗뵆由??낅뜲?댄듃
  *
- * @param {string} id - ?�플�?ID
- * @param {Partial<Omit<Template, 'id'>>} updates - ?�데?�트???�드
- * @returns {Promise<Template>} ?�데?�트???�플�?
- * @throws {Error} ?�플릿이 존재?��? ?�거???�???�패 ??
+ * @param {string} id - ?쒗뵆由?ID
+ * @param {Partial<Omit<Template, 'id'>>} updates - ?낅뜲?댄듃???꾨뱶
+ * @returns {Promise<Template>} ?낅뜲?댄듃???쒗뵆由?
+ * @throws {Error} ?쒗뵆由우씠 議댁옱?섏? ?딄굅??????ㅽ뙣 ??
  * @sideEffects
- *   - IndexedDB?�서 ?�플�?조회 �??�데?�트
- *   - localStorage??백업
- *   - Firebase??비동�??�기??
+ *   - IndexedDB?먯꽌 ?쒗뵆由?議고쉶 諛??낅뜲?댄듃
+ *   - localStorage??諛깆뾽
+ *   - Firebase??鍮꾨룞湲??숆린??
  */
 export async function updateTemplate(
   id: string,
@@ -189,7 +189,7 @@ export async function updateTemplate(
 
     const updatedTemplate = { ...template, ...updates };
 
-    // 1. IndexedDB???�??
+    // 1. IndexedDB?????
     await db.templates.put(updatedTemplate);
 
     addSyncLog('dexie', 'save', 'Template updated', {
@@ -208,19 +208,19 @@ export async function updateTemplate(
 }
 
 /**
- * ?�플�???��
+ * ?쒗뵆由???젣
  *
- * @param {string} id - ??��???�플�?ID
+ * @param {string} id - ??젣???쒗뵆由?ID
  * @returns {Promise<void>}
- * @throws {Error} IndexedDB ??�� ?�패 ??
+ * @throws {Error} IndexedDB ??젣 ?ㅽ뙣 ??
  * @sideEffects
- *   - IndexedDB?�서 ?�플�???��
- *   - localStorage??변경사??반영
- *   - Firebase??비동�??�기??
+ *   - IndexedDB?먯꽌 ?쒗뵆由???젣
+ *   - localStorage??蹂寃쎌궗??諛섏쁺
+ *   - Firebase??鍮꾨룞湲??숆린??
  */
 export async function deleteTemplate(id: string): Promise<void> {
   try {
-    // 1. IndexedDB?�서 ??��
+    // 1. IndexedDB?먯꽌 ??젣
     await db.templates.delete(id);
 
     addSyncLog('dexie', 'save', 'Template deleted', { id });
@@ -235,13 +235,13 @@ export async function deleteTemplate(id: string): Promise<void> {
 }
 
 /**
- * ?�정 ?�플�?조회
+ * ?뱀젙 ?쒗뵆由?議고쉶
  *
- * @param {string} id - ?�플�?ID
- * @returns {Promise<Template | undefined>} ?�플�?객체 ?�는 undefined
- * @throws ?�음
+ * @param {string} id - ?쒗뵆由?ID
+ * @returns {Promise<Template | undefined>} ?쒗뵆由?媛앹껜 ?먮뒗 undefined
+ * @throws ?놁쓬
  * @sideEffects
- *   - IndexedDB?�서 ?�이??조회
+ *   - IndexedDB?먯꽌 ?곗씠??議고쉶
  */
 export async function getTemplate(id: string): Promise<Template | undefined> {
   try {
@@ -251,7 +251,7 @@ export async function getTemplate(id: string): Promise<Template | undefined> {
       return undefined;
     }
 
-    // preparation ?�드??undefined�?�?문자?�로 ?�제
+    // preparation ?꾨뱶??undefined瑜?鍮?臾몄옄?대줈 ?뺤젣
     return {
       ...template,
       preparation1: template.preparation1 ?? '',
@@ -265,22 +265,22 @@ export async function getTemplate(id: string): Promise<Template | undefined> {
 }
 
 // ============================================================================
-// ?�플릿에???�업 ?�성
+// ?쒗뵆由우뿉???묒뾽 ?앹꽦
 // ============================================================================
 
 /**
- * ?�플릿에??Task ?�성
+ * ?쒗뵆由우뿉??Task ?앹꽦
  *
- * @param {Template} template - ?�플�?객체
- * @returns {Task} ?�성???�업 객체
- * @throws ?�음
- * @sideEffects ?�음 (?�수 ?�수)
+ * @param {Template} template - ?쒗뵆由?媛앹껜
+ * @returns {Task} ?앹꽦???묒뾽 媛앹껜
+ * @throws ?놁쓬
+ * @sideEffects ?놁쓬 (?쒖닔 ?⑥닔)
  */
 export function createTaskFromTemplate(template: Template): Task {
   const now = new Date().toISOString();
   const adjustedDuration = Math.round(template.baseDuration * getResistanceMultiplier(template.resistance));
 
-  // timeBlock???�정?�어 ?�으�??�당 블록??�?번째 ?�간?�(start hour)�?hourSlot?�로 ?�정
+  // timeBlock???ㅼ젙?섏뼱 ?덉쑝硫??대떦 釉붾줉??泥?踰덉㎏ ?쒓컙?(start hour)瑜?hourSlot?쇰줈 ?ㅼ젙
   let hourSlot: number | undefined = undefined;
   if (template.timeBlock) {
     const block = TIME_BLOCKS.find(b => b.id === template.timeBlock);
@@ -297,7 +297,7 @@ export function createTaskFromTemplate(template: Template): Task {
     resistance: template.resistance,
     adjustedDuration,
     timeBlock: template.timeBlock,
-    hourSlot, // ?�?�블록의 �?번째 ?�간?��??�정
+    hourSlot, // ??꾨툝濡앹쓽 泥?踰덉㎏ ?쒓컙?濡??ㅼ젙
     completed: false,
     actualDuration: 0,
     createdAt: now,
@@ -310,12 +310,12 @@ export function createTaskFromTemplate(template: Template): Task {
 }
 
 /**
- * ?�동 ?�성 ?�플릿에??Task ?�성
+ * ?먮룞 ?앹꽦 ?쒗뵆由우뿉??Task ?앹꽦
  *
- * @param {Template} template - ?�동 ?�성 ?�플�?객체
- * @returns {Task} fromAutoTemplate ?�래그�? true???�업 객체
- * @throws ?�음
- * @sideEffects ?�음 (?�수 ?�수)
+ * @param {Template} template - ?먮룞 ?앹꽦 ?쒗뵆由?媛앹껜
+ * @returns {Task} fromAutoTemplate ?뚮옒洹멸? true???묒뾽 媛앹껜
+ * @throws ?놁쓬
+ * @sideEffects ?놁쓬 (?쒖닔 ?⑥닔)
  */
 export function createTaskFromAutoTemplate(template: Template): Task {
   const task = createTaskFromTemplate(template);
@@ -324,34 +324,29 @@ export function createTaskFromAutoTemplate(template: Template): Task {
 }
 
 /**
- * ?�??�� 배율 가?�오�?
+ * ???룄 諛곗쑉 媛?몄삤湲?
  */
 function getResistanceMultiplier(resistance: Resistance): number {
-  const multipliers = {
-    low: 1.0,
-    medium: 1.3,
-    high: 1.6,
-  };
-  return multipliers[resistance];
+  return RESISTANCE_MULTIPLIERS[resistance] ?? 1.0;
 }
 
 // ============================================================================
-// ?�동 ?�성
+// ?먮룞 ?앹꽦
 // ============================================================================
 
 /**
- * ?�동 ?�성 ?�플�?조회
+ * ?먮룞 ?앹꽦 ?쒗뵆由?議고쉶
  *
- * @returns {Promise<Template[]>} autoGenerate가 true???�플�?배열
- * @throws ?�음
+ * @returns {Promise<Template[]>} autoGenerate媛 true???쒗뵆由?諛곗뿴
+ * @throws ?놁쓬
  * @sideEffects
- *   - IndexedDB?�서 ?�터링된 ?�이??조회
+ *   - IndexedDB?먯꽌 ?꾪꽣留곷맂 ?곗씠??議고쉶
  */
 export async function getAutoGenerateTemplates(): Promise<Template[]> {
   try {
     const templates = await db.templates.where('autoGenerate').equals(1).toArray();
 
-    // preparation ?�드??undefined�?�?문자?�로 ?�제
+    // preparation ?꾨뱶??undefined瑜?鍮?臾몄옄?대줈 ?뺤젣
     return templates.map(template => ({
       ...template,
       preparation1: template.preparation1 ?? '',
@@ -365,36 +360,36 @@ export async function getAutoGenerateTemplates(): Promise<Template[]> {
 }
 
 /**
- * ?�플릿이 ?�늘 ?�성?�어???�는지 ?�인
+ * ?쒗뵆由우씠 ?ㅻ뒛 ?앹꽦?섏뼱???섎뒗吏 ?뺤씤
  *
- * @param {Template} template - ?�플�?객체
- * @param {string} today - ?�늘 ?�짜 (YYYY-MM-DD)
- * @returns {boolean} ?�늘 ?�성 ?��?
+ * @param {Template} template - ?쒗뵆由?媛앹껜
+ * @param {string} today - ?ㅻ뒛 ?좎쭨 (YYYY-MM-DD)
+ * @returns {boolean} ?ㅻ뒛 ?앹꽦 ?щ?
  */
 function shouldGenerateToday(template: Template, today: string): boolean {
   const { recurrenceType, weeklyDays, intervalDays, lastGeneratedDate } = template;
 
-  // 매일 ?�성
+  // 留ㅼ씪 ?앹꽦
   if (recurrenceType === 'daily') {
-    // ?�늘 ?��? ?�성?�다�??�킵
+    // ?ㅻ뒛 ?대? ?앹꽦?덈떎硫??ㅽ궢
     return lastGeneratedDate !== today;
   }
 
-  // 매주 ?�정 ?�일
+  // 留ㅼ＜ ?뱀젙 ?붿씪
   if (recurrenceType === 'weekly' && weeklyDays && weeklyDays.length > 0) {
-    const dayOfWeek = new Date(today).getDay(); // 0=?�요?? 1=?�요?? ...
+    const dayOfWeek = new Date(today).getDay(); // 0=?쇱슂?? 1=?붿슂?? ...
     const shouldGenerate = weeklyDays.includes(dayOfWeek);
 
-    // ?�당 ?�일?�고 ?�늘 ?�직 ?�성?��? ?�았?�면
+    // ?대떦 ?붿씪?닿퀬 ?ㅻ뒛 ?꾩쭅 ?앹꽦?섏? ?딆븯?ㅻ㈃
     return shouldGenerate && lastGeneratedDate !== today;
   }
 
-  // N??주기
+  // N??二쇨린
   if (recurrenceType === 'interval' && intervalDays) {
-    // 마�?�??�성 ?�짜가 ?�으�??�성
+    // 留덉?留??앹꽦 ?좎쭨媛 ?놁쑝硫??앹꽦
     if (!lastGeneratedDate) return true;
 
-    // 마�?�??�성 ?�짜로�???N?�이 지?�는지 ?�인
+    // 留덉?留??앹꽦 ?좎쭨濡쒕???N?쇱씠 吏?щ뒗吏 ?뺤씤
     const lastDate = new Date(lastGeneratedDate);
     const todayDate = new Date(today);
     const daysDiff = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -402,18 +397,18 @@ function shouldGenerateToday(template: Template, today: string): boolean {
     return daysDiff >= intervalDays;
   }
 
-  // recurrenceType??'none'?�면 ?�성?��? ?�음
+  // recurrenceType??'none'?대㈃ ?앹꽦?섏? ?딆쓬
   return false;
 }
 
 /**
- * ?�동 ?�성 ?�플릿에???�업 ?�성 (매일 00???�행)
+ * ?먮룞 ?앹꽦 ?쒗뵆由우뿉???묒뾽 ?앹꽦 (留ㅼ씪 00???ㅽ뻾)
  *
- * @returns {Promise<Task[]>} ?�성???�업 배열
- * @throws ?�음
+ * @returns {Promise<Task[]>} ?앹꽦???묒뾽 諛곗뿴
+ * @throws ?놁쓬
  * @sideEffects
- *   - IndexedDB?�서 ?�동 ?�성 ?�플�?조회
- *   - ?�플릿의 lastGeneratedDate ?�데?�트
+ *   - IndexedDB?먯꽌 ?먮룞 ?앹꽦 ?쒗뵆由?議고쉶
+ *   - ?쒗뵆由우쓽 lastGeneratedDate ?낅뜲?댄듃
  */
 export async function generateTasksFromAutoTemplates(): Promise<Task[]> {
   try {
@@ -422,12 +417,12 @@ export async function generateTasksFromAutoTemplates(): Promise<Task[]> {
     const tasksToGenerate: Task[] = [];
 
     for (const template of autoTemplates) {
-      // 주기???�라 ?�늘 ?�성?�야 ?�는지 ?�인
+      // 二쇨린???곕씪 ?ㅻ뒛 ?앹꽦?댁빞 ?섎뒗吏 ?뺤씤
       if (shouldGenerateToday(template, today)) {
         const task = createTaskFromAutoTemplate(template);
         tasksToGenerate.push(task);
 
-        // ?�플릿의 lastGeneratedDate ?�데?�트
+        // ?쒗뵆由우쓽 lastGeneratedDate ?낅뜲?댄듃
         await updateTemplate(template.id, {
           lastGeneratedDate: today
         });
@@ -440,3 +435,4 @@ export async function generateTasksFromAutoTemplates(): Promise<Task[]> {
     return [];
   }
 }
+

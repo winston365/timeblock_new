@@ -62,7 +62,9 @@ export const TimeBlockStatus: React.FC<TimeBlockStatusProps> = ({
   formatMinutesToHM
 }) => {
   const config = STATUS_CONFIG[timeStatus];
-  const utilization = remainingMinutes ? Math.min((pendingDuration / remainingMinutes) * 100, 100) : 0;
+  const utilizationRatio = remainingMinutes > 0 ? pendingDuration / remainingMinutes : 1;
+  const utilizationWidth = Math.min(Math.max(utilizationRatio * 100, 0), 100);
+  const isOverrun = utilizationRatio >= 1;
 
   return (
     <div
@@ -91,11 +93,11 @@ export const TimeBlockStatus: React.FC<TimeBlockStatusProps> = ({
           <div className={`h-2 w-full overflow-hidden rounded-full ${config.track}`}>
             <div
               className={`h-full rounded-full ${config.fill} transition-all duration-500`}
-              style={{ width: `${utilization}%` }}
+              style={{ width: `${utilizationWidth}%` }}
             />
           </div>
           <span className="text-[10px] text-[var(--color-text-tertiary)] lg:text-right">
-            계획 대비 소요
+            계획 대비 소요{isOverrun ? ' (초과)' : ''}
           </span>
         </div>
       </div>

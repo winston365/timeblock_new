@@ -2,22 +2,41 @@ import React from 'react';
 import type { TimeBlockState } from '@/shared/types/domain';
 import type { TimeStatus } from '../hooks/useTimeBlockCalculations';
 
-const STATUS_META: Record<TimeStatus, { label: string; badge: string }> = {
+const CONTEXT_META = {
+  current: {
+    label: '현재',
+    className: 'border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/15 text-[var(--color-primary)]'
+  },
+  past: {
+    label: '지남',
+    className: 'border border-[var(--color-border)] text-[var(--color-text-tertiary)]'
+  },
+  upcoming: {
+    label: '예정',
+    className: 'border border-[var(--color-reward)]/40 text-[var(--color-reward)]'
+  }
+} as const;
+
+const STATUS_META: Record<TimeStatus, { icon: string; label: string; className: string }> = {
   comfortable: {
-    label: 'Comfort',
-    badge: 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
+    icon: '😌',
+    label: '여유',
+    className: 'bg-emerald-500/15 text-emerald-200 border-emerald-300/30'
   },
   balanced: {
-    label: 'On Track',
-    badge: 'border-indigo-400/40 bg-indigo-500/10 text-indigo-200'
+    icon: '🙂',
+    label: '정상',
+    className: 'bg-indigo-500/15 text-indigo-200 border-indigo-300/30'
   },
   tight: {
-    label: 'Tight',
-    badge: 'border-amber-400/40 bg-amber-500/10 text-amber-300'
+    icon: '😣',
+    label: '촉박',
+    className: 'bg-amber-500/15 text-amber-50 border-amber-300/30'
   },
   critical: {
-    label: 'Critical',
-    badge: 'border-rose-400/40 bg-rose-500/10 text-rose-200'
+    icon: '🚨',
+    label: '긴급',
+    className: 'bg-rose-500/20 text-rose-100 border-rose-500/40'
   }
 };
 
@@ -34,7 +53,8 @@ interface TimeBlockHeaderProps {
   maxXP: number;
   state: TimeBlockState;
   timeStatus: TimeStatus;
-  timeRemainingText?: string | null;
+  timeRemainingLabel: string;
+  completionPercentage: number;
   onToggleExpand: () => void;
   onToggleLock?: () => void;
   toggleFocusMode: () => void;
@@ -54,7 +74,8 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
   maxXP,
   state,
   timeStatus,
-  timeRemainingText,
+  timeRemainingLabel,
+  completionPercentage,
   onToggleExpand,
   onToggleLock,
   toggleFocusMode,
@@ -62,100 +83,121 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
   children
 }) => {
   const headerClassName = [
-    'flex cursor-pointer flex-col gap-4 px-5 py-4 select-none transition-colors duration-200',
-    isCurrentBlock ? 'bg-[var(--color-bg-elevated)]/70 backdrop-blur-[2px]' : 'bg-transparent'
+    'flex cursor-pointer flex-col gap-3 px-5 py-4 select-none transition-colors duration-200',
+    isCurrentBlock ? 'bg-[var(--color-bg-elevated)]/80 backdrop-blur-sm' : 'bg-transparent'
   ].join(' ');
 
   const timeRangeLabel = `${block.start.toString().padStart(2, '0')}:00 - ${block.end
     .toString()
     .padStart(2, '0')}:00`;
-
+  const contextKey = isCurrentBlock ? 'current' : isPastBlock ? 'past' : 'upcoming';
+  const context = CONTEXT_META[contextKey];
+  const statusBadge = STATUS_META[timeStatus];
   const showTimerControls = !state?.isLocked && !isPastBlock;
 
   return (
     <div className={headerClassName} onClick={onToggleExpand}>
-      <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-1 flex-col gap-2">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className="text-lg font-semibold text-[var(--color-text)]">{block.label}</span>
+            <span className="text-sm text-[var(--color-text-tertiary)]">{timeRangeLabel}</span>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[var(--color-bg-tertiary)]/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
-              {block.label}
+            <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-semibold ${context.className}`}>
+              {context.label}
             </span>
-            {isCurrentBlock && (
-              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${STATUS_META[timeStatus].badge}`}>
-                {STATUS_META[timeStatus].label}
-              </span>
-            )}
-            {timeRemainingText && (
-              <span className="text-[11px] text-[var(--color-text-tertiary)]">
-                {timeRemainingText} left
-              </span>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <span className={`font-mono text-lg font-bold tracking-tight ${isCurrentBlock ? 'text-[var(--color-primary)]' : 'text-[var(--color-text)]'}`}>
-              {timeRangeLabel}
+            <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[12px] font-semibold ${statusBadge.className}`}>
+              <span aria-hidden="true">{statusBadge.icon}</span>
+              {statusBadge.label}
             </span>
-            <div className="flex flex-wrap items-center gap-4 text-[11px] font-medium text-[var(--color-text-secondary)]">
-              <span className="inline-flex items-center gap-1">
-                <span className="uppercase tracking-wide text-[10px] text-[var(--color-text-tertiary)]">tasks</span>
-                {tasksCount}
-              </span>
-              {maxXP > 0 && (
-                <span className="inline-flex items-center gap-1 text-[var(--color-reward)]">
-                  <span className="uppercase tracking-wide text-[10px] text-[var(--color-text-tertiary)]">xp</span>
-                  {maxXP}
-                </span>
-              )}
-              {state?.isLocked && (
-                <span className="text-amber-400">Locked</span>
-              )}
-            </div>
+            <span className="rounded-full bg-[var(--color-bg-tertiary)]/70 px-3 py-1 text-[12px] font-semibold text-[var(--color-text-secondary)]">
+              남은 {timeRemainingLabel}
+            </span>
           </div>
         </div>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-secondary)]">
+          <span className="inline-flex items-center gap-1">
+            <span className="text-[var(--color-text-tertiary)]">작업</span>
+            {tasksCount}개
+          </span>
+          {maxXP > 0 && (
+            <span className="inline-flex items-center gap-1 text-[var(--color-reward)]">
+              <span className="text-[var(--color-text-tertiary)]">보상</span>
+              {maxXP} XP
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1">
+            <span className="text-[var(--color-text-tertiary)]">진행률</span>
+            {Math.round(completionPercentage)}%
+          </span>
+          {state?.isLocked && (
+            <span className="inline-flex items-center gap-1 text-amber-400">
+              <span aria-hidden="true">🔒</span>
+              잠금 중
+            </span>
+          )}
+        </div>
+      </div>
 
-        <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          {isCurrentBlock && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleFocusMode();
-              }}
-              className="inline-flex items-center gap-1 rounded-full border border-transparent bg-[var(--color-primary)]/15 px-3 py-1 text-xs font-semibold text-[var(--color-primary)] transition-colors hover:bg-[var(--color-primary)] hover:text-white"
-            >
-              Focus Mode
-            </button>
-          )}
-          {showTimerControls &&
-            (state?.lockTimerStartedAt ? (
-              <div className="flex items-center gap-2 rounded-full bg-[var(--color-bg-elevated)] px-3 py-1 text-xs font-semibold text-[var(--color-primary)]">
-                <span className="font-mono">{timer.formatRemainingTime()}</span>
-                <button
-                  onClick={timer.handleCancelLockTimer}
-                  className="text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-danger)]"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={timer.handleStartLockTimer}
-                className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-              >
-                Warm-up 3m
-              </button>
-            ))}
-          {(state?.isLocked || (!isPastBlock && tasksCount > 0)) && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleLock?.();
-              }}
-              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${state?.isLocked ? 'bg-amber-500/15 text-amber-400' : 'border border-[var(--color-border)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]'}`}
-            >
-              {state?.isLocked ? 'Unlock Block' : 'Lock Block'}
-            </button>
-          )}
-        </div>
+      <div className="flex flex-wrap gap-2 pt-1" onClick={e => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={toggleFocusMode}
+          className="flex flex-1 min-w-[140px] flex-col rounded-xl border border-[var(--color-border)] px-3 py-2 text-left transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+        >
+          <span className="text-xs font-semibold text-[var(--color-text)]">집중 모드</span>
+          <span className="text-[11px] text-[var(--color-text-tertiary)]">간결 화면으로 전환</span>
+        </button>
+
+        {showTimerControls && (
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              if (state?.lockTimerStartedAt) {
+                timer.handleCancelLockTimer(e);
+              } else {
+                timer.handleStartLockTimer(e);
+              }
+            }}
+            className="flex flex-1 min-w-[140px] flex-col rounded-xl border border-[var(--color-border)] px-3 py-2 text-left transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+          >
+            <span className="text-xs font-semibold text-[var(--color-text)]">워밍업</span>
+            <span className="text-[11px] text-[var(--color-text-tertiary)]">
+              {state?.lockTimerStartedAt ? `남은 ${timer.formatRemainingTime()}` : '3분 준비'}
+            </span>
+          </button>
+        )}
+
+        <button
+          type="button"
+          role="switch"
+          aria-checked={state?.isLocked ?? false}
+          onClick={e => {
+            e.stopPropagation();
+            onToggleLock?.();
+          }}
+          className="flex flex-1 min-w-[140px] items-center justify-between rounded-xl border border-[var(--color-border)] px-3 py-2 text-left transition hover:border-amber-400"
+        >
+          <div className="flex flex-col">
+            <span className="text-xs font-semibold text-[var(--color-text)]">블록 잠금</span>
+            <span className="text-[11px] text-[var(--color-text-tertiary)]">
+              {state?.isLocked ? '잠금 해제' : '실수 방지'}
+            </span>
+          </div>
+          <div
+            className={`relative h-5 w-10 rounded-full transition ${
+              state?.isLocked ? 'bg-amber-400' : 'bg-[var(--color-border)]'
+            }`}
+          >
+            <span
+              className={`absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white transition ${
+                state?.isLocked ? 'right-1' : 'left-1'
+              }`}
+            />
+          </div>
+        </button>
       </div>
 
       {children}
