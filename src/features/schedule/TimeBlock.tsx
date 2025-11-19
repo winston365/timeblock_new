@@ -118,7 +118,7 @@ const TimeBlock = memo(function TimeBlock({
   const completedPortion = Math.min(completedDuration, blockDurationMinutes);
   const plannedPortion = Math.min(Math.max(pendingDuration, 0), blockDurationMinutes - completedPortion);
   const idlePortion = Math.max(blockDurationMinutes - (completedPortion + plannedPortion), 0);
-      const completionSegments = [
+  const completionSegments = [
     { key: 'completed', value: completedPortion, className: 'bg-[var(--color-primary)]', label: '완료' },
     { key: 'planned', value: plannedPortion, className: 'bg-amber-400/80', label: '진행 중' },
     { key: 'idle', value: idlePortion, className: 'bg-[var(--color-bg-tertiary)]/60', label: '대기' }
