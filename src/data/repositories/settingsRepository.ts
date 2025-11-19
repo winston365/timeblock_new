@@ -32,6 +32,7 @@ const settingsConfig: RepositoryConfig<Settings> = {
     autoMessageEnabled: true,
     waifuMode: 'characteristic', // 기본값: 특성 모드
     templateCategories: ['업무', '건강', '공부', '취미'], // 기본 카테고리
+    aiBreakdownTrigger: 'high_difficulty', // 기본값: 높은 난이도일 때만 자동 실행
   }),
   sanitize: (data: Settings) => {
     // 기존 사용자를 위한 마이그레이션
@@ -39,6 +40,7 @@ const settingsConfig: RepositoryConfig<Settings> = {
       ...data,
       waifuMode: data.waifuMode || 'characteristic',
       templateCategories: data.templateCategories || ['업무', '건강', '공부', '취미'],
+      aiBreakdownTrigger: data.aiBreakdownTrigger || 'high_difficulty',
     };
   },
   logPrefix: 'Settings',

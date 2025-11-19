@@ -278,6 +278,11 @@ export interface DailyTokenUsage {
 export type WaifuMode = 'normal' | 'characteristic'; // 일반 모드 | 특성 모드
 
 /**
+ * AI 작업 세분화 트리거 조건
+ */
+export type AIBreakdownTrigger = 'always' | 'high_difficulty' | 'manual';
+
+/**
  * 앱 설정 (API 키, Firebase 설정, 자동 메시지 등)
  */
 export interface Settings {
@@ -295,6 +300,7 @@ export interface Settings {
   autoMessageEnabled: boolean; // 자동 메시지 활성화 여부
   waifuMode: WaifuMode; // 와이푸 모드 (일반/특성)
   templateCategories?: string[]; // 템플릿 카테고리 목록
+  aiBreakdownTrigger: AIBreakdownTrigger; // AI 작업 세분화 트리거 조건
 }
 
 // ============================================================================

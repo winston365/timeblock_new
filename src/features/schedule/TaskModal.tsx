@@ -264,8 +264,13 @@ export default function TaskModal({ task, initialBlockId, onSave, onSaveMultiple
     // 2. 모달 즉시 닫기 (비동기 저장 대기하지 않음)
     onClose();
 
-    // 3. 난이도가 'high'이고 API 키가 있으면 비동기로 분해 트리거
-    if (resistance === 'high' && settings?.geminiApiKey) {
+    // 3. AI 작업 세분화 트리거 조건 체크
+    const aiTrigger = settings?.aiBreakdownTrigger || 'high_difficulty';
+    const shouldTrigger =
+      settings?.geminiApiKey &&
+      (aiTrigger === 'always' || (aiTrigger === 'high_difficulty' && resistance === 'high'));
+
+    if (shouldTrigger) {
       const tempTask: any = {
         ...taskData,
         id: task?.id || 'temp-id', // 기존 ID 또는 임시 ID

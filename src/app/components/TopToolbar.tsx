@@ -10,6 +10,7 @@ import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { getDialogueFromAffection } from '@/data/repositories/waifuRepository';
 import { audioService } from '@/shared/services/media/audioService';
 import { useFocusStore } from '@/shared/stores/focusStore';
+import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
 
 interface TopToolbarProps {
   gameState: GameState | null;
@@ -22,6 +23,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   const { waifuState, currentMood } = useWaifu();
   const { show } = useWaifuCompanionStore();
   const { toggleFocusMode } = useFocusStore();
+  const { isLoading: aiAnalyzing, cancelBreakdown } = useTaskBreakdownStore();
 
   const handleCallWaifu = () => {
     if (waifuState) {
@@ -96,7 +98,21 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         )}
       </div>
 
-      <div className="flex flex-wrap gap-[var(--spacing-sm)] md:ml-auto">
+      <div className="flex flex-wrap items-center gap-[var(--spacing-sm)] md:ml-auto">
+        {/* AI 분석 인디케이터 */}
+        {aiAnalyzing && (
+          <div className="flex items-center gap-2 rounded-xl border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-4 py-2 text-sm font-semibold text-[var(--color-primary)] animate-pulse">
+            <span className="animate-spin text-base">🧠</span>
+            <span>AI 분석 중...</span>
+            <button
+              onClick={cancelBreakdown}
+              className="ml-2 rounded-lg bg-[var(--color-primary)]/20 px-2 py-1 text-xs hover:bg-[var(--color-primary)]/30 transition"
+              title="취소"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <button
           className={toolbarButtonClass}
           onClick={toggleFocusMode}
