@@ -126,9 +126,9 @@ const TimeBlock = memo(function TimeBlock({
     .filter(segment => segment.value > 0)
     .map(segment => ({
       ...segment,
-      width: ${(segment.value / blockDurationMinutes) * 100}%
+      width: `${(segment.value / blockDurationMinutes) * 100}%`
     }));
-  const completionTooltip = 완료  / 전체 ;
+  const completionTooltip = `완료 ${formatMinutesToHM(completedDuration)} / 전체 ${formatMinutesToHM(blockDurationMinutes)}`;
   const timeRemainingLabel = timeRemaining?.text ?? formatMinutesToHM(remainingMinutes);
   const showAlertProgress = isCurrentBlock && (timeStatus === 'tight' || timeStatus === 'critical');
   const planLoadRatio = remainingMinutes > 0 ? pendingDuration / remainingMinutes : 0;
