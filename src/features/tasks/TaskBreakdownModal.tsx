@@ -58,14 +58,6 @@ const resistanceLabel: Record<Resistance, string> = {
 const DURATION_OPTIONS = [5, 10, 15, 30, 45, 60, 90, 120];
 
 export default function TaskBreakdownModal({ isOpen, onClose, onConfirm, initialText }: TaskBreakdownModalProps) {
-    const [input, setInput] = useState(initialText);
-    const [defaultTimeBlock, setDefaultTimeBlock] = useState<TimeBlockId>(null);
-    const [defaultResistance, setDefaultResistance] = useState<Resistance>('low');
-    const [defaultDuration, setDefaultDuration] = useState(30);
-    const [loading, setLoading] = useState(false);
-    const [previewTasks, setPreviewTasks] = useState<ParsedTask[]>([]);
-    const [regenerating, setRegenerating] = useState(false);
-
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const titleId = useId();
     const descriptionId = useId();
@@ -74,12 +66,24 @@ export default function TaskBreakdownModal({ isOpen, onClose, onConfirm, initial
     const { settings } = useSettingsStore();
     const { waifuState } = useWaifu();
 
-    // 초기 텍스트 설정
+    const [input, setInput] = useState(initialText);
+    const [defaultTimeBlock, setDefaultTimeBlock] = useState<TimeBlockId>(null);
+    const [defaultResistance, setDefaultResistance] = useState<Resistance>('low');
+    const [defaultDuration, setDefaultDuration] = useState(30);
+    const [loading, setLoading] = useState(false);
+    const [previewTasks, setPreviewTasks] = useState<ParsedTask[]>([]);
+    const [regenerating, setRegenerating] = useState(false);
+
+    // 초기 텍스트 및 기본값 설정
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && taskData) {
             setInput(initialText);
+            // 원본 작업의 timeBlock을 기본값으로 설정
+            setDefaultTimeBlock(taskData.timeBlock || null);
+            setDefaultResistance(taskData.resistance || 'low');
+            setDefaultDuration(taskData.baseDuration || 30);
         }
-    }, [isOpen, initialText]);
+    }, [isOpen, initialText, taskData]);
 
     // 모달 열릴 때 textarea에 포커스
     useEffect(() => {
