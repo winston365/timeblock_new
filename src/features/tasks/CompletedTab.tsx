@@ -17,16 +17,17 @@ import { formatTime, calculateTaskXP, getLocalDate } from '@/shared/lib/utils';
 import type { Task } from '@/shared/types/domain';
 
 export default function CompletedTab() {
-  // ✅ Store 중심 아키텍처: Zustand selector 패턴으로 확실한 구독
+  // ✅ Store 중심 아키텍처: Repository 대신 Store 사용
   const { dailyData, loading: dailyLoading, toggleTaskCompletion } = useDailyData();
-  const inboxCompletedTasks = useInboxStore(state => state.completedTasks);
-  const inboxLoading = useInboxStore(state => state.loading);
-  const toggleInboxTaskCompletion = useInboxStore(state => state.toggleInboxTaskCompletion);
-  const loadCompletedTasks = useInboxStore(state => state.loadCompletedTasks);
+  const {
+    completedTasks: inboxCompletedTasks,
+    loading: inboxLoading,
+    toggleInboxTaskCompletion,
+    loadCompletedTasks,
+  } = useInboxStore();
 
   // ✅ Inbox 완료된 작업 로드
   useEffect(() => {
-    console.log('[CompletedTab] Loading completed tasks...');
     loadCompletedTasks();
   }, [loadCompletedTasks]);
 

@@ -36,7 +36,7 @@ export async function loadInboxTasks(): Promise<Task[]> {
     const tasks = await db.globalInbox.orderBy('createdAt').reverse().toArray();
 
     if (tasks.length > 0) {
-      addSyncLog('dexie', 'load', `Loaded ${tasks.length} inbox tasks from IndexedDB`);
+      addSyncLog('dexie', 'load', `Loaded ${tasks.length} inbox tasks`);
       return tasks;
     }
 
@@ -45,24 +45,11 @@ export async function loadInboxTasks(): Promise<Task[]> {
       const firebaseTasks = await fetchFromFirebase<Task[]>(globalInboxStrategy);
 
       if (firebaseTasks && firebaseTasks.length > 0) {
-        // ✅ Firebase 데이터 필터링: 미완료 작업만 globalInbox에 저장
-        // (완료된 작업은 completedInbox 테이블로 분리되어야 함)
-        const uncompletedTasks = firebaseTasks.filter(task => !task.completed);
-        const completedTasks = firebaseTasks.filter(task => task.completed);
+        // Firebase 데이터를 IndexedDB에 저장
+        await db.globalInbox.bulkPut(firebaseTasks);
 
-        // globalInbox에는 미완료 작업만 저장
-        if (uncompletedTasks.length > 0) {
-          await db.globalInbox.bulkPut(uncompletedTasks);
-        }
-
-        // completedInbox에 완료된 작업 저장
-        if (completedTasks.length > 0) {
-          await db.completedInbox.bulkPut(completedTasks);
-          console.log(`[InboxRepo] Moved ${completedTasks.length} completed tasks to completedInbox`);
-        }
-
-        addSyncLog('firebase', 'load', `Loaded ${uncompletedTasks.length} uncompleted tasks from Firebase (${completedTasks.length} completed tasks separated)`);
-        return uncompletedTasks;
+        addSyncLog('firebase', 'load', `Loaded ${firebaseTasks.length} inbox tasks from Firebase`);
+        return firebaseTasks;
       }
     }
 

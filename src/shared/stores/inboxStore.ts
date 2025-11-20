@@ -77,20 +77,16 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
 
     // 이미 로딩 중이면 스킵
     if (loading) {
-      console.log('[InboxStore] Already loading, skipping...');
       return;
     }
 
     try {
       set({ loading: true, error: null });
-      console.log('[InboxStore] Loading inbox tasks...');
-
       const tasks = await loadInboxTasksFromRepo();
 
-      // Repository에서 이미 미완료 작업만 반환하지만, 방어적으로 한 번 더 필터링
+      // 미완료 작업만 필터링
       const uncompletedTasks = tasks.filter(task => !task.completed);
 
-      console.log(`[InboxStore] ✅ Loaded ${uncompletedTasks.length} inbox tasks`);
       set({ inboxTasks: uncompletedTasks, loading: false });
     } catch (err) {
       console.error('[InboxStore] ❌ Failed to load inbox tasks:', err);
@@ -122,20 +118,14 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
   addInboxTask: async (task: Task) => {
     const { inboxTasks } = get();
 
-    console.log(`[InboxStore] Adding inbox task: "${task.text}" (${task.id})`);
-    console.log('[InboxStore] Current inbox tasks:', inboxTasks.length);
-
     // ✅ Optimistic Update
-    const optimisticTasks = [...inboxTasks, task];
-    set({ inboxTasks: optimisticTasks });
-    console.log('[InboxStore] Optimistic update applied, new count:', optimisticTasks.length);
+    set({ inboxTasks: [...inboxTasks, task] });
 
     try {
       // ✅ Repository 호출
       await addInboxTaskToRepo(task);
-      console.log('[InboxStore] ✅ Task successfully saved to repository');
     } catch (err) {
-      console.error('[InboxStore] ❌ Failed to add inbox task, rolling back:', err);
+      console.error('[InboxStore] Failed to add inbox task, rolling back:', err);
       // ❌ Rollback
       set({ inboxTasks, error: err as Error });
       throw err;
