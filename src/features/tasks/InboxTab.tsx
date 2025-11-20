@@ -46,17 +46,15 @@ export default function InboxTab() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // ✅ Store에서 자동으로 데이터 로드 (마운트 시 1회만)
+  // ✅ Store에서 자동으로 데이터 로드
   useEffect(() => {
     console.log('[InboxTab] Mounting, loading inbox tasks...');
     loadInboxTasks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 빈 배열: 마운트 시에만 실행
+  }, [loadInboxTasks]);
 
   // 🔍 디버깅: inboxTasks 변경 감지
   useEffect(() => {
     console.log('[InboxTab] inboxTasks updated:', inboxTasks.length, 'tasks');
-    console.log('[InboxTab] Tasks:', inboxTasks.map(t => ({ id: t.id, text: t.text })));
   }, [inboxTasks]);
 
   const handleAddTask = () => {
