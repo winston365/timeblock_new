@@ -225,6 +225,11 @@ export default function TaskCard({
               </p>
               {task.memo && <p className="text-xs text-[var(--color-text-tertiary)] truncate">{task.memo}</p>}
               <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] relative">
+                {!hideMetadata && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-2 py-0.5 font-semibold text-[var(--color-primary)] shadow-sm">
+                    🪙 +{xp} XP
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -378,12 +383,17 @@ export default function TaskCard({
                 )}
 
                 {/* 핵심 메타데이터 (항상 표시) */}
-                <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-[var(--color-text-secondary)] relative">
-                  <button
-                    type="button"
-                    className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 font-semibold hover:border-[var(--color-primary)] hover:text-[var(--color-text)] transition-colors"
-                    data-task-interactive="true"
-                    onClick={(e) => {
+              <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-[var(--color-text-secondary)] relative">
+                {!hideMetadata && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-2 py-0.5 font-semibold text-[var(--color-primary)] shadow-sm">
+                    🪙 +{xp} XP
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 font-semibold hover:border-[var(--color-primary)] hover:text-[var(--color-text)] transition-colors"
+                  data-task-interactive="true"
+                  onClick={(e) => {
                       e.stopPropagation();
                       setShowDurationPicker(prev => !prev);
                       setShowResistancePicker(false);
@@ -408,13 +418,13 @@ export default function TaskCard({
                       ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-200'
                       : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 text-[var(--color-text-secondary)]'
                       }`}
-                  >
-                    Prep {preparationCount}/3
-                  </span>
+                >
+                  Prep {preparationCount}/3
+                </span>
 
-                  {showDurationPicker && (
-                    <div className="absolute left-0 top-full z-[9999] mt-2 grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 text-xs shadow-xl backdrop-blur-md w-[180px]">
-                      {durationOptions.map((duration) => (
+                {showDurationPicker && (
+                  <div className="absolute left-0 top-full z-[9999] mt-2 grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 text-xs shadow-xl backdrop-blur-md w-[180px]">
+                    {durationOptions.map((duration) => (
                         <button
                           key={duration}
                           className={`rounded-lg px-2 py-1.5 transition ${task.baseDuration === duration ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-white/5 text-[var(--color-text-secondary)]'}`}
@@ -457,66 +467,6 @@ export default function TaskCard({
               </div>
             </div>
 
-              {/* 하단: 상세 컨트롤 (XP 항상 노출, 나머지는 호버 시) */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5 transition-all duration-300">
-
-              {/* 난이도/시간은 상단 배지에서 바로 선택하도록 변경됨 */}
-
-              {/* 메모 버튼 */}
-              <button
-                type="button"
-                className={`rounded-md border px-2 py-0.5 text-[10px] transition-colors ${task.memo ? 'border-sky-500/30 text-sky-300' : 'border-white/10 text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]'}`}
-                data-task-interactive="true"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMemoModal(true);
-                }}
-              >
-                {task.memo ? '📝 메모 있음' : '+ 메모'}
-              </button>
-
-              {/* 타이머 버튼 */}
-              <button
-                type="button"
-                className={`rounded-md border px-2 py-0.5 text-[10px] transition-colors ${timerIconActive
-                  ? 'border-indigo-500/50 bg-indigo-500/20 text-indigo-200'
-                  : 'border-white/10 text-[var(--color-text-tertiary)] hover:text-indigo-300'
-                  }`}
-                data-task-interactive="true"
-                onClick={handleTimerToggle}
-              >
-                {timerIconActive ? '⏹ 중지' : '▶ 타이머'}
-              </button>
-
-              {/* XP 표시 */}
-              {!hideMetadata && (
-                <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-2.5 py-0.5 text-[11px] font-semibold text-[var(--color-primary)] shadow-sm">
-                  🪙 +{xp} XP
-                </span>
-              )}
-            </div>
-
-            {/* 타이머 활성 상태 표시 (항상 보임) */}
-            {timerIconActive && (
-              <div className="mt-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 p-2" data-task-interactive="true">
-                <div className="flex items-center justify-between text-xs text-indigo-200 mb-1">
-                  <span className="flex items-center gap-1.5">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                    </span>
-                    집중 중...
-                  </span>
-                  <span className="font-mono font-medium">{formatElapsedTime(elapsedTime)}</span>
-                </div>
-                <div className="h-1 w-full overflow-hidden rounded-full bg-black/20">
-                  <div
-                    className="h-full rounded-full bg-indigo-500 transition-all duration-1000 ease-linear"
-                    style={{ width: `${Math.min((elapsedTime / (task.adjustedDuration * 60)) * 100, 100)}%` }}
-                  />
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -124,7 +124,8 @@ export async function saveDailyData(
   date: string = getLocalDate(),
   tasks: Task[],
   timeBlockStates: TimeBlockStates,
-  hourSlotTags?: Record<number, string | null>
+  hourSlotTags?: Record<number, string | null>,
+  timeBlockDontDoStatus?: Record<string, Record<string, boolean>>
 ): Promise<void> {
   const updatedAt = Date.now();
 
@@ -132,6 +133,7 @@ export async function saveDailyData(
   const existing = await db.dailyData.get(date);
   const goals = existing?.goals || [];
   const resolvedHourSlotTags = hourSlotTags ?? existing?.hourSlotTags ?? {};
+  const resolvedDontDoStatus = timeBlockDontDoStatus ?? existing?.timeBlockDontDoStatus ?? {};
 
   // Firebase는 undefined를 허용하지 않으므로, 모든 undefined 값을 적절한 기본값으로 변환
   const sanitizedTasks = tasks.map(task => {
@@ -154,6 +156,7 @@ export async function saveDailyData(
     goals,
     timeBlockStates,
     hourSlotTags: resolvedHourSlotTags,
+    timeBlockDontDoStatus: resolvedDontDoStatus,
     updatedAt,
   };
 

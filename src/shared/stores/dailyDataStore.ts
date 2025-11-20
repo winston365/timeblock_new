@@ -60,6 +60,10 @@ interface DailyDataStore {
   updateBlockState: (blockId: string, updates: Partial<TimeBlockState>) => Promise<void>;
   toggleBlockLock: (blockId: string) => Promise<void>;
   setHourSlotTag: (hour: number, tagId: string | null) => Promise<void>;
+
+  // 하지않기 체크리스트 관리
+  toggleDontDoItem: (blockId: string, itemId: string, xpReward: number) => Promise<void>;
+
   refresh: () => Promise<void>;
   reset: () => void;
 }
@@ -534,6 +538,56 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       // 롤백
       set({ dailyData });
       console.error('[DailyDataStore] Failed to update hour slot tag:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * 하지않기 체크리스트 항목 토글
+   */
+  toggleDontDoItem: async (blockId: string, itemId: string, xpReward: number) => {
+    const { currentDate, dailyData } = get();
+    assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
+
+    const prevStatus = dailyData.timeBlockDontDoStatus || {};
+    const blockStatus = prevStatus[blockId] || {};
+    const wasChecked = blockStatus[itemId] || false;
+
+    try {
+      // 이미 체크된 경우 무시 (한번만 보상)
+      if (wasChecked) {
+        console.log('[DailyDataStore] Don\'t-Do item already checked, skipping');
+        return;
+      }
+
+      // Optimistic Update
+      const nextStatus = {
+        ...prevStatus,
+        [blockId]: {
+          ...blockStatus,
+          [itemId]: true,
+        },
+      };
+
+      const optimistic = createUpdatedDailyData(dailyData, { timeBlockDontDoStatus: nextStatus });
+      set({ dailyData: optimistic });
+
+      // Repository 저장
+      await saveDailyData(
+        currentDate,
+        dailyData.tasks,
+        dailyData.timeBlockStates,
+        dailyData.hourSlotTags,
+        nextStatus
+      );
+
+      // XP 보상 지급
+      await useGameStateStore.getState().addXP(xpReward, `하지않기 체크`);
+      console.log(`[DailyDataStore] Don't-Do item checked, awarded ${xpReward} XP`);
+    } catch (err) {
+      console.error('[DailyDataStore] Failed to toggle don\'t-do item, rolling back:', err);
+      // Rollback
+      set({ dailyData });
       throw err;
     }
   },

@@ -179,6 +179,38 @@ export class TimeBlockDB extends Dexie {
         console.log(`✅ Migrated ${completedTasks.length} completed inbox tasks to completedInbox`);
       }
     });
+
+    // 스키마 버전 8 - 하지않기 체크리스트 기본 항목 초기화
+    this.version(8).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      energyLevels: 'id, date, timestamp, hour',
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      globalInbox: 'id, createdAt, completed',
+      completedInbox: 'id, completedAt, createdAt',
+      globalGoals: 'id, createdAt, order',
+      systemState: 'key',
+    }).upgrade(async (tx) => {
+      // Settings에 하지않기 체크리스트 기본 항목 추가
+      const settings = await tx.table('settings').get('current');
+      if (settings && !settings.dontDoChecklist) {
+        settings.dontDoChecklist = [
+          { id: 'dnd-1', label: '메신저 쓰기', xpReward: 15, order: 0 },
+          { id: 'dnd-2', label: '누워있기', xpReward: 15, order: 1 },
+          { id: 'dnd-3', label: 'SNS 보기', xpReward: 15, order: 2 },
+          { id: 'dnd-4', label: '무분별한 유튜브 시청', xpReward: 15, order: 3 },
+          { id: 'dnd-5', label: '게임하기', xpReward: 15, order: 4 },
+          { id: 'dnd-6', label: '음식 배달 주문', xpReward: 15, order: 5 },
+        ];
+        await tx.table('settings').put(settings);
+        console.log('✅ Initialized default don\'t-do checklist items');
+      }
+    });
   }
 }
 

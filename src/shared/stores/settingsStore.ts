@@ -10,7 +10,7 @@
  */
 
 import { create } from 'zustand';
-import type { Settings, WaifuMode, AIBreakdownTrigger } from '../types/domain';
+import type { Settings, WaifuMode, AIBreakdownTrigger, DontDoChecklistItem } from '../types/domain';
 import { loadSettings, updateSettings } from '@/data/repositories/settingsRepository';
 
 interface SettingsStore {
@@ -26,6 +26,13 @@ interface SettingsStore {
   updateAutoMessage: (enabled: boolean, interval?: number) => Promise<void>;
   updateAIBreakdownTrigger: (trigger: AIBreakdownTrigger) => Promise<void>;
   updateSettings: (updates: Partial<Settings>) => Promise<void>;
+
+  // 하지않기 체크리스트 관리
+  addDontDoItem: (item: Omit<DontDoChecklistItem, 'id'>) => Promise<void>;
+  updateDontDoItem: (id: string, updates: Partial<DontDoChecklistItem>) => Promise<void>;
+  deleteDontDoItem: (id: string) => Promise<void>;
+  reorderDontDoItems: (items: DontDoChecklistItem[]) => Promise<void>;
+
   refresh: () => Promise<void>;
   reset: () => void;
 }
@@ -210,6 +217,71 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
    * @sideEffects
    *   - 상태를 초기값으로 리셋
    */
+  /**
+   * 하지않기 체크리스트 항목 추가
+   */
+  addDontDoItem: async (item: Omit<DontDoChecklistItem, 'id'>) => {
+    try {
+      const newItem: DontDoChecklistItem = {
+        id: `dnd-${Date.now()}`,
+        ...item,
+      };
+      const currentList = get().settings?.dontDoChecklist || [];
+      await get().updateSettings({
+        dontDoChecklist: [...currentList, newItem],
+      });
+    } catch (error) {
+      console.error('Failed to add don\'t-do item:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 하지않기 체크리스트 항목 수정
+   */
+  updateDontDoItem: async (id: string, updates: Partial<DontDoChecklistItem>) => {
+    try {
+      const currentList = get().settings?.dontDoChecklist || [];
+      await get().updateSettings({
+        dontDoChecklist: currentList.map(item =>
+          item.id === id ? { ...item, ...updates } : item
+        ),
+      });
+    } catch (error) {
+      console.error('Failed to update don\'t-do item:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 하지않기 체크리스트 항목 삭제
+   */
+  deleteDontDoItem: async (id: string) => {
+    try {
+      const currentList = get().settings?.dontDoChecklist || [];
+      await get().updateSettings({
+        dontDoChecklist: currentList.filter(item => item.id !== id),
+      });
+    } catch (error) {
+      console.error('Failed to delete don\'t-do item:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 하지않기 체크리스트 항목 순서 변경
+   */
+  reorderDontDoItems: async (items: DontDoChecklistItem[]) => {
+    try {
+      await get().updateSettings({
+        dontDoChecklist: items.map((item, index) => ({ ...item, order: index })),
+      });
+    } catch (error) {
+      console.error('Failed to reorder don\'t-do items:', error);
+      throw error;
+    }
+  },
+
   reset: () => {
     set({ settings: null, loading: false, error: null });
   },

@@ -42,24 +42,34 @@ export interface TimeSlotTagTemplate {
 }
 
 /**
+ * 하지않기 체크리스트 항목
+ */
+export interface DontDoChecklistItem {
+  id: string;
+  label: string;
+  xpReward: number; // XP 보상 (항목별로 설정 가능)
+  order: number;
+}
+
+/**
  * 작업 (Task) 타입
  * 사용자가 수행할 개별 작업을 나타냄
  */
 export interface Task {
   id: string; // 고유 ID (타임스탬프 기반)
   text: string; // 작업 제목
- memo: string; // 메모
- baseDuration: number; // 예상 소요시간 (분)
- resistance: Resistance; // 심리적 거부감
- adjustedDuration: number; // 조정된 소요시간 (baseDuration * 배율)
- timeBlock: TimeBlockId; // 배치된 블록 ID 또는 null (인박스)
- hourSlot?: number; // 시간 슬롯 (시간 단위, 예: 5, 6, 7)
- order?: number; // 정렬 순서 (같은 시간대 내 사용자 지정 순서)
+  memo: string; // 메모
+  baseDuration: number; // 예상 소요시간 (분)
+  resistance: Resistance; // 심리적 거부감
+  adjustedDuration: number; // 조정된 소요시간 (baseDuration * 배율)
+  timeBlock: TimeBlockId; // 배치된 블록 ID 또는 null (인박스)
+  hourSlot?: number; // 시간 슬롯 (시간 단위, 예: 5, 6, 7)
+  order?: number; // 정렬 순서 (같은 시간대 내 사용자 지정 순서)
   emoji?: string; // 자동 추천 이모지 (접두 표시용)
- completed: boolean; // 완료 여부
- actualDuration: number; // 실제 소요시간 (분)
- createdAt: string; // 생성 시각 (ISO 8601)
- completedAt: string | null; // 완료 시각 (ISO 8601)
+  completed: boolean; // 완료 여부
+  actualDuration: number; // 실제 소요시간 (분)
+  createdAt: string; // 생성 시각 (ISO 8601)
+  completedAt: string | null; // 완료 시각 (ISO 8601)
   fromAutoTemplate?: boolean; // 자동생성 템플릿 여부
   preparation1?: string; // 준비 사항 1 (예상 방해물 또는 대처 환경)
   preparation2?: string; // 준비 사항 2 (예상 방해물 또는 대처 환경)
@@ -116,6 +126,7 @@ export interface DailyData {
   goals: DailyGoal[]; // 목표 목록
   timeBlockStates: TimeBlockStates; // 블록 상태
   hourSlotTags?: Record<number, string | null>; // 시간대별 속성 태그 (템플릿 ID)
+  timeBlockDontDoStatus?: Record<string, Record<string, boolean>>; // 블록별 하지않기 체크 상태 (blockId -> itemId -> checked)
   updatedAt: number; // 타임스탬프 (밀리초)
 }
 
@@ -328,6 +339,7 @@ export interface Settings {
   aiBreakdownTrigger: AIBreakdownTrigger; // AI 작업 세분화 트리거 조건
   autoEmojiEnabled?: boolean; // 작업 제목 기반 이모지 자동 추천 사용 여부
   timeSlotTags?: TimeSlotTagTemplate[]; // 시간대 속성 템플릿
+  dontDoChecklist?: DontDoChecklistItem[]; // 하지않기 체크리스트 항목
 }
 
 // ============================================================================
