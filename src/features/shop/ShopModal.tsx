@@ -11,6 +11,7 @@
 import { useState, useEffect } from 'react';
 import type { ShopItem } from '@/shared/types/domain';
 import { createShopItem, updateShopItem } from '@/data/repositories';
+import { toast } from 'react-hot-toast';
 
 interface ShopModalProps {
     item: ShopItem | null; // null이면 신규 생성
@@ -67,13 +68,13 @@ export function ShopModal({ item, onClose }: ShopModalProps) {
 
         // 이미지 파일 검증
         if (!file.type.startsWith('image/')) {
-            alert('이미지 파일만 업로드할 수 있습니다.');
+            toast.error('이미지 파일만 업로드할 수 있습니다.');
             return;
         }
 
         // 파일 크기 제한 (2MB)
         if (file.size > 2 * 1024 * 1024) {
-            alert('이미지 크기는 2MB 이하여야 합니다.');
+            toast.error('이미지 크기는 2MB 이하여야 합니다.');
             return;
         }
 
@@ -83,7 +84,7 @@ export function ShopModal({ item, onClose }: ShopModalProps) {
             setImage(reader.result as string);
         };
         reader.onerror = () => {
-            alert('이미지 로드에 실패했습니다.');
+            toast.error('이미지 로드에 실패했습니다.');
         };
         reader.readAsDataURL(file);
     };
@@ -96,12 +97,12 @@ export function ShopModal({ item, onClose }: ShopModalProps) {
         e.preventDefault();
 
         if (!name.trim()) {
-            alert('상품 이름을 입력해주세요.');
+            toast.error('상품 이름을 입력해주세요.');
             return;
         }
 
         if (price <= 0) {
-            alert('가격은 1 이상이어야 합니다.');
+            toast.error('가격은 1 이상이어야 합니다.');
             return;
         }
 
@@ -127,7 +128,7 @@ export function ShopModal({ item, onClose }: ShopModalProps) {
             onClose(true);
         } catch (error) {
             console.error('Failed to save shop item:', error);
-            alert('상품 저장에 실패했습니다.');
+            toast.error('상품 저장에 실패했습니다.');
         } finally {
             setIsSaving(false);
         }

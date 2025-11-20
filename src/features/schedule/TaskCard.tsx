@@ -122,6 +122,10 @@ export default function TaskCard({
     e.stopPropagation();
     if (task.completed) {
       onToggle();
+      toast('완료를 취소했어요. XP가 회수됩니다.', {
+        icon: '↩️',
+        className: 'text-sm',
+      });
       return;
     }
     if (task.timeBlock && blockIsLocked === false) {
@@ -453,8 +457,8 @@ export default function TaskCard({
               </div>
             </div>
 
-            {/* 하단: 상세 컨트롤 (Progressive Disclosure - Hover 시 등장) */}
-            <div className={`flex flex-wrap items-center gap-1.5 pt-0.5 transition-all duration-300 ${timerIconActive ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden group-hover:h-auto group-hover:opacity-100'}`}>
+              {/* 하단: 상세 컨트롤 (XP 항상 노출, 나머지는 호버 시) */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5 transition-all duration-300">
 
               {/* 난이도/시간은 상단 배지에서 바로 선택하도록 변경됨 */}
 
@@ -486,8 +490,8 @@ export default function TaskCard({
 
               {/* XP 표시 */}
               {!hideMetadata && (
-                <span className="ml-auto text-[10px] text-[var(--color-text-tertiary)]">
-                  +{xp} XP
+                <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-2.5 py-0.5 text-[11px] font-semibold text-[var(--color-primary)] shadow-sm">
+                  🪙 +{xp} XP
                 </span>
               )}
             </div>

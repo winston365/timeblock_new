@@ -8,6 +8,7 @@ import {
     resetDailyWaifuStats,
     getMoodFromAffection,
     getDialogueFromAffection,
+    syncAffectionWithXP,
 } from '@/data/repositories/waifuRepository';
 
 interface WaifuStoreState {
@@ -21,6 +22,7 @@ interface WaifuStoreActions {
     onTaskComplete: () => Promise<void>;
     onInteract: () => Promise<void>;
     resetDaily: () => Promise<void>;
+    syncWithXP: () => Promise<void>;
 }
 
 export const useWaifuStore = create<WaifuStoreState & WaifuStoreActions>()(
@@ -63,6 +65,16 @@ export const useWaifuStore = create<WaifuStoreState & WaifuStoreActions>()(
                     const updatedState = await resetDailyWaifuStats();
                     set({ waifuState: updatedState });
                 } catch (error) {
+                    set({ error: error as Error });
+                }
+            },
+
+            syncWithXP: async () => {
+                try {
+                    const updatedState = await syncAffectionWithXP();
+                    set({ waifuState: updatedState });
+                } catch (error) {
+                    console.error('[WaifuStore] Failed to sync affection with XP:', error);
                     set({ error: error as Error });
                 }
             },

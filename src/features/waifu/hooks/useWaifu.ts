@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useWaifuStore } from '../stores/waifuStore';
+import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import {
     getMoodFromAffection,
     getDialogueFromAffection,
@@ -14,12 +15,22 @@ export function useWaifu() {
         onTaskComplete,
         onInteract,
         resetDaily,
+        syncWithXP,
     } = useWaifuStore();
+
+    const gameState = useGameStateStore((state) => state.gameState);
 
     // Initial load
     useEffect(() => {
         loadData();
-    }, []);
+    }, [loadData]);
+
+    // Sync affection when XP changes
+    useEffect(() => {
+        if (gameState?.availableXP !== undefined) {
+            syncWithXP();
+        }
+    }, [gameState?.availableXP, syncWithXP]);
 
     // Derived state
     const currentMood = waifuState ? getMoodFromAffection(waifuState.affection) : '😐 보통';

@@ -29,7 +29,7 @@ import { generateId } from '@/shared/lib/utils';
  * @throws 없음
  * @sideEffects
  *   - IndexedDB에서 데이터 조회
- *   - Firebase 폴백 시 IndexedDB에 데이터 복원
+ *   - Firebase 폴백 시 IndexedDB에 데이터 복원 (초기 로드 시에만)
  */
 export async function loadGlobalGoals(): Promise<DailyGoal[]> {
   try {
@@ -41,15 +41,17 @@ export async function loadGlobalGoals(): Promise<DailyGoal[]> {
       return goals;
     }
 
-    // 2. Firebase에서 조회 (fallback)
+    // 2. Firebase에서 조회 (초기 로드 또는 IndexedDB가 비어있을 때만)
+    // 주의: 페이지 새로고침 시 일시적으로 IndexedDB가 비어 보일 수 있으므로
+    // Firebase 데이터가 실제로 더 최신인지 확인하지 않고 복원할 경우 데이터 손실 가능
     if (isFirebaseInitialized()) {
       const firebaseGoals = await fetchFromFirebase<DailyGoal[]>(globalGoalStrategy);
 
       if (firebaseGoals && firebaseGoals.length > 0) {
-        // Firebase 데이터를 IndexedDB에 저장
+        // IndexedDB가 완전히 비어있을 때만 Firebase 데이터로 복원
+        // (Store가 메모리에 데이터를 유지하므로, 실제 데이터 손실 시에만 이 경로 실행됨)
         await db.globalGoals.bulkPut(firebaseGoals);
-
-        addSyncLog('firebase', 'load', `Loaded ${firebaseGoals.length} global goals from Firebase`);
+        addSyncLog('firebase', 'load', `Restored ${firebaseGoals.length} goals from Firebase`);
         return firebaseGoals;
       }
     }

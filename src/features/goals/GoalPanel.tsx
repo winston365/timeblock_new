@@ -1,5 +1,5 @@
-﻿import { useState, useEffect } from 'react';
-import { loadGlobalGoals, deleteGlobalGoal } from '@/data/repositories';
+﻿import { useEffect } from 'react';
+import { useGoalStore } from '@/shared/stores/goalStore';
 import type { DailyGoal } from '@/shared/types/domain';
 
 interface GoalPanelProps {
@@ -115,38 +115,19 @@ function GoalProgressCard({ goal, onEdit, onDelete }: GoalProgressCardProps) {
 }
 
 export default function GoalPanel({ onOpenModal }: GoalPanelProps) {
-  const [goals, setGoals] = useState<DailyGoal[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { goals, loading, loadGoals, deleteGoal } = useGoalStore();
 
   useEffect(() => {
     loadGoals();
-  }, []);
-
-  useEffect(() => {
-    const handleGoalChanged = () => loadGoals();
-    window.addEventListener('goal-changed', handleGoalChanged);
-    return () => window.removeEventListener('goal-changed', handleGoalChanged);
-  }, []);
-
-  const loadGoals = async () => {
-    try {
-      setLoading(true);
-      const loadedGoals = await loadGlobalGoals();
-      setGoals(loadedGoals.sort((a, b) => a.order - b.order));
-    } catch (error) {
-      console.error('[GoalPanel] Failed to load goals:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [loadGoals]);
 
   const handleDelete = async (goalId: string) => {
     if (!confirm('정말 이 목표를 삭제하시겠습니까?')) return;
     try {
-      await deleteGlobalGoal(goalId);
-      await loadGoals();
+      await deleteGoal(goalId);
     } catch (error) {
       console.error('[GoalPanel] Failed to delete goal:', error);
+      alert('목표 삭제에 실패했습니다.');
     }
   };
 

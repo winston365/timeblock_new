@@ -23,6 +23,7 @@ import {
 import { loadAllTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import type { DailyTokenUsage } from '@/shared/types/domain';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { toast } from 'react-hot-toast';
 
 // Gemini 2.5 Flash 가격 (업데이트): US$2.00 per 1M input, US$12.00 per 1M output
 const PRICE_PER_MILLION_INPUT = 2.0;
@@ -188,12 +189,12 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
         }
       }
 
-      alert('설정이 저장되었습니다!');
+      toast.success('설정이 저장되었습니다!');
       onSaved?.();
       onClose();
     } catch (error) {
       console.error('Failed to save settings:', error);
-      alert('설정 저장에 실패했습니다.');
+      toast.error('설정 저장에 실패했습니다.');
     } finally {
       setSaving(false);
     }

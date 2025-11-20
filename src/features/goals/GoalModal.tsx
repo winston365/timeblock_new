@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { addGlobalGoal, updateGlobalGoal } from '@/data/repositories';
+import { useGoalStore } from '@/shared/stores/goalStore';
 import type { DailyGoal } from '@/shared/types/domain';
 
 interface GoalModalProps {
@@ -23,6 +23,7 @@ const GOAL_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec
 
 export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalProps) {
   const isEditMode = !!goal;
+  const { addGoal, updateGoal } = useGoalStore();
   const [title, setTitle] = useState('');
   const [targetHours, setTargetHours] = useState(0);
   const [targetMinutes, setTargetMinutes] = useState(30);
@@ -87,9 +88,9 @@ export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalP
       };
 
       if (isEditMode && goal) {
-        await updateGlobalGoal(goal.id, goalData);
+        await updateGoal(goal.id, goalData);
       } else {
-        await addGlobalGoal(goalData);
+        await addGoal(goalData);
       }
       onSaved?.();
       onClose();

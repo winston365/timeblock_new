@@ -20,6 +20,7 @@ import TaskCard from '@/features/schedule/TaskCard';
 import TaskModal from '@/features/schedule/TaskModal';
 import { useDragDropManager } from '@/features/schedule/hooks/useDragDropManager';
 import { useInboxStore } from '@/shared/stores/inboxStore';
+import { toast } from 'react-hot-toast';
 
 /**
  * 인박스 탭 컴포넌트
@@ -137,8 +138,8 @@ export default function InboxTab() {
       setIsModalOpen(false);
       setEditingTask(null);
     } catch (error) {
-      console.error('Failed to save task:', error);
-      alert('작업 저장에 실패했습니다.');
+        console.error('Failed to save task:', error);
+        toast.error('작업 저장에 실패했습니다.');
     }
   };
 
@@ -147,7 +148,7 @@ export default function InboxTab() {
       await deleteTask(taskId);
     } catch (error) {
       console.error('Failed to delete task:', error);
-      alert('작업 삭제에 실패했습니다.');
+      toast.error('작업 삭제에 실패했습니다.');
     }
   };
 
@@ -156,6 +157,7 @@ export default function InboxTab() {
       await toggleTaskCompletion(taskId);
     } catch (error) {
       console.error('Failed to toggle task:', error);
+      toast.error('작업 상태 변경에 실패했습니다.');
     }
   };
 
@@ -321,7 +323,6 @@ export default function InboxTab() {
                   // 드래그 종료 시 새로고침이 필요할 수 있음 (예: 다른 블록으로 이동)
                   setTimeout(() => loadData(), 500);
                 }}
-                hideMetadata
                 compact
               />
             ))}

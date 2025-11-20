@@ -19,6 +19,10 @@ import {
     toggleInboxTaskCompletion,
 } from '@/data/repositories/inboxRepository';
 import { scheduleEmojiSuggestion } from '@/shared/services/ai/emojiSuggester';
+import { taskCompletionService } from '@/shared/services/gameplay/taskCompletion';
+import { getLocalDate } from '@/shared/lib/utils';
+import { useGameStateStore } from '@/shared/stores/gameStateStore';
+import { useRealityCheckStore } from '@/shared/stores/realityCheckStore';
 
 interface InboxStore {
     // 상태
@@ -108,7 +112,31 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
     toggleTaskCompletion: async (taskId: string) => {
         set({ loading: true, error: null });
         try {
-            await toggleInboxTaskCompletion(taskId);
+            const current = get().inboxTasks.find(t => t.id === taskId);
+            const wasCompleted = current?.completed ?? false;
+
+            const updatedTask = await toggleInboxTaskCompletion(taskId);
+
+            if (!wasCompleted && updatedTask.completed) {
+                // XP/퀘스트/와이푸 토스트 포함 공통 완료 파이프라인 재사용
+                await taskCompletionService.handleTaskCompletion({
+                    task: updatedTask,
+                    wasCompleted,
+                    date: getLocalDate(),
+                });
+                // 게임 상태 갱신 (XP 반영)
+                await useGameStateStore.getState().refresh();
+
+                // Reality Check 모달 (10분 이상만)
+                if (updatedTask.adjustedDuration >= 10) {
+                    useRealityCheckStore.getState().openRealityCheck(
+                        updatedTask.id,
+                        updatedTask.text,
+                        updatedTask.adjustedDuration
+                    );
+                }
+            }
+
             await get().loadData();
         } catch (error) {
             console.error('InboxStore: Failed to toggle task completion', error);
