@@ -5,53 +5,35 @@
  * @input 없음
  * @output 완료된 작업 목록, 총 획득 XP, 완료 시간, 완료 취소 버튼을 포함한 UI
  * @external_dependencies
- *   - useDailyData: 일일 데이터 관리 훅
- *   - useInboxStore: 인박스 상태 관리 Store
+ *   - useCompletedTasks: 완료된 작업 목록 훅
  *   - formatTime, calculateTaskXP: 유틸리티 함수
+ *   - toggleTaskCompletionRepo: DB 요청
  */
 
-import { useMemo, useEffect } from 'react';
-import { useDailyData } from '@/shared/hooks';
-import { useInboxStore } from '@/shared/stores/inboxStore';
-import { formatTime, calculateTaskXP, getLocalDate } from '@/shared/lib/utils';
+import { useState, useEffect } from 'react';
+import { useCompletedTasks } from '@/shared/hooks';
+import { formatTime, calculateTaskXP } from '@/shared/lib/utils';
+import { toggleTaskCompletion as toggleTaskCompletionRepo } from '@/data/repositories';
 import type { Task } from '@/shared/types/domain';
 
 export default function CompletedTab() {
-  // ✅ Store 중심 아키텍처: Repository 대신 Store 사용
-  const { dailyData, loading: dailyLoading, toggleTaskCompletion } = useDailyData();
-  const {
-    completedTasks: inboxCompletedTasks,
-    loading: inboxLoading,
-    toggleInboxTaskCompletion,
-    loadCompletedTasks,
-  } = useInboxStore();
+  const { completedTasks: initialCompletedTasks, loading } = useCompletedTasks();
+  const [completedTasks, setCompletedTasks] = useState<Task[]>(initialCompletedTasks);
 
-  // ✅ Inbox 완료된 작업 로드
   useEffect(() => {
-    loadCompletedTasks();
-  }, [loadCompletedTasks]);
-
-  // ✅ dailyData와 inbox의 완료된 작업 합치기 (useMemo로 최적화)
-  const completedTasks = useMemo(() => {
-    const dailyCompletedTasks = dailyData?.tasks.filter(task => task.completed) || [];
-    return [...dailyCompletedTasks, ...inboxCompletedTasks];
-  }, [dailyData, inboxCompletedTasks]);
-
-  const loading = dailyLoading || inboxLoading;
+    setCompletedTasks(initialCompletedTasks);
+  }, [initialCompletedTasks]);
 
   const handleToggleTask = async (task: Task) => {
     try {
-      // ✅ Store 액션 사용 (자동 동기화)
-      if (task.timeBlock !== null) {
-        // dailyData의 작업 (timeBlock이 있음)
-        await toggleTaskCompletion(task.id);
-      } else {
-        // inbox 작업 (timeBlock이 null)
-        await toggleInboxTaskCompletion(task.id);
-      }
-      // ❌ 수동 상태 업데이트 제거 - Store가 자동으로 처리
+      setCompletedTasks(prevTasks => prevTasks.filter(t => t.id !== task.id));
+      const taskDate = task.completedAt
+        ? new Date(task.completedAt).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+      await toggleTaskCompletionRepo(task.id, taskDate);
     } catch (error) {
       console.error('Failed to toggle task:', error);
+      setCompletedTasks(initialCompletedTasks);
       alert('작업 취소에 실패했습니다.');
     }
   };

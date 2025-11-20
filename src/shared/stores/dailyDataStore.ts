@@ -249,13 +249,9 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       // ✅ Repository 호출
       await updateTaskInRepo(taskId, sanitizedUpdates, currentDate);
 
-      // 🔹 inbox ↔ timeBlock 이동 시 inboxStore 동기화
+      // 🔹 inbox ↔ timeBlock 이동 시 강제 새로고침
       if (isInboxToBlockMove || isBlockToInboxMove) {
         await loadData(currentDate, true);
-
-        // ✅ Cross-store update: inboxStore도 동기화
-        const { useInboxStore } = await import('@/shared/stores/inboxStore');
-        await useInboxStore.getState().loadInboxTasks();
       }
 
       // ✅ 목표 연결 변경 시 진행률 재계산
@@ -373,10 +369,8 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
           blockTasks,
         });
 
-        // ✅ Cross-store update: gameState는 taskCompletionService에서 이미 업데이트됨
-        // 하지만 완료 토글 시 XP가 추가되므로, gameState를 명시적으로 갱신
         const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
-        await useGameStateStore.getState().loadData();
+        await useGameStateStore.getState().refresh();
 
         if (taskInDaily && result.isPerfectBlock && updatedTask.timeBlock && blockState) {
           set({
