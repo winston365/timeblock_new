@@ -41,6 +41,7 @@ import {
 import { taskCompletionService } from '@/shared/services/gameplay/taskCompletion';
 import { trackTaskTimeBlockChange } from '@/shared/services/behavior/procrastinationMonitor';
 import { db } from '@/data/db/dexieClient';
+import { scheduleEmojiSuggestion } from '@/shared/services/ai/emojiSuggester';
 
 interface DailyDataStore {
   // 상태
@@ -58,12 +59,14 @@ interface DailyDataStore {
   toggleTaskCompletion: (taskId: string) => Promise<void>;
   updateBlockState: (blockId: string, updates: Partial<TimeBlockState>) => Promise<void>;
   toggleBlockLock: (blockId: string) => Promise<void>;
+  setHourSlotTag: (hour: number, tagId: string | null) => Promise<void>;
   refresh: () => Promise<void>;
   reset: () => void;
 }
 
 interface UpdateTaskOptions {
   skipBehaviorTracking?: boolean;
+  skipEmoji?: boolean;
 }
 
 /**
@@ -131,12 +134,13 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     const { currentDate, dailyData } = get();
 
     try {
-      await saveDailyData(currentDate, tasks, timeBlockStates);
+      await saveDailyData(currentDate, tasks, timeBlockStates, dailyData?.hourSlotTags);
       set({
         dailyData: {
           tasks,
           goals: dailyData?.goals || [],
           timeBlockStates,
+          hourSlotTags: dailyData?.hourSlotTags || {},
           updatedAt: Date.now(),
         },
       });
@@ -164,6 +168,8 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     try {
       // ✅ Repository 호출
       await addTaskToRepo(task, currentDate);
+      // 🪄 이모지 추천 (비동기)
+      scheduleEmojiSuggestion(task.id, task.text);
 
       // ✅ 목표 연결 시 진행률 재계산
       if (task.goalId) {
@@ -184,7 +190,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
   updateTask: async (taskId: string, updates: Partial<Task>, options?: UpdateTaskOptions) => {
     const { currentDate, dailyData, loadData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
-    const { skipBehaviorTracking = false } = options || {};
+    const { skipBehaviorTracking = false, skipEmoji = false } = options || {};
 
     // 🔧 Firebase undefined 처리 & hourSlot 자동 계산
     const sanitizedUpdates = sanitizeTaskUpdates(updates);
@@ -248,6 +254,14 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     try {
       // ✅ Repository 호출
       await updateTaskInRepo(taskId, sanitizedUpdates, currentDate);
+      // 🪄 이모지 추천 (비동기) - emoji 직접 업데이트 중이거나 스킵 플래그면 건너뜀
+      if (!skipEmoji && !('emoji' in sanitizedUpdates)) {
+        const finalText = sanitizedUpdates.text ?? originalTask?.text;
+        const hasEmoji = (sanitizedUpdates.emoji ?? originalTask?.emoji) !== undefined;
+        if (finalText && !hasEmoji) {
+          scheduleEmojiSuggestion(taskId, finalText);
+        }
+      }
 
       // 🔹 inbox ↔ timeBlock 이동 시 강제 새로고침
       if (isInboxToBlockMove || isBlockToInboxMove) {
@@ -492,6 +506,34 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       console.error('[DailyDataStore] Failed to toggle block lock, rolling back:', err);
       // ❌ Rollback
       set(createBlockRollbackState(dailyData, originalBlockStates, err as Error));
+      throw err;
+    }
+  },
+
+  /**
+   * 시간대 속성 태그 업데이트
+   */
+  setHourSlotTag: async (hour: number, tagId: string | null) => {
+    const { currentDate, dailyData } = get();
+    assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
+
+    const prevTags = dailyData.hourSlotTags || {};
+    const nextTags = { ...prevTags };
+    if (tagId) {
+      nextTags[hour] = tagId;
+    } else {
+      delete nextTags[hour];
+    }
+
+    const optimistic = createUpdatedDailyData(dailyData, { hourSlotTags: nextTags });
+    set({ dailyData: optimistic });
+
+    try {
+      await saveDailyData(currentDate, dailyData.tasks, dailyData.timeBlockStates, nextTags);
+    } catch (err) {
+      // 롤백
+      set({ dailyData });
+      console.error('[DailyDataStore] Failed to update hour slot tag:', err);
       throw err;
     }
   },

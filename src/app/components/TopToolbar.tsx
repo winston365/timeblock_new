@@ -46,7 +46,9 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
     }, 10000);
   };
 
-  const statItemClass = 'flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]';
+  const statItemClass =
+    'flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]';
+  const statValueClass = 'font-mono font-bold text-base text-[var(--color-text)]';
 
   const gradientString =
     'linear-gradient(to right,' +
@@ -105,20 +107,20 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
 
       <div className="flex flex-1 flex-wrap items-center gap-[var(--spacing-lg)] text-sm">
         <div className={statItemClass}>
-          <span>현재 에너지:</span>
-          <span>{currentEnergy > 0 ? `${currentEnergy}%` : '-'}</span>
+          <span>⚡ 에너지:</span>
+          <span className={statValueClass}>{currentEnergy > 0 ? `${currentEnergy}%` : '-'}</span>
         </div>
         <div className={statItemClass}>
-          <span>오늘 획득 XP:</span>
-          <span>{gameState?.dailyXP ?? 0}</span>
+          <span>⭐ 오늘 XP:</span>
+          <span className={statValueClass}>{gameState?.dailyXP ?? 0}</span>
         </div>
         <div className={statItemClass}>
-          <span>사용 가능 XP:</span>
-          <span>{gameState?.availableXP ?? 0}</span>
+          <span>⭐ 사용 가능:</span>
+          <span className={statValueClass}>{gameState?.availableXP ?? 0}</span>
         </div>
         <div className={statItemClass}>
-          <span>집중 세션 기록:</span>
-          <span className="font-mono">{gameState?.dailyTimerCount ?? 0}회</span>
+          <span>✅ 세션:</span>
+          <span className={statValueClass}>{gameState?.dailyTimerCount ?? 0}회</span>
         </div>
 
         {waifuState && (

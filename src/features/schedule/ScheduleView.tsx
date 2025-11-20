@@ -10,24 +10,21 @@ import { useDailyData } from '@/shared/hooks';
 import { useGameState } from '@/shared/hooks/useGameState';
 import { generateId } from '@/shared/lib/utils';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
-import type { Task, TimeBlockId } from '@/shared/types/domain';
+import { useSettingsStore } from '@/shared/stores/settingsStore';
+import type { Task, TimeBlockId, WarmupPresetItem } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import TaskModal from './TaskModal';
 import TimeBlock from './TimeBlock';
 import { FocusView } from './components/FocusView';
 import { useFocusModeStore } from './stores/focusModeStore';
+import { fetchFromFirebase, syncToFirebase } from '@/shared/services/sync/firebase/syncCore';
+import { warmupPresetStrategy } from '@/shared/services/sync/firebase/strategies';
 
-const DEFAULT_WARMUP_PRESET = [
-  { text: '책상 정리', baseDuration: 5, resistance: 'low' as const },
-  { text: '메일함 비우기', baseDuration: 5, resistance: 'low' as const },
-  { text: '물 마시기', baseDuration: 5, resistance: 'low' as const },
+const DEFAULT_WARMUP_PRESET: WarmupPresetItem[] = [
+  { text: '책상 정리', baseDuration: 5, resistance: 'low' },
+  { text: '메일함 비우기', baseDuration: 5, resistance: 'low' },
+  { text: '물 마시기', baseDuration: 5, resistance: 'low' },
 ];
-
-type WarmupItem = {
-  text: string;
-  baseDuration: number;
-  resistance: 'low' | 'medium' | 'high';
-};
 
 export default function ScheduleView() {
   const {
@@ -39,10 +36,12 @@ export default function ScheduleView() {
     toggleTaskCompletion,
     toggleBlockLock,
     updateBlockState,
+    setHourSlotTag,
   } = useDailyData();
   const { updateQuestProgress } = useGameState();
   const { show: showWaifu } = useWaifuCompanionStore();
   const { isFocusMode, toggleFocusMode, setFocusMode } = useFocusModeStore();
+  const { settings, loadData: loadSettingsData } = useSettingsStore();
 
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   const [showPastBlocks, setShowPastBlocks] = useState(false);
@@ -50,7 +49,7 @@ export default function ScheduleView() {
   const [isWarmupModalOpen, setIsWarmupModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<TimeBlockId>(null);
-  const [warmupPreset, setWarmupPreset] = useState<WarmupItem[]>(DEFAULT_WARMUP_PRESET);
+  const [warmupPreset, setWarmupPreset] = useState<WarmupPresetItem[]>(DEFAULT_WARMUP_PRESET);
 
   const autoInsertedRef = useRef<Set<string>>(new Set());
   const lastAutoCheckRef = useRef<string | null>(null);
@@ -62,7 +61,25 @@ export default function ScheduleView() {
     const interval = setInterval(updateTime, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
-  // 매 시간 50분에 자동 체크 후 다음 블록에 삽입 (22:50~03:50 제외)
+
+  useEffect(() => {
+    loadSettingsData().catch(console.error);
+  }, [loadSettingsData]);
+
+  // 워밍업 프리셋 로드 (Firebase)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const remotePreset = await fetchFromFirebase(warmupPresetStrategy);
+      if (mounted && remotePreset && Array.isArray(remotePreset) && remotePreset.length > 0) {
+        setWarmupPreset(remotePreset);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+  // 매 시간 50분에 자동 체크 후 다음 시간대(같은 블록이든 다음 블록이든)에 삽입 (22:50~03:50 제외)
   useEffect(() => {
     const interval = setInterval(() => {
       if (!dailyData) return;
@@ -83,16 +100,28 @@ export default function ScheduleView() {
       const completedCount = currentBlockTasks.filter(t => t.completed).length;
       if (completedCount > 0) return;
 
-      const nextIndex = TIME_BLOCKS.findIndex(b => b.id === currentBlock.id) + 1;
-      if (nextIndex >= TIME_BLOCKS.length) return;
-      const nextBlock = TIME_BLOCKS[nextIndex];
-      if (autoInsertedRef.current.has(nextBlock.id)) return;
+      // 대상 시간대: 현재 시간 +1 시간이 동일 블록 안에 있으면 그대로, 아니면 다음 블록 시작 시간
+      const targetHour = hour + 1;
+      let targetBlock = TIME_BLOCKS.find(b => targetHour >= b.start && targetHour < b.end);
+      let targetHourInBlock = targetHour;
 
-      const nextTasks = dailyData.tasks.filter(t => t.timeBlock === nextBlock.id);
-      if (nextTasks.length > 2) return;
+      if (!targetBlock) {
+        const nextIndex = TIME_BLOCKS.findIndex(b => b.id === currentBlock.id) + 1;
+        if (nextIndex >= TIME_BLOCKS.length) return;
+        targetBlock = TIME_BLOCKS[nextIndex];
+        targetHourInBlock = targetBlock.start;
+      }
 
-      insertWarmupTasks(nextBlock.id as TimeBlockId, nextBlock.start);
-      autoInsertedRef.current.add(nextBlock.id);
+      const targetKey = `${targetBlock.id}-${targetHourInBlock}`;
+      if (autoInsertedRef.current.has(targetKey)) return;
+
+      const targetTasks = dailyData.tasks.filter(
+        t => t.timeBlock === targetBlock!.id && t.hourSlot === targetHourInBlock
+      );
+      if (targetTasks.length > 2) return;
+
+      insertWarmupTasks(targetBlock.id as TimeBlockId, targetHourInBlock);
+      autoInsertedRef.current.add(targetKey);
     }, 30 * 1000);
 
     return () => clearInterval(interval);
@@ -119,6 +148,15 @@ export default function ScheduleView() {
     if (isPast && !showPastBlocks) return false;
     return true;
   });
+  const hourSlotTags = dailyData?.hourSlotTags || {};
+  const tagTemplates = settings?.timeSlotTags || [];
+  const recentTagIds = Array.from(
+    new Set(
+      Object.values(hourSlotTags || {})
+        .filter((id): id is string => Boolean(id))
+        .reverse()
+    )
+  ).slice(0, 3);
 
   // 현재 블록이 없으면 집중모드 해제
   useEffect(() => {
@@ -222,6 +260,14 @@ export default function ScheduleView() {
     setEditingTask(task);
     setSelectedBlockId(task.timeBlock);
     setIsModalOpen(true);
+  };
+
+  const handleSelectHourTag = async (hour: number, tagId: string | null) => {
+    try {
+      await setHourSlotTag(hour, tagId);
+    } catch (error) {
+      console.error('Failed to update hour tag:', error);
+    }
   };
 
   const handleCloseModal = () => {
@@ -421,15 +467,21 @@ export default function ScheduleView() {
     if (!target) return;
     insertWarmupTasks(target.blockId, target.hourSlot);
   };
-  const handleSaveWarmupPreset = (preset: WarmupItem[]) => {
+  const handleSaveWarmupPreset = (preset: WarmupPresetItem[]) => {
     setWarmupPreset(preset);
+    syncToFirebase(warmupPresetStrategy, preset).catch(err =>
+      console.error('Failed to sync warmup preset:', err)
+    );
     setIsWarmupModalOpen(false);
   };
 
-  const handleApplyWarmupFromModal = (preset: WarmupItem[]) => {
+  const handleApplyWarmupFromModal = (preset: WarmupPresetItem[]) => {
     const target = getNextWarmupTarget(currentHour);
     if (!target) return;
     insertWarmupTasks(target.blockId, target.hourSlot, preset);
+    syncToFirebase(warmupPresetStrategy, preset).catch(err =>
+      console.error('Failed to sync warmup preset:', err)
+    );
     setIsWarmupModalOpen(false);
   };
 
@@ -545,6 +597,10 @@ export default function ScheduleView() {
                 onToggleLock={() => handleToggleLock(block.id)}
                 onUpdateBlockState={updateBlockState}
                 onDropTask={handleDropTask}
+                hourSlotTags={hourSlotTags}
+                tagTemplates={tagTemplates}
+                recentTagIds={recentTagIds}
+                onSelectHourTag={handleSelectHourTag}
               />
             );
           })}
@@ -586,14 +642,14 @@ export default function ScheduleView() {
 }
 
 interface WarmupPresetModalProps {
-  preset: WarmupItem[];
-  onSave: (preset: WarmupItem[]) => void;
-  onApply: (preset: WarmupItem[]) => void;
+  preset: WarmupPresetItem[];
+  onSave: (preset: WarmupPresetItem[]) => void;
+  onApply: (preset: WarmupPresetItem[]) => void;
   onClose: () => void;
 }
 
 function WarmupPresetModal({ preset, onSave, onApply, onClose }: WarmupPresetModalProps) {
-  const [draft, setDraft] = useState<WarmupItem[]>(preset);
+  const [draft, setDraft] = useState<WarmupPresetItem[]>(preset);
 
   const handleChange = (index: number, field: keyof WarmupItem, value: string) => {
     setDraft(prev =>

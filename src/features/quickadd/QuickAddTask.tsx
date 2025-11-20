@@ -12,7 +12,7 @@
 import { useState, useEffect } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
 import { calculateAdjustedDuration, generateId } from '@/shared/lib/utils';
-import { addInboxTask } from '@/data/repositories/inboxRepository';
+import { useInboxStore } from '@/shared/stores/inboxStore';
 import { initializeDatabase } from '@/data/db/dexieClient';
 
 /**
@@ -25,6 +25,7 @@ import { initializeDatabase } from '@/data/db/dexieClient';
  *   - 저장 완료 시 윈도우 닫기
  */
 export default function QuickAddTask() {
+  const { addTask } = useInboxStore();
   const [text, setText] = useState('');
   const [memo, setMemo] = useState('');
   const [baseDuration, setBaseDuration] = useState(15);
@@ -194,7 +195,7 @@ export default function QuickAddTask() {
       };
 
       // 작업 저장
-      await addInboxTask(newTask);
+      await addTask(newTask);
       console.log('✅ Task added successfully:', newTask.text);
 
       // 데스크탑 알림 (Electron API 사용)
@@ -215,7 +216,9 @@ export default function QuickAddTask() {
       // 윈도우 닫기 (Electron API 사용)
       if (window.electronAPI) {
         setTimeout(async () => {
-          await window.electronAPI.closeQuickAddWindow();
+          if (window.electronAPI) {
+            await window.electronAPI.closeQuickAddWindow();
+          }
         }, 300); // 0.3초 후 닫기 (저장 완료 확인)
       }
     } catch (error) {
@@ -297,8 +300,8 @@ export default function QuickAddTask() {
                     key={duration}
                     type="button"
                     className={`rounded-2xl border px-3 py-1 text-xs font-semibold transition ${baseDuration === duration
-                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-lg'
-                        : 'border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-text)]'
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-lg'
+                      : 'border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-text)]'
                       }`}
                     onClick={() => setBaseDuration(duration)}
                   >

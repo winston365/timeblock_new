@@ -11,11 +11,9 @@
  *   - repositories: getRecentCompletedTasks
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useDailyDataStore } from '../stores/dailyDataStore';
 import { getLocalDate } from '../lib/utils';
-import { getRecentCompletedTasks } from '@/data/repositories';
-import type { Task } from '@/shared/types/domain';
 
 /**
  * 일일 데이터 관리 훅
@@ -61,54 +59,8 @@ export function useDailyData(date: string = getLocalDate()) {
     toggleTaskCompletion: store.toggleTaskCompletion,
     updateBlockState: store.updateBlockState,
     toggleBlockLock: store.toggleBlockLock,
+    setHourSlotTag: store.setHourSlotTag,
   };
 }
 
-/**
- * 완료된 작업만 가져오는 훅 (최근 7일)
- *
- * @param {number} [days=7] - 조회할 일수 (기본값: 7일)
- * @returns {object} 완료된 작업 정보
- * @returns {Task[]} completedTasks - 완료된 작업 목록 (최근 순)
- * @returns {boolean} loading - 로딩 상태
- * @returns {Error | null} error - 에러 상태
- * @sideEffects
- *   - 최근 N일의 완료된 작업을 비동기로 로드
- */
-export function useCompletedTasks(days: number = 20) {
-  const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadCompletedTasks() {
-      try {
-        setLoading(true);
-        const tasks = await getRecentCompletedTasks(days);
-        if (isMounted) {
-          setCompletedTasks(tasks);
-          setError(null);
-        }
-      } catch (err) {
-        if (isMounted) {
-          console.error('Failed to load completed tasks:', err);
-          setError(err as Error);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadCompletedTasks();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [days]);
-
-  return { completedTasks, loading, error };
-}

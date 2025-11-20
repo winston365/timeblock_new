@@ -14,12 +14,11 @@ import confetti from 'canvas-confetti';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier } from './waifuImageUtils';
-import { getDialogueFromAffection, syncAffectionWithXP } from '@/data/repositories/waifuRepository';
-import { addXP } from '@/data/repositories/gameStateRepository';
-import { loadSettings } from '@/data/repositories/settingsRepository';
+import { getDialogueFromAffection } from '@/data/repositories/waifuRepository';
 import { preloadWaifuImages } from './waifuImagePreloader';
 import { audioService } from '@/shared/services/media/audioService';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
+import { useSettingsStore } from '@/shared/stores/settingsStore';
 import type { WaifuMode } from '@/shared/types/domain';
 import { Typewriter } from '@/shared/components/ui/Typewriter';
 import baseImage from './base.png';
@@ -49,8 +48,11 @@ interface WaifuPanelProps {
  *   - 호감도 변경 시 이미지 자동 업데이트
  */
 export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
-  const { waifuState, loading, currentMood, currentDialogue, currentAudio, refresh: refreshWaifu } = useWaifu();
+  const { waifuState, loading, currentMood, currentDialogue, currentAudio, refresh: refreshWaifu, onInteract } = useWaifu();
   const { message: companionMessage, isPinned, togglePin, expressionOverride, show: showWaifu } = useWaifuCompanionStore();
+  const { settings } = useSettingsStore();
+  const { addXP } = useGameStateStore();
+
   const [displayImagePath, setDisplayImagePath] = useState<string>('');
 
   // useRef로 변경하여 리렌더링 및 의존성 사이클 방지
@@ -74,12 +76,10 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
 
   // 설정 로드 (와이푸 모드 및 이미지 변경 간격) + 이미지 프리로드
   useEffect(() => {
-    const loadWaifuMode = async () => {
-      const settings = await loadSettings();
+    if (settings) {
       setWaifuMode(settings.waifuMode);
       setWaifuImageChangeInterval(settings.waifuImageChangeInterval ?? 600000);
-    };
-    loadWaifuMode();
+    }
 
     // 이미지 프리로드 (백그라운드)
     preloadWaifuImages().catch((err) => console.error('[WaifuPanel] Image preload failed:', err));
@@ -100,7 +100,7 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     updateLighting();
     const interval = setInterval(updateLighting, 60000 * 30); // Check every 30 mins
     return () => clearInterval(interval);
-  }, []);
+  }, [settings]);
 
   // 이미지 변경 함수
   const changeImage = useCallback(async (affection: number, source: 'manual' | 'auto' = 'auto') => {
@@ -148,7 +148,7 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     if (source === 'manual') {
       lastManualChangeTime.current = Date.now();
     }
-  }, [waifuState, waifuMode]); // currentImageIndex 의존성 제거
+  }, [waifuState, waifuMode, displayImagePath]); // currentImageIndex 의존성 제거
 
   // 초기 이미지 로드 및 호감도 변경 시 이미지 업데이트
   useEffect(() => {
@@ -263,25 +263,22 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
       audioService.play(newDialogue.audio);
     }
 
-    // 3. XP 증가 (+1) - 사용자 요청으로 변경
+    // 3. XP 증가 (+1) - Store Action 사용
     try {
-      await addXP(1, undefined, 'other'); // reason 'other' for generic interaction
-      // GameState UI 즉시 업데이트
-      useGameStateStore.getState().refresh();
+      await addXP(1); // reason is handled internally or default
     } catch (error) {
       console.error('Failed to add XP:', error);
     }
 
-    // 4. 호감도 동기화 (XP 기반) - 사용자 요청으로 변경
+    // 4. 호감도 동기화 (XP 기반) - Store Action 사용
     try {
-      await syncAffectionWithXP();
-      // Waifu UI 즉시 업데이트
-      refreshWaifu();
+      // onInteract calls interactWithWaifu which updates affection
+      await onInteract();
     } catch (error) {
       console.error('Failed to sync affection:', error);
     }
 
-  }, [waifuState, changeImage, showWaifu, refreshWaifu]);
+  }, [waifuState, changeImage, showWaifu, addXP, onInteract]);
 
   if (loading) {
     return (

@@ -50,11 +50,21 @@ const resistanceBadgeClass: Record<Resistance, string> = {
   high: 'bg-rose-500/15 text-rose-300 ring-1 ring-rose-500/40',
 };
 const resistanceLabel: Record<Resistance, string> = {
-  low: '저항 낮음',
-  medium: '중간 저항',
-  high: '저항 높음',
+    low: '저항 낮음',
+    medium: '중간 저항',
+    high: '저항 높음',
 };
 const DURATION_OPTIONS = [5, 10, 15, 30, 45, 60, 90, 120];
+const Spinner = () => (
+    <div className="flex w-full flex-col items-center justify-center gap-4 py-6 text-[var(--color-text)]">
+        <div className="flex items-center justify-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-transparent border-t-blue-400 text-4xl text-blue-400 animate-spin">
+                <div className="h-16 w-16 rounded-full border-4 border-transparent border-t-red-400 text-2xl text-red-400 animate-spin" />
+            </div>
+        </div>
+        <div className="text-sm font-semibold text-[var(--color-text-secondary)]">AI가 작업을 준비 중이에요...</div>
+    </div>
+);
 
 export default function TaskBreakdownModal({
   isOpen,
@@ -305,10 +315,15 @@ export default function TaskBreakdownModal({
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-6 py-6">
-            <div className="flex flex-col gap-6">
-              {/* 재생성 버튼 */}
+                <div className="relative flex flex-1 flex-col overflow-hidden">
+                    {regenerating && (
+                        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--color-bg)]/70 backdrop-blur-sm">
+                            <Spinner />
+                        </div>
+                    )}
+                    <div className="flex-1 overflow-y-auto px-6 py-6">
+                        <div className="flex flex-col gap-6">
+                            {/* 재생성 버튼 */}
               <div className="flex gap-3">
                 <button
                   type="button"

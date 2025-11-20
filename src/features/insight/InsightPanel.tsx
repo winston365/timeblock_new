@@ -139,9 +139,6 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
       }
 
       // 토큰 사용량 저장 (전체 로그에 기록)
-      if (tokenUsage) {
-        await addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens);
-      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류';
       console.error('Insight generation error:', err);
@@ -329,9 +326,13 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
 
       <div className="flex-1 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] p-4 text-sm leading-relaxed text-[var(--color-text-secondary)]">
         {loading && (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-[var(--color-text-secondary)]">
-            <span className="animate-pulse text-3xl">🔮</span>
-            <p className="text-xs">인사이트 분석 중...</p>
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-[var(--color-text)]">
+            <div className="flex items-center justify-center">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-transparent border-t-blue-400 text-4xl text-blue-400 animate-spin">
+                <div className="h-16 w-16 rounded-full border-4 border-transparent border-t-red-400 text-2xl text-red-400 animate-spin" />
+              </div>
+            </div>
+            <p className="text-xs text-[var(--color-text-secondary)]">인사이트 분석 중...</p>
           </div>
         )}
 

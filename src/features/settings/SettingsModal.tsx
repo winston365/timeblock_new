@@ -10,9 +10,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { loadSettings, saveSettings } from '@/data/repositories/settingsRepository';
 import { initializeFirebase } from '@/shared/services/sync/firebaseService';
-import type { Settings } from '@/shared/types/domain';
+import type { TimeSlotTagTemplate } from '@/shared/types/domain';
 import {
   getSyncLogs,
   clearSyncLogs,
@@ -23,6 +22,7 @@ import {
 } from '@/shared/services/sync/syncLogger';
 import { loadAllTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import type { DailyTokenUsage } from '@/shared/types/domain';
+import { useSettingsStore } from '@/shared/stores/settingsStore';
 
 // Gemini 2.5 Flash 가격 (업데이트): US$2.00 per 1M input, US$12.00 per 1M output
 const PRICE_PER_MILLION_INPUT = 2.0;
@@ -85,13 +85,16 @@ interface SettingsModalProps {
  *   - 테마 변경 시 DOM 및 localStorage 업데이트
  */
 export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModalProps) {
-  const [settings, setSettings] = useState<Settings>({
-    geminiApiKey: '',
-    autoMessageInterval: 30,
-    autoMessageEnabled: false,
-    waifuMode: 'characteristic',
-  });
-  const [loading, setLoading] = useState(true);
+  const {
+    settings,
+    loading,
+    loadData,
+    updateWaifuMode,
+    updateApiKey,
+    updateAutoMessage,
+    updateSettings,
+  } = useSettingsStore();
+
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'gemini' | 'firebase' | 'appearance' | 'logs'>('gemini');
   const [currentTheme, setCurrentTheme] = useState<string>(() => {
@@ -111,7 +114,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
   // 설정 로드
   useEffect(() => {
     if (isOpen) {
-      loadSettingsData();
+      loadData();
       // Electron 환경에서 앱 버전 가져오기
       if (window.electronAPI?.getAppVersion) {
         window.electronAPI.getAppVersion().then(setAppVersion).catch(() => setAppVersion('Unknown'));
@@ -120,7 +123,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
         setAppVersion('Web Version');
       }
     }
-  }, [isOpen]);
+  }, [isOpen, loadData]);
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -160,18 +163,6 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
     return unsubscribe;
   }, [isOpen, activeTab]);
 
-  const loadSettingsData = async () => {
-    try {
-      setLoading(true);
-      const data = await loadSettings();
-      setSettings(data);
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // 테마 변경
   const handleThemeChange = (theme: string) => {
     setCurrentTheme(theme);
@@ -184,16 +175,16 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
     }
   };
 
-  // 설정 저장
+  // 설정 저장 (닫기 전 확인 용도)
   const handleSave = async () => {
     try {
       setSaving(true);
-      await saveSettings(settings);
 
-      // Firebase 설정이 있으면 재초기화
-      if (settings.firebaseConfig) {
+      // Firebase 설정이 있으면 재초기화 (Store에서 이미 저장됨, 여기서는 적용만)
+      if (settings?.firebaseConfig) {
         const initialized = initializeFirebase(settings.firebaseConfig);
         if (initialized) {
+          // Firebase initialized
         }
       }
 
@@ -288,15 +279,51 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
         ? 'border border-rose-400/40 bg-rose-500/10 text-rose-100'
         : 'border border-sky-400/40 bg-sky-500/10 text-sky-100';
 
+  const tagTemplates = settings?.timeSlotTags || [];
+
+  const addTagTemplate = () => {
+    const newTag: TimeSlotTagTemplate = {
+      id: `tag-${Date.now()}`,
+      label: '새 속성',
+      color: '#94a3b8',
+      icon: '🏷️',
+    };
+    updateSettings({
+      timeSlotTags: [...tagTemplates, newTag],
+    });
+  };
+
+  const updateTagTemplate = (id: string, key: keyof TimeSlotTagTemplate, value: string) => {
+    updateSettings({
+      timeSlotTags: tagTemplates.map(tag => (tag.id === id ? { ...tag, [key]: value } : tag)),
+    });
+  };
+
+  const removeTagTemplate = (id: string) => {
+    updateSettings({
+      timeSlotTags: tagTemplates.filter(tag => tag.id !== id),
+    });
+  };
+
+  const getBadgeTextColor = (bg: string) => {
+    // 간단한 밝기 계산으로 대비 색상 결정
+    if (!bg || bg.length < 7 || !bg.startsWith('#')) return '#0f172a';
+    const r = parseInt(bg.slice(1, 3), 16);
+    const g = parseInt(bg.slice(3, 5), 16);
+    const b = parseInt(bg.slice(5, 7), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 150 ? '#0f172a' : '#f8fafc';
+  };
+
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(0,0,0,0.65)] p-4 backdrop-blur"
+      className={modalOverlayClass}
       onClick={onClose}
     >
       <div
-        className="flex h-[min(95vh,820px)] w-full max-w-[760px] flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-[0_45px_80px_rgba(0,0,0,0.5)]"
+        className={modalContainerClass}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
@@ -313,9 +340,9 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
           </button>
         </div>
 
-        <div className="flex gap-1 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-4">
+        <div className={tabsWrapperClass}>
           <button
-            className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold transition ${activeTab === 'appearance'
+            className={`${tabButtonBase} ${activeTab === 'appearance'
               ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
               : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
               }`}
@@ -324,7 +351,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
             🎨 테마
           </button>
           <button
-            className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold transition ${activeTab === 'gemini'
+            className={`${tabButtonBase} ${activeTab === 'gemini'
               ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
               : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
               }`}
@@ -333,7 +360,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
             🤖 Gemini AI
           </button>
           <button
-            className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold transition ${activeTab === 'firebase'
+            className={`${tabButtonBase} ${activeTab === 'firebase'
               ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
               : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
               }`}
@@ -342,7 +369,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
             🔥 Firebase
           </button>
           <button
-            className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold transition ${activeTab === 'logs'
+            className={`${tabButtonBase} ${activeTab === 'logs'
               ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
               : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
               }`}
@@ -465,16 +492,16 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                     <select
                       id="waifu-mode-select"
                       className={inputClass}
-                      value={settings.waifuMode}
+                      value={settings?.waifuMode || 'characteristic'}
                       onChange={(e) =>
-                        setSettings({ ...settings, waifuMode: e.target.value as 'normal' | 'characteristic' })
+                        updateWaifuMode(e.target.value as 'normal' | 'characteristic')
                       }
                     >
                       <option value="characteristic">특성 모드 (호감도에 따라 변화)</option>
                       <option value="normal">일반 모드 (기본 이미지 고정)</option>
                     </select>
                     <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                      {settings.waifuMode === 'characteristic'
+                      {settings?.waifuMode === 'characteristic'
                         ? '호감도에 따라 다양한 표정의 이미지가 표시됩니다.'
                         : '호감도와 관계없이 기본 이미지만 표시됩니다.'}
                     </small>
@@ -485,9 +512,9 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                     <select
                       id="waifu-interval-select"
                       className={inputClass}
-                      value={settings.waifuImageChangeInterval ?? 600000}
+                      value={settings?.waifuImageChangeInterval ?? 600000}
                       onChange={(e) =>
-                        setSettings({ ...settings, waifuImageChangeInterval: parseInt(e.target.value) })
+                        updateAutoMessage(settings?.autoMessageEnabled || false, parseInt(e.target.value))
                       }
                     >
                       <option value="300000">5분마다 변경</option>
@@ -497,7 +524,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                       <option value="0">자동 변경 안함</option>
                     </select>
                     <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                      {settings.waifuImageChangeInterval === 0
+                      {settings?.waifuImageChangeInterval === 0
                         ? '이미지가 자동으로 변경되지 않습니다. 클릭할 때만 변경됩니다.'
                         : `설정한 주기마다 이미지와 대사가 자동으로 변경됩니다.`}
                     </small>
@@ -526,9 +553,9 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                       type="password"
                       className={inputClass}
                       placeholder="AIzaSy..."
-                      value={settings.geminiApiKey}
+                      value={settings?.geminiApiKey || ''}
                       onChange={(e) =>
-                        setSettings({ ...settings, geminiApiKey: e.target.value })
+                        updateApiKey(e.target.value)
                       }
                     />
                     <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
@@ -551,14 +578,120 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                       type="text"
                       className={inputClass}
                       placeholder="gemini-2.0-flash-exp"
-                      value={settings.geminiModel || ''}
+                      value={settings?.geminiModel || ''}
                       onChange={(e) =>
-                        setSettings({ ...settings, geminiModel: e.target.value })
+                        updateSettings({ geminiModel: e.target.value })
                       }
                     />
                     <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
                       사용할 Gemini 모델명을 입력하세요. (예: gemini-2.0-flash-exp, gemini-1.5-pro)
                     </small>
+                  </div>
+
+                  <div className={`${formGroupClass} flex-row items-center gap-3`}>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-semibold text-[var(--color-text)]">작업 자동 이모지</span>
+                      <span className="text-[0.8rem] text-[var(--color-text-tertiary)]">
+                        제목 기반 추천 이모지를 접두로 붙입니다 (비용 절약을 위해 기본 OFF)
+                      </span>
+                    </div>
+                    <label className="relative ml-auto inline-flex items-center cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={!!settings?.autoEmojiEnabled}
+                        onChange={(e) =>
+                          updateSettings({ autoEmojiEnabled: e.target.checked })
+                        }
+                      />
+                      <div className="group h-12 w-24 rounded-full border border-gray-600 bg-gradient-to-tr from-rose-100 via-rose-400 to-rose-500 shadow-md shadow-gray-900 transition duration-300 peer-checked:bg-gradient-to-tr peer-checked:from-green-100 peer-checked:via-lime-400 peer-checked:to-lime-500">
+                        <span className="absolute left-1 top-1 flex h-10 w-10 items-center justify-center rounded-full border border-gray-600 bg-gray-50 text-lg transition-all duration-300 -rotate-180 peer-checked:translate-x-12 peer-checked:rotate-0 peer-hover:scale-95">
+                          {settings?.autoEmojiEnabled ? '✔️' : '✖️'}
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-[var(--color-text)]">시간대 속성 템플릿</span>
+                        <span className="text-[0.8rem] text-[var(--color-text-tertiary)]">
+                          시간대 헤더에 표시할 속성(휴식/청소/집중 등)을 관리하세요.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className={primaryButtonClass}
+                        onClick={addTagTemplate}
+                      >
+                        + 템플릿 추가
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                      {tagTemplates.length === 0 && (
+                        <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text-tertiary)]">
+                          아직 템플릿이 없습니다. “+ 템플릿 추가” 버튼으로 시작하세요.
+                        </div>
+                      )}
+
+                      {tagTemplates.map((tag) => (
+                        <div
+                          key={tag.id}
+                          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3"
+                        >
+                          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                            <div
+                              className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[12px] font-semibold shadow-sm"
+                              style={{
+                                backgroundColor: tag.color,
+                                color: getBadgeTextColor(tag.color),
+                              }}
+                            >
+                              <span aria-hidden="true">{tag.icon || '🏷️'}</span>
+                              {tag.label || '이름 없음'}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeTagTemplate(tag.id)}
+                              className="text-xs font-semibold text-[var(--color-danger)] hover:underline"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-[1.2fr_0.8fr_0.8fr]">
+                            <input
+                              className={inputClass}
+                              placeholder="라벨 (예: 휴식, 청소)"
+                              value={tag.label}
+                              onChange={(e) => updateTagTemplate(tag.id, 'label', e.target.value)}
+                            />
+                            <div className="flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-2">
+                              <input
+                                type="color"
+                                className="h-10 w-10 rounded-lg border border-[var(--color-border-light)] bg-transparent"
+                                value={tag.color}
+                                onChange={(e) => updateTagTemplate(tag.id, 'color', e.target.value)}
+                              />
+                              <span className="text-xs text-[var(--color-text-tertiary)]">배경색</span>
+                            </div>
+                            <input
+                              className={inputClass}
+                              placeholder="아이콘/이모지 (예: 🧹)"
+                              value={tag.icon || ''}
+                              onChange={(e) => updateTagTemplate(tag.id, 'icon', e.target.value)}
+                            />
+                          </div>
+                          <input
+                            className={`${inputClass} mt-2`}
+                            placeholder="툴팁 메모 (선택)"
+                            value={tag.note || ''}
+                            onChange={(e) => updateTagTemplate(tag.id, 'note', e.target.value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className={formGroupClass}>
@@ -572,9 +705,9 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                       placeholder="15"
                       min="5"
                       max="120"
-                      value={settings.autoMessageInterval || 15}
+                      value={settings?.autoMessageInterval || 15}
                       onChange={(e) =>
-                        setSettings({ ...settings, autoMessageInterval: parseInt(e.target.value) || 15 })
+                        updateAutoMessage(settings?.autoMessageEnabled || false, parseInt(e.target.value) || 15)
                       }
                     />
                     <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
@@ -605,12 +738,11 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                       type="password"
                       className={inputClass}
                       placeholder="AIzaSy..."
-                      value={settings.firebaseConfig?.apiKey || ''}
+                      value={settings?.firebaseConfig?.apiKey || ''}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           firebaseConfig: {
-                            ...settings.firebaseConfig!,
+                            ...settings?.firebaseConfig!,
                             apiKey: e.target.value,
                           },
                         })
@@ -625,12 +757,11 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                       type="text"
                       className={inputClass}
                       placeholder="your-app.firebaseapp.com"
-                      value={settings.firebaseConfig?.authDomain || ''}
+                      value={settings?.firebaseConfig?.authDomain || ''}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           firebaseConfig: {
-                            ...settings.firebaseConfig!,
+                            ...settings?.firebaseConfig!,
                             authDomain: e.target.value,
                           },
                         })
@@ -645,12 +776,11 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                       type="text"
                       className={inputClass}
                       placeholder="https://your-app.firebaseio.com"
-                      value={settings.firebaseConfig?.databaseURL || ''}
+                      value={settings?.firebaseConfig?.databaseURL || ''}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           firebaseConfig: {
-                            ...settings.firebaseConfig!,
+                            ...settings?.firebaseConfig!,
                             databaseURL: e.target.value,
                           },
                         })
@@ -665,12 +795,11 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                       type="text"
                       className={inputClass}
                       placeholder="your-app"
-                      value={settings.firebaseConfig?.projectId || ''}
+                      value={settings?.firebaseConfig?.projectId || ''}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           firebaseConfig: {
-                            ...settings.firebaseConfig!,
+                            ...settings?.firebaseConfig!,
                             projectId: e.target.value,
                           },
                         })
@@ -685,12 +814,11 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                       type="text"
                       className={inputClass}
                       placeholder="your-app.appspot.com"
-                      value={settings.firebaseConfig?.storageBucket || ''}
+                      value={settings?.firebaseConfig?.storageBucket || ''}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           firebaseConfig: {
-                            ...settings.firebaseConfig!,
+                            ...settings?.firebaseConfig!,
                             storageBucket: e.target.value,
                           },
                         })
@@ -705,12 +833,11 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                       type="text"
                       className={inputClass}
                       placeholder="123456789012"
-                      value={settings.firebaseConfig?.messagingSenderId || ''}
+                      value={settings?.firebaseConfig?.messagingSenderId || ''}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           firebaseConfig: {
-                            ...settings.firebaseConfig!,
+                            ...settings?.firebaseConfig!,
                             messagingSenderId: e.target.value,
                           },
                         })
@@ -725,12 +852,11 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                       type="text"
                       className={inputClass}
                       placeholder="1:123456789012:web:abc123def456"
-                      value={settings.firebaseConfig?.appId || ''}
+                      value={settings?.firebaseConfig?.appId || ''}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           firebaseConfig: {
-                            ...settings.firebaseConfig!,
+                            ...settings?.firebaseConfig!,
                             appId: e.target.value,
                           },
                         })
@@ -827,30 +953,25 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                             {logs.length === 0 ? '동기화 로그가 없습니다.' : '필터 조건에 맞는 로그가 없습니다.'}
                           </div>
                         ) : (
-                          filteredLogs.map((log, index) => (
+                          filteredLogs.map((log) => (
                             <div
-                              key={`${log.timestamp}-${index}`}
-                              className={`rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-sm shadow-inner ${log.action === 'error' ? 'border-l-4 border-l-rose-500' : ''
-                                }`}
+                              key={log.id}
+                              className="flex flex-col gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3 text-xs transition hover:bg-[var(--color-bg-elevated)]"
                             >
-                              <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-secondary)]">
-                                <span className="text-base">{getActionIcon(log.action)}</span>
-                                <span className={getTypeBadgeClass(log.type)}>{log.type.toUpperCase()}</span>
-                                <span className="font-mono">{formatTime(log.timestamp)}</span>
-                                <span className="rounded-2xl border border-[var(--color-border)] px-2 py-0.5 text-[0.65rem] uppercase tracking-[0.3em]">
-                                  {log.action.toUpperCase()}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className={getTypeBadgeClass(log.type)}>{log.type}</span>
+                                  <span className="font-mono text-[var(--color-text-tertiary)]">{formatTime(log.timestamp)}</span>
+                                </div>
+                                <span title={log.action} className="text-base">
+                                  {getActionIcon(log.action)}
                                 </span>
                               </div>
-                              <div className="mt-3 text-[var(--color-text)]">{log.message}</div>
-                              {log.data && (
-                                <div className="mt-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-2 font-mono text-xs text-[var(--color-text-secondary)]">
-                                  <strong className="text-[var(--color-text)]">Data:</strong> {log.data}
-                                </div>
-                              )}
-                              {log.error && (
-                                <div className="mt-2 rounded-2xl border border-rose-400/50 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">
-                                  <strong>Error:</strong> {log.error}
-                                </div>
+                              <div className="font-medium text-[var(--color-text)]">{log.message}</div>
+                              {log.details && (
+                                <pre className="mt-1 overflow-x-auto rounded bg-[var(--color-bg-tertiary)] p-2 font-mono text-[10px] text-[var(--color-text-secondary)]">
+                                  {JSON.stringify(log.details, null, 2)}
+                                </pre>
                               )}
                             </div>
                           ))
@@ -859,90 +980,57 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                     </>
                   )}
 
+                  {/* 토큰 사용량 */}
                   {logSubTab === 'tokens' && (
                     <div className="flex flex-col gap-4">
-                      {tokenUsage.length === 0 ? (
-                        <div className="flex h-48 items-center justify-center rounded-2xl border border-dashed border-[var(--color-border)] text-sm text-[var(--color-text-secondary)]">
-                          토큰 사용 기록이 없습니다.
-                        </div>
-                      ) : (
-                        <>
-                          <div className="grid gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-4 text-center text-sm text-[var(--color-text-secondary)] sm:grid-cols-2 lg:grid-cols-4">
-                            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3">
-                              <div className="text-[0.65rem] uppercase tracking-[0.3em]">총 메시지</div>
-                              <div className="text-xl font-semibold text-[var(--color-text)]">
-                                {tokenUsage.reduce((sum, t) => sum + t.messageCount, 0).toLocaleString()}개
-                              </div>
-                            </div>
-                            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3">
-                              <div className="text-[0.65rem] uppercase tracking-[0.3em]">총 입력 토큰</div>
-                              <div className="text-xl font-semibold text-[var(--color-text)]">
-                                {tokenUsage.reduce((sum, t) => sum + t.promptTokens, 0).toLocaleString()}
-                              </div>
-                              <div className="text-[0.65rem] text-[var(--color-text-tertiary)]">
-                                {formatCost(calculateTokenCost(tokenUsage.reduce((sum, t) => sum + t.promptTokens, 0), 0).inputCost)}
-                              </div>
-                            </div>
-                            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3">
-                              <div className="text-[0.65rem] uppercase tracking-[0.3em]">총 출력 토큰</div>
-                              <div className="text-xl font-semibold text-[var(--color-text)]">
-                                {tokenUsage.reduce((sum, t) => sum + t.candidatesTokens, 0).toLocaleString()}
-                              </div>
-                              <div className="text-[0.65rem] text-[var(--color-text-tertiary)]">
-                                {formatCost(calculateTokenCost(0, tokenUsage.reduce((sum, t) => sum + t.candidatesTokens, 0)).outputCost)}
-                              </div>
-                            </div>
-                            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3">
-                              <div className="text-[0.65rem] uppercase tracking-[0.3em]">총 토큰</div>
-                              <div className="text-xl font-semibold text-[var(--color-primary)]">
-                                {tokenUsage.reduce((sum, t) => sum + t.totalTokens, 0).toLocaleString()}
-                              </div>
-                              <div className="text-[0.65rem] text-[var(--color-text-tertiary)]">
-                                {formatCost(
-                                  calculateTokenCost(
-                                    tokenUsage.reduce((sum, t) => sum + t.promptTokens, 0),
-                                    tokenUsage.reduce((sum, t) => sum + t.candidatesTokens, 0)
-                                  ).totalCost
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                      <div className={infoBoxClass}>
+                        <strong>💰 예상 비용:</strong> Gemini 2.5 Flash 기준 (Input $2.00/1M, Output $12.00/1M)
+                      </div>
 
-                          <div className="overflow-hidden rounded-2xl border border-[var(--color-border)]">
-                            <div className="overflow-x-auto">
-                              <table className="w-full border-collapse text-sm">
-                                <thead>
-                                  <tr className="bg-[var(--color-bg-tertiary)] text-[0.65rem] uppercase tracking-[0.3em] text-[var(--color-text-secondary)]">
-                                    <th className="border border-[var(--color-border)] px-3 py-2 text-left">날짜</th>
-                                    <th className="border border-[var(--color-border)] px-3 py-2 text-left">메시지</th>
-                                    <th className="border border-[var(--color-border)] px-3 py-2 text-left">입력 토큰</th>
-                                    <th className="border border-[var(--color-border)] px-3 py-2 text-left">출력 토큰</th>
-                                    <th className="border border-[var(--color-border)] px-3 py-2 text-left">총 토큰</th>
-                                    <th className="border border-[var(--color-border)] px-3 py-2 text-left">예상 비용</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {tokenUsage
-                                    .sort((a, b) => b.date.localeCompare(a.date))
-                                    .map((usage) => {
-                                      const cost = calculateTokenCost(usage.promptTokens, usage.candidatesTokens);
-                                      return (
-                                        <tr key={usage.date} className="border-t border-[var(--color-border)] bg-[var(--color-bg)]">
-                                          <td className="border border-[var(--color-border)] px-3 py-2 font-mono">{usage.date}</td>
-                                          <td className="border border-[var(--color-border)] px-3 py-2">{usage.messageCount}개</td>
-                                          <td className="border border-[var(--color-border)] px-3 py-2">{usage.promptTokens.toLocaleString()}</td>
-                                          <td className="border border-[var(--color-border)] px-3 py-2">{usage.candidatesTokens.toLocaleString()}</td>
-                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold text-[var(--color-primary)]">{usage.totalTokens.toLocaleString()}</td>
-                                          <td className="border border-[var(--color-border)] px-3 py-2">{formatCost(cost.totalCost)}</td>
-                                        </tr>
-                                      );
-                                    })}
-                                </tbody>
-                              </table>
-                            </div>
+                      <div className="overflow-hidden rounded-2xl border border-[var(--color-border)]">
+                        {tokenUsage.length === 0 ? (
+                          <div className="flex h-48 items-center justify-center text-sm text-[var(--color-text-secondary)]">
+                            토큰 사용 기록이 없습니다.
                           </div>
-                        </>
-                      )}
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-collapse text-sm">
+                              <thead>
+                                <tr className="bg-[var(--color-bg-tertiary)] text-[0.65rem] uppercase tracking-[0.3em] text-[var(--color-text-secondary)]">
+                                  <th className="border border-[var(--color-border)] px-3 py-2 text-left">날짜</th>
+                                  <th className="border border-[var(--color-border)] px-3 py-2 text-left">메시지</th>
+                                  <th className="border border-[var(--color-border)] px-3 py-2 text-left">입력 토큰</th>
+                                  <th className="border border-[var(--color-border)] px-3 py-2 text-left">출력 토큰</th>
+                                  <th className="border border-[var(--color-border)] px-3 py-2 text-left">총 토큰</th>
+                                  <th className="border border-[var(--color-border)] px-3 py-2 text-left">예상 비용</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {tokenUsage
+                                  .sort((a, b) => b.date.localeCompare(a.date))
+                                  .map((usage) => {
+                                    const { inputCost, outputCost, totalCost } = calculateTokenCost(usage.promptTokens, usage.candidatesTokens);
+                                    return (
+                                      <tr key={usage.date} className="border-t border-[var(--color-border)] bg-[var(--color-bg)]">
+                                        <td className="border border-[var(--color-border)] px-3 py-2 font-mono">{usage.date}</td>
+                                        <td className="border border-[var(--color-border)] px-3 py-2">{usage.messageCount.toLocaleString()}개</td>
+                                        <td className="border border-[var(--color-border)] px-3 py-2">{usage.promptTokens.toLocaleString()}</td>
+                                        <td className="border border-[var(--color-border)] px-3 py-2">{usage.candidatesTokens.toLocaleString()}</td>
+                                        <td className="border border-[var(--color-border)] px-3 py-2 font-semibold text-[var(--color-primary)]">{usage.totalTokens.toLocaleString()}</td>
+                                        <td className="border border-[var(--color-border)] px-3 py-2">
+                                          <div className="flex flex-col text-[var(--color-text-secondary)]">
+                                            <span>{formatCost(totalCost)}</span>
+                                            <span className="text-[10px]">입력 {formatCost(inputCost)} · 출력 {formatCost(outputCost)}</span>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -951,20 +1039,13 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-3 border-t border-[var(--color-border)] px-6 py-4">
+        <div className="flex justify-end border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-6 py-4">
           <button
-            className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-5 py-2 text-sm font-semibold text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-text)]"
-            onClick={onClose}
+            className={primaryButtonClass}
+            onClick={handleSave}
             disabled={saving}
           >
-            취소
-          </button>
-          <button
-            className="rounded-2xl bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] px-6 py-2 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={handleSave}
-            disabled={saving || loading}
-          >
-            {saving ? '저장 중...' : '저장'}
+            {saving ? '저장 중...' : '닫기'}
           </button>
         </div>
       </div>

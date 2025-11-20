@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import type { Task, TimeBlockState, TimeBlockId } from '@/shared/types/domain';
+import type { Task, TimeBlockState, TimeBlockId, TimeSlotTagTemplate } from '@/shared/types/domain';
 import HourBar from '../HourBar';
 
 interface TimeBlockContentProps {
@@ -18,6 +18,10 @@ interface TimeBlockContentProps {
     onUpdateTask?: (taskId: string, updates: Partial<Task>) => void;
     onDeleteTask: (taskId: string) => void;
     onToggleTask: (taskId: string) => void;
+    hourSlotTags?: Record<number, string | null>;
+    tagTemplates?: TimeSlotTagTemplate[];
+    recentTagIds?: string[];
+    onSelectHourTag?: (hour: number, tagId: string | null) => void;
 }
 
 export const TimeBlockContent: React.FC<TimeBlockContentProps> = ({
@@ -32,6 +36,10 @@ export const TimeBlockContent: React.FC<TimeBlockContentProps> = ({
     onUpdateTask,
     onDeleteTask,
     onToggleTask,
+    hourSlotTags = {},
+    tagTemplates = [],
+    recentTagIds = [],
+    onSelectHourTag,
 }) => {
     const [taskFilter, setTaskFilter] = useState<'all' | 'completed' | 'pending' | 'highResistance'>('all');
 
@@ -118,6 +126,10 @@ export const TimeBlockContent: React.FC<TimeBlockContentProps> = ({
                         blockId={block.id as TimeBlockId}
                         tasks={hourTasks}
                         isLocked={state?.isLocked || false}
+                        tagId={hourSlotTags[hour] ?? null}
+                        tagTemplates={tagTemplates}
+                        recentTagIds={recentTagIds}
+                        onSelectTag={(tagId) => onSelectHourTag?.(hour, tagId)}
                         onCreateTask={async (text, targetHour) => {
                             if (onCreateTask) {
                                 await onCreateTask(text, block.id as TimeBlockId, targetHour);

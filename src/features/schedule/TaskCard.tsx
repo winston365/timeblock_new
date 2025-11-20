@@ -71,6 +71,7 @@ export default function TaskCard({
   const xp = calculateTaskXP(task);
   const isPrepared = !!(task.preparation1 && task.preparation2 && task.preparation3);
   const preparationCount = [task.preparation1, task.preparation2, task.preparation3].filter(Boolean).length;
+  const displayText = task.emoji ? `${task.emoji} ${task.text}` : task.text;
   const expectedDurationLabel = formatDuration(task.baseDuration);
   const durationOptions = [5, 10, 15, 30, 45, 60];
 
@@ -214,7 +215,7 @@ export default function TaskCard({
 
             <div className="flex-1 min-w-0">
               <p className={`text-sm font-medium truncate transition-colors ${task.completed ? 'text-[var(--color-text-tertiary)] line-through' : 'text-[var(--color-text)]'}`}>
-                {task.text}
+                {displayText}
               </p>
               {task.memo && <p className="text-xs text-[var(--color-text-tertiary)] truncate">{task.memo}</p>}
               <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px]">
@@ -321,7 +322,7 @@ export default function TaskCard({
                     }}
                     title="클릭해서 편집"
                   >
-                    {task.text}
+                    {displayText}
                   </button>
                 )}
 

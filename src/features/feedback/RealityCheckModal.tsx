@@ -1,10 +1,11 @@
 import { useRealityCheckStore } from '@/shared/stores/realityCheckStore';
 import { useToastStore } from '@/shared/stores/toastStore';
-import { addXP } from '@/data/repositories/gameStateRepository';
+import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { useState } from 'react';
 
 export function RealityCheckModal() {
     const { isOpen, taskTitle, estimatedDuration, closeRealityCheck } = useRealityCheckStore();
+    const { addXP } = useGameStateStore();
     const { addToast } = useToastStore();
     const [showReward, setShowReward] = useState(false);
 
@@ -13,7 +14,7 @@ export function RealityCheckModal() {
     const handleFeedback = async (type: 'faster' | 'ontime' | 'slower') => {
         // 1. XP Reward
         try {
-            await addXP(5, 'Reality Check Feedback', 'other'); // 'productivity' is not a valid reason type, using 'other'
+            await addXP(5, undefined); // 'Reality Check Feedback' is not needed as blockId, and reason is handled internally or default
             setShowReward(true);
         } catch (error) {
             console.error('Failed to add XP:', error);

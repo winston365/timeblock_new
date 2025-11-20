@@ -6,7 +6,7 @@
  */
 
 import type { TaskCompletionHandler, TaskCompletionContext } from '../types';
-import { addXP } from '@/data/repositories/gameStateRepository';
+
 import { calculateTaskXP } from '@/shared/lib/utils';
 
 /**
@@ -32,12 +32,14 @@ export class XPRewardHandler implements TaskCompletionHandler {
     // XP 계산
     const xpAmount = calculateTaskXP(task);
 
-    // XP 지급 (블록 ID 포함, 사유: 작업 완료)
-    const result = await addXP(xpAmount, task.timeBlock || undefined, 'task_complete');
+    // XP 지급 (Store 사용)
+    // Store 내부에서 addXPToRepo 호출 -> State 업데이트 -> 이벤트 처리(Toast)까지 수행됨
+    const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
+    await useGameStateStore.getState().addXP(xpAmount, task.timeBlock || undefined);
 
     console.log(`[${this.name}] ✅ Granted ${xpAmount} XP for task: ${task.text}`);
 
-    // 이벤트 반환 (UI 처리는 상위 서비스에서)
-    return result.events;
+    // Store에서 이미 이벤트를 처리했으므로 빈 배열 반환 (중복 처리 방지)
+    return [];
   }
 }

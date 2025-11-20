@@ -195,10 +195,6 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
       setMessages(finalMessages);
       await saveChatHistory(finalMessages);
 
-      if (tokenUsage) {
-        await addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens);
-      }
-
       // Gemini 답변 후 와이푸 이미지 변경 및 "말하고 있음" 상태
       setWaifuTurnState('speaking');
       await changeWaifuImage();

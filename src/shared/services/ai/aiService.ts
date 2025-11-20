@@ -16,6 +16,7 @@
 import { callGeminiAPI, generateWaifuPersona, SYSTEM_PERSONA_PROMPT } from './geminiApi';
 import { buildPersonaContext } from '@/shared/lib/personaUtils';
 import type { DailyData, GameState, WaifuState } from '@/shared/types/domain';
+import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
 
 /**
  * AI 호출 타입
@@ -145,6 +146,10 @@ export async function callAIWithContext(params: AICallParams): Promise<AICallRes
 
   // ===== ✅ 4단계: Gemini API 호출 =====
   const result = await callGeminiAPI(finalPrompt, history, apiKey, model);
+
+  if (result.tokenUsage) {
+    await addTokenUsage(result.tokenUsage.promptTokens, result.tokenUsage.candidatesTokens);
+  }
 
   return result;
 }

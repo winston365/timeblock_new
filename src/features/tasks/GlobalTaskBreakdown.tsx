@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useTaskBreakdownStore } from './stores/breakdownStore';
 import TaskBreakdownModal from './TaskBreakdownModal';
 import { useDailyData } from '@/shared/hooks/useDailyData';
-import { addInboxTask } from '@/data/repositories/inboxRepository';
+import { useInboxStore } from '@/shared/stores/inboxStore';
 import { useGameState } from '@/shared/hooks/useGameState';
 import { generateId } from '@/shared/lib/utils';
 import { Task } from '@/shared/types/domain';
@@ -12,6 +12,7 @@ import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 export default function GlobalTaskBreakdown() {
     const { isOpen, isLoading, breakdownText, close, source, taskData } = useTaskBreakdownStore();
     const { addTask } = useDailyData();
+    const { addTask: addInboxTask } = useInboxStore(); // Use store action
     const { updateQuestProgress } = useGameState();
     const { addToast } = useXPToastStore();
     const { show: showWaifu } = useWaifuCompanionStore();

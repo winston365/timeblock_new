@@ -25,6 +25,7 @@ interface SettingsStore {
   updateApiKey: (apiKey: string) => Promise<void>;
   updateAutoMessage: (enabled: boolean, interval?: number) => Promise<void>;
   updateAIBreakdownTrigger: (trigger: AIBreakdownTrigger) => Promise<void>;
+  updateSettings: (updates: Partial<Settings>) => Promise<void>;
   refresh: () => Promise<void>;
   reset: () => void;
 }
@@ -166,6 +167,25 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       const err = error instanceof Error ? error : new Error('Failed to update AI breakdown trigger');
       set({ error: err, loading: false });
       console.error('Settings store: Failed to update AI breakdown trigger', err);
+      throw err;
+    }
+  },
+
+  /**
+   * 설정 일반 업데이트
+   *
+   * @param {Partial<Settings>} updates - 업데이트할 설정 객체
+   * @returns {Promise<void>}
+   */
+  updateSettings: async (updates: Partial<Settings>) => {
+    set({ loading: true, error: null });
+    try {
+      const updatedSettings = await updateSettings(updates);
+      set({ settings: updatedSettings, loading: false });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Failed to update settings');
+      set({ error: err, loading: false });
+      console.error('Settings store: Failed to update settings', err);
       throw err;
     }
   },

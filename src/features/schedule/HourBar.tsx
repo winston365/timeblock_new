@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Task, TimeBlockId } from '@/shared/types/domain';
+import type { Task, TimeBlockId, TimeSlotTagTemplate } from '@/shared/types/domain';
 import { useToastStore } from '@/shared/stores/toastStore';
 import TaskCard from './TaskCard';
 import { useDragDropManager } from './hooks/useDragDropManager';
@@ -15,6 +15,10 @@ interface HourBarProps {
   blockId: TimeBlockId;
   tasks: Task[];
   isLocked: boolean;
+  tagId?: string | null;
+  tagTemplates: TimeSlotTagTemplate[];
+  recentTagIds?: string[];
+  onSelectTag: (tagId: string | null) => void;
   onCreateTask: (text: string, hour: number) => Promise<void>;
   onEditTask: (task: Task) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
@@ -28,6 +32,10 @@ export default function HourBar({
   blockId,
   tasks,
   isLocked,
+  tagId,
+  tagTemplates,
+  recentTagIds = [],
+  onSelectTag,
   onCreateTask,
   onEditTask,
   onUpdateTask,
@@ -36,6 +44,7 @@ export default function HourBar({
   onDropTask: _onDropTask,
 }: HourBarProps) {
   const [inlineInputValue, setInlineInputValue] = useState('');
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const toastRef = useRef({ preEndShown: false, restShown: false });
   const addToast = useToastStore(state => state.addToast);
@@ -78,6 +87,13 @@ export default function HourBar({
     const interval = setInterval(updateProgress, 1000);
     return () => clearInterval(interval);
   }, [hour, addToast]);
+
+  // 태그 선택 영역 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleWindowClick = () => setTagPickerOpen(false);
+    window.addEventListener('click', handleWindowClick);
+    return () => window.removeEventListener('click', handleWindowClick);
+  }, []);
 
   const formatHourRange = () => {
     const startHour = hour.toString().padStart(2, '0');
@@ -127,6 +143,25 @@ export default function HourBar({
   const statusBadgeClasses: Record<'past' | 'upcoming', string> = {
     past: 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]',
     upcoming: 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/40',
+  };
+
+  const activeTag = tagTemplates.find(t => t.id === tagId);
+  const recentTemplates = recentTagIds
+    .map(id => tagTemplates.find(t => t.id === id))
+    .filter((t): t is TimeSlotTagTemplate => Boolean(t));
+
+  const pickTag = (id: string | null) => {
+    onSelectTag(id);
+    setTagPickerOpen(false);
+  };
+
+  const getBadgeTextColor = (bg: string) => {
+    if (!bg || !bg.startsWith('#') || bg.length < 7) return '#0f172a';
+    const r = parseInt(bg.slice(1, 3), 16);
+    const g = parseInt(bg.slice(3, 5), 16);
+    const b = parseInt(bg.slice(5, 7), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 150 ? '#0f172a' : '#f8fafc';
   };
 
   const handleInlineInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -207,7 +242,88 @@ export default function HourBar({
       data-hour={hour}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-[var(--color-text-secondary)]">
-        <span className="text-sm font-semibold text-[var(--color-text)]">{formatHourRange()}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-[var(--color-text)]">{formatHourRange()}</span>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setTagPickerOpen(prev => !prev);
+              }}
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-text)] shadow-sm transition hover:border-[var(--color-primary)]"
+              style={
+                activeTag
+                  ? {
+                      backgroundColor: activeTag.color,
+                      color: getBadgeTextColor(activeTag.color),
+                      borderColor: activeTag.color,
+                    }
+                  : undefined
+              }
+            >
+              <span aria-hidden="true">{activeTag?.icon || '🏷️'}</span>
+              {activeTag ? activeTag.label : '+ 속성'}
+            </button>
+
+            {tagPickerOpen && (
+              <div
+                className="absolute left-0 z-20 mt-2 w-64 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-2 text-[11px] font-semibold text-[var(--color-text-tertiary)]">최근 사용</div>
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {(recentTemplates.length ? recentTemplates : tagTemplates.slice(0, 3)).map(tag => (
+                    <button
+                      key={`recent-${tag.id}`}
+                      type="button"
+                      onClick={() => pickTag(tag.id)}
+                      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-sm transition hover:opacity-90"
+                      style={{
+                        backgroundColor: tag.color,
+                        color: getBadgeTextColor(tag.color),
+                      }}
+                    >
+                      <span aria-hidden="true">{tag.icon || '🏷️'}</span>
+                      {tag.label}
+                    </button>
+                  ))}
+                  {!recentTemplates.length && tagTemplates.length === 0 && (
+                    <span className="text-[11px] text-[var(--color-text-tertiary)]">템플릿 없음 (설정에서 추가)</span>
+                  )}
+                </div>
+
+                <div className="mb-2 text-[11px] font-semibold text-[var(--color-text-tertiary)]">전체 템플릿</div>
+                <div className="max-h-48 space-y-1 overflow-auto pr-1">
+                  {tagTemplates.map(tag => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => pickTag(tag.id)}
+                      className="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-[12px] transition hover:bg-[var(--color-bg-tertiary)]"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>{tag.icon || '🏷️'}</span>
+                        <span className="font-semibold text-[var(--color-text)]">{tag.label}</span>
+                      </span>
+                      <span
+                        className="h-4 w-4 rounded-full border border-[var(--color-border)]"
+                        style={{ backgroundColor: tag.color }}
+                      />
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => pickTag(null)}
+                    className="mt-2 w-full rounded-lg border border-[var(--color-border)] px-2 py-1 text-[11px] font-semibold text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]"
+                  >
+                    없음
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
         <div className="flex flex-col items-end gap-1 text-right text-xs font-medium sm:flex-row sm:items-center sm:gap-2">
           {hourStatus.type === 'current' ? (
             <span className="flex items-center gap-1 font-semibold text-[var(--color-primary)]">

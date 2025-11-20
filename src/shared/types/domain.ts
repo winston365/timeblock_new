@@ -22,23 +22,44 @@ export type Resistance = 'low' | 'medium' | 'high';
 export type TimeBlockId = '5-8' | '8-11' | '11-14' | '14-17' | '17-19' | '19-24' | null;
 
 /**
+ * 워밍업 프리셋 항목 (짧은 준비 작업)
+ */
+export interface WarmupPresetItem {
+  text: string;
+  baseDuration: number;
+  resistance: Resistance;
+}
+
+/**
+ * 시간대 속성 템플릿 (헤더 배지에 사용)
+ */
+export interface TimeSlotTagTemplate {
+  id: string;
+  label: string;
+  color: string;
+  icon?: string;
+  note?: string;
+}
+
+/**
  * 작업 (Task) 타입
  * 사용자가 수행할 개별 작업을 나타냄
  */
 export interface Task {
   id: string; // 고유 ID (타임스탬프 기반)
   text: string; // 작업 제목
-  memo: string; // 메모
-  baseDuration: number; // 예상 소요시간 (분)
-  resistance: Resistance; // 심리적 거부감
-  adjustedDuration: number; // 조정된 소요시간 (baseDuration * 배율)
-  timeBlock: TimeBlockId; // 배치된 블록 ID 또는 null (인박스)
-  hourSlot?: number; // 시간 슬롯 (시간 단위, 예: 5, 6, 7)
-  order?: number; // 정렬 순서 (같은 시간대 내 사용자 지정 순서)
-  completed: boolean; // 완료 여부
-  actualDuration: number; // 실제 소요시간 (분)
-  createdAt: string; // 생성 시각 (ISO 8601)
-  completedAt: string | null; // 완료 시각 (ISO 8601)
+ memo: string; // 메모
+ baseDuration: number; // 예상 소요시간 (분)
+ resistance: Resistance; // 심리적 거부감
+ adjustedDuration: number; // 조정된 소요시간 (baseDuration * 배율)
+ timeBlock: TimeBlockId; // 배치된 블록 ID 또는 null (인박스)
+ hourSlot?: number; // 시간 슬롯 (시간 단위, 예: 5, 6, 7)
+ order?: number; // 정렬 순서 (같은 시간대 내 사용자 지정 순서)
+  emoji?: string; // 자동 추천 이모지 (접두 표시용)
+ completed: boolean; // 완료 여부
+ actualDuration: number; // 실제 소요시간 (분)
+ createdAt: string; // 생성 시각 (ISO 8601)
+ completedAt: string | null; // 완료 시각 (ISO 8601)
   fromAutoTemplate?: boolean; // 자동생성 템플릿 여부
   preparation1?: string; // 준비 사항 1 (예상 방해물 또는 대처 환경)
   preparation2?: string; // 준비 사항 2 (예상 방해물 또는 대처 환경)
@@ -94,6 +115,7 @@ export interface DailyData {
   tasks: Task[]; // 작업 목록
   goals: DailyGoal[]; // 목표 목록
   timeBlockStates: TimeBlockStates; // 블록 상태
+  hourSlotTags?: Record<number, string | null>; // 시간대별 속성 태그 (템플릿 ID)
   updatedAt: number; // 타임스탬프 (밀리초)
 }
 
@@ -304,6 +326,8 @@ export interface Settings {
   waifuImageChangeInterval?: number; // 와이푸 이미지 자동 변경 간격 (밀리초, 0=비활성화)
   templateCategories?: string[]; // 템플릿 카테고리 목록
   aiBreakdownTrigger: AIBreakdownTrigger; // AI 작업 세분화 트리거 조건
+  autoEmojiEnabled?: boolean; // 작업 제목 기반 이모지 자동 추천 사용 여부
+  timeSlotTags?: TimeSlotTagTemplate[]; // 시간대 속성 템플릿
 }
 
 // ============================================================================

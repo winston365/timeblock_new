@@ -12,7 +12,7 @@
  */
 
 import { db } from '../db/dexieClient';
-import type { Settings } from '@/shared/types/domain';
+import type { Settings, TimeSlotTagTemplate } from '@/shared/types/domain';
 import { STORAGE_KEYS, DEFAULT_AUTO_MESSAGE_INTERVAL } from '@/shared/lib/constants';
 import { loadData, saveData, updateData, type RepositoryConfig } from './baseRepository';
 
@@ -23,6 +23,12 @@ import { loadData, saveData, updateData, type RepositoryConfig } from './baseRep
 /**
  * Settings Repository 설정
  */
+const DEFAULT_TIME_SLOT_TAGS: TimeSlotTagTemplate[] = [
+  { id: 'rest', label: '휴식', color: '#a5f3fc', icon: '🛀' },
+  { id: 'clean', label: '청소', color: '#fde68a', icon: '🧹' },
+  { id: 'focus', label: '집중', color: '#c7d2fe', icon: '🎯' },
+];
+
 const settingsConfig: RepositoryConfig<Settings> = {
   table: db.settings,
   storageKey: STORAGE_KEYS.SETTINGS,
@@ -34,6 +40,8 @@ const settingsConfig: RepositoryConfig<Settings> = {
     waifuImageChangeInterval: 600000, // 기본값: 10분 (밀리초)
     templateCategories: ['업무', '건강', '공부', '취미'], // 기본 카테고리
     aiBreakdownTrigger: 'high_difficulty', // 기본값: 높은 난이도일 때만 자동 실행
+    autoEmojiEnabled: false, // 기본값: 자동 이모지 비활성화
+    timeSlotTags: DEFAULT_TIME_SLOT_TAGS,
   }),
   sanitize: (data: Settings) => {
     // 기존 사용자를 위한 마이그레이션
@@ -43,6 +51,8 @@ const settingsConfig: RepositoryConfig<Settings> = {
       waifuImageChangeInterval: data.waifuImageChangeInterval ?? 600000, // 기본값: 10분
       templateCategories: data.templateCategories || ['업무', '건강', '공부', '취미'],
       aiBreakdownTrigger: data.aiBreakdownTrigger || 'high_difficulty',
+      autoEmojiEnabled: data.autoEmojiEnabled ?? false,
+      timeSlotTags: Array.isArray(data.timeSlotTags) ? data.timeSlotTags : DEFAULT_TIME_SLOT_TAGS,
     };
   },
   logPrefix: 'Settings',

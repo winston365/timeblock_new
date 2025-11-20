@@ -5,15 +5,14 @@
  * @input isOpen (모달 표시 여부), onClose (모달 닫기 핸들러), onTaskCreate (템플릿에서 작업 생성 시 콜백)
  * @output 템플릿 목록, 검색, 복제, 자동 생성 배지, 추가/편집/삭제 버튼을 포함한 모달 UI
  * @external_dependencies
- *   - loadTemplates, deleteTemplate, createTemplate: 템플릿 Repository
+ *   - useTemplateStore: 템플릿 상태 관리
  *   - TemplateModal: 템플릿 추가/편집 모달 컴포넌트
  *   - utils: XP 계산 함수
  */
 
 import { useState, useEffect, useMemo } from 'react';
 import type { Template } from '@/shared/types/domain';
-import { loadTemplates, deleteTemplate as deleteTemplateRepo, createTemplate } from '@/data/repositories';
-import { getTemplateCategories } from '@/data/repositories/settingsRepository';
+import { useTemplateStore } from '@/shared/stores/templateStore';
 import { TemplateModal } from './TemplateModal';
 import { RESISTANCE_LABELS, TIME_BLOCKS } from '@/shared/types/domain';
 import { calculateTaskXP } from '@/shared/lib/utils';
@@ -25,7 +24,9 @@ interface TemplatesModalProps {
 }
 
 export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: TemplatesModalProps) {
-  const [templates, setTemplates] = useState<Template[]>([]);
+  // Store Hooks
+  const { templates, categories, loadData, loadCategories, deleteTemplate, addTemplate } = useTemplateStore();
+
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,7 +34,6 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [showDailyOnly, setShowDailyOnly] = useState(false);
   const [showUpcomingOnly, setShowUpcomingOnly] = useState(false);
-  const [categories, setCategories] = useState<string[]>([]);
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -49,20 +49,10 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   // 템플릿 및 카테고리 로드
   useEffect(() => {
     if (isOpen) {
-      loadTemplatesData();
-      loadCategoriesData();
+      loadData();
+      loadCategories();
     }
-  }, [isOpen]);
-
-  const loadTemplatesData = async () => {
-    const data = await loadTemplates();
-    setTemplates(data);
-  };
-
-  const loadCategoriesData = async () => {
-    const cats = await getTemplateCategories();
-    setCategories(cats);
-  };
+  }, [isOpen, loadData, loadCategories]);
 
   /**
    * 다음 주기까지의 일수 계산 (필터링용)
@@ -192,12 +182,10 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     if (!confirm('이 템플릿을 삭제하시겠습니까?')) return;
 
     try {
-      setTemplates(prevTemplates => prevTemplates.filter(t => t.id !== id));
-      await deleteTemplateRepo(id);
+      await deleteTemplate(id);
     } catch (error) {
       console.error('Failed to delete template:', error);
       alert('템플릿 삭제에 실패했습니다.');
-      await loadTemplatesData();
     }
   };
 
@@ -205,7 +193,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     setIsTemplateModalOpen(false);
     setEditingTemplate(null);
     if (saved) {
-      await loadTemplatesData();
+      await loadData();
     }
   };
 
@@ -215,7 +203,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
 
   const handleCloneTemplate = async (template: Template) => {
     try {
-      const clonedTemplate = await createTemplate(
+      await addTemplate(
         `${template.name} (복사)`,
         template.text,
         template.memo,
@@ -233,7 +221,6 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
         false,
         template.imageUrl
       );
-      setTemplates(prevTemplates => [...prevTemplates, clonedTemplate]);
       alert('✅ 템플릿이 복제되었습니다.');
     } catch (error) {
       console.error('Failed to clone template:', error);

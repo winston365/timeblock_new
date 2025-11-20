@@ -4,33 +4,21 @@
  * @role 완료된 작업을 날짜별 타임라인 형태로 표시하는 탭
  */
 
-import { useState, useEffect } from 'react';
-import { useCompletedTasks } from '@/shared/hooks';
+import { useEffect } from 'react';
 import { formatTime, calculateTaskXP } from '@/shared/lib/utils';
-import { toggleTaskCompletion as toggleTaskCompletionRepo } from '@/data/repositories';
 import type { Task } from '@/shared/types/domain';
+import { useCompletedTasksStore } from '@/shared/stores/completedTasksStore';
 
 export default function CompletedTab() {
-  // 최근 20일치만 로드
-  const { completedTasks: initialCompletedTasks, loading } = useCompletedTasks(20);
-  const [completedTasks, setCompletedTasks] = useState<Task[]>(initialCompletedTasks);
+  // Store Hooks
+  const { completedTasks, loading, loadData, toggleTaskCompletion } = useCompletedTasksStore();
 
   useEffect(() => {
-    setCompletedTasks(initialCompletedTasks);
-  }, [initialCompletedTasks]);
+    loadData(20); // 최근 20일치 로드
+  }, [loadData]);
 
   const handleToggleTask = async (task: Task) => {
-    try {
-      setCompletedTasks(prev => prev.filter(t => t.id !== task.id));
-      const taskDate = task.completedAt
-        ? new Date(task.completedAt).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0];
-      await toggleTaskCompletionRepo(task.id, taskDate);
-    } catch (error) {
-      console.error('Failed to toggle task:', error);
-      setCompletedTasks(initialCompletedTasks);
-      alert('작업 취소에 실패했습니다.');
-    }
+    await toggleTaskCompletion(task);
   };
 
   const sortedTasks = [...completedTasks].sort((a, b) => {
@@ -56,7 +44,7 @@ export default function CompletedTab() {
     return new Date(b).getTime() - new Date(a).getTime();
   });
 
-  if (loading) {
+  if (loading && completedTasks.length === 0) {
     return (
       <div className="flex h-full items-center justify-center px-4 py-6 text-sm text-[var(--color-text-secondary)]">
         로딩 중...

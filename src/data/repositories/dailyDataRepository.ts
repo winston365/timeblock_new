@@ -53,6 +53,7 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
       const tasks = Array.isArray(data.tasks) ? data.tasks : [];
       const timeBlockStates = data.timeBlockStates || {};
       const goals = data.goals || [];
+      const hourSlotTags = data.hourSlotTags || {};
 
       addSyncLog('dexie', 'load', `DailyData loaded for ${date}`, { taskCount: tasks.length });
       // IndexedDB에 데이터가 있으면 반환
@@ -60,6 +61,7 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
         tasks,
         goals,
         timeBlockStates,
+        hourSlotTags,
         updatedAt: data.updatedAt,
       };
     }
@@ -73,6 +75,7 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
         const tasks = Array.isArray(firebaseData.tasks) ? firebaseData.tasks : [];
         const goals = Array.isArray(firebaseData.goals) ? firebaseData.goals : [];
         const timeBlockStates = firebaseData.timeBlockStates || {};
+        const hourSlotTags = firebaseData.hourSlotTags || {};
 
         const sanitizedData: DailyData = {
           tasks: tasks.map(task => ({
@@ -81,11 +84,12 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
           })),
           goals,
           timeBlockStates,
+          hourSlotTags,
           updatedAt: firebaseData.updatedAt || Date.now(),
         };
 
         // Firebase 데이터를 IndexedDB에 저장
-        await saveDailyData(date, sanitizedData.tasks, sanitizedData.timeBlockStates);
+        await saveDailyData(date, sanitizedData.tasks, sanitizedData.timeBlockStates, hourSlotTags);
 
         addSyncLog('firebase', 'load', `Loaded daily data for ${date} from Firebase`, { taskCount: tasks.length });
         return sanitizedData;
@@ -119,13 +123,15 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
 export async function saveDailyData(
   date: string = getLocalDate(),
   tasks: Task[],
-  timeBlockStates: TimeBlockStates
+  timeBlockStates: TimeBlockStates,
+  hourSlotTags?: Record<number, string | null>
 ): Promise<void> {
   const updatedAt = Date.now();
 
   // 기존 goals 유지
   const existing = await db.dailyData.get(date);
   const goals = existing?.goals || [];
+  const resolvedHourSlotTags = hourSlotTags ?? existing?.hourSlotTags ?? {};
 
   // Firebase는 undefined를 허용하지 않으므로, 모든 undefined 값을 적절한 기본값으로 변환
   const sanitizedTasks = tasks.map(task => {
@@ -147,6 +153,7 @@ export async function saveDailyData(
     tasks: sanitizedTasks,
     goals,
     timeBlockStates,
+    hourSlotTags: resolvedHourSlotTags,
     updatedAt,
   };
 
@@ -193,6 +200,7 @@ export function createEmptyDailyData(): DailyData {
     tasks: [],
     goals: [],
     timeBlockStates,
+    hourSlotTags: {},
     updatedAt: Date.now(),
   };
 }

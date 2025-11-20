@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import type { Task, Resistance, TimeBlockId, DailyGoal } from '@/shared/types/domain';
 import { calculateAdjustedDuration } from '@/shared/lib/utils';
 import { suggestTaskEmoji } from '@/shared/services/ai/geminiApi';
+import { scheduleEmojiSuggestion } from '@/shared/services/ai/emojiSuggester';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { loadGlobalGoals } from '@/data/repositories';
@@ -227,7 +228,11 @@ export default function TaskModal({ task, initialBlockId, onSave, onSaveMultiple
     }
 
     try {
-      const emoji = await suggestTaskEmoji(text, settings.geminiApiKey);
+      const { emoji, tokenUsage } = await suggestTaskEmoji(text, settings.geminiApiKey, settings.geminiModel);
+      if (tokenUsage) {
+        const { addTokenUsage } = await import('@/data/repositories/chatHistoryRepository');
+        addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens).catch(console.error);
+      }
       if (emoji) {
         setText(`${emoji} ${text}`);
       }
@@ -263,6 +268,11 @@ export default function TaskModal({ task, initialBlockId, onSave, onSaveMultiple
 
     // 2. 모달 즉시 닫기 (비동기 저장 대기하지 않음)
     onClose();
+
+    // 2-1. 자동 이모지: 기존 작업 편집 시 비동기 추천을 스케줄
+    if (task?.id && settings?.autoEmojiEnabled && settings?.geminiApiKey) {
+      scheduleEmojiSuggestion(task.id, taskData.text);
+    }
 
     // 3. AI 작업 세분화 트리거 조건 체크
     const aiTrigger = settings?.aiBreakdownTrigger || 'high_difficulty';

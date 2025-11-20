@@ -13,7 +13,18 @@
 
 import type { SyncStrategy } from './syncCore';
 import { mergeGameState, mergeTaskArray } from './conflictResolver';
-import type { DailyData, DailyGoal, GameState, ChatHistory, DailyTokenUsage, EnergyLevel, Template, Task, ShopItem } from '@/shared/types/domain';
+import type {
+  DailyData,
+  DailyGoal,
+  GameState,
+  ChatHistory,
+  DailyTokenUsage,
+  EnergyLevel,
+  Template,
+  Task,
+  ShopItem,
+  WarmupPresetItem,
+} from '@/shared/types/domain';
 
 // ============================================================================
 // DailyData 전략 (Last-Write-Wins)
@@ -125,4 +136,13 @@ export const globalGoalStrategy: SyncStrategy<DailyGoal[]> = {
   collection: 'globalGoals',
   getSuccessMessage: (data) =>
     `GlobalGoals synced (${data.length} goals, ${data.reduce((sum, g) => sum + g.completedMinutes, 0)}m completed)`,
+};
+
+// ============================================================================
+// WarmupPreset 전략 (Last-Write-Wins)
+// ============================================================================
+
+export const warmupPresetStrategy: SyncStrategy<WarmupPresetItem[]> = {
+  collection: 'warmupPreset',
+  getSuccessMessage: (data) => `Warmup preset synced (${data.length} items)`,
 };
