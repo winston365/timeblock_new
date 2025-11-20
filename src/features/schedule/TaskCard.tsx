@@ -74,6 +74,7 @@ export default function TaskCard({
   const displayText = task.emoji ? `${task.emoji} ${task.text}` : task.text;
   const expectedDurationLabel = formatDuration(task.baseDuration);
   const durationOptions = [5, 10, 15, 30, 45, 60];
+  const hasOpenPicker = showDurationPicker || showResistancePicker;
 
   const handleResistanceChange = (resistance: Resistance) => {
     if (onUpdateTask) {
@@ -185,7 +186,8 @@ export default function TaskCard({
     // 준비됨 상태: 은은한 오라
     isPrepared && !task.completed ? 'border-emerald-400/40 bg-gradient-to-r from-emerald-500/5 via-transparent to-transparent' : '',
     // 드래그 중: 집어올린 느낌
-    isDragging ? 'scale-105 rotate-2 shadow-2xl border-[var(--color-primary)] z-50 cursor-grabbing' : 'cursor-grab',
+    isDragging ? 'scale-105 rotate-2 shadow-2xl border-[var(--color-primary)] z-[10000] cursor-grabbing' : 'cursor-grab',
+    hasOpenPicker ? 'z-[10000]' : '',
   ].join(' ');
 
 
@@ -218,16 +220,61 @@ export default function TaskCard({
                 {displayText}
               </p>
               {task.memo && <p className="text-xs text-[var(--color-text-tertiary)] truncate">{task.memo}</p>}
-              <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px]">
-                <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 text-[var(--color-text-secondary)]">
+              <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] relative">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDurationPicker(prev => !prev);
+                    setShowResistancePicker(false);
+                  }}
+                  className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-text)] transition-colors"
+                  data-task-interactive="true"
+                >
                   ⌛ {expectedDurationLabel}
-                </span>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${RESISTANCE_COLORS[task.resistance]}`}>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowResistancePicker(prev => !prev);
+                    setShowDurationPicker(false);
+                  }}
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${RESISTANCE_COLORS[task.resistance]}`}
+                  data-task-interactive="true"
+                >
                   {RESISTANCE_EMOJI[task.resistance]} {RESISTANCE_BADGE_LABEL[task.resistance]}
-                </span>
+                </button>
                 <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 text-[var(--color-text-secondary)]">
                   Prep {preparationCount}/3
                 </span>
+
+                {showDurationPicker && (
+                  <div className="absolute left-0 top-full z-[9999] mt-2 grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 text-xs shadow-xl backdrop-blur-md w-[180px]">
+                    {durationOptions.map((duration) => (
+                      <button
+                        key={duration}
+                        className={`rounded-lg px-2 py-1.5 transition ${task.baseDuration === duration ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-white/5 text-[var(--color-text-secondary)]'}`}
+                        onClick={() => handleDurationChange(duration)}
+                      >
+                        {duration}m
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {showResistancePicker && (
+                  <div className="absolute left-0 top-full z-[9999] mt-2 flex min-w-[120px] flex-col gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-1.5 text-xs shadow-xl backdrop-blur-md">
+                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-emerald-200" onClick={() => handleResistanceChange('low')}>
+                      💧 쉬움 (x1.0)
+                    </button>
+                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-amber-200" onClick={() => handleResistanceChange('medium')}>
+                      🌊 보통 (x1.3)
+                    </button>
+                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-rose-200" onClick={() => handleResistanceChange('high')}>
+                      🌪️ 어려움 (x1.6)
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -327,13 +374,31 @@ export default function TaskCard({
                 )}
 
                 {/* 핵심 메타데이터 (항상 표시) */}
-                <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-[var(--color-text-secondary)]">
-                  <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 font-semibold">
+                <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-[var(--color-text-secondary)] relative">
+                  <button
+                    type="button"
+                    className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 font-semibold hover:border-[var(--color-primary)] hover:text-[var(--color-text)] transition-colors"
+                    data-task-interactive="true"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDurationPicker(prev => !prev);
+                      setShowResistancePicker(false);
+                    }}
+                  >
                     ⌛ {expectedDurationLabel}
-                  </span>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${RESISTANCE_COLORS[task.resistance]}`}>
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${RESISTANCE_COLORS[task.resistance]}`}
+                    data-task-interactive="true"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowResistancePicker(prev => !prev);
+                      setShowDurationPicker(false);
+                    }}
+                  >
                     {RESISTANCE_EMOJI[task.resistance]} {RESISTANCE_BADGE_LABEL[task.resistance]}
-                  </span>
+                  </button>
                   <span
                     className={`rounded-full border px-2 py-0.5 font-semibold ${preparationCount === 3
                       ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-200'
@@ -342,6 +407,33 @@ export default function TaskCard({
                   >
                     Prep {preparationCount}/3
                   </span>
+
+                  {showDurationPicker && (
+                    <div className="absolute left-0 top-full z-[9999] mt-2 grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 text-xs shadow-xl backdrop-blur-md w-[180px]">
+                      {durationOptions.map((duration) => (
+                        <button
+                          key={duration}
+                          className={`rounded-lg px-2 py-1.5 transition ${task.baseDuration === duration ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-white/5 text-[var(--color-text-secondary)]'}`}
+                          onClick={() => handleDurationChange(duration)}
+                        >
+                          {duration}m
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {showResistancePicker && (
+                    <div className="absolute left-0 top-full z-[9999] mt-2 flex min-w-[120px] flex-col gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-1.5 text-xs shadow-xl backdrop-blur-md">
+                      <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-emerald-200" onClick={() => handleResistanceChange('low')}>
+                        💧 쉬움 (x1.0)
+                      </button>
+                      <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-amber-200" onClick={() => handleResistanceChange('medium')}>
+                        🌊 보통 (x1.3)
+                      </button>
+                      <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-rose-200" onClick={() => handleResistanceChange('high')}>
+                        🌪️ 어려움 (x1.6)
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -364,61 +456,7 @@ export default function TaskCard({
             {/* 하단: 상세 컨트롤 (Progressive Disclosure - Hover 시 등장) */}
             <div className={`flex flex-wrap items-center gap-1.5 pt-0.5 transition-all duration-300 ${timerIconActive ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden group-hover:h-auto group-hover:opacity-100'}`}>
 
-              {/* 난이도 뱃지 */}
-              {!hideMetadata && (
-                <div className="relative" data-task-interactive="true">
-                  <button
-                    type="button"
-                    className={`rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors ${RESISTANCE_COLORS[task.resistance]}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowResistancePicker(!showResistancePicker);
-                    }}
-                  >
-                    {RESISTANCE_LABELS[task.resistance]}
-                  </button>
-                  {showResistancePicker && (
-                    <div className="absolute left-0 top-full mt-1 z-20 flex min-w-[120px] flex-col gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-1.5 text-xs shadow-xl backdrop-blur-md">
-                      <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-emerald-200" onClick={() => handleResistanceChange('low')}>
-                        💧 쉬움 (x1.0)
-                      </button>
-                      <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-amber-200" onClick={() => handleResistanceChange('medium')}>
-                        🌊 보통 (x1.3)
-                      </button>
-                      <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-rose-200" onClick={() => handleResistanceChange('high')}>
-                        🌪️ 어려움 (x1.6)
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* 시간 변경 */}
-              <div className="relative" data-task-interactive="true">
-                <button
-                  type="button"
-                  className="rounded-md border border-white/10 px-2 py-0.5 text-[10px] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-text)] transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDurationPicker(!showDurationPicker);
-                  }}
-                >
-                  시간 변경
-                </button>
-                {showDurationPicker && (
-                  <div className="absolute left-0 top-full mt-1 z-20 grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 text-xs shadow-xl backdrop-blur-md w-[180px]">
-                    {durationOptions.map((duration) => (
-                      <button
-                        key={duration}
-                        className={`rounded-lg px-2 py-1.5 transition ${task.baseDuration === duration ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-white/5 text-[var(--color-text-secondary)]'}`}
-                        onClick={() => handleDurationChange(duration)}
-                      >
-                        {duration}m
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* 난이도/시간은 상단 배지에서 바로 선택하도록 변경됨 */}
 
               {/* 메모 버튼 */}
               <button

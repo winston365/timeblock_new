@@ -18,6 +18,7 @@ import {
     deleteInboxTask,
     toggleInboxTaskCompletion,
 } from '@/data/repositories/inboxRepository';
+import { scheduleEmojiSuggestion } from '@/shared/services/ai/emojiSuggester';
 
 interface InboxStore {
     // 상태
@@ -60,6 +61,7 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
         set({ loading: true, error: null });
         try {
             await addInboxTask(task);
+            scheduleEmojiSuggestion(task.id, task.text);
             // 낙관적 업데이트 또는 리로드
             // 여기서는 리로드로 일관성 유지
             await get().loadData();
@@ -79,6 +81,9 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
                 await updateTaskInDaily(taskId, updates);
             } else {
                 await updateInboxTask(taskId, updates);
+            }
+            if (updates.text) {
+                scheduleEmojiSuggestion(taskId, updates.text);
             }
             await get().loadData();
         } catch (error) {

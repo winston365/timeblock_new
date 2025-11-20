@@ -2,6 +2,8 @@ import { loadSettings } from '@/data/repositories/settingsRepository';
 import { suggestTaskEmoji } from './geminiApi';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
+import { updateInboxTask } from '@/data/repositories/inboxRepository';
+import { useInboxStore } from '@/shared/stores/inboxStore';
 
 type Job = {
   taskId: string;
@@ -57,9 +59,29 @@ async function runJobs() {
 
 function applyEmoji(taskId: string, emoji: string) {
   const store = useDailyDataStore.getState();
-  store
-    .updateTask(taskId, { emoji }, { skipBehaviorTracking: true, skipEmoji: true })
-    .catch(err => console.error('[EmojiSuggester] Failed to apply emoji:', err));
+  const hasInDaily =
+    store.dailyData?.tasks?.some(t => t.id === taskId) ?? false;
+
+  const applyToDaily = () =>
+    store.updateTask(taskId, { emoji }, { skipBehaviorTracking: true, skipEmoji: true });
+  const applyToInbox = () =>
+    updateInboxTask(taskId, { emoji })
+      .then(() => {
+        // 인박스 스토어 상태도 최신화
+        const inboxStore = useInboxStore.getState();
+        inboxStore.loadData().catch(() => {});
+      })
+      .catch(err => {
+        console.error('[EmojiSuggester] Failed to apply emoji to inbox task:', err);
+      });
+
+  if (hasInDaily) {
+    applyToDaily().catch(err => {
+      console.error('[EmojiSuggester] Failed to apply emoji (dailyData):', err);
+    });
+  } else {
+    applyToInbox();
+  }
 }
 
 /**
