@@ -24,11 +24,12 @@ export default function CompletedTab() {
   const toggleInboxTaskCompletion = useInboxStore(state => state.toggleInboxTaskCompletion);
   const loadCompletedTasks = useInboxStore(state => state.loadCompletedTasks);
 
-  // ✅ Inbox 완료된 작업 로드
+  // ✅ Inbox 완료된 작업 로드 (마운트 시 1회만)
   useEffect(() => {
     console.log('[CompletedTab] Loading completed tasks...');
     loadCompletedTasks();
-  }, [loadCompletedTasks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 빈 배열: 마운트 시에만 실행
 
   // ✅ dailyData와 inbox의 완료된 작업 합치기 (useMemo로 최적화)
   const completedTasks = useMemo(() => {
