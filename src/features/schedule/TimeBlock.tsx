@@ -166,15 +166,20 @@ const TimeBlock = memo(function TimeBlock({
   const completedPortion = Math.min(completedDuration, blockDurationMinutes);
   const plannedPortion = Math.min(Math.max(pendingDuration, 0), blockDurationMinutes - completedPortion);
   const idlePortion = Math.max(blockDurationMinutes - (completedPortion + plannedPortion), 0);
+
+  // 총 소요 시간이 블록 시간을 초과하는 경우, 각 세그먼트를 정규화
+  const totalSegments = completedPortion + plannedPortion + idlePortion;
+  const normalizationFactor = totalSegments > blockDurationMinutes ? blockDurationMinutes / totalSegments : 1;
+
   const completionSegments = [
-    { key: 'completed', value: completedPortion, className: 'bg-[var(--color-primary)]', label: '완료' },
-    { key: 'planned', value: plannedPortion, className: 'bg-amber-400/80', label: '진행 중' },
-    { key: 'idle', value: idlePortion, className: 'bg-[var(--color-bg-tertiary)]/60', label: '대기' }
+    { key: 'completed', value: completedPortion * normalizationFactor, className: 'bg-[var(--color-primary)]', label: '완료' },
+    { key: 'planned', value: plannedPortion * normalizationFactor, className: 'bg-amber-400/80', label: '진행 중' },
+    { key: 'idle', value: idlePortion * normalizationFactor, className: 'bg-[var(--color-bg-tertiary)]/60', label: '대기' }
   ]
     .filter(segment => segment.value > 0)
     .map(segment => ({
       ...segment,
-      width: `${(segment.value / blockDurationMinutes) * 100}%`
+      width: `${Math.min((segment.value / blockDurationMinutes) * 100, 100)}%`
     }));
   const completionTooltip = `완료 ${formatMinutesToHM(completedDuration)} / 전체 ${formatMinutesToHM(blockDurationMinutes)}`;
   const timeRemainingLabel = timeRemaining?.text ?? formatMinutesToHM(remainingMinutes);
@@ -297,16 +302,16 @@ const TimeBlock = memo(function TimeBlock({
           isPastBlock={isPastBlock}
           state={state}
           onToggleExpand={() => setIsExpanded(!isExpanded)}
-        onCreateTask={onCreateTask}
-        onEditTask={onEditTask}
-        onUpdateTask={onUpdateTask}
-        onDeleteTask={onDeleteTask}
-        onToggleTask={handleTaskToggle}
-        hourSlotTags={hourSlotTags}
-        tagTemplates={tagTemplates}
-        recentTagIds={recentTagIds}
-        onSelectHourTag={onSelectHourTag}
-      />
+          onCreateTask={onCreateTask}
+          onEditTask={onEditTask}
+          onUpdateTask={onUpdateTask}
+          onDeleteTask={onDeleteTask}
+          onToggleTask={handleTaskToggle}
+          hourSlotTags={hourSlotTags}
+          tagTemplates={tagTemplates}
+          recentTagIds={recentTagIds}
+          onSelectHourTag={onSelectHourTag}
+        />
       </div>
     </div>
   );
