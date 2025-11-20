@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useTaskBreakdownStore } from './stores/breakdownStore';
 import TaskBreakdownModal from './TaskBreakdownModal';
 import { useDailyData } from '@/shared/hooks/useDailyData';
-import { addInboxTask } from '@/data/repositories/inboxRepository';
+import { useInboxStore } from '@/shared/stores/inboxStore';
 import { useGameState } from '@/shared/hooks/useGameState';
 import { generateId } from '@/shared/lib/utils';
 import { Task } from '@/shared/types/domain';
@@ -12,6 +12,7 @@ import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 export default function GlobalTaskBreakdown() {
     const { isOpen, isLoading, breakdownText, close, source, taskData } = useTaskBreakdownStore();
     const { addTask } = useDailyData();
+    const { addInboxTask } = useInboxStore();
     const { updateQuestProgress } = useGameState();
     const { addToast } = useXPToastStore();
     const { show: showWaifu } = useWaifuCompanionStore();
@@ -40,10 +41,10 @@ export default function GlobalTaskBreakdown() {
             // ✅ 각 작업의 timeBlock 값을 확인하여 올바른 위치에 추가
             for (const task of newTasks) {
                 if (task.timeBlock) {
-                    // timeBlock이 있으면 → Schedule에 추가
+                    // timeBlock이 있으면 → Schedule에 추가 (dailyDataStore)
                     await addTask(task);
                 } else {
-                    // timeBlock이 null이면 → Inbox에 추가
+                    // timeBlock이 null이면 → Inbox에 추가 (inboxStore)
                     await addInboxTask(task);
                 }
             }

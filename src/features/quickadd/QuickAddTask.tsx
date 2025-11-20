@@ -12,7 +12,7 @@
 import { useState, useEffect } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
 import { calculateAdjustedDuration, generateId } from '@/shared/lib/utils';
-import { addInboxTask } from '@/data/repositories/inboxRepository';
+import { useInboxStore } from '@/shared/stores/inboxStore';
 import { initializeDatabase } from '@/data/db/dexieClient';
 
 /**
@@ -25,6 +25,9 @@ import { initializeDatabase } from '@/data/db/dexieClient';
  *   - 저장 완료 시 윈도우 닫기
  */
 export default function QuickAddTask() {
+  // ✅ Store 중심 아키텍처: Repository 대신 Store 사용
+  const { addInboxTask } = useInboxStore();
+
   const [text, setText] = useState('');
   const [memo, setMemo] = useState('');
   const [baseDuration, setBaseDuration] = useState(15);
@@ -193,7 +196,7 @@ export default function QuickAddTask() {
         goalId: null,
       };
 
-      // 작업 저장
+      // ✅ Store 액션 사용 (자동 동기화)
       await addInboxTask(newTask);
       console.log('✅ Task added successfully:', newTask.text);
 
