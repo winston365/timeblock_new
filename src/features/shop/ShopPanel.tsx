@@ -16,6 +16,7 @@ import { loadShopItems, deleteShopItem, purchaseShopItem, useShopItem } from '@/
 import { useGameState } from '@/shared/hooks';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { ShopModal } from './ShopModal';
+import { toast } from 'react-hot-toast';
 
 interface ShopPanelProps {
   onPurchaseSuccess?: (message: string, waifuMessage?: string) => void;
@@ -60,7 +61,7 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
       await loadShopItemsData();
     } catch (error) {
       console.error('Failed to delete shop item:', error);
-      alert('상품 삭제에 실패했습니다.');
+      toast.error('상품 삭제에 실패했습니다.');
     }
   };
 
@@ -77,7 +78,7 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
     if (!gameState) return;
 
     if (gameState.availableXP < item.price) {
-      alert(`XP가 부족합니다!\n필요: ${item.price} XP\n보유: ${gameState.availableXP} XP`);
+      toast.error(`XP가 부족합니다! 필요: ${item.price} XP · 보유: ${gameState.availableXP} XP`);
       return;
     }
 
@@ -91,7 +92,7 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
       const result = await purchaseShopItem(item.id);
 
       if (result.success) {
-        alert(result.message);
+        toast.success(result.message);
 
         // Optimistic UI 업데이트
         setShopItems(prevItems =>
@@ -109,11 +110,11 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
           onPurchaseSuccess(result.message, result.waifuMessage);
         }
       } else {
-        alert(result.message);
+        toast.error(result.message);
       }
     } catch (error) {
       console.error('Failed to purchase item:', error);
-      alert('구매 중 오류가 발생했습니다.');
+      toast.error('구매 중 오류가 발생했습니다.');
     } finally {
       setIsPurchasing(false);
     }
@@ -126,7 +127,7 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
   const handleUseItem = async (item: ShopItem) => {
     const quantity = item.quantity || 0;
     if (quantity <= 0) {
-      alert('보유한 아이템이 없습니다.');
+      toast.error('보유한 아이템이 없습니다.');
       return;
     }
 
@@ -138,7 +139,7 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
       const result = await useShopItem(item.id);
 
       if (result.success) {
-        alert(result.message);
+        toast.success(result.message);
 
         setShopItems(prevItems =>
           prevItems.map(i =>
@@ -152,11 +153,11 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
           onPurchaseSuccess(result.message, result.waifuMessage);
         }
       } else {
-        alert(result.message);
+        toast.error(result.message);
       }
     } catch (error) {
       console.error('Failed to use item:', error);
-      alert('아이템 사용 중 오류가 발생했습니다.');
+      toast.error('아이템 사용 중 오류가 발생했습니다.');
     }
   };
 

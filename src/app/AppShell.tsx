@@ -11,7 +11,7 @@ import { useGameState } from '@/shared/hooks';
 import { createTaskFromTemplate } from '@/data/repositories/templateRepository';
 import { exposeDebugToWindow } from '@/shared/services/sync/firebase/firebaseDebug';
 import type { Template, Task } from '@/shared/types/domain';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 import SyncErrorToast from '@/shared/components/SyncErrorToast';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
@@ -175,10 +175,10 @@ export default function AppShell() {
         await updateQuestProgress('prepare_tasks', 1);
       }
 
-      alert(`"${template.name}" 템플릿에서 작업이 추가되었습니다!`);
+      toast.success(`"${template.name}" 템플릿에서 작업이 추가되었습니다!`);
     } catch (error) {
       console.error('Failed to create task from template:', error);
-      alert('작업 추가에 실패했습니다.');
+      toast.error('작업 추가에 실패했습니다.');
     }
   };
 
