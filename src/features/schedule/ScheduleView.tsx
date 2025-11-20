@@ -118,7 +118,7 @@ export default function ScheduleView() {
     (async () => {
       for (const block of missingBlocks) {
         try {
-          await updateBlockState(block.id as TimeBlockId, {
+          await updateBlockState(block.id, {
             isLocked: false,
             isPerfect: false,
             isFailed: false,
@@ -403,8 +403,8 @@ export default function ScheduleView() {
           <button
             onClick={toggleFocusMode}
             className={`flex items-center gap-2 rounded-full px-4 py-2 font-medium transition-all ${isFocusMode
-                ? 'bg-[var(--color-primary)] text-white shadow-lg'
-                : 'border-2 border-[var(--color-border)] bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-primary)]'
+              ? 'bg-[var(--color-primary)] text-white shadow-lg'
+              : 'border-2 border-[var(--color-border)] bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-primary)]'
               }`}
           >
             {isFocusMode ? (
@@ -426,11 +426,11 @@ export default function ScheduleView() {
       {isFocusMode ? (
         currentBlockId ? (
           <FocusView
-            currentBlockId={currentBlockId}
+            currentBlockId={currentBlockId!}
             tasks={dailyData.tasks.filter(t => t.timeBlock === currentBlockId)}
             onEditTask={handleEditTask}
             onToggleTask={handleToggleTask}
-            onToggleLock={() => handleToggleLock(currentBlockId)}
+            onToggleLock={() => handleToggleLock(currentBlockId!)}
           />
         ) : (
           <div className="flex flex-1 items-center justify-center rounded-2xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg-surface)] p-12">

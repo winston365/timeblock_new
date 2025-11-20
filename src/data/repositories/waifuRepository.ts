@@ -104,6 +104,34 @@ export async function resetWaifuState(): Promise<WaifuState> {
 // ============================================================================
 
 /**
+ * XP 기반으로 호감도 동기화
+ *
+ * @returns {Promise<WaifuState>} 호감도가 업데이트된 WaifuState 객체
+ * @throws {Error} loadWaifuState 또는 saveWaifuState 실패 시
+ * @sideEffects
+ *   - 호감도를 보유 XP 기반으로 계산 (AFFECTION_XP_TARGET XP = 100%)
+ *   - lastInteraction 갱신
+ *   - IndexedDB/localStorage에 저장
+ */
+export async function syncAffectionWithXP(): Promise<WaifuState> {
+  try {
+    const waifuState = await loadWaifuState();
+    const gameState = await loadGameState();
+
+    // 보유한 XP를 기반으로 호감도 계산 (AFFECTION_XP_TARGET = 100%)
+    const affectionFromXP = Math.min((gameState.availableXP / AFFECTION_XP_TARGET) * 100, 100);
+    waifuState.affection = Math.round(affectionFromXP);
+    waifuState.lastInteraction = Date.now();
+
+    await saveWaifuState(waifuState);
+    return waifuState;
+  } catch (error) {
+    console.error('Failed to sync affection with XP:', error);
+    throw error;
+  }
+}
+
+/**
  * 작업 완료 시 호감도 업데이트
  *
  * @returns {Promise<WaifuState>} 호감도가 업데이트된 WaifuState 객체
@@ -116,20 +144,38 @@ export async function resetWaifuState(): Promise<WaifuState> {
  */
 export async function increaseAffectionFromTask(): Promise<WaifuState> {
   try {
-    const waifuState = await loadWaifuState();
-    const gameState = await loadGameState();
+    // XP 기반 호감도 동기화
+    const waifuState = await syncAffectionWithXP();
 
-    // 보유한 XP를 기반으로 호감도 계산 (AFFECTION_XP_TARGET = 100%)
-    const affectionFromXP = Math.min((gameState.availableXP / AFFECTION_XP_TARGET) * 100, 100);
-    waifuState.affection = Math.round(affectionFromXP);
-
+    // 작업 완료 카운트 증가
     waifuState.tasksCompletedToday += 1;
-    waifuState.lastInteraction = Date.now();
 
     await saveWaifuState(waifuState);
     return waifuState;
   } catch (error) {
     console.error('Failed to update affection from task:', error);
+    throw error;
+  }
+}
+
+/**
+ * 호감도 직접 증가 (클릭 등)
+ *
+ * @param {number} amount - 증가할 호감도 양
+ * @returns {Promise<WaifuState>} 호감도가 업데이트된 WaifuState 객체
+ */
+export async function increaseAffection(amount: number): Promise<WaifuState> {
+  try {
+    const waifuState = await loadWaifuState();
+
+    // 최대 100까지 증가
+    waifuState.affection = Math.min(waifuState.affection + amount, 100);
+    waifuState.lastInteraction = Date.now();
+
+    await saveWaifuState(waifuState);
+    return waifuState;
+  } catch (error) {
+    console.error('Failed to increase affection:', error);
     throw error;
   }
 }

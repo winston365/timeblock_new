@@ -10,11 +10,15 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import confetti from 'canvas-confetti';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier } from './waifuImageUtils';
+import { getDialogueFromAffection, syncAffectionWithXP } from '@/data/repositories/waifuRepository';
+import { addXP } from '@/data/repositories/gameStateRepository';
 import { loadSettings } from '@/data/repositories/settingsRepository';
 import { audioService } from '@/shared/services/media/audioService';
+import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import type { WaifuMode } from '@/shared/types/domain';
 import baseImage from './base.png';
 
@@ -24,20 +28,23 @@ interface WaifuPanelProps {
 
 /**
  * 와이푸 패널 컴포넌트
- * 호감도에 따라 자동으로 이미지가 변경되며, 클릭 시(4번마다) 또는 10분마다 같은 호감도 범위 내에서 랜덤 이미지로 변경됩니다.
+ * 호감도에 따라 자동으로 이미지가 변경되며, 클릭 시마다 또는 10분마다 같은 호감도 범위 내에서 랜덤 이미지로 변경됩니다.
  *
  * @param {WaifuPanelProps} props - imagePath를 포함하는 props
  * @returns {JSX.Element} 와이푸 패널 UI
  * @sideEffects
  *   - 10분마다 자동으로 이미지 변경
- *   - 4번 클릭마다 이미지 변경
+ *   - 매 클릭마다 이미지 및 대사 변경
  *   - 호감도 변경 시 이미지 자동 업데이트
  */
 export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
-  const { waifuState, loading, currentMood, currentDialogue, currentAudio } = useWaifu();
-  const { message: companionMessage, isPinned, togglePin, expressionOverride } = useWaifuCompanionStore();
+  const { waifuState, loading, currentMood, currentDialogue, currentAudio, refresh: refreshWaifu } = useWaifu();
+  const { message: companionMessage, isPinned, togglePin, expressionOverride, show: showWaifu } = useWaifuCompanionStore();
   const [displayImagePath, setDisplayImagePath] = useState<string>('');
-  const [clickCount, setClickCount] = useState(0);
+
+  // useRef로 변경하여 리렌더링 및 의존성 사이클 방지
+  const currentImageIndexRef = useRef<number>(-1);
+
   const [waifuMode, setWaifuMode] = useState<WaifuMode>('characteristic');
   const lastImageChangeTime = useRef<number>(Date.now());
 
@@ -63,12 +70,17 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
 
     // 특성 모드일 경우 호감도에 따라 이미지 선택
     const tier = getAffectionTier(affection);
-    const newImageNumber = getRandomImageNumber(tier.name);
 
+    // 이전 이미지와 다른 이미지를 선택하도록 현재 인덱스 전달 (Ref 사용)
+    const newImageNumber = getRandomImageNumber(tier.name, currentImageIndexRef.current);
+
+    // 이미지 경로 가져오기 (비동기 체크 포함)
     const path = await getWaifuImagePathWithFallback(affection, newImageNumber);
+
     setDisplayImagePath(path);
+    currentImageIndexRef.current = newImageNumber; // Ref 업데이트
     lastImageChangeTime.current = Date.now();
-  }, [waifuState, waifuMode]);
+  }, [waifuState, waifuMode]); // currentImageIndex 의존성 제거
 
   // 초기 이미지 로드 및 호감도 변경 시 이미지 업데이트
   useEffect(() => {
@@ -109,19 +121,75 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     }
   }, [currentAudio, companionMessage]);
 
-  // 클릭 핸들러 - 4번 클릭마다 이미지 변경 (호감도 변화는 제거)
-  const handleClick = useCallback(() => {
+  // 하트 파티클 효과
+  const spawnHeartParticles = (x: number, y: number) => {
+    confetti({
+      particleCount: 15,
+      spread: 60,
+      origin: { x: x / window.innerWidth, y: y / window.innerHeight },
+      colors: ['#ff69b4', '#ff1493', '#ffb6c1', '#ffc0cb'],
+      disableForReducedMotion: true,
+      zIndex: 1000,
+    });
+  };
+
+  // 클릭 사운드 재생
+  const playClickSound = () => {
+    const soundId = Math.floor(Math.random() * 4) + 1;
+    // 오디오 파일이 존재하는지 확인하기 어려우므로, 에러가 나도 무시하도록 try-catch 처리하거나
+    // audioService 내부에서 처리되길 기대함.
+    // 일단 경로 규칙에 따라 호출.
+    audioService.play(`audio/click${soundId}.mp3`);
+  };
+
+  // 클릭 핸들러 - 매번 클릭마다 이미지 및 대사 변경 + 보상 지급 + 효과
+  const handleClick = useCallback(async (e?: React.MouseEvent | React.KeyboardEvent) => {
     if (!waifuState) return;
 
-    const newClickCount = clickCount + 1;
-    setClickCount(newClickCount);
+    // 0. 시각/청각 효과
+    // 마우스 이벤트인 경우 클릭 위치, 아니면 화면 중앙
+    let x = window.innerWidth / 2;
+    let y = window.innerHeight / 2;
 
-    // 4번 클릭마다 이미지 변경
-    if (newClickCount % 4 === 0) {
-      changeImage(waifuState.affection);
-      setClickCount(0); // 카운트 리셋
+    if (e && 'clientX' in e) {
+      x = (e as React.MouseEvent).clientX;
+      y = (e as React.MouseEvent).clientY;
     }
-  }, [clickCount, waifuState, changeImage]);
+
+    spawnHeartParticles(x, y);
+    playClickSound();
+
+    // 1. 매번 클릭 시 이미지 변경
+    changeImage(waifuState.affection);
+
+    // 2. 매번 클릭 시 대사 변경
+    const newDialogue = getDialogueFromAffection(waifuState.affection, waifuState.tasksCompletedToday);
+    showWaifu(newDialogue.text);
+
+    // 대사 오디오가 있다면 재생 (클릭 사운드와 겹칠 수 있음, 클릭 사운드는 짧은 효과음이라 괜찮음)
+    if (newDialogue.audio) {
+      audioService.play(newDialogue.audio);
+    }
+
+    // 3. XP 증가 (+1) - 사용자 요청으로 변경
+    try {
+      await addXP(1, undefined, 'other'); // reason 'other' for generic interaction
+      // GameState UI 즉시 업데이트
+      useGameStateStore.getState().refresh();
+    } catch (error) {
+      console.error('Failed to add XP:', error);
+    }
+
+    // 4. 호감도 동기화 (XP 기반) - 사용자 요청으로 변경
+    try {
+      await syncAffectionWithXP();
+      // Waifu UI 즉시 업데이트
+      refreshWaifu();
+    } catch (error) {
+      console.error('Failed to sync affection:', error);
+    }
+
+  }, [waifuState, changeImage, showWaifu, refreshWaifu]);
 
   if (loading) {
     return (
@@ -204,7 +272,7 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
           </div>
 
           <div className="pointer-events-none absolute left-1/2 bottom-32 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-black/60 px-4 py-1 text-[0.65rem] uppercase tracking-[0.3em] text-white opacity-0 transition duration-200 group-hover:opacity-100">
-            포즈를 바꿔봐요({clickCount}/4)
+            클릭해서 포즈 변경하기
           </div>
 
           <div

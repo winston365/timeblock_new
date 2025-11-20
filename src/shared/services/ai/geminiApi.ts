@@ -50,13 +50,19 @@ const GEMINI_API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/mo
 export async function callGeminiAPI(
   prompt: string,
   history: Array<{ role: 'user' | 'model'; text: string }> = [],
-  apiKey?: string
+  apiKey?: string,
+  model?: string
 ): Promise<{ text: string; tokenUsage?: { promptTokens: number; candidatesTokens: number; totalTokens: number } }> {
   // API 키 확인 (설정에서 가져옴)
   const key = apiKey;
   if (!key) {
     throw new Error('Gemini API 키가 설정되지 않았습니다. 우측 하단 ⚙️ 설정에서 Gemini API 키를 추가해주세요!ㅎ');
   }
+
+  // 모델명 결정 (기본값: gemini-2.5-flash)
+  // 사용자가 입력한 모델명이 있으면 그것을 사용
+  const modelName = model || 'gemini-2.5-flash';
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
   // 메시지 히스토리 변환
   const contents: GeminiMessage[] = [
@@ -71,7 +77,7 @@ export async function callGeminiAPI(
   ];
 
   try {
-    const response = await fetch(`${GEMINI_API_ENDPOINT}?key=${key}`, {
+    const response = await fetch(`${endpoint}?key=${key}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

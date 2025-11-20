@@ -131,11 +131,30 @@ export function getAffectionTier(affection: number) {
  * 호감도 구간 내에서 랜덤 이미지 인덱스를 생성합니다.
  *
  * @param tierName - 호감도 구간 이름
+ * @param excludeIndex - 제외할 인덱스 (이전 이미지 인덱스)
  * @returns 랜덤 이미지 인덱스 (0부터 시작)
  */
-export function getRandomImageNumber(tierName: string): number {
+export function getRandomImageNumber(tierName: string, excludeIndex?: number): number {
   const count = IMAGE_COUNTS[tierName] || 1;
-  return Math.floor(Math.random() * count);
+
+  if (count <= 1) return 0;
+
+  let newIndex = Math.floor(Math.random() * count);
+
+  // 이전과 같은 인덱스가 나오면 다시 뽑기 (최대 3번 시도)
+  if (excludeIndex !== undefined) {
+    let attempts = 0;
+    while (newIndex === excludeIndex && attempts < 3) {
+      newIndex = Math.floor(Math.random() * count);
+      attempts++;
+    }
+    // 여전히 같으면 (excludeIndex + 1) % count 로 강제 변경
+    if (newIndex === excludeIndex) {
+      newIndex = (excludeIndex + 1) % count;
+    }
+  }
+
+  return newIndex;
 }
 
 /**
