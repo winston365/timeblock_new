@@ -53,6 +53,7 @@ export class TimeBlockDB extends Dexie {
   chatHistory!: Table<ChatHistory, string>;
   dailyTokenUsage!: Table<DailyTokenUsage, string>;
   globalInbox!: Table<Task, string>;
+  completedInbox!: Table<Task, string>; // ✅ 완료된 인박스 작업 (globalInbox와 분리)
   globalGoals!: Table<DailyGoal, string>;
   systemState!: Table<{ key: string; value: any }, string>;
 
@@ -146,6 +147,37 @@ export class TimeBlockDB extends Dexie {
       globalInbox: 'id, createdAt, completed',
       globalGoals: 'id, createdAt, order',
       systemState: 'key',
+    });
+
+    // 스키마 버전 7 - completedInbox 추가 (완료된 인박스 작업 분리)
+    this.version(7).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      energyLevels: 'id, date, timestamp, hour',
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      globalInbox: 'id, createdAt, completed',
+      completedInbox: 'id, completedAt, createdAt', // ✅ 완료된 인박스 작업
+      globalGoals: 'id, createdAt, order',
+      systemState: 'key',
+    }).upgrade(async (tx) => {
+      // 기존 globalInbox에서 완료된 작업을 completedInbox로 이동
+      const completedTasks = await tx.table('globalInbox').where('completed').equals(true).toArray();
+
+      if (completedTasks.length > 0) {
+        // completedInbox에 추가
+        await tx.table('completedInbox').bulkAdd(completedTasks);
+
+        // globalInbox에서 삭제
+        const completedIds = completedTasks.map((t: Task) => t.id);
+        await tx.table('globalInbox').bulkDelete(completedIds);
+
+        console.log(`✅ Migrated ${completedTasks.length} completed inbox tasks to completedInbox`);
+      }
     });
   }
 }

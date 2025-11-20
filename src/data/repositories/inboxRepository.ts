@@ -63,6 +63,26 @@ export async function loadInboxTasks(): Promise<Task[]> {
 }
 
 /**
+ * 완료된 인박스 작업 목록 로드
+ *
+ * @returns {Promise<Task[]>} 완료된 인박스 작업 배열 (최근 완료 순으로 정렬)
+ * @throws 없음
+ * @sideEffects
+ *   - IndexedDB에서 데이터 조회
+ */
+export async function loadCompletedInboxTasks(): Promise<Task[]> {
+  try {
+    const tasks = await db.completedInbox.orderBy('completedAt').reverse().toArray();
+    addSyncLog('dexie', 'load', `Loaded ${tasks.length} completed inbox tasks`);
+    return tasks;
+  } catch (error) {
+    console.error('Failed to load completed inbox tasks:', error);
+    addSyncLog('dexie', 'error', 'Failed to load completed inbox tasks', undefined, error as Error);
+    return [];
+  }
+}
+
+/**
  * 인박스 작업 추가
  *
  * @param {Task} task - 추가할 작업
@@ -162,33 +182,64 @@ export async function deleteInboxTask(taskId: string): Promise<void> {
 
 /**
  * 인박스 작업 완료 토글
+ * 
+ * ✅ 완료 시: globalInbox에서 삭제 → completedInbox에 추가
+ * ✅ 미완료 시: completedInbox에서 삭제 → globalInbox에 추가
  *
  * @param {string} taskId - 토글할 작업 ID
  * @returns {Promise<Task>} 토글된 작업 객체
  * @throws {Error} 작업이 존재하지 않거나 저장 실패 시
  * @sideEffects
- *   - 작업의 completed 및 completedAt 필드 변경
+ *   - 작업을 테이블 간 이동
  *   - Firebase에 동기화
  */
 export async function toggleInboxTaskCompletion(taskId: string): Promise<Task> {
   try {
-    const task = await db.globalInbox.get(taskId);
+    // 1. globalInbox에서 찾기
+    let task = await db.globalInbox.get(taskId);
+    let wasInGlobalInbox = true;
+
+    // 2. globalInbox에 없으면 completedInbox에서 찾기
+    if (!task) {
+      task = await db.completedInbox.get(taskId);
+      wasInGlobalInbox = false;
+    }
 
     if (!task) {
       throw new Error(`Inbox task not found: ${taskId}`);
     }
 
+    // 3. 완료 상태 토글
     task.completed = !task.completed;
     task.completedAt = task.completed ? new Date().toISOString() : null;
 
-    await db.globalInbox.put(task);
+    // 4. 테이블 간 이동
+    if (task.completed) {
+      // 완료: globalInbox → completedInbox
+      await db.completedInbox.put(task);
+      await db.globalInbox.delete(taskId);
 
-    addSyncLog('dexie', 'save', `Toggled inbox task completion: ${task.text}`);
+      addSyncLog('dexie', 'save', `Moved task to completedInbox: ${task.text}`);
+    } else {
+      // 미완료: completedInbox → globalInbox
+      await db.globalInbox.put(task);
+      await db.completedInbox.delete(taskId);
 
-    // Firebase 동기화
+      addSyncLog('dexie', 'save', `Moved task back to globalInbox: ${task.text}`);
+    }
+
+    // 5. Firebase 동기화
     if (isFirebaseInitialized()) {
-      const allTasks = await db.globalInbox.toArray();
-      await syncToFirebase(globalInboxStrategy, allTasks);
+      const [activeTasks, completedTasks] = await Promise.all([
+        db.globalInbox.toArray(),
+        db.completedInbox.toArray()
+      ]);
+
+      // 두 테이블 모두 동기화
+      await Promise.all([
+        syncToFirebase(globalInboxStrategy, activeTasks),
+        // TODO: completedInboxStrategy 추가 필요
+      ]);
     }
 
     return task;

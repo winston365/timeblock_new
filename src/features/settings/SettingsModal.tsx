@@ -283,10 +283,10 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
   const updateClass = !updateStatus
     ? ''
     : updateStatus.startsWith('✅')
-    ? 'border border-emerald-400/40 bg-emerald-500/10 text-emerald-100'
-    : updateStatus.startsWith('❌')
-    ? 'border border-rose-400/40 bg-rose-500/10 text-rose-100'
-    : 'border border-sky-400/40 bg-sky-500/10 text-sky-100';
+      ? 'border border-emerald-400/40 bg-emerald-500/10 text-emerald-100'
+      : updateStatus.startsWith('❌')
+        ? 'border border-rose-400/40 bg-rose-500/10 text-rose-100'
+        : 'border border-sky-400/40 bg-sky-500/10 text-sky-100';
 
   if (!isOpen) return null;
 
@@ -315,41 +315,37 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
 
         <div className="flex gap-1 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-4">
           <button
-            className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'appearance'
-                ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-            }`}
+            className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold transition ${activeTab === 'appearance'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+              : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+              }`}
             onClick={() => setActiveTab('appearance')}
           >
             🎨 테마
           </button>
           <button
-            className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'gemini'
-                ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-            }`}
+            className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold transition ${activeTab === 'gemini'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+              : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+              }`}
             onClick={() => setActiveTab('gemini')}
           >
             🤖 Gemini AI
           </button>
           <button
-            className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'firebase'
-                ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-            }`}
+            className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold transition ${activeTab === 'firebase'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+              : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+              }`}
             onClick={() => setActiveTab('firebase')}
           >
             🔥 Firebase
           </button>
           <button
-            className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'logs'
-                ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-            }`}
+            className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold transition ${activeTab === 'logs'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+              : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+              }`}
             onClick={() => setActiveTab('logs')}
           >
             📊 로그
@@ -520,6 +516,25 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                       >
                         API 키 발급받기 →
                       </a>
+                    </small>
+                  </div>
+
+                  <div className={formGroupClass}>
+                    <label htmlFor="gemini-model">
+                      🤖 Gemini 모델명
+                    </label>
+                    <input
+                      id="gemini-model"
+                      type="text"
+                      className={inputClass}
+                      placeholder="gemini-2.0-flash-exp"
+                      value={settings.geminiModel || ''}
+                      onChange={(e) =>
+                        setSettings({ ...settings, geminiModel: e.target.value })
+                      }
+                    />
+                    <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                      사용할 Gemini 모델명을 입력하세요. (예: gemini-2.0-flash-exp, gemini-1.5-pro)
                     </small>
                   </div>
 
@@ -713,21 +728,19 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                   {/* 서브 탭 */}
                   <div className="flex gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-2">
                     <button
-                      className={`flex-1 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
-                        logSubTab === 'sync'
-                          ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
-                          : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                      }`}
+                      className={`flex-1 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${logSubTab === 'sync'
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
+                        : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                        }`}
                       onClick={() => setLogSubTab('sync')}
                     >
                       🔄 동기화 로그
                     </button>
                     <button
-                      className={`flex-1 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
-                        logSubTab === 'tokens'
-                          ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
-                          : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                      }`}
+                      className={`flex-1 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${logSubTab === 'tokens'
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
+                        : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                        }`}
                       onClick={() => setLogSubTab('tokens')}
                     >
                       🪙 Gemini 토큰
@@ -794,9 +807,8 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                           filteredLogs.map((log, index) => (
                             <div
                               key={`${log.timestamp}-${index}`}
-                              className={`rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-sm shadow-inner ${
-                                log.action === 'error' ? 'border-l-4 border-l-rose-500' : ''
-                              }`}
+                              className={`rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-sm shadow-inner ${log.action === 'error' ? 'border-l-4 border-l-rose-500' : ''
+                                }`}
                             >
                               <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-secondary)]">
                                 <span className="text-base">{getActionIcon(log.action)}</span>

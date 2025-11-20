@@ -34,11 +34,12 @@ export interface AICallParams {
 
   // ===== 2. AI 설정 (필수) =====
   apiKey: string;
+  model?: string;  // Gemini 모델명 (선택, 기본: gemini-2.0-flash-exp)
 
   // ===== 3. 개별 요청 내용 =====
   type: AICallType;
   userPrompt?: string;              // 사용자 입력 메시지
-  history?: Array<{role: 'user' | 'model'; text: string}>;  // 대화 히스토리
+  history?: Array<{ role: 'user' | 'model'; text: string }>;  // 대화 히스토리
   additionalInstructions?: string;  // 출력 형식 등 추가 지시사항
 }
 
@@ -70,6 +71,7 @@ export interface AICallResult {
  * const result = await callAIWithContext({
  *   dailyData, gameState, waifuState, currentEnergy,
  *   apiKey: settings.geminiApiKey,
+ *   model: settings.geminiModel,
  *   type: 'chat',
  *   userPrompt: '오늘 할 일 추천해줘',
  *   history: previousMessages
@@ -79,6 +81,7 @@ export interface AICallResult {
  * const insight = await callAIWithContext({
  *   dailyData, gameState, waifuState, currentEnergy,
  *   apiKey: settings.geminiApiKey,
+ *   model: settings.geminiModel,
  *   type: 'insight',
  *   additionalInstructions: getInsightInstruction()
  * });
@@ -91,6 +94,7 @@ export async function callAIWithContext(params: AICallParams): Promise<AICallRes
     waifuState,
     currentEnergy,
     apiKey,
+    model,
     type,
     userPrompt = '',
     history = [],
@@ -139,7 +143,7 @@ export async function callAIWithContext(params: AICallParams): Promise<AICallRes
   }
 
   // ===== ✅ 4단계: Gemini API 호출 =====
-  const result = await callGeminiAPI(finalPrompt, history, apiKey);
+  const result = await callGeminiAPI(finalPrompt, history, apiKey, model);
 
   return result;
 }

@@ -496,7 +496,8 @@ export interface TaskBreakdownParams {
  */
 export async function generateTaskBreakdown(
   params: TaskBreakdownParams,
-  apiKey: string
+  apiKey: string,
+  model?: string
 ): Promise<string> {
   const { taskText, memo, baseDuration, resistance, preparation1, preparation2, preparation3, affection, refinement } = params;
 
@@ -569,7 +570,7 @@ export async function generateTaskBreakdown(
 - 다른 설명이나 부연 설명, 격려 메시지는 절대 추가하지 마 (파싱 오류 발생함)`;
 
   try {
-    const { text } = await callGeminiAPI(systemPrompt, [], apiKey);
+    const { text } = await callGeminiAPI(systemPrompt, [], apiKey, model);
     return text.trim();
   } catch (error) {
     console.error('작업 세분화 실패:', error);
@@ -584,7 +585,7 @@ export async function generateTaskBreakdown(
  * @param {string} apiKey - Gemini API 키
  * @returns {Promise<string>} 추천된 이모지 (1개)
  */
-export async function suggestTaskEmoji(taskText: string, apiKey: string): Promise<string> {
+export async function suggestTaskEmoji(taskText: string, apiKey: string, model?: string): Promise<string> {
   const prompt = `
     다음 작업 제목에 가장 잘 어울리는 이모지 1개만 추천해줘.
     작업: "${taskText}"
@@ -596,7 +597,7 @@ export async function suggestTaskEmoji(taskText: string, apiKey: string): Promis
   `;
 
   try {
-    const { text } = await callGeminiAPI(prompt, [], apiKey);
+    const { text } = await callGeminiAPI(prompt, [], apiKey, model);
     // 이모지만 추출 (정규식 등으로 필터링 가능하지만, Gemini가 잘 따를 것으로 가정)
     return text.trim().substring(0, 2); // 안전하게 앞부분만 자름
   } catch (error) {

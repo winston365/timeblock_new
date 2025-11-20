@@ -31,12 +31,34 @@
  *   dailyData,
  *   gameState,
  *   waifuState,
+
+/**
+ * PersonaContext 객체를 생성합니다.
+ *
+ * 기존 usePersonaContext 훅을 일반 함수로 변경하여 성능 최적화:
+ * - 상태 변경 시마다 재실행되는 문제 해결
+ * - DB 조회(getRecentDailyData)를 필요한 시점에만 수행
+ * - AI 채팅/인사이트 생성 시점에만 호출
+ *
+ * @param {BuildPersonaContextParams} params - dailyData, gameState, waifuState, currentEnergy
+ * @returns {Promise<PersonaContext>} PersonaContext 객체
+ * @throws {Error} PersonaContext 빌드 실패 시
+ * @sideEffects
+ *   - getRecentDailyData(10) 호출 (DB 조회)
+ *
+ * @example
+ * ```tsx
+ * const personaContext = await buildPersonaContext({
+ *   dailyData,
+ *   gameState,
+ *   waifuState,
  *   currentEnergy
  * });
  * const systemPrompt = generateWaifuPersona(personaContext);
  * ```
  */
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
+import { loadInboxTasks } from '@/data/repositories/inboxRepository';
 import type { PersonaContext } from '@/shared/services/ai/geminiApi';
 import type { DailyData, GameState, Task, TimeBlockState, WaifuState } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
@@ -56,7 +78,15 @@ export async function buildPersonaContext(
   // 작업 정보 계산
   const tasks: Task[] = dailyData?.tasks ?? [];
   const completedTasks = tasks.filter((t: Task) => t.completed);
-  const inboxTasks = tasks.filter((t: Task) => !t.timeBlock && !t.completed);
+
+  // ✅ 실제 Global Inbox에서 데이터 가져오기 (UI와 동일한 데이터 소스)
+  const inboxTasksRaw = await loadInboxTasks();
+  const inboxTasks = inboxTasksRaw.map((t: Task) => ({
+    text: t.text,
+    resistance: t.resistance,
+    baseDuration: t.baseDuration,
+    memo: t.memo || ''
+  }));
 
   // 현재 시간 정보
   const now = new Date();
@@ -139,12 +169,7 @@ export async function buildPersonaContext(
     // 작업 정보
     tasksCompleted: completedTasks.length,
     totalTasks: tasks.length,
-    inboxTasks: inboxTasks.map((t: Task) => ({
-      text: t.text,
-      resistance: t.resistance,
-      baseDuration: t.baseDuration,
-      memo: t.memo || ''
-    })),
+    inboxTasks, // ✅ 실제 Global Inbox 데이터 사용
     recentTasks: tasks.slice(-5).map((t: Task) => ({
       text: t.text,
       completed: t.completed,

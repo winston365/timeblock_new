@@ -16,10 +16,12 @@ import { useGameState } from '@/shared/hooks/useGameState';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
+import { useFocusModeStore } from './stores/focusModeStore';
 import { generateId } from '@/shared/lib/utils';
 import { db } from '@/data/db/dexieClient';
 import TimeBlock from './TimeBlock';
 import TaskModal from './TaskModal';
+import { FocusView } from './components/FocusView';
 
 /**
  * 타임블록 스케줄러 메인 화면
@@ -33,6 +35,7 @@ export default function ScheduleView() {
   const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion, toggleBlockLock, updateBlockState } = useDailyData();
   const { updateQuestProgress } = useGameState();
   const { show: showWaifu } = useWaifuCompanionStore();
+  const { isFocusMode, toggleFocusMode } = useFocusModeStore();
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -385,42 +388,99 @@ export default function ScheduleView() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6 pb-24">
+      {/* Toggle button */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-2xl font-semibold text-[var(--color-text)]">오늘의 타임블록</h2>
-        <div className="flex items-center gap-4 text-sm text-[var(--color-text-secondary)]">
-          <span>전체 {dailyData.tasks.length}개</span>
-          <span>완료 {dailyData.tasks.filter(t => t.completed).length}개</span>
+        <h2 className="text-2xl font-semibold text-[var(--color-text)]">
+          {isFocusMode ? '🎯 지금 집중' : '오늘의 타임블록'}
+        </h2>
+        <div className="flex items-center gap-4">
+          {!isFocusMode && (
+            <div className="flex gap-4 text-sm text-[var(--color-text-secondary)]">
+              <span>전체 {dailyData.tasks.length}개</span>
+              <span>완료 {dailyData.tasks.filter(t => t.completed).length}개</span>
+            </div>
+          )}
+          <button
+            onClick={toggleFocusMode}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 font-medium transition-all ${isFocusMode
+                ? 'bg-[var(--color-primary)] text-white shadow-lg'
+                : 'border-2 border-[var(--color-border)] bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-primary)]'
+              }`}
+          >
+            {isFocusMode ? (
+              <>
+                <span>📅</span>
+                <span>전체 보기</span>
+              </>
+            ) : (
+              <>
+                <span>🎯</span>
+                <span>지금 모드</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
-      <div className="space-y-4">
-        {TIME_BLOCKS.map(block => {
-          const blockTasks = dailyData.tasks.filter(task => task.timeBlock === block.id);
-          const blockState = dailyData.timeBlockStates[block.id];
-          const isCurrentBlock = block.id === currentBlockId;
-          const isPastBlock = currentHour >= block.end;
+      {/* Conditional rendering: Focus Mode or Full Grid */}
+      {isFocusMode ? (
+        currentBlockId ? (
+          <FocusView
+            currentBlockId={currentBlockId}
+            tasks={dailyData.tasks.filter(t => t.timeBlock === currentBlockId)}
+            onEditTask={handleEditTask}
+            onToggleTask={handleToggleTask}
+            onToggleLock={() => handleToggleLock(currentBlockId)}
+          />
+        ) : (
+          <div className="flex flex-1 items-center justify-center rounded-2xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg-surface)] p-12">
+            <div className="text-center">
+              <div className="text-6xl">⏰</div>
+              <h3 className="mt-4 text-2xl font-bold text-[var(--color-text-primary)]">
+                블록 외 시간
+              </h3>
+              <p className="mt-2 text-lg text-[var(--color-text-secondary)]">
+                타임블록 시간대가 아닙니다
+              </p>
+              <button
+                onClick={toggleFocusMode}
+                className="mt-6 rounded-full bg-[var(--color-primary)] px-6 py-3 font-medium text-white transition-all hover:scale-105"
+              >
+                📅 전체 보기로 전환
+              </button>
+            </div>
+          </div>
+        )
+      ) : (
+        <div className="space-y-4">
+          {TIME_BLOCKS.map(block => {
+            const blockTasks = dailyData.tasks.filter(task => task.timeBlock === block.id);
+            const blockState = dailyData.timeBlockStates[block.id];
+            const isCurrentBlock = block.id === currentBlockId;
+            const isPastBlock = currentHour >= block.end;
 
-          return (
-            <TimeBlock
-              key={block.id}
-              block={block}
-              tasks={blockTasks}
-              state={blockState}
-              isCurrentBlock={isCurrentBlock}
-              isPastBlock={isPastBlock}
-              onAddTask={() => handleAddTask(block.id as TimeBlockId)}
-              onCreateTask={handleCreateTask}
-              onEditTask={handleEditTask}
-              onUpdateTask={handleUpdateTask}
-              onDeleteTask={handleDeleteTask}
-              onToggleTask={handleToggleTask}
-              onToggleLock={() => handleToggleLock(block.id)}
-              onUpdateBlockState={updateBlockState}
-              onDropTask={handleDropTask}
-            />
-          );
-        })}
-      </div>
+            return (
+              <TimeBlock
+                key={block.id}
+                block={block}
+                tasks={blockTasks}
+                state={blockState}
+                isCurrentBlock={isCurrentBlock}
+                isPastBlock={isPastBlock}
+                onAddTask={() => handleAddTask(block.id as TimeBlockId)}
+                onCreateTask={handleCreateTask}
+                onEditTask={handleEditTask}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+                onToggleTask={handleToggleTask}
+                onToggleLock={() => handleToggleLock(block.id)}
+                onUpdateBlockState={updateBlockState}
+                onDropTask={handleDropTask}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {isModalOpen && (
         <TaskModal
@@ -429,6 +489,7 @@ export default function ScheduleView() {
           onSave={handleSaveTask}
           onSaveMultiple={handleSaveMultipleTasks}
           onClose={handleCloseModal}
+          source="schedule"
         />
       )}
     </div>
