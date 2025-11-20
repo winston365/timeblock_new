@@ -21,6 +21,7 @@ import {
   moveInboxTaskToBlock as moveInboxTaskToBlockInRepo,
   moveTaskToInbox as moveTaskToInboxInRepo,
 } from '@/data/repositories/inboxRepository';
+import { db } from '@/data/db/dexieClient';
 
 interface InboxStore {
   // 상태
@@ -330,3 +331,66 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
     });
   },
 }));
+
+// ============================================================================
+// 🔍 디버깅 헬퍼 (브라우저 콘솔에서 사용 가능)
+// ============================================================================
+
+if (typeof window !== 'undefined') {
+  (window as any).debugInbox = {
+    // Store 상태 확인
+    getStoreState: () => {
+      const state = useInboxStore.getState();
+      console.log('📊 InboxStore State:', {
+        inboxTasks: state.inboxTasks.length,
+        completedTasks: state.completedTasks.length,
+        loading: state.loading,
+        error: state.error,
+      });
+      console.log('📋 Inbox Tasks:', state.inboxTasks);
+      console.log('✅ Completed Tasks:', state.completedTasks);
+      return state;
+    },
+
+    // IndexedDB 직접 확인
+    checkIndexedDB: async () => {
+      console.log('🔍 Checking IndexedDB...');
+      const globalInboxTasks = await db.globalInbox.toArray();
+      const completedInboxTasks = await db.completedInbox.toArray();
+
+      console.log(`📥 globalInbox table: ${globalInboxTasks.length} tasks`);
+      console.log(globalInboxTasks);
+
+      console.log(`✅ completedInbox table: ${completedInboxTasks.length} tasks`);
+      console.log(completedInboxTasks);
+
+      return { globalInboxTasks, completedInboxTasks };
+    },
+
+    // 강제 새로고침
+    forceRefresh: async () => {
+      console.log('🔄 Force refreshing inbox store...');
+      await useInboxStore.getState().refresh();
+      console.log('✅ Refresh complete');
+      return useInboxStore.getState();
+    },
+
+    // 도움말
+    help: () => {
+      console.log(`
+🔍 Inbox Debug Helper Commands:
+
+debugInbox.getStoreState()     - Store 상태 확인
+debugInbox.checkIndexedDB()    - IndexedDB 직접 확인
+debugInbox.forceRefresh()      - 강제 새로고침
+debugInbox.help()              - 이 도움말 표시
+
+예제:
+  await debugInbox.checkIndexedDB()
+  debugInbox.getStoreState()
+      `);
+    },
+  };
+
+  console.log('🔧 Inbox debug helper loaded. Type "debugInbox.help()" for commands.');
+}
