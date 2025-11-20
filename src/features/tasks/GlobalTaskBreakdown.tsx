@@ -12,7 +12,7 @@ import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 export default function GlobalTaskBreakdown() {
     const { isOpen, isLoading, breakdownText, close, source, taskData } = useTaskBreakdownStore();
     const { addTask } = useDailyData();
-    const { addInboxTask } = useInboxStore();
+    const addInboxTask = useInboxStore(state => state.addInboxTask);
     const { updateQuestProgress } = useGameState();
     const { addToast } = useXPToastStore();
     const { show: showWaifu } = useWaifuCompanionStore();

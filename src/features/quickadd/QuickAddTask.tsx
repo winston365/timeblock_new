@@ -25,8 +25,8 @@ import { initializeDatabase } from '@/data/db/dexieClient';
  *   - 저장 완료 시 윈도우 닫기
  */
 export default function QuickAddTask() {
-  // ✅ Store 중심 아키텍처: Repository 대신 Store 사용
-  const { addInboxTask } = useInboxStore();
+  // ✅ Store 중심 아키텍처: Zustand selector 패턴으로 확실한 구독
+  const addInboxTask = useInboxStore(state => state.addInboxTask);
 
   const [text, setText] = useState('');
   const [memo, setMemo] = useState('');
