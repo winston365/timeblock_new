@@ -36,17 +36,14 @@ export default function GlobalTaskBreakdown() {
                 // t.timeBlock을 덮어쓰지 않음
             }));
 
-            // 2. Add tasks based on source
-            if (source === 'schedule') {
-                // Add to schedule
-                // We iterate and add each task. 
-                // Note: addTask in useDailyData might trigger state updates.
-                for (const task of newTasks) {
+            // 2. Add tasks based on EACH task's timeBlock value
+            // ✅ 각 작업의 timeBlock 값을 확인하여 올바른 위치에 추가
+            for (const task of newTasks) {
+                if (task.timeBlock) {
+                    // timeBlock이 있으면 → Schedule에 추가
                     await addTask(task);
-                }
-            } else {
-                // Add to inbox
-                for (const task of newTasks) {
+                } else {
+                    // timeBlock이 null이면 → Inbox에 추가
                     await addInboxTask(task);
                 }
             }
