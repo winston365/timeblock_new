@@ -33,16 +33,14 @@ export default function InboxTab() {
   const { updateTask } = useDailyData();
   const { getDragData } = useDragDropManager();
 
-  // ✅ Store 중심 아키텍처: Repository 대신 Store 사용
-  const {
-    inboxTasks,
-    loading,
-    addInboxTask,
-    updateInboxTask,
-    deleteInboxTask,
-    toggleInboxTaskCompletion,
-    loadInboxTasks,
-  } = useInboxStore();
+  // ✅ Store 중심 아키텍처: Zustand selector 패턴으로 확실한 구독
+  const inboxTasks = useInboxStore(state => state.inboxTasks);
+  const loading = useInboxStore(state => state.loading);
+  const addInboxTask = useInboxStore(state => state.addInboxTask);
+  const updateInboxTask = useInboxStore(state => state.updateInboxTask);
+  const deleteInboxTask = useInboxStore(state => state.deleteInboxTask);
+  const toggleInboxTaskCompletion = useInboxStore(state => state.toggleInboxTaskCompletion);
+  const loadInboxTasks = useInboxStore(state => state.loadInboxTasks);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -50,8 +48,14 @@ export default function InboxTab() {
 
   // ✅ Store에서 자동으로 데이터 로드
   useEffect(() => {
+    console.log('[InboxTab] Mounting, loading inbox tasks...');
     loadInboxTasks();
   }, [loadInboxTasks]);
+
+  // 🔍 디버깅: inboxTasks 변경 감지
+  useEffect(() => {
+    console.log('[InboxTab] inboxTasks updated:', inboxTasks.length, 'tasks');
+  }, [inboxTasks]);
 
   const handleAddTask = () => {
     setEditingTask(null);
