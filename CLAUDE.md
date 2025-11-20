@@ -28,6 +28,8 @@ npm run bump                  # Bump patch version and commit
 
 # Preview
 npm run preview               # Preview production build
+
+# Note: No test framework is currently configured
 ```
 
 ## Architecture Overview
@@ -138,14 +140,17 @@ Tasks are assigned to blocks and hour slots. The schedule UI (`src/features/sche
 - **dailyData** - Daily tasks and blocks (keyed by date YYYY-MM-DD)
 - **gameState** - Player progression (singleton)
 - **templates** - Reusable task templates with recurrence
-- **globalInbox** - Date-independent tasks
+- **globalInbox** - Date-independent tasks (uncompleted)
+- **completedInbox** - Completed inbox tasks (separated in v7)
 - **globalGoals** - Long-term goals with time tracking
 - **shopItems** - Purchasable items with XP
 - **waifuState** - Companion affection and interactions
 - **energyLevels** - Hourly energy tracking
 - **chatHistory** - Gemini AI conversation history
+- **dailyTokenUsage** - Daily API usage tracking
+- **systemState** - System flags and metadata
 
-Schema defined in `src/data/db/schema.ts`. When adding fields, increment version and add migration.
+Schema defined in `src/data/db/dexieClient.ts`. When adding fields, increment version and add migration.
 
 ### Gamification System
 
@@ -183,6 +188,7 @@ Service layer in `src/shared/services/ai/`.
 - **Preload**: `electron/preload/index.ts` - Secure IPC bridge
 - **Global Shortcut**: Ctrl+Shift+Space (Cmd+Shift+Space on macOS) opens QuickAdd window
 - **QuickAdd Mode**: `?mode=quickadd` query param loads standalone quick task entry
+- **Auto-Update**: electron-updater pulls from GitHub releases (`winston365/timeblock_new`)
 
 Security: `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`
 
