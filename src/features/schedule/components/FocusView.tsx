@@ -20,7 +20,7 @@ export function FocusView({
     onToggleTask,
     onToggleLock
 }: FocusViewProps) {
-    const { toggleFocusMode: startFocusMode } = useFocusModeStore();
+    const { setFocusMode } = useFocusModeStore();
     const currentEnergy = 50;
 
     const currentBlock = TIME_BLOCKS.find(b => b.id === currentBlockId);
@@ -52,7 +52,7 @@ export function FocusView({
     const completionPercentage = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
 
     const handleStartNow = (_task: Task) => {
-        startFocusMode();
+        setFocusMode(true);
         if (onToggleLock) {
             onToggleLock();
         }

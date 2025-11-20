@@ -9,13 +9,13 @@
  *   - utils: XP 계산 함수
  */
 
-import { useState, memo, useMemo } from 'react';
+import { useState, useEffect, memo, useMemo } from 'react';
 import type { Task, TimeBlockState, TimeBlockId } from '@/shared/types/domain';
 import { useDragDrop } from './hooks/useDragDrop';
-import { useFocusStore } from '@/shared/stores/focusStore';
 import { useTimeBlockStats } from './hooks/useTimeBlockStats';
 import { useTimeBlockCalculations } from './hooks/useTimeBlockCalculations';
 import { useTimeBlockTimer } from './hooks/useTimeBlockTimer';
+import { toast } from 'react-hot-toast';
 import { TimeBlockHeader } from './components/TimeBlockHeader';
 import { TimeBlockStatus } from './components/TimeBlockStatus';
 import { TimeBlockContent } from './components/TimeBlockContent';
@@ -63,13 +63,46 @@ const TimeBlock = memo(function TimeBlock({
 }: TimeBlockProps) {
   const [isExpanded, setIsExpanded] = useState(isCurrentBlock);
 
+  // 지난 블록은 자동으로 접어서 공간을 줄임
+  useEffect(() => {
+    if (isPastBlock) {
+      setIsExpanded(false);
+    }
+  }, [isPastBlock]);
+
+  // Perfect Plan Toast
+  useEffect(() => {
+    if (state?.isPerfect) {
+      toast.custom((t) => (
+        <div
+          className={`${t.visible ? 'animate-enter' : 'animate-leave'
+            } pointer-events-auto flex w-full max-w-md rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-4 text-white shadow-2xl ring-1 ring-black/5`}
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-4xl animate-bounce">👑</div>
+            <div className="flex flex-col">
+              <div className="text-lg font-bold text-white drop-shadow-md">
+                Perfect Plan!
+              </div>
+              <div className="text-sm font-medium text-amber-100">
+                완벽한 계획을 달성했습니다! (+40 XP)
+              </div>
+            </div>
+          </div>
+        </div>
+      ), {
+        duration: 4000,
+        position: 'top-center',
+        id: `perfect-plan-${block.id}`,
+      });
+    }
+  }, [state?.isPerfect]);
+
   // 통합 드래그 앤 드롭 훅 사용
   const { isDragOver, handleDragOver, handleDragLeave, handleDrop } = useDragDrop(
     block.id as TimeBlockId,
     undefined
   );
-
-  const { toggleFocusMode } = useFocusStore();
 
   // Custom Hooks
   const { maxXP, totalDuration, completedDuration, pendingDuration } = useTimeBlockStats(tasks);
@@ -99,7 +132,14 @@ const TimeBlock = memo(function TimeBlock({
     if (!task) return;
     if (!task.completed) {
       if (!state?.isLocked) {
-        alert('⚠️ 블록을 먼저 잠궈야 작업을 완료할 수 있습니다!\n\n블록 잠금 버튼(⚠️)을 눌러주세요. (비용: 15 XP)');
+        toast('블록을 먼저 잠궈야 작업을 완료할 수 있습니다! (잠금 버튼 🔒 클릭)', {
+          icon: '🔒',
+          style: {
+            borderRadius: '10px',
+            background: '#333',
+            color: '#fff',
+          },
+        });
         return;
       }
     }
@@ -133,7 +173,11 @@ const TimeBlock = memo(function TimeBlock({
   const showAlertProgress = isCurrentBlock && (timeStatus === 'tight' || timeStatus === 'critical');
   const planLoadRatio = remainingMinutes > 0 ? pendingDuration / remainingMinutes : 0;
   const needsPlanBoost = planLoadRatio >= 1.6;
-const statusAccent = useMemo(() => ({
+  const statusAccent = useMemo(() => ({
+    plan_light: {
+      spine: 'bg-sky-400',
+      gradient: 'from-sky-400/25 via-sky-400/8 to-transparent'
+    },
     comfortable: {
       spine: 'bg-emerald-400',
       gradient: 'from-emerald-500/20 via-emerald-500/5 to-transparent'
@@ -152,7 +196,7 @@ const statusAccent = useMemo(() => ({
     }
   }), []);
 
-  const accent = statusAccent[timeStatus];
+  const accent = statusAccent[timeStatus] ?? statusAccent.balanced;
 
   // Updated container styles: subtle gradient glow + status spine
   const blockClassName = [
@@ -177,9 +221,8 @@ const statusAccent = useMemo(() => ({
         <div className={`pointer-events-none absolute inset-0 bg-gradient-to-r ${accent.gradient}`} />
       )}
       <div
-        className={`absolute inset-y-3 left-0 w-1 rounded-full ${
-          isCurrentBlock ? accent.spine : 'bg-[var(--color-border)]'
-        } ${isPastBlock ? 'opacity-40' : ''}`}
+        className={`absolute inset-y-3 left-0 w-1 rounded-full ${isCurrentBlock ? accent.spine : 'bg-[var(--color-border)]'
+          } ${isPastBlock ? 'opacity-40' : ''}`}
       />
       <div className="relative z-10 flex flex-col">
         <TimeBlockHeader
@@ -197,7 +240,6 @@ const statusAccent = useMemo(() => ({
           onRequestAddTask={() => onAddTask()}
           onToggleExpand={() => setIsExpanded(!isExpanded)}
           onToggleLock={onToggleLock}
-          toggleFocusMode={toggleFocusMode}
           timer={timer}
         >
           {isCurrentBlock && timeRemaining && (

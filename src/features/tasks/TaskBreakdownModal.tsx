@@ -180,9 +180,7 @@ export default function TaskBreakdownModal({ isOpen, onClose, onConfirm, initial
 
             // 남은 텍스트가 작업 제목
             // 대괄호로 감싸진 부분 제거 (혹시 남은게 있다면)
-            remainingText = remainingText.replace(/\[.*?\]/g, '').trim();
-
-            task.text = remainingText || '(제목 없음)';
+            task.text = remainingText.trim() || '(제목 없음)';
 
             tasks.push(task);
         }
@@ -448,11 +446,10 @@ export default function TaskBreakdownModal({ isOpen, onClose, onConfirm, initial
                                                     return (
                                                         <div
                                                             key={task.id}
-                                                            className={`rounded-2xl border ${
-                                                                task.checked
+                                                            className={`rounded-2xl border ${task.checked
                                                                     ? 'border-[var(--color-primary)]/40 bg-[var(--color-bg)]'
                                                                     : 'border-[var(--color-border)] bg-[var(--color-bg)]/50 opacity-50'
-                                                            } p-4 shadow-[0_12px_30px_rgba(0,0,0,0.25)] transition hover:border-[var(--color-primary)]/60`}
+                                                                } p-4 shadow-[0_12px_30px_rgba(0,0,0,0.25)] transition hover:border-[var(--color-primary)]/60`}
                                                         >
                                                             <div className="flex items-start gap-3">
                                                                 <input

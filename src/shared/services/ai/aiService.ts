@@ -117,12 +117,8 @@ export async function callAIWithContext(params: AICallParams): Promise<AICallRes
 
   switch (type) {
     case 'chat':
-      // 첫 메시지일 경우에만 페르소나 포함
-      if (history.length === 0) {
-        finalPrompt = `${basePersonaPrompt}\n\n${userPrompt}`;
-      } else {
-        finalPrompt = userPrompt;
-      }
+      // 대화가 이어져도 기본 페르소나 컨텍스트를 항상 포함해 맥락이 끊기지 않도록 유지
+      finalPrompt = `${basePersonaPrompt}\n\n${userPrompt}`;
       break;
 
     case 'insight':

@@ -73,6 +73,11 @@ const config: Config = {
           '0%, 60%, 100%': { transform: 'translateY(0)', opacity: 0.5 },
           '30%': { transform: 'translateY(-10px)', opacity: 1 },
         },
+        'float-up-fade': {
+          '0%': { transform: 'translate(-50%, -50%) scale(0.8)', opacity: 0 },
+          '20%': { transform: 'translate(-50%, -80%) scale(1.1)', opacity: 1 },
+          '100%': { transform: 'translate(-50%, -150%) scale(1)', opacity: 0 },
+        },
       },
       animation: {
         shimmer: 'shimmer 2s infinite linear',
@@ -81,6 +86,7 @@ const config: Config = {
         slideInUp: 'slideInUp 0.4s ease-out',
         shake: 'shake 0.4s ease-out',
         loadingDot: 'loadingDot 1.4s infinite ease-in-out',
+        'float-up-fade': 'float-up-fade 1.5s ease-out forwards',
       },
     },
   },

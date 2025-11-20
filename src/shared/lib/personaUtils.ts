@@ -57,11 +57,12 @@
  * const systemPrompt = generateWaifuPersona(personaContext);
  * ```
  */
-import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 import { loadInboxTasks } from '@/data/repositories/inboxRepository';
 import type { PersonaContext } from '@/shared/services/ai/geminiApi';
 import type { DailyData, GameState, Task, TimeBlockState, WaifuState } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
+import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
+import { db } from '@/data/db/dexieClient';
 
 export interface BuildPersonaContextParams {
   dailyData: DailyData | null;
@@ -81,12 +82,15 @@ export async function buildPersonaContext(
 
   // ✅ 실제 Global Inbox에서 데이터 가져오기 (UI와 동일한 데이터 소스)
   const inboxTasksRaw = await loadInboxTasks();
-  const inboxTasks = inboxTasksRaw.map((t: Task) => ({
-    text: t.text,
-    resistance: t.resistance,
-    baseDuration: t.baseDuration,
-    memo: t.memo || ''
-  }));
+  const inboxTasks = inboxTasksRaw
+    // timeBlock이 null 또는 누락(undefined)인 미완료 항목만 포함해 UI와 동일하게 집계
+    .filter((t: Task) => !t.completed && (t.timeBlock === null || t.timeBlock === undefined))
+    .map((t: Task) => ({
+      text: t.text,
+      resistance: t.resistance,
+      baseDuration: t.baseDuration,
+      memo: t.memo || ''
+    }));
 
   // 현재 시간 정보
   const now = new Date();
@@ -148,6 +152,37 @@ export async function buildPersonaContext(
     return acc;
   }, {} as Record<string, Array<{ date: string; completedCount: number; tasks: string[] }>>);
 
+  // 최근 10일 모든 작업(인박스/타임블록, 완료/미완료) 상세 로그
+  const tenDayDates = new Set(recentDays.map(day => day.date));
+
+  // dailyData 기준 작업 묶음
+  const tasksByDate: Record<string, Task[]> = {};
+  recentDays.forEach(day => {
+    tasksByDate[day.date] = Array.isArray(day.tasks) ? day.tasks : [];
+  });
+
+  // completedInbox에서 완료일자 기준으로 편입 (10일 범위 내)
+  const completedInboxTasks = await db.completedInbox.toArray();
+  completedInboxTasks.forEach(task => {
+    const date = task.completedAt ? task.completedAt.slice(0, 10) : null;
+    if (date && tenDayDates.has(date)) {
+      if (!tasksByDate[date]) tasksByDate[date] = [];
+      tasksByDate[date].push(task);
+    }
+  });
+
+  const recentTaskLog = Array.from(tenDayDates)
+    .sort()
+    .map(date => ({
+      date,
+      tasks: (tasksByDate[date] || []).map((t: Task) => ({
+        text: t.text,
+        completed: t.completed,
+        timeBlock: t.timeBlock ?? null,
+        memo: t.memo || '',
+      }))
+    }));
+
   // 기분 계산 (호감도 기반)
   const affection = waifuState?.affection ?? 50;
   let mood = '중립적';
@@ -202,8 +237,11 @@ export async function buildPersonaContext(
     // 타임블록 XP 히스토리
     timeBlockXPHistory: gameState?.timeBlockXPHistory ?? [],
 
-    // 최근 5일 패턴
+    // 최근 10일 패턴
     recentBlockPatterns,
+
+    // 최근 10일 작업 상세 로그 (인박스/타임블록, 완료/미완료)
+    recentTaskLog,
 
     // 기분
     mood,

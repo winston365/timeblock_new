@@ -297,7 +297,7 @@ export default function InboxTab() {
         <TaskModal
           task={editingTask}
           initialBlockId="morning" // Inbox tasks don't have a specific block initially, but required by type
-          onSave={editingTask ? handleEditTask : handleAddTask}
+          onSave={handleSaveTask}
           onSaveMultiple={handleSaveMultipleTasks}
           onClose={() => {
             setIsModalOpen(false);

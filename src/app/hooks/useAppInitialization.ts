@@ -139,6 +139,15 @@ export function useAppInitialization() {
                                     }
                                 }
 
+                                // 3.3-1 CompletedInbox 저장 (date-keyed)
+                                if (firebaseData.completedInbox) {
+                                    await db.completedInbox.clear();
+                                    const completedTasks = Object.values(firebaseData.completedInbox).flat();
+                                    if (completedTasks.length > 0) {
+                                        await db.completedInbox.bulkAdd(completedTasks);
+                                    }
+                                }
+
                                 // 3.4 EnergyLevels 저장
                                 if (firebaseData.energyLevels) {
                                     const energyDates = Object.keys(firebaseData.energyLevels);

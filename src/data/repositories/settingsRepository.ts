@@ -31,6 +31,7 @@ const settingsConfig: RepositoryConfig<Settings> = {
     autoMessageInterval: DEFAULT_AUTO_MESSAGE_INTERVAL,
     autoMessageEnabled: true,
     waifuMode: 'characteristic', // 기본값: 특성 모드
+    waifuImageChangeInterval: 600000, // 기본값: 10분 (밀리초)
     templateCategories: ['업무', '건강', '공부', '취미'], // 기본 카테고리
     aiBreakdownTrigger: 'high_difficulty', // 기본값: 높은 난이도일 때만 자동 실행
   }),
@@ -39,6 +40,7 @@ const settingsConfig: RepositoryConfig<Settings> = {
     return {
       ...data,
       waifuMode: data.waifuMode || 'characteristic',
+      waifuImageChangeInterval: data.waifuImageChangeInterval ?? 600000, // 기본값: 10분
       templateCategories: data.templateCategories || ['업무', '건강', '공부', '취미'],
       aiBreakdownTrigger: data.aiBreakdownTrigger || 'high_difficulty',
     };

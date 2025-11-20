@@ -124,8 +124,8 @@ export default function TemplatePanel({ onTaskCreate }: TemplatePanelProps) {
             <button
               key={cat}
               className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors ${activeCategory === cat
-                  ? 'bg-[var(--color-primary)] text-white'
-                  : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
+                ? 'bg-[var(--color-primary)] text-white'
+                : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
                 }`}
               onClick={() => setActiveCategory(cat)}
             >

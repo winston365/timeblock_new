@@ -296,11 +296,10 @@ export default function QuickAddTask() {
                   <button
                     key={duration}
                     type="button"
-                    className={`rounded-2xl border px-3 py-1 text-xs font-semibold transition ${
-                      baseDuration === duration
+                    className={`rounded-2xl border px-3 py-1 text-xs font-semibold transition ${baseDuration === duration
                         ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-lg'
                         : 'border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-text)]'
-                    }`}
+                      }`}
                     onClick={() => setBaseDuration(duration)}
                   >
                     {duration < 60

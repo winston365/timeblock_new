@@ -72,10 +72,14 @@ export class GameStateEventHandler {
     }
 
     try {
-      const { useXPToastStore } = await import('@/shared/hooks/useXPToast');
+      const { toast } = await import('react-hot-toast');
+      const { default: XPToast } = await import('@/shared/components/XPToast');
       const message = XP_REASON_MESSAGES[event.reason] || 'XP 획득!';
 
-      useXPToastStore.getState().addToast(event.amount, message);
+      toast.custom((t) => XPToast({ xp: event.amount, message, t }), {
+        duration: 3000,
+        position: 'top-right',
+      });
 
       console.log(`[${this.name}] 🎁 XP Toast: ${event.amount} (${event.reason})`);
     } catch (error) {

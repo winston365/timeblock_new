@@ -10,8 +10,9 @@ import {
 import { loadAllTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import type { DailyTokenUsage } from '@/shared/types/domain';
 
-const PRICE_PER_MILLION_INPUT = 1.25;
-const PRICE_PER_MILLION_OUTPUT = 10.0;
+// Gemini 2.5 Flash (updated pricing): $2 / 1M input, $12 / 1M output
+const PRICE_PER_MILLION_INPUT = 2.0;
+const PRICE_PER_MILLION_OUTPUT = 12.0;
 
 const overlayClass =
   'fixed inset-0 z-[1000] flex items-start justify-center bg-[color:var(--modal-backdrop)] px-4 py-6 backdrop-blur-sm md:items-center';

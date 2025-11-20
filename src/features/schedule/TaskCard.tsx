@@ -11,6 +11,8 @@ import { RESISTANCE_LABELS } from '@/shared/types/domain';
 import { formatDuration, calculateTaskXP } from '@/shared/lib/utils';
 import { MemoModal } from './MemoModal';
 import { useDragDropManager } from './hooks/useDragDropManager';
+import { NeonCheckbox } from '@/shared/components/ui/NeonCheckbox';
+import { toast } from 'react-hot-toast';
 
 interface TaskCardProps {
   task: Task;
@@ -29,6 +31,18 @@ const RESISTANCE_COLORS: Record<Resistance, string> = {
   low: 'border-emerald-400/50 text-emerald-200 bg-emerald-500/10',
   medium: 'border-amber-400/60 text-amber-200 bg-amber-500/10',
   high: 'border-rose-400/60 text-rose-200 bg-rose-500/10',
+};
+
+const RESISTANCE_EMOJI: Record<Resistance, string> = {
+  low: '🟢',
+  medium: '🟠',
+  high: '🔴'
+};
+
+const RESISTANCE_BADGE_LABEL: Record<Resistance, string> = {
+  low: 'Low',
+  medium: 'Med',
+  high: 'High'
 };
 
 export default function TaskCard({
@@ -56,6 +70,8 @@ export default function TaskCard({
   const { setDragData } = useDragDropManager();
   const xp = calculateTaskXP(task);
   const isPrepared = !!(task.preparation1 && task.preparation2 && task.preparation3);
+  const preparationCount = [task.preparation1, task.preparation2, task.preparation3].filter(Boolean).length;
+  const expectedDurationLabel = formatDuration(task.baseDuration);
   const durationOptions = [5, 10, 15, 30, 45, 60];
 
   const handleResistanceChange = (resistance: Resistance) => {
@@ -107,7 +123,15 @@ export default function TaskCard({
       return;
     }
     if (task.timeBlock && blockIsLocked === false) {
-      alert('🔒 블록을 먼저 잠궈야 작업을 완료할 수 있어요!\n\n잠금 버튼(🔒)을 눌러주세요. (비용: 15 XP)');
+      toast('블록을 먼저 잠궈야 작업을 완료할 수 있습니다! (잠금 버튼 🔒 클릭)', {
+        icon: '🔒',
+        style: {
+          borderRadius: '10px',
+          background: '#333',
+          color: '#fff',
+        },
+        id: 'lock-warning',
+      });
       return;
     }
     onToggle();
@@ -163,12 +187,6 @@ export default function TaskCard({
     isDragging ? 'scale-105 rotate-2 shadow-2xl border-[var(--color-primary)] z-50 cursor-grabbing' : 'cursor-grab',
   ].join(' ');
 
-  const checkboxClasses = [
-    'relative flex items-center justify-center shrink-0 w-6 h-6 rounded-lg border-2 transition-all duration-300 ease-in-out',
-    task.completed
-      ? 'bg-[var(--color-primary)] border-transparent rotate-12 shadow-[0_0_10px_var(--color-primary)]/30'
-      : 'bg-[var(--color-bg-elevated)] border-[var(--color-primary)]/50 hover:border-[var(--color-primary)] hover:shadow-[0_0_10px_var(--color-primary)]/20',
-  ].join(' ');
 
   if (compact) {
     return (
@@ -186,32 +204,30 @@ export default function TaskCard({
           }}
         >
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className={checkboxClasses}
-              onClick={handleToggleClick}
-              aria-label={task.completed ? '완료 취소' : '완료'}
-              data-task-interactive="true"
-            >
-              <svg
-                className={`w-4 h-4 text-white transition-opacity duration-300 ${task.completed ? 'opacity-100' : 'opacity-0'}`}
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </button>
+            <div className="flex items-center justify-center w-8 h-8" data-task-interactive="true">
+              <NeonCheckbox
+                checked={task.completed}
+                onChange={handleToggleClick}
+                size={24}
+              />
+            </div>
 
             <div className="flex-1 min-w-0">
               <p className={`text-sm font-medium truncate transition-colors ${task.completed ? 'text-[var(--color-text-tertiary)] line-through' : 'text-[var(--color-text)]'}`}>
                 {task.text}
               </p>
               {task.memo && <p className="text-xs text-[var(--color-text-tertiary)] truncate">{task.memo}</p>}
+              <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px]">
+                <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 text-[var(--color-text-secondary)]">
+                  ⌛ {expectedDurationLabel}
+                </span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${RESISTANCE_COLORS[task.resistance]}`}>
+                  {RESISTANCE_EMOJI[task.resistance]} {RESISTANCE_BADGE_LABEL[task.resistance]}
+                </span>
+                <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 text-[var(--color-text-secondary)]">
+                  Prep {preparationCount}/3
+                </span>
+              </div>
             </div>
 
             {/* Hover 시에만 보이는 컨트롤 */}
@@ -261,26 +277,13 @@ export default function TaskCard({
         }}
       >
         <div className="flex items-start gap-2">
-          <button
-            type="button"
-            className={checkboxClasses}
-            onClick={handleToggleClick}
-            aria-label={task.completed ? '완료 취소' : '완료'}
-            data-task-interactive="true"
-          >
-            <svg
-              className={`w-4 h-4 text-white transition-opacity duration-300 ${task.completed ? 'opacity-100' : 'opacity-0'}`}
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </button>
+          <div className="flex items-center justify-center w-8 h-8 pt-1" data-task-interactive="true">
+            <NeonCheckbox
+              checked={task.completed}
+              onChange={handleToggleClick}
+              size={24}
+            />
+          </div>
 
           <div className="flex-1 space-y-2">
             {/* 상단: 텍스트 및 핵심 정보 */}
@@ -323,15 +326,21 @@ export default function TaskCard({
                 )}
 
                 {/* 핵심 메타데이터 (항상 표시) */}
-                <div className="mt-0.5 flex items-center gap-2 text-[10px] text-[var(--color-text-tertiary)]">
-                  <span className="flex items-center gap-1">
-                    ⏱️ {formatDuration(task.adjustedDuration)}
+                <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-[var(--color-text-secondary)]">
+                  <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 font-semibold">
+                    ⌛ {expectedDurationLabel}
                   </span>
-                  {isPrepared && (
-                    <span className="text-emerald-400/80 flex items-center gap-0.5">
-                      ✨ 준비됨
-                    </span>
-                  )}
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${RESISTANCE_COLORS[task.resistance]}`}>
+                    {RESISTANCE_EMOJI[task.resistance]} {RESISTANCE_BADGE_LABEL[task.resistance]}
+                  </span>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 font-semibold ${preparationCount === 3
+                      ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-200'
+                      : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 text-[var(--color-text-secondary)]'
+                      }`}
+                  >
+                    Prep {preparationCount}/3
+                  </span>
                 </div>
               </div>
 

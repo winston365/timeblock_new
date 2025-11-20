@@ -6,6 +6,7 @@ import {
     templateStrategy,
     shopItemsStrategy,
     globalInboxStrategy,
+    completedInboxStrategy,
     energyLevelsStrategy,
     tokenUsageStrategy,
 } from './firebase/strategies';
@@ -14,6 +15,7 @@ import { getFirebaseDatabase } from './firebase/firebaseClient';
 import { ref, onValue, off } from 'firebase/database';
 import { getDeviceId } from './firebase/syncUtils';
 import { useToastStore } from '@/shared/stores/toastStore';
+import type { Task } from '@/shared/types/domain';
 
 type SyncOperation = 'create' | 'update' | 'delete';
 
@@ -80,7 +82,17 @@ export class SyncEngine {
         // 5. GlobalInbox (Collection sync)
         this.registerHooks(db.globalInbox, async () => {
             const allTasks = await db.globalInbox.toArray();
-            await syncToFirebase(globalInboxStrategy, allTasks, 'all');
+            await syncToFirebase(globalInboxStrategy, allTasks);
+        });
+
+        // 5-1. CompletedInbox (Collection sync, grouped by completed date)
+        this.registerHooks(db.completedInbox, async () => {
+            const completedTasks = await db.completedInbox.toArray();
+            const grouped = groupCompletedByDate(completedTasks);
+            const syncPromises = Object.entries(grouped).map(([date, tasks]) =>
+                syncToFirebase(completedInboxStrategy, tasks, date)
+            );
+            await Promise.all(syncPromises);
         });
 
         // 6. EnergyLevels (Key-based sync but syncs array per date)
@@ -190,14 +202,48 @@ export class SyncEngine {
         const globalInboxRef = ref(database, `users/${userId}/globalInbox`);
         onValue(globalInboxRef, (snapshot) => {
             const syncData = snapshot.val();
-            if (!syncData || syncData.deviceId === deviceId) return;
+            if (!syncData) return;
 
-            if (Array.isArray(syncData.data)) {
-                this.applyRemoteUpdate(async () => {
-                    await db.globalInbox.clear();
-                    await db.globalInbox.bulkPut(syncData.data);
+            // Support both new shape (data at root) and legacy shape (nested under "all")
+            const payload = Array.isArray(syncData.data)
+                ? { data: syncData.data, deviceId: syncData.deviceId }
+                : (syncData.all && Array.isArray(syncData.all.data))
+                    ? { data: syncData.all.data, deviceId: syncData.all.deviceId }
+                    : null;
+
+            if (!payload || payload.deviceId === deviceId) return;
+
+            this.applyRemoteUpdate(async () => {
+                await db.globalInbox.clear();
+                await db.globalInbox.bulkPut(payload.data);
+            });
+        });
+
+        // 5-1. CompletedInbox Listener (date-keyed)
+        const completedInboxRef = ref(database, `users/${userId}/completedInbox`);
+        onValue(completedInboxRef, (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+
+            this.applyRemoteUpdate(async () => {
+                const existing = await db.completedInbox.toArray();
+                const map = new Map<string, Task>(existing.map(task => [task.id, task]));
+
+                Object.entries<any>(data).forEach(([_, syncData]) => {
+                    if (!syncData || syncData.deviceId === deviceId) return;
+                    if (Array.isArray(syncData.data)) {
+                        syncData.data.forEach((task: Task) => {
+                            map.set(task.id, task);
+                        });
+                    }
                 });
-            }
+
+                const mergedTasks = Array.from(map.values());
+                await db.completedInbox.clear();
+                if (mergedTasks.length > 0) {
+                    await db.completedInbox.bulkPut(mergedTasks);
+                }
+            });
         });
 
         // 6. EnergyLevels Listener
@@ -328,3 +374,16 @@ export class SyncEngine {
 }
 
 export const syncEngine = SyncEngine.getInstance();
+
+// Helper: group completed tasks by YYYY-MM-DD (from completedAt)
+function groupCompletedByDate(tasks: Task[]): Record<string, Task[]> {
+    const grouped: Record<string, Task[]> = {};
+    tasks.forEach(task => {
+        const date = task.completedAt ? task.completedAt.slice(0, 10) : 'unknown';
+        if (!grouped[date]) {
+            grouped[date] = [];
+        }
+        grouped[date].push(task);
+    });
+    return grouped;
+}

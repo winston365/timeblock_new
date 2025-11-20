@@ -15,7 +15,7 @@ import type { Task } from '@/shared/types/domain';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
-import { globalInboxStrategy } from '@/shared/services/sync/firebase/strategies';
+import { globalInboxStrategy, completedInboxStrategy } from '@/shared/services/sync/firebase/strategies';
 
 // ============================================================================
 // Global Inbox CRUD
@@ -38,15 +38,17 @@ export async function loadInboxTasks(): Promise<Task[]> {
     if (tasks.length > 0) {
       addSyncLog('dexie', 'load', `Loaded ${tasks.length} inbox tasks`);
       return tasks;
-    }
+  }
 
-    // 2. Firebase에서 조회 (fallback)
-    if (isFirebaseInitialized()) {
-      const firebaseTasks = await fetchFromFirebase<Task[]>(globalInboxStrategy);
+  // 2. Firebase에서 조회 (fallback)
+  if (isFirebaseInitialized()) {
+    const firebaseTasks =
+      await fetchFromFirebase<Task[]>(globalInboxStrategy) ||
+      await fetchFromFirebase<Task[]>(globalInboxStrategy, 'all');
 
-      if (firebaseTasks && firebaseTasks.length > 0) {
-        // Firebase 데이터를 IndexedDB에 저장
-        await db.globalInbox.bulkPut(firebaseTasks);
+    if (firebaseTasks && firebaseTasks.length > 0) {
+      // Firebase 데이터를 IndexedDB에 저장
+      await db.globalInbox.bulkPut(firebaseTasks);
 
         addSyncLog('firebase', 'load', `Loaded ${firebaseTasks.length} inbox tasks from Firebase`);
         return firebaseTasks;
@@ -235,10 +237,13 @@ export async function toggleInboxTaskCompletion(taskId: string): Promise<Task> {
         db.completedInbox.toArray()
       ]);
 
+      const completedByDate = groupCompletedByDate(completedTasks);
       // 두 테이블 모두 동기화
       await Promise.all([
         syncToFirebase(globalInboxStrategy, activeTasks),
-        // TODO: completedInboxStrategy 추가 필요
+        ...Object.entries(completedByDate).map(([date, tasks]) =>
+          syncToFirebase(completedInboxStrategy, tasks, date)
+        ),
       ]);
     }
 
@@ -316,4 +321,16 @@ export async function moveTaskToInbox(task: Task): Promise<void> {
     console.error('Failed to move task to inbox:', error);
     throw error;
   }
+}
+
+function groupCompletedByDate(tasks: Task[]): Record<string, Task[]> {
+  const grouped: Record<string, Task[]> = {};
+  tasks.forEach(task => {
+    const date = task.completedAt ? task.completedAt.slice(0, 10) : 'unknown';
+    if (!grouped[date]) {
+      grouped[date] = [];
+    }
+    grouped[date].push(task);
+  });
+  return grouped;
 }

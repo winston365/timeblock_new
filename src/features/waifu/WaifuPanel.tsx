@@ -17,10 +17,21 @@ import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier }
 import { getDialogueFromAffection, syncAffectionWithXP } from '@/data/repositories/waifuRepository';
 import { addXP } from '@/data/repositories/gameStateRepository';
 import { loadSettings } from '@/data/repositories/settingsRepository';
+import { preloadWaifuImages } from './waifuImagePreloader';
 import { audioService } from '@/shared/services/media/audioService';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import type { WaifuMode } from '@/shared/types/domain';
+import { Typewriter } from '@/shared/components/ui/Typewriter';
 import baseImage from './base.png';
+
+// Floating Feedback Item Interface
+interface FeedbackItem {
+  id: number;
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+}
 
 interface WaifuPanelProps {
   imagePath?: string; // 수동 이미지 경로 (optional, 지정하지 않으면 호감도 기반 자동 선택)
@@ -46,20 +57,59 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
   const currentImageIndexRef = useRef<number>(-1);
 
   const [waifuMode, setWaifuMode] = useState<WaifuMode>('characteristic');
+  const [waifuImageChangeInterval, setWaifuImageChangeInterval] = useState<number>(600000); // 기본 10분
   const lastImageChangeTime = useRef<number>(Date.now());
+  const lastManualChangeTime = useRef<number>(0);
 
-  // 설정 로드 (와이푸 모드)
+  // Smooth Transition State
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [nextImagePath, setNextImagePath] = useState<string>('');
+
+  // Floating Feedback State
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+  const feedbackIdRef = useRef(0);
+
+  // Time-aware Lighting State
+  const [lightingClass, setLightingClass] = useState('');
+
+  // 설정 로드 (와이푸 모드 및 이미지 변경 간격) + 이미지 프리로드
   useEffect(() => {
     const loadWaifuMode = async () => {
       const settings = await loadSettings();
       setWaifuMode(settings.waifuMode);
+      setWaifuImageChangeInterval(settings.waifuImageChangeInterval ?? 600000);
     };
     loadWaifuMode();
+
+    // 이미지 프리로드 (백그라운드)
+    preloadWaifuImages().catch((err) => console.error('[WaifuPanel] Image preload failed:', err));
+
+    // Time-aware Lighting Logic
+    const updateLighting = () => {
+      const hour = new Date().getHours();
+      if (hour >= 6 && hour < 11) {
+        setLightingClass('shadow-[inset_0_0_100px_rgba(255,223,186,0.2)] bg-gradient-to-b from-orange-50/10 to-blue-50/5'); // Morning: Warm
+      } else if (hour >= 11 && hour < 17) {
+        setLightingClass('shadow-[inset_0_0_100px_rgba(255,255,255,0.2)] bg-gradient-to-b from-white/10 to-blue-50/5'); // Day: Bright
+      } else if (hour >= 17 && hour < 20) {
+        setLightingClass('shadow-[inset_0_0_100px_rgba(255,183,178,0.2)] bg-gradient-to-b from-orange-100/10 to-purple-900/10'); // Evening: Sunset
+      } else {
+        setLightingClass('shadow-[inset_0_0_100px_rgba(20,30,60,0.4)] bg-gradient-to-b from-slate-900/20 to-slate-800/20'); // Night: Cool/Dark
+      }
+    };
+    updateLighting();
+    const interval = setInterval(updateLighting, 60000 * 30); // Check every 30 mins
+    return () => clearInterval(interval);
   }, []);
 
   // 이미지 변경 함수
-  const changeImage = useCallback(async (affection: number) => {
+  const changeImage = useCallback(async (affection: number, source: 'manual' | 'auto' = 'auto') => {
     if (!waifuState) return;
+
+    // If auto-update (from useEffect), check if we recently changed it manually
+    if (source === 'auto' && Date.now() - lastManualChangeTime.current < 2000) {
+      return;
+    }
 
     // 일반 모드일 경우 base.png 사용
     if (waifuMode === 'normal') {
@@ -77,9 +127,27 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     // 이미지 경로 가져오기 (비동기 체크 포함)
     const path = await getWaifuImagePathWithFallback(affection, newImageNumber);
 
-    setDisplayImagePath(path);
+    // Smooth Transition: Preload and fade
+    if (path !== displayImagePath) {
+      const img = new Image();
+      img.src = path;
+      img.onload = () => {
+        setNextImagePath(path);
+        setIsTransitioning(true);
+        setTimeout(() => {
+          setDisplayImagePath(path);
+          setIsTransitioning(false);
+          setNextImagePath('');
+        }, 300); // Match CSS transition duration
+      };
+    }
+
     currentImageIndexRef.current = newImageNumber; // Ref 업데이트
     lastImageChangeTime.current = Date.now();
+
+    if (source === 'manual') {
+      lastManualChangeTime.current = Date.now();
+    }
   }, [waifuState, waifuMode]); // currentImageIndex 의존성 제거
 
   // 초기 이미지 로드 및 호감도 변경 시 이미지 업데이트
@@ -93,26 +161,36 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     if (imagePath) {
       setDisplayImagePath(imagePath);
     } else if (waifuState) {
-      changeImage(waifuState.affection);
+      changeImage(waifuState.affection, 'auto');
     }
   }, [expressionOverride?.imagePath, imagePath, waifuState?.affection, changeImage]);
 
-  // 10분마다 자동으로 이미지 변경
+  // 설정된 간격마다 자동으로 이미지 및 대사 변경
   useEffect(() => {
-    if (!waifuState) return;
+    if (!waifuState || waifuImageChangeInterval === 0) return; // 비활성화 시 리턴
 
     const interval = setInterval(() => {
       const now = Date.now();
       const elapsed = now - lastImageChangeTime.current;
 
-      // 10분 (600,000ms) 경과 시 이미지 변경
-      if (elapsed >= 600000) {
-        changeImage(waifuState.affection);
+      // 설정된 간격 경과 시 이미지 및 대사 변경
+      if (elapsed >= waifuImageChangeInterval) {
+        // 이미지 변경
+        changeImage(waifuState.affection, 'auto');
+
+        // 대사 변경 (클릭처럼)
+        const newDialogue = getDialogueFromAffection(waifuState.affection, waifuState.tasksCompletedToday);
+        showWaifu(newDialogue.text);
+
+        // 대사 오디오가 있다면 재생
+        if (newDialogue.audio) {
+          audioService.play(newDialogue.audio);
+        }
       }
     }, 60000); // 1분마다 체크
 
     return () => clearInterval(interval);
-  }, [waifuState, changeImage]);
+  }, [waifuState, waifuImageChangeInterval, changeImage, showWaifu]);
 
   // 오디오 재생 (일반 대화용)
   useEffect(() => {
@@ -136,10 +214,16 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
   // 클릭 사운드 재생
   const playClickSound = () => {
     const soundId = Math.floor(Math.random() * 4) + 1;
-    // 오디오 파일이 존재하는지 확인하기 어려우므로, 에러가 나도 무시하도록 try-catch 처리하거나
-    // audioService 내부에서 처리되길 기대함.
-    // 일단 경로 규칙에 따라 호출.
     audioService.play(`audio/click${soundId}.mp3`);
+  };
+
+  // Floating Feedback 추가 함수
+  const addFeedback = (x: number, y: number, text: string, color: string) => {
+    const id = feedbackIdRef.current++;
+    setFeedbacks((prev) => [...prev, { id, x, y, text, color }]);
+    setTimeout(() => {
+      setFeedbacks((prev) => prev.filter((item) => item.id !== id));
+    }, 1000);
   };
 
   // 클릭 핸들러 - 매번 클릭마다 이미지 및 대사 변경 + 보상 지급 + 효과
@@ -159,8 +243,16 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     spawnHeartParticles(x, y);
     playClickSound();
 
+    // Floating Feedback
+    // Randomize position slightly
+    const offsetX = (Math.random() - 0.5) * 40;
+    addFeedback(x + offsetX, y - 20, '+1 XP', '#fbbf24'); // Amber for XP
+    setTimeout(() => {
+      addFeedback(x + offsetX + 10, y - 50, '+Affection', '#f472b6'); // Pink for Affection
+    }, 150);
+
     // 1. 매번 클릭 시 이미지 변경
-    changeImage(waifuState.affection);
+    changeImage(waifuState.affection, 'manual');
 
     // 2. 매번 클릭 시 대사 변경
     const newDialogue = getDialogueFromAffection(waifuState.affection, waifuState.tasksCompletedToday);
@@ -234,7 +326,7 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
         {isPinned ? '📌' : '📍'}
       </button>
 
-      <div className="relative flex h-full flex-col overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-b from-[var(--color-bg-tertiary)]/80 to-[var(--color-bg-secondary)]/90 shadow-[0_35px_70px_rgba(0,0,0,0.45)]">
+      <div className={`relative flex h-full flex-col overflow-hidden rounded-[32px] border border-white/10 transition-all duration-1000 ${lightingClass} shadow-[0_35px_70px_rgba(0,0,0,0.45)]`}>
         <div
           className="group relative flex flex-1 cursor-pointer flex-col items-center justify-end overflow-hidden px-8 pt-10 pb-32 text-center"
           onClick={handleClick}
@@ -250,11 +342,15 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
         >
           <div className="relative w-full">
             {displayImagePath ? (
-              <img
-                src={displayImagePath}
-                alt={`와이푸 (호감도 ${waifuState.affection}%)`}
-                className="mx-auto max-h-[520px] w-auto object-contain drop-shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
-              />
+              <div className="relative mx-auto max-h-[520px] w-auto">
+                {/* Current Image */}
+                <img
+                  src={displayImagePath}
+                  alt={`와이푸 (호감도 ${waifuState.affection}%)`}
+                  className={`mx-auto max-h-[520px] w-auto object-contain drop-shadow-[0_20px_60px_rgba(0,0,0,0.45)] transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
+                />
+                {/* Next Image (Preloading/Fading in) - Optional optimization could be double buffering but simple fade out/in works for now or absolute positioning for crossfade */}
+              </div>
             ) : (
               <div className="flex h-[500px] flex-col items-center justify-center gap-3 rounded-[28px] border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg)] text-center text-sm text-[var(--color-text-secondary)]">
                 <span className="text-5xl opacity-70">📷</span>
@@ -278,9 +374,22 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
           <div
             role="status"
             aria-live="polite"
-            className="pointer-events-none absolute inset-x-6 bottom-6 rounded-2xl border border-white/10 bg-[var(--color-bg-secondary)]/90 px-5 py-4 text-left text-sm text-[var(--color-text)] shadow-[0_25px_60px_rgba(0,0,0,0.4)] backdrop-blur"
+            className="pointer-events-none absolute inset-x-6 bottom-6"
           >
-            <p>{companionMessage || currentDialogue}</p>
+            {/* Speaking Bubble UI */}
+            <div className="relative mx-auto max-w-md rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-6 py-5 text-center shadow-xl">
+              {/* Tail */}
+              <div className="absolute -top-3 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l-2 border-t-2 border-[var(--color-border)] bg-[var(--color-bg-secondary)]"></div>
+
+              {/* Name Tag */}
+              <div className="absolute -top-3 left-4 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)] shadow-sm">
+                Hye-Eun
+              </div>
+
+              <p className="text-sm font-medium leading-relaxed text-[var(--color-text)]">
+                <Typewriter key={companionMessage || currentDialogue} text={companionMessage || currentDialogue} speed={30} />
+              </p>
+            </div>
           </div>
         </div>
 
@@ -313,6 +422,31 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
           </div>
         </div>
       </div>
+
+      {/* Floating Feedbacks Container */}
+      {feedbacks.map((item) => (
+        <div
+          key={item.id}
+          className="pointer-events-none fixed z-50 animate-float-up text-sm font-bold shadow-sm"
+          style={{
+            left: item.x,
+            top: item.y,
+            color: item.color,
+            textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+          }}
+        >
+          {item.text}
+        </div>
+      ))}
+      <style>{`
+        @keyframes float-up {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-40px) scale(1.1); opacity: 0; }
+        }
+        .animate-float-up {
+            animation: float-up 1s ease-out forwards;
+        }
+      `}</style>
     </section>
   );
 }

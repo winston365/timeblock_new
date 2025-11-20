@@ -1,34 +1,19 @@
-import { useEffect, useState } from 'react';
+import { toast, Toast } from 'react-hot-toast';
 
 interface XPToastProps {
   xp: number;
   message?: string;
-  onClose: () => void;
+  t: Toast;
 }
 
 /**
- * XP reward toast that slides in for three seconds and automatically dismisses.
+ * XP reward toast component for react-hot-toast
  */
-export default function XPToast({ xp, message, onClose }: XPToastProps) {
-  const [isVisible, setIsVisible] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(false);
-      setTimeout(onClose, 300);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
+export default function XPToast({ xp, message, t }: XPToastProps) {
   return (
     <div
-      className={[
-        'fixed top-20 right-5 z-[9999] min-w-[280px] rounded-2xl',
-        'bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)]',
-        'px-5 py-4 text-white shadow-lg transition-all duration-300',
-        isVisible ? 'opacity-100 translate-x-0' : 'pointer-events-none opacity-0 translate-x-40',
-      ].join(' ')}
+      className={`${t.visible ? 'animate-enter' : 'animate-leave'
+        } pointer-events-auto flex w-full max-w-md rounded-2xl bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)] px-5 py-4 text-white shadow-lg ring-1 ring-black/5`}
     >
       <div className="flex items-center gap-3">
         <div className="text-3xl animate-bounce">🎉</div>
@@ -40,6 +25,14 @@ export default function XPToast({ xp, message, onClose }: XPToastProps) {
             +{xp} XP
           </div>
         </div>
+      </div>
+      <div className="ml-auto flex border-l border-white/20 pl-4">
+        <button
+          onClick={() => toast.dismiss(t.id)}
+          className="flex w-full items-center justify-center rounded-none rounded-r-lg border-none p-0 text-sm font-medium text-white hover:text-white/80 focus:outline-none focus:ring-0"
+        >
+          Close
+        </button>
       </div>
     </div>
   );

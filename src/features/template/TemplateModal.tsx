@@ -383,8 +383,8 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                               else setWeeklyDays([...weeklyDays, idx]);
                             }}
                             className={`h-8 w-8 rounded-full text-xs font-bold transition-colors ${weeklyDays.includes(idx)
-                                ? 'bg-[var(--color-primary)] text-white'
-                                : 'bg-[var(--color-bg-base)] text-[var(--color-text-secondary)] border border-[var(--color-border)]'
+                              ? 'bg-[var(--color-primary)] text-white'
+                              : 'bg-[var(--color-bg-base)] text-[var(--color-text-secondary)] border border-[var(--color-border)]'
                               }`}
                           >
                             {day}

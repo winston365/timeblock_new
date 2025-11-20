@@ -11,8 +11,7 @@ import { useGameState } from '@/shared/hooks';
 import { createTaskFromTemplate } from '@/data/repositories/templateRepository';
 import { exposeDebugToWindow } from '@/shared/services/sync/firebase/firebaseDebug';
 import type { Template, Task } from '@/shared/types/domain';
-import { useXPToastStore } from '@/shared/hooks/useXPToast';
-import XPToast from '@/shared/components/XPToast';
+import { Toaster } from 'react-hot-toast';
 import SyncErrorToast from '@/shared/components/SyncErrorToast';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
@@ -84,7 +83,6 @@ export default function AppShell() {
   const rightToggleStyle = { right: rightPanelsCollapsed ? 0 : 656 };
 
   const { gameState, updateQuestProgress } = useGameState();
-  const { toasts, removeToast } = useXPToastStore();
   const { visibility } = useWaifuCompanionStore();
 
   const waifuVisibilityClass =
@@ -295,14 +293,32 @@ export default function AppShell() {
       >
         ⚙️
       </button>
-      {toasts.map((toast: { id: string; xp: number; message?: string }) => (
-        <XPToast
-          key={toast.id}
-          xp={toast.xp}
-          message={toast.message}
-          onClose={() => removeToast(toast.id)}
-        />
-      ))}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          className: '',
+          style: {
+            background: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(10px)',
+            color: '#333',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            borderRadius: '1rem',
+            padding: '16px',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10B981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#EF4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
       {syncErrorToasts.map((toast: SyncErrorToastData, index: number) => (
         <div key={toast.id} style={{ top: `${80 + index * 100}px` }}>
           <SyncErrorToast

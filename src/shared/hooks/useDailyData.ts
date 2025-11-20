@@ -75,7 +75,7 @@ export function useDailyData(date: string = getLocalDate()) {
  * @sideEffects
  *   - 최근 N일의 완료된 작업을 비동기로 로드
  */
-export function useCompletedTasks(days: number = 7) {
+export function useCompletedTasks(days: number = 20) {
   const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);

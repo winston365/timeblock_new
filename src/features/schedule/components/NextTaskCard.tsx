@@ -5,6 +5,7 @@
  */
 
 import type { Task } from '@/shared/types/domain';
+import { NeonCheckbox } from '@/shared/components/ui/NeonCheckbox';
 
 interface NextTaskCardProps {
     task: Task;
@@ -57,17 +58,13 @@ export function NextTaskCard({
                 <div className="relative space-y-6">
                     {/* Task title with checkbox */}
                     <div className="flex items-start gap-4">
-                        <button
-                            onClick={() => onToggle(task.id)}
-                            className="mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 border-[var(--color-primary)] bg-[var(--color-bg-base)] transition-all hover:scale-110 hover:border-[var(--color-primary-light)]"
-                            aria-label={task.completed ? '완료 취소' : '완료 표시'}
-                        >
-                            {task.completed && (
-                                <svg className="h-5 w-5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                </svg>
-                            )}
-                        </button>
+                        <div className="mt-1">
+                            <NeonCheckbox
+                                checked={task.completed}
+                                onChange={() => onToggle(task.id)}
+                                size={32}
+                            />
+                        </div>
                         <h2 className="flex-1 text-3xl font-bold text-[var(--color-text-primary)]">
                             {task.text}
                         </h2>

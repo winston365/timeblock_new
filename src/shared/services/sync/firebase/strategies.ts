@@ -88,6 +88,16 @@ export const globalInboxStrategy: SyncStrategy<Task[]> = {
 };
 
 // ============================================================================
+// CompletedInbox (date-keyed) Sync
+// ============================================================================
+
+export const completedInboxStrategy: SyncStrategy<Task[]> = {
+  collection: 'completedInbox',
+  getSuccessMessage: (data, key) =>
+    `CompletedInbox synced for ${key || 'unknown-date'} (${data.length} tasks)`,
+};
+
+// ============================================================================
 // ShopItems 전략 (Last-Write-Wins)
 // ============================================================================
 

@@ -9,7 +9,7 @@ interface UseTimeBlockCalculationsProps {
     pendingDuration: number;
 }
 
-export type TimeStatus = 'comfortable' | 'balanced' | 'tight' | 'critical';
+export type TimeStatus = 'comfortable' | 'balanced' | 'tight' | 'critical' | 'plan_light';
 
 export const useTimeBlockCalculations = ({
     block,
@@ -48,8 +48,9 @@ export const useTimeBlockCalculations = ({
     const remainingMinutes = timeRemaining?.totalMinutes || 0;
 
     const timeStatus: TimeStatus = useMemo(() => {
-        if (pendingDuration === 0) return 'balanced';
+        if (pendingDuration === 0) return 'plan_light';
         const ratio = remainingMinutes / pendingDuration;
+        if (ratio >= 2.0) return 'plan_light';
         if (ratio >= 1.3) return 'comfortable';
         if (ratio >= 1.15) return 'balanced';
         if (ratio >= 0.9) return 'tight';

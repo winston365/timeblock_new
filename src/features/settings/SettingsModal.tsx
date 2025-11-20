@@ -24,9 +24,9 @@ import {
 import { loadAllTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import type { DailyTokenUsage } from '@/shared/types/domain';
 
-// Gemini 2.5 Flash 가격 (2025-01 기준)
-const PRICE_PER_MILLION_INPUT = 1.25; // US$ 1.25 per 1M input tokens
-const PRICE_PER_MILLION_OUTPUT = 10.0; // US$ 10.00 per 1M output tokens
+// Gemini 2.5 Flash 가격 (업데이트): US$2.00 per 1M input, US$12.00 per 1M output
+const PRICE_PER_MILLION_INPUT = 2.0;
+const PRICE_PER_MILLION_OUTPUT = 12.0;
 
 const modalOverlayClass =
   'fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(0,0,0,0.65)] p-4 backdrop-blur';
@@ -477,6 +477,29 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                       {settings.waifuMode === 'characteristic'
                         ? '호감도에 따라 다양한 표정의 이미지가 표시됩니다.'
                         : '호감도와 관계없이 기본 이미지만 표시됩니다.'}
+                    </small>
+                  </div>
+
+                  <div className={formGroupClass}>
+                    <label htmlFor="waifu-interval-select">이미지 자동 변경 주기</label>
+                    <select
+                      id="waifu-interval-select"
+                      className={inputClass}
+                      value={settings.waifuImageChangeInterval ?? 600000}
+                      onChange={(e) =>
+                        setSettings({ ...settings, waifuImageChangeInterval: parseInt(e.target.value) })
+                      }
+                    >
+                      <option value="300000">5분마다 변경</option>
+                      <option value="600000">10분마다 변경 (기본)</option>
+                      <option value="900000">15분마다 변경</option>
+                      <option value="1800000">30분마다 변경</option>
+                      <option value="0">자동 변경 안함</option>
+                    </select>
+                    <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                      {settings.waifuImageChangeInterval === 0
+                        ? '이미지가 자동으로 변경되지 않습니다. 클릭할 때만 변경됩니다.'
+                        : `설정한 주기마다 이미지와 대사가 자동으로 변경됩니다.`}
                     </small>
                   </div>
 

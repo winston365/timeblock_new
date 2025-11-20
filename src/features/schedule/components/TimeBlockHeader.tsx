@@ -4,37 +4,42 @@ import type { TimeStatus } from '../hooks/useTimeBlockCalculations';
 
 const CONTEXT_META = {
   current: {
-    label: '현재',
+    label: '현재 블록',
     className: 'border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/15 text-[var(--color-primary)]'
   },
   past: {
-    label: '지남',
+    label: '지난 블록',
     className: 'border border-[var(--color-border)] text-[var(--color-text-tertiary)]'
   },
   upcoming: {
-    label: '예정',
+    label: '예정 블록',
     className: 'border border-[var(--color-reward)]/40 text-[var(--color-reward)]'
   }
 } as const;
 
 const STATUS_META: Record<TimeStatus, { icon: string; label: string; className: string }> = {
+  plan_light: {
+    icon: 'PL',
+    label: '계획 부족',
+    className: 'bg-sky-500/15 text-sky-100 border-sky-300/30'
+  },
   comfortable: {
-    icon: '😌',
+    icon: 'OK',
     label: '여유',
     className: 'bg-emerald-500/15 text-emerald-200 border-emerald-300/30'
   },
   balanced: {
-    icon: '🙂',
-    label: '정상',
+    icon: '=',
+    label: '균형',
     className: 'bg-indigo-500/15 text-indigo-200 border-indigo-300/30'
   },
   tight: {
-    icon: '😣',
-    label: '촉박',
+    icon: '!',
+    label: '빠듯',
     className: 'bg-amber-500/15 text-amber-50 border-amber-300/30'
   },
   critical: {
-    icon: '🚨',
+    icon: '!!',
     label: '긴급',
     className: 'bg-rose-500/20 text-rose-100 border-rose-500/40'
   }
@@ -60,7 +65,6 @@ interface TimeBlockHeaderProps {
   onRequestAddTask?: () => void;
   onToggleExpand: () => void;
   onToggleLock?: () => void;
-  toggleFocusMode: () => void;
   timer: {
     formatRemainingTime: () => string;
     handleStartLockTimer: (e: React.MouseEvent) => void;
@@ -84,7 +88,6 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
   onRequestAddTask,
   onToggleExpand,
   onToggleLock,
-  toggleFocusMode,
   timer,
   children
 }) => {
@@ -93,17 +96,11 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
     isCurrentBlock ? 'bg-[var(--color-bg-elevated)]/80 backdrop-blur-sm' : 'bg-transparent'
   ].join(' ');
 
-  const timeRangeLabel = `${block.start.toString().padStart(2, '0')}:00 - ${block.end
-    .toString()
-    .padStart(2, '0')}:00`;
-  const sanitize = (value: string) => value.replace(/\s|~/g, '');
-  const normalizedLabel = sanitize(block.label);
-  const normalizedRange = sanitize(timeRangeLabel);
-  const showTimeRange = normalizedLabel !== normalizedRange && !normalizedLabel.includes(normalizedRange);
-
+  const timeRangeLabel = `${block.start.toString().padStart(2, '0')}:00 - ${block.end.toString().padStart(2, '0')}:00`;
   const contextKey = isCurrentBlock ? 'current' : isPastBlock ? 'past' : 'upcoming';
   const context = CONTEXT_META[contextKey];
-  const statusBadge = STATUS_META[timeStatus];
+  const statusKey = STATUS_META[timeStatus] ? timeStatus : 'balanced';
+  const statusBadge = STATUS_META[statusKey];
   const showTimerControls = !state?.isLocked && !isPastBlock;
   const showRemainingChip = !isCurrentBlock;
 
@@ -113,7 +110,7 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-baseline gap-2">
             <span className="text-lg font-semibold text-[var(--color-text)]">{block.label}</span>
-            {showTimeRange && <span className="text-sm text-[var(--color-text-tertiary)]">{timeRangeLabel}</span>}
+            <span className="text-sm text-[var(--color-text-tertiary)]">{timeRangeLabel}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-semibold ${context.className}`}>
@@ -152,22 +149,16 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
               잠금 중
             </span>
           )}
+          {state?.isPerfect && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-yellow-400/50 bg-yellow-400/10 px-2 py-0.5 text-xs font-bold text-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.3)] animate-pulse">
+              <span aria-hidden="true">👑</span>
+              Perfect Plan
+            </span>
+          )}
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2 pt-1" onClick={e => e.stopPropagation()}>
-        <button
-          type="button"
-          onClick={e => {
-            e.stopPropagation();
-            toggleFocusMode();
-          }}
-          className="flex flex-1 min-w-[140px] flex-col rounded-xl border border-[var(--color-border)] px-3 py-2 text-left transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-        >
-          <span className="text-xs font-semibold text-[var(--color-text)]">집중 모드</span>
-          <span className="text-[11px] text-[var(--color-text-tertiary)]">간결 화면으로 전환</span>
-        </button>
-
         {showTimerControls && (
           <button
             type="button"
@@ -181,9 +172,9 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
             }}
             className="flex flex-1 min-w-[140px] flex-col rounded-xl border border-[var(--color-border)] px-3 py-2 text-left transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
           >
-            <span className="text-xs font-semibold text-[var(--color-text)]">워밍업</span>
+            <span className="text-xs font-semibold text-[var(--color-text)]">타이머</span>
             <span className="text-[11px] text-[var(--color-text-tertiary)]">
-              {state?.lockTimerStartedAt ? `남은 ${timer.formatRemainingTime()}` : '3분 준비'}
+              {state?.lockTimerStartedAt ? `남은 ${timer.formatRemainingTime()}` : '3분 뒤 자동 잠금'}
             </span>
           </button>
         )}
@@ -201,18 +192,15 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
           <div className="flex flex-col">
             <span className="text-xs font-semibold text-[var(--color-text)]">블록 잠금</span>
             <span className="text-[11px] text-[var(--color-text-tertiary)]">
-              {state?.isLocked ? '잠금 해제' : '실수 방지'}
+              {state?.isLocked ? '잠금 해제' : '작업 완료 시 잠금'}
             </span>
           </div>
           <div
-            className={`relative h-5 w-10 rounded-full transition ${
-              state?.isLocked ? 'bg-amber-400' : 'bg-[var(--color-border)]'
-            }`}
+            className={`relative h-5 w-10 rounded-full transition ${state?.isLocked ? 'bg-amber-400' : 'bg-[var(--color-border)]'}`}
           >
             <span
-              className={`absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white transition ${
-                state?.isLocked ? 'right-1' : 'left-1'
-              }`}
+              className={`absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white transition ${state?.isLocked ? 'right-1' : 'left-1'
+                }`}
             />
           </div>
         </button>
@@ -227,7 +215,7 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
             className="flex flex-1 min-w-[140px] flex-col rounded-xl border border-dashed border-rose-400/60 bg-rose-500/5 px-3 py-2 text-left text-rose-100 transition hover:border-rose-400"
           >
             <span className="text-xs font-semibold">계획 보강 필요</span>
-            <span className="text-[11px] text-rose-100/80">{planLoadRatio.toFixed(1)}배 · 할 일 추가</span>
+            <span className="text-[11px] text-rose-100/80">{planLoadRatio.toFixed(1)}배 작업 추가 추천</span>
           </button>
         )}
       </div>

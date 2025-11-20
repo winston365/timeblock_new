@@ -309,8 +309,8 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
             <button
               className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${showDailyOnly
-                  ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-                  : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
+                ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
                 }`}
               onClick={() => setShowDailyOnly(!showDailyOnly)}
             >
@@ -318,8 +318,8 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
             </button>
             <button
               className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${showUpcomingOnly
-                  ? 'border-[var(--color-success)] bg-[var(--color-success)]/10 text-[var(--color-success)]'
-                  : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
+                ? 'border-[var(--color-success)] bg-[var(--color-success)]/10 text-[var(--color-success)]'
+                : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
                 }`}
               onClick={() => setShowUpcomingOnly(!showUpcomingOnly)}
             >
@@ -327,8 +327,8 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
             </button>
             <button
               className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${showFavoritesOnly
-                  ? 'border-[var(--color-warning)] bg-[var(--color-warning)]/10 text-[var(--color-warning)]'
-                  : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
+                ? 'border-[var(--color-warning)] bg-[var(--color-warning)]/10 text-[var(--color-warning)]'
+                : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
                 }`}
               onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
             >

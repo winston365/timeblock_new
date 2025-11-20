@@ -37,7 +37,7 @@ import {
   chatHistoryStrategy,
   tokenUsageStrategy,
 } from './firebase/strategies';
-import type { DailyData, GameState, ChatHistory, DailyTokenUsage } from '@/shared/types/domain';
+import type { DailyData, GameState, ChatHistory, DailyTokenUsage, Task } from '@/shared/types/domain';
 import { getFirebaseDatabase } from './firebase/firebaseClient';
 import { ref, onValue, off } from 'firebase/database';
 import { getDeviceId } from './firebase/syncUtils';
@@ -206,6 +206,7 @@ export async function fetchDataFromFirebase(): Promise<{
   dailyData: Record<string, DailyData>;
   gameState: any | null;
   globalInbox: any[] | null;
+  completedInbox: Record<string, Task[]> | null;
   energyLevels: Record<string, any[]> | null;
   shopItems: any[] | null;
   waifuState: any | null;
@@ -224,6 +225,7 @@ export async function fetchDataFromFirebase(): Promise<{
       dailyDataSnapshot,
       gameStateSnapshot,
       globalInboxSnapshot,
+      completedInboxSnapshot,
       energyLevelsSnapshot,
       shopItemsSnapshot,
       waifuStateSnapshot,
@@ -233,6 +235,7 @@ export async function fetchDataFromFirebase(): Promise<{
       get(ref(db, `users/${userId}/dailyData`)),
       get(ref(db, `users/${userId}/gameState`)),
       get(ref(db, `users/${userId}/globalInbox`)),
+      get(ref(db, `users/${userId}/completedInbox`)),
       get(ref(db, `users/${userId}/energyLevels`)),
       get(ref(db, `users/${userId}/shopItems`)),
       get(ref(db, `users/${userId}/waifuState`)),
@@ -254,7 +257,19 @@ export async function fetchDataFromFirebase(): Promise<{
     const gameState = gameStateValue?.data || null;
 
     const globalInboxValue = globalInboxSnapshot.val();
-    const globalInbox = globalInboxValue?.data || null;
+    const globalInbox =
+      globalInboxValue?.data ||
+      globalInboxValue?.all?.data ||
+      null;
+
+    // CompletedInbox (date-keyed)
+    const completedInboxValue = completedInboxSnapshot.val() || {};
+    const completedInbox: Record<string, Task[]> = {};
+    Object.entries(completedInboxValue).forEach(([date, syncData]: [string, any]) => {
+      if (syncData && Array.isArray(syncData.data)) {
+        completedInbox[date] = syncData.data as Task[];
+      }
+    });
 
     const energyLevelsValue = energyLevelsSnapshot.val() || {};
     const energyLevels: Record<string, any[]> = {};
@@ -285,6 +300,7 @@ export async function fetchDataFromFirebase(): Promise<{
       dailyData: Object.keys(dailyData).length,
       gameState: !!gameState,
       globalInbox: globalInbox?.length || 0,
+      completedInbox: Object.keys(completedInbox).length,
       energyLevels: Object.keys(energyLevels).length,
       shopItems: shopItems?.length || 0,
       waifuState: !!waifuState,
@@ -292,7 +308,7 @@ export async function fetchDataFromFirebase(): Promise<{
       tokenUsage: Object.keys(tokenUsage).length,
     });
 
-    return { dailyData, gameState, globalInbox, energyLevels, shopItems, waifuState, templates, tokenUsage };
+    return { dailyData, gameState, globalInbox, completedInbox, energyLevels, shopItems, waifuState, templates, tokenUsage };
   } catch (error) {
     console.error('Failed to fetch data from Firebase:', error);
     throw error;

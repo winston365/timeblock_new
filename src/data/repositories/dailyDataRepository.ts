@@ -601,28 +601,17 @@ export async function getRecentCompletedTasks(days: number = 7): Promise<Task[]>
       allCompletedTasks.push(...completedTasks);
     });
 
-    // Global Inbox에서 완료된 작업도 포함
-    try {
-      const { loadInboxTasks } = await import('./inboxRepository');
-      const inboxTasks = await loadInboxTasks();
-      const completedInboxTasks = inboxTasks.filter(task => task.completed);
+    // completedInbox 테이블에서 완료 작업 포함 (날짜 필터 적용)
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    const completedInboxTasks = await db.completedInbox.toArray();
+    const recentCompletedInboxTasks = completedInboxTasks.filter(task => {
+      if (!task.completedAt) return false;
+      return new Date(task.completedAt) >= cutoffDate;
+    });
+    allCompletedTasks.push(...recentCompletedInboxTasks);
 
-      // 최근 N일 이내에 완료된 인박스 작업만 포함
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - days);
-
-      const recentCompletedInboxTasks = completedInboxTasks.filter(task => {
-        if (!task.completedAt) return false;
-        return new Date(task.completedAt) >= cutoffDate;
-      });
-
-      allCompletedTasks.push(...recentCompletedInboxTasks);
-    } catch (inboxError) {
-      console.warn('Failed to load completed inbox tasks:', inboxError);
-      // 인박스 로드 실패는 무시하고 dailyData 작업만 반환
-    }
-
-    // completedAt 기준으로 최근 순으로 정렬
+    // completedAt 기준으로 최근 순 정렬
     return allCompletedTasks.sort((a, b) => {
       if (!a.completedAt || !b.completedAt) return 0;
       return new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime();
@@ -633,16 +622,6 @@ export async function getRecentCompletedTasks(days: number = 7): Promise<Task[]>
   }
 }
 
-/**
- * 최근 N일의 미완료 인박스 작업 가져오기
- *
- * @deprecated Global Inbox 도입으로 더 이상 필요하지 않습니다. loadInboxTasks()를 사용하세요.
- * @param {number} [_days=7] - 조회할 일수 (기본값: 7일, 사용되지 않음)
- * @returns {Promise<Task[]>} 미완료 인박스 작업 배열 (최근 순으로 정렬)
- * @throws 없음
- * @sideEffects
- *   - 이제 globalInbox 테이블에서 직접 조회 (날짜 독립적)
- */
 export async function getRecentUncompletedInboxTasks(_days: number = 7): Promise<Task[]> {
   try {
     // Global inbox를 사용하므로 날짜 범위 검색은 불필요

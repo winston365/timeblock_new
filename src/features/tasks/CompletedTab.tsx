@@ -1,13 +1,7 @@
 /**
  * CompletedTab
  *
- * @role 완료된 작업 목록을 표시하고 관리하는 탭 컴포넌트
- * @input 없음
- * @output 완료된 작업 목록, 총 획득 XP, 완료 시간, 완료 취소 버튼을 포함한 UI
- * @external_dependencies
- *   - useCompletedTasks: 완료된 작업 목록 훅
- *   - formatTime, calculateTaskXP: 유틸리티 함수
- *   - toggleTaskCompletionRepo: DB 요청
+ * @role 완료된 작업을 날짜별 타임라인 형태로 표시하는 탭
  */
 
 import { useState, useEffect } from 'react';
@@ -17,7 +11,8 @@ import { toggleTaskCompletion as toggleTaskCompletionRepo } from '@/data/reposit
 import type { Task } from '@/shared/types/domain';
 
 export default function CompletedTab() {
-  const { completedTasks: initialCompletedTasks, loading } = useCompletedTasks();
+  // 최근 20일치만 로드
+  const { completedTasks: initialCompletedTasks, loading } = useCompletedTasks(20);
   const [completedTasks, setCompletedTasks] = useState<Task[]>(initialCompletedTasks);
 
   useEffect(() => {
@@ -26,7 +21,7 @@ export default function CompletedTab() {
 
   const handleToggleTask = async (task: Task) => {
     try {
-      setCompletedTasks(prevTasks => prevTasks.filter(t => t.id !== task.id));
+      setCompletedTasks(prev => prev.filter(t => t.id !== task.id));
       const taskDate = task.completedAt
         ? new Date(task.completedAt).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
@@ -39,11 +34,27 @@ export default function CompletedTab() {
   };
 
   const sortedTasks = [...completedTasks].sort((a, b) => {
-    if (!a.completedAt || !b.completedAt) return 0;
+    if (!a.completedAt && !b.completedAt) return 0;
+    if (!a.completedAt) return 1;
+    if (!b.completedAt) return -1;
     return new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime();
   });
 
   const totalXP = completedTasks.reduce((sum, task) => sum + calculateTaskXP(task), 0);
+
+  // 날짜별 그룹 (타임라인)
+  const groupedByDate = sortedTasks.reduce<Record<string, Task[]>>((acc, task) => {
+    const date = task.completedAt ? task.completedAt.slice(0, 10) : '날짜 없음';
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(task);
+    return acc;
+  }, {});
+
+  const orderedDates = Object.keys(groupedByDate).sort((a, b) => {
+    if (a === '날짜 없음') return 1;
+    if (b === '날짜 없음') return -1;
+    return new Date(b).getTime() - new Date(a).getTime();
+  });
 
   if (loading) {
     return (
@@ -70,35 +81,51 @@ export default function CompletedTab() {
             <p className="text-xs text-[var(--color-text-tertiary)]">작업을 완료하면 이 곳에 표시됩니다</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            {sortedTasks.map(task => {
-              const xp = calculateTaskXP(task);
-              const completedTime = task.completedAt
-                ? formatTime(new Date(task.completedAt))
-                : '-';
+          <div className="flex flex-col gap-5">
+            {orderedDates.map(date => {
+              const tasksForDate = groupedByDate[date] || [];
+              const dateXP = tasksForDate.reduce((sum, t) => sum + calculateTaskXP(t), 0);
 
               return (
-                <div
-                  key={task.id}
-                  className="flex gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3 text-sm shadow-inner"
-                >
-                  <button
-                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--color-border)] text-base transition hover:scale-125"
-                    onClick={() => handleToggleTask(task)}
-                    title="완료 취소"
-                  >
-                    ✅
-                  </button>
+                <div key={date} className="flex flex-col gap-2">
+                  <div className="sticky top-0 z-10 flex items-center justify-between rounded-xl bg-[var(--color-bg-elevated)]/90 px-2 py-1 text-xs font-semibold text-[var(--color-text)] backdrop-blur">
+                    <span>{date}</span>
+                    <span className="text-[var(--color-text-secondary)]">{tasksForDate.length}개 · +{dateXP} XP</span>
+                  </div>
 
-                  <div className="flex flex-1 flex-col gap-1">
-                    <div className="text-sm font-semibold text-[var(--color-text-secondary)] line-through">
-                      {task.text}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-[var(--color-text-tertiary)] text-xs">
-                      <span>🕐 {completedTime}</span>
-                      {task.timeBlock && <span>📍 {task.timeBlock}</span>}
-                      <span className="font-semibold text-[var(--color-primary)]">+{xp} XP</span>
-                    </div>
+                  <div className="flex flex-col gap-3">
+                    {tasksForDate.map(task => {
+                      const xp = calculateTaskXP(task);
+                      const completedTime = task.completedAt
+                        ? formatTime(new Date(task.completedAt))
+                        : '-';
+
+                      return (
+                        <div
+                          key={task.id}
+                          className="flex gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3 text-sm shadow-inner"
+                        >
+                          <button
+                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--color-border)] text-base transition hover:scale-125"
+                            onClick={() => handleToggleTask(task)}
+                            title="완료 취소"
+                          >
+                            ✅
+                          </button>
+
+                          <div className="flex flex-1 flex-col gap-1">
+                            <div className="text-sm font-semibold text-[var(--color-text-secondary)] line-through">
+                              {task.text}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-[var(--color-text-tertiary)] text-xs">
+                              <span>⏰ {completedTime}</span>
+                              {task.timeBlock && <span>🕒 {task.timeBlock}</span>}
+                              <span className="font-semibold text-[var(--color-primary)]">+{xp} XP</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
