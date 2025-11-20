@@ -34,6 +34,7 @@ export interface Task {
   adjustedDuration: number; // 조정된 소요시간 (baseDuration * 배율)
   timeBlock: TimeBlockId; // 배치된 블록 ID 또는 null (인박스)
   hourSlot?: number; // 시간 슬롯 (시간 단위, 예: 5, 6, 7)
+  order?: number; // 정렬 순서 (같은 시간대 내 사용자 지정 순서)
   completed: boolean; // 완료 여부
   actualDuration: number; // 실제 소요시간 (분)
   createdAt: string; // 생성 시각 (ISO 8601)

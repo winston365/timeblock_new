@@ -231,13 +231,18 @@ export default function AppShell() {
         style={{ display: 'grid', gridTemplateColumns }}
       >
         <button
-          className="panel-toggle-btn left-toggle absolute top-[80px] z-50 flex h-12 w-12 items-center justify-center rounded border bg-[var(--color-primary)] text-white shadow"
+          className={`panel-toggle-btn left-toggle absolute top-[80px] z-50 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition
+            ${leftSidebarCollapsed
+              ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
+              : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)]/80 text-[var(--color-text-secondary)] shadow-sm hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'}
+          `}
           onClick={toggleLeftSidebar}
           style={leftToggleStyle}
           title={leftSidebarCollapsed ? '좌측 패널 열기' : '좌측 패널 닫기'}
           aria-label={leftSidebarCollapsed ? '좌측 패널 열기' : '좌측 패널 닫기'}
         >
-          {leftSidebarCollapsed ? '⟨' : '〈'}
+          <span className="text-base">{leftSidebarCollapsed ? '⟨' : '〈'}</span>
+          <span className="hidden sm:inline">{leftSidebarCollapsed ? '열기' : '닫기'}</span>
         </button>
         <LeftSidebar activeTab={activeTab} onTabChange={setActiveTab} collapsed={leftSidebarCollapsed} />
         <CenterContent activeTab={activeTab} dailyData={null} />
@@ -249,13 +254,18 @@ export default function AppShell() {
           collapsed={rightPanelsCollapsed}
         />
         <button
-          className="panel-toggle-btn right-toggle absolute top-[80px] z-50 flex h-12 w-12 items-center justify-center rounded border bg-[var(--color-primary)] text-white shadow"
+          className={`panel-toggle-btn right-toggle absolute top-[80px] z-50 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition
+            ${rightPanelsCollapsed
+              ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
+              : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)]/80 text-[var(--color-text-secondary)] shadow-sm hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'}
+          `}
           onClick={toggleRightPanels}
           style={rightToggleStyle}
           title={rightPanelsCollapsed ? '우측 패널 열기' : '우측 패널 닫기'}
           aria-label={rightPanelsCollapsed ? '우측 패널 열기' : '우측 패널 닫기'}
         >
-          {rightPanelsCollapsed ? '⟩' : '〉'}
+          <span className="text-base">{rightPanelsCollapsed ? '⟩' : '〉'}</span>
+          <span className="hidden sm:inline">{rightPanelsCollapsed ? '열기' : '닫기'}</span>
         </button>
       </main>
       <aside

@@ -1,49 +1,118 @@
 /**
  * ScheduleView
  *
- * @role 하루 타임블럭 메인 화면 (지금모드/전체보기 토글)
+ * 타임블록 메인 화면 (일정/태스크 전체 보기)
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { db } from '@/data/db/dexieClient';
 import { useDailyData } from '@/shared/hooks';
 import { useGameState } from '@/shared/hooks/useGameState';
-import { TIME_BLOCKS } from '@/shared/types/domain';
-import type { Task, TimeBlockId } from '@/shared/types/domain';
-import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
-import { useFocusModeStore } from './stores/focusModeStore';
 import { generateId } from '@/shared/lib/utils';
-import { db } from '@/data/db/dexieClient';
-import TimeBlock from './TimeBlock';
+import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
+import type { Task, TimeBlockId } from '@/shared/types/domain';
+import { TIME_BLOCKS } from '@/shared/types/domain';
 import TaskModal from './TaskModal';
+import TimeBlock from './TimeBlock';
 import { FocusView } from './components/FocusView';
+import { useFocusModeStore } from './stores/focusModeStore';
+
+const DEFAULT_WARMUP_PRESET = [
+  { text: '책상 정리', baseDuration: 5, resistance: 'low' as const },
+  { text: '메일함 비우기', baseDuration: 5, resistance: 'low' as const },
+  { text: '물 마시기', baseDuration: 5, resistance: 'low' as const },
+];
+
+type WarmupItem = {
+  text: string;
+  baseDuration: number;
+  resistance: 'low' | 'medium' | 'high';
+};
 
 export default function ScheduleView() {
-  const { dailyData, loading, addTask, updateTask, deleteTask, toggleTaskCompletion, toggleBlockLock, updateBlockState } = useDailyData();
+  const {
+    dailyData,
+    loading,
+    addTask,
+    updateTask,
+    deleteTask,
+    toggleTaskCompletion,
+    toggleBlockLock,
+    updateBlockState,
+  } = useDailyData();
   const { updateQuestProgress } = useGameState();
   const { show: showWaifu } = useWaifuCompanionStore();
   const { isFocusMode, toggleFocusMode, setFocusMode } = useFocusModeStore();
+
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   const [showPastBlocks, setShowPastBlocks] = useState(false);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isWarmupModalOpen, setIsWarmupModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<TimeBlockId>(null);
+  const [warmupPreset, setWarmupPreset] = useState<WarmupItem[]>(DEFAULT_WARMUP_PRESET);
 
-  // 현재 시간 동기화 (1분 간격)
+  const autoInsertedRef = useRef<Set<string>>(new Set());
+  const lastAutoCheckRef = useRef<string | null>(null);
+
+  // 현재 시각 동기화 (1분 간격)
   useEffect(() => {
     const updateTime = () => setCurrentHour(new Date().getHours());
     updateTime();
     const interval = setInterval(updateTime, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+  // 매 시간 50분에 자동 체크 후 다음 블록에 삽입 (22:50~03:50 제외)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!dailyData) return;
+      const now = new Date();
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+      if (minute !== 50) return;
+      if ([22, 23, 0, 1, 2, 3].includes(hour)) return;
+
+      const key = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${hour}`;
+      if (lastAutoCheckRef.current === key) return;
+      lastAutoCheckRef.current = key;
+
+      const currentBlock = TIME_BLOCKS.find(b => hour >= b.start && hour < b.end);
+      if (!currentBlock) return;
+
+      const currentBlockTasks = dailyData.tasks.filter(t => t.timeBlock === currentBlock.id);
+      const completedCount = currentBlockTasks.filter(t => t.completed).length;
+      if (completedCount > 0) return;
+
+      const nextIndex = TIME_BLOCKS.findIndex(b => b.id === currentBlock.id) + 1;
+      if (nextIndex >= TIME_BLOCKS.length) return;
+      const nextBlock = TIME_BLOCKS[nextIndex];
+      if (autoInsertedRef.current.has(nextBlock.id)) return;
+
+      const nextTasks = dailyData.tasks.filter(t => t.timeBlock === nextBlock.id);
+      if (nextTasks.length > 2) return;
+
+      insertWarmupTasks(nextBlock.id as TimeBlockId, nextBlock.start);
+      autoInsertedRef.current.add(nextBlock.id);
+    }, 30 * 1000);
+
+    return () => clearInterval(interval);
+  }, [dailyData]);
 
   const getCurrentBlockId = (): TimeBlockId => {
     const hour = currentHour;
     const block = TIME_BLOCKS.find(b => hour >= b.start && hour < b.end);
     return block ? (block.id as TimeBlockId) : null;
   };
+
   const currentBlockId = getCurrentBlockId();
-  const currentBlockTasks = dailyData?.tasks.filter(task => task.timeBlock === currentBlockId) ?? [];
+  const sortTasks = (list: Task[]) =>
+    [...list].sort((a, b) => {
+      const orderA = a.order ?? new Date(a.createdAt).getTime();
+      const orderB = b.order ?? new Date(b.createdAt).getTime();
+      return orderA - orderB;
+    });
+
+  const currentBlockTasks = dailyData ? sortTasks(dailyData.tasks.filter(task => task.timeBlock === currentBlockId)) : [];
   const pastBlocks = TIME_BLOCKS.filter(block => currentHour >= block.end);
   const blocksToRender = TIME_BLOCKS.filter(block => {
     const isPast = currentHour >= block.end;
@@ -51,30 +120,31 @@ export default function ScheduleView() {
     return true;
   });
 
-  // 현재 타임블럭이 없으면 지금모드 자동 해제
+  // 현재 블록이 없으면 집중모드 해제
   useEffect(() => {
     if (!currentBlockId && isFocusMode) {
       setFocusMode(false);
     }
   }, [currentBlockId, isFocusMode, setFocusMode]);
 
-  // 지난 타임블럭 미완료 작업 인박스로 이동 + 실패 처리
+  // 지난 타임블록의 미완료 작업을 인박스로 이동 + 상태 처리
   useEffect(() => {
     const movePastIncompleteTasks = async () => {
       if (!dailyData) return;
       const currentTime = new Date();
       const currentHourValue = currentTime.getHours();
-      const pastBlocks = TIME_BLOCKS.filter(block => currentHourValue >= block.end);
+      const pastBlocksList = TIME_BLOCKS.filter(block => currentHourValue >= block.end);
 
       const tasksToMove: Task[] = [];
-      for (const block of pastBlocks) {
+      for (const block of pastBlocksList) {
         const incompleteTasks = dailyData.tasks.filter(task => task.timeBlock === block.id && !task.completed);
         const blockState = dailyData.timeBlockStates[block.id];
 
         if (blockState?.isLocked && incompleteTasks.length > 0 && !blockState.isFailed) {
           try {
-            const { updateBlockState } = await import('@/data/repositories/dailyDataRepository');
-            await updateBlockState(block.id, { isFailed: true });
+            const { updateBlockState: repoUpdateBlockState } =
+              await import('@/data/repositories/dailyDataRepository');
+            await repoUpdateBlockState(block.id, { isFailed: true });
           } catch (error) {
             console.error(`Failed to set isFailed for block ${block.id}:`, error);
           }
@@ -93,7 +163,7 @@ export default function ScheduleView() {
     movePastIncompleteTasks();
   }, [currentHour, dailyData, updateTask]);
 
-  // 누락된 타임블럭 상태 초기화
+  // 타임블록 상태 초기화
   useEffect(() => {
     if (!dailyData) return;
     const missingBlocks = TIME_BLOCKS.filter(block => !dailyData.timeBlockStates[block.id]);
@@ -132,6 +202,7 @@ export default function ScheduleView() {
         baseDuration: 15,
         resistance: 'low',
         adjustedDuration: 15,
+        order: Date.now(),
         timeBlock: blockId,
         hourSlot: targetHour,
         completed: false,
@@ -140,7 +211,7 @@ export default function ScheduleView() {
         completedAt: null,
       };
       await addTask(newTask);
-      showWaifu(`"${text.trim()}" 추가됐어! 고마워.`);
+      showWaifu(`"${text.trim()}" 추가했어! 고마워~`);
     } catch (error) {
       console.error('Failed to create task:', error);
       throw error;
@@ -179,6 +250,7 @@ export default function ScheduleView() {
           baseDuration: taskData.baseDuration || 30,
           resistance: taskData.resistance || 'low',
           adjustedDuration: taskData.adjustedDuration || 30,
+          order: Date.now(),
           timeBlock: selectedBlockId,
           hourSlot: firstHour,
           completed: false,
@@ -239,13 +311,13 @@ export default function ScheduleView() {
       await toggleBlockLock(blockId);
     } catch (error) {
       console.error('Failed to toggle lock:', error);
-      alert(error instanceof Error ? error.message : '타임블럭 잠금 변경에 실패했습니다.');
+      alert(error instanceof Error ? error.message : '타임블록 잠금 변경에 실패했습니다.');
     }
   };
 
   const handleToggleFocusMode = () => {
     if (!currentBlockId) {
-      alert('지금모드는 현재 타임블럭이 있을 때만 켤 수 있어요.');
+      alert('현재 진행 중인 타임블록이 있을 때만 켤 수 있어.');
       return;
     }
     toggleFocusMode();
@@ -254,7 +326,7 @@ export default function ScheduleView() {
   const handleDropTask = async (taskId: string, targetBlockId: TimeBlockId) => {
     if (!dailyData) return;
     try {
-      let task = dailyData.tasks.find((t) => t.id === taskId);
+      let task = dailyData.tasks.find(t => t.id === taskId);
       if (!task) {
         task = await db.globalInbox.get(taskId);
       }
@@ -290,6 +362,7 @@ export default function ScheduleView() {
           baseDuration: taskData.baseDuration || 15,
           resistance: taskData.resistance || 'low',
           adjustedDuration: taskData.adjustedDuration || 15,
+          order: Date.now(),
           timeBlock: selectedBlockId,
           hourSlot: firstHour,
           completed: false,
@@ -310,15 +383,75 @@ export default function ScheduleView() {
       handleCloseModal();
     } catch (error) {
       console.error('Failed to save multiple tasks:', error);
-      alert('작업 묶음 추가에 실패했습니다.');
+      alert('작업 일괄 추가에 실패했습니다.');
     }
+  };
+
+  const insertWarmupTasks = async (blockId: TimeBlockId, hourSlot?: number, preset = warmupPreset) => {
+    const targetBlock = TIME_BLOCKS.find(b => b.id === blockId);
+    const targetHour = hourSlot ?? targetBlock?.start;
+    if (!targetBlock || targetHour === undefined) return;
+
+    for (const item of preset) {
+      const newTask: Task = {
+        id: generateId('task'),
+        text: item.text,
+        memo: '',
+        baseDuration: item.baseDuration,
+        resistance: item.resistance,
+        adjustedDuration: item.baseDuration,
+        order: Date.now(),
+        timeBlock: blockId,
+        hourSlot: targetHour,
+        completed: false,
+        actualDuration: 0,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+        preparation1: '',
+        preparation2: '',
+        preparation3: '',
+        goalId: null,
+      };
+      await addTask(newTask);
+    }
+  };
+
+  const handleManualWarmup = () => {
+    const target = getNextWarmupTarget(currentHour);
+    if (!target) return;
+    insertWarmupTasks(target.blockId, target.hourSlot);
+  };
+  const handleSaveWarmupPreset = (preset: WarmupItem[]) => {
+    setWarmupPreset(preset);
+    setIsWarmupModalOpen(false);
+  };
+
+  const handleApplyWarmupFromModal = (preset: WarmupItem[]) => {
+    const target = getNextWarmupTarget(currentHour);
+    if (!target) return;
+    insertWarmupTasks(target.blockId, target.hourSlot, preset);
+    setIsWarmupModalOpen(false);
+  };
+
+  const getNextWarmupTarget = (hour: number): { blockId: TimeBlockId; hourSlot: number } | null => {
+    const targetHour = hour + 1;
+    const blockForTargetHour = TIME_BLOCKS.find(b => targetHour >= b.start && targetHour < b.end);
+    if (blockForTargetHour) {
+      return { blockId: blockForTargetHour.id as TimeBlockId, hourSlot: targetHour };
+    }
+
+    const nextBlock = TIME_BLOCKS.find(b => b.start > hour);
+    if (nextBlock) {
+      return { blockId: nextBlock.id as TimeBlockId, hourSlot: nextBlock.start };
+    }
+    return null;
   };
 
   if (loading && !dailyData) {
     return (
       <div className="flex h-full flex-col overflow-y-auto p-6">
         <div className="flex flex-1 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm text-[var(--color-text-secondary)]">
-          데이터를 로딩 중입니다...
+          데이터를 불러오는 중입니다...
         </div>
       </div>
     );
@@ -328,7 +461,7 @@ export default function ScheduleView() {
     return (
       <div className="flex h-full flex-col overflow-y-auto p-6">
         <div className="flex flex-1 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm text-[var(--color-text-secondary)]">
-          데이터를 불러오지 못했습니다
+          데이터를 불러오지 못했습니다.
         </div>
       </div>
     );
@@ -338,8 +471,10 @@ export default function ScheduleView() {
     <div className="flex h-full flex-col overflow-y-auto p-6 pb-24">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-[var(--color-text)]">오늘 타임블럭</h2>
-          <p className="text-xs text-[var(--color-text-tertiary)]">현재 타임블럭 기준으로 지금모드를 켜서 집중 뷰를 볼 수 있어요.</p>
+          <h2 className="text-2xl font-semibold text-[var(--color-text)]">오늘 타임블록</h2>
+          <p className="text-xs text-[var(--color-text-tertiary)]">
+            현재 타임블록을 기준으로 일정을 관리하세요.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-text-secondary)]">
           <span>전체 {dailyData.tasks.length}개</span>
@@ -347,15 +482,23 @@ export default function ScheduleView() {
           <span>완료 {dailyData.tasks.filter(t => t.completed).length}개</span>
           <button
             type="button"
+            onClick={() => setIsWarmupModalOpen(true)}
+            className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+          >
+            🧊 워밍업 세트
+          </button>
+          <button
+            type="button"
             onClick={handleToggleFocusMode}
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${isFocusMode
+            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+              isFocusMode
                 ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
                 : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-light)] hover:text-[var(--color-text)]'
-              }`}
+            }`}
           >
-            <span className="text-lg">⚡</span>
+            <span className="text-lg">⏱</span>
             {isFocusMode ? '지금모드 종료' : '지금모드 보기'}
-            <span className="text-[10px] text-[var(--color-text-tertiary)]">(현재 타임블럭)</span>
+            <span className="text-[10px] text-[var(--color-text-tertiary)]">(현재 타임블록)</span>
           </button>
           {pastBlocks.length > 0 && (
             <button
@@ -363,7 +506,7 @@ export default function ScheduleView() {
               onClick={() => setShowPastBlocks(prev => !prev)}
               className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
             >
-              {showPastBlocks ? '지난 블럭 숨기기' : `지난 블럭 보기 (${pastBlocks.length})`}
+              {showPastBlocks ? '지난 블록 숨기기' : `지난 블록 보기 (${pastBlocks.length})`}
             </button>
           )}
         </div>
@@ -380,7 +523,7 @@ export default function ScheduleView() {
       ) : (
         <div className="space-y-4">
           {blocksToRender.map(block => {
-            const blockTasks = dailyData.tasks.filter(task => task.timeBlock === block.id);
+            const blockTasks = sortTasks(dailyData.tasks.filter(task => task.timeBlock === block.id));
             const blockState = dailyData.timeBlockStates[block.id];
             const isCurrentBlock = block.id === currentBlockId;
             const isPastBlock = currentHour >= block.end;
@@ -407,13 +550,13 @@ export default function ScheduleView() {
           })}
           {!showPastBlocks && pastBlocks.length > 0 && (
             <div className="text-center text-xs text-[var(--color-text-tertiary)]">
-              지난 블럭은 숨김 처리됨 ·{' '}
+              지난 블록이 숨겨져 있습니다.{' '}
               <button
                 type="button"
                 className="underline underline-offset-4 text-[var(--color-primary)]"
                 onClick={() => setShowPastBlocks(true)}
               >
-                지난 블럭 보기
+                지난 블록 보기
               </button>
             </div>
           )}
@@ -430,6 +573,149 @@ export default function ScheduleView() {
           source="schedule"
         />
       )}
+      {isWarmupModalOpen && (
+        <WarmupPresetModal
+          preset={warmupPreset}
+          onClose={() => setIsWarmupModalOpen(false)}
+          onSave={handleSaveWarmupPreset}
+          onApply={handleApplyWarmupFromModal}
+        />
+      )}
+    </div>
+  );
+}
+
+interface WarmupPresetModalProps {
+  preset: WarmupItem[];
+  onSave: (preset: WarmupItem[]) => void;
+  onApply: (preset: WarmupItem[]) => void;
+  onClose: () => void;
+}
+
+function WarmupPresetModal({ preset, onSave, onApply, onClose }: WarmupPresetModalProps) {
+  const [draft, setDraft] = useState<WarmupItem[]>(preset);
+
+  const handleChange = (index: number, field: keyof WarmupItem, value: string) => {
+    setDraft(prev =>
+      prev.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              [field]: field === 'baseDuration' ? Math.max(1, Number(value) || 1) : value,
+            }
+          : item,
+      ),
+    );
+  };
+
+  const handleAddRow = () => {
+    setDraft(prev => [...prev, { text: '', baseDuration: 5, resistance: 'low' }]);
+  };
+
+  const handleRemoveRow = (index: number) => {
+    setDraft(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSave = () => onSave(draft.filter(item => item.text.trim()));
+  const handleApply = () => onApply(draft.filter(item => item.text.trim()));
+
+  return (
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 px-4 py-8">
+      <div className="w-full max-w-xl rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-xl">
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
+          <div>
+            <h3 className="text-lg font-semibold text-[var(--color-text)]">워밍업 세트 설정</h3>
+            <p className="text-xs text-[var(--color-text-tertiary)]">
+              자주 쓸 3개 내외의 짧은 작업을 정리해두고 필요할 때 바로 넣어.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 w-9 rounded-full text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
+          <div className="flex flex-col gap-3">
+            {draft.map((item, index) => (
+              <div
+                key={index}
+                className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2"
+              >
+                <span className="text-xs text-[var(--color-text-tertiary)]">#{index + 1}</span>
+                <input
+                  type="text"
+                  value={item.text}
+                  onChange={e => handleChange(index, 'text', e.target.value)}
+                  placeholder="예: 책상 정리"
+                  className="min-w-[140px] flex-1 rounded-lg border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm text-[var(--color-text)] focus:border-[var(--color-primary)]"
+                />
+                <select
+                  value={item.baseDuration}
+                  onChange={e => handleChange(index, 'baseDuration', e.target.value)}
+                  className="rounded-lg border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm text-[var(--color-text)] focus:border-[var(--color-primary)]"
+                >
+                  {[5, 10, 15, 20, 25, 30].map(min => (
+                    <option key={min} value={min}>
+                      {min}분
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={item.resistance}
+                  onChange={e => handleChange(index, 'resistance', e.target.value)}
+                  className="rounded-lg border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm text-[var(--color-text)] focus:border-[var(--color-primary)]"
+                >
+                  <option value="low">저항 낮음</option>
+                  <option value="medium">중간</option>
+                  <option value="high">높음</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveRow(index)}
+                  className="rounded-full px-2 py-1 text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]"
+                >
+                  삭제
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={handleAddRow}
+              className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+            >
+              + 행 추가
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-[var(--color-border)] bg-[var(--color-bg-surface)] px-5 py-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-text)]"
+          >
+            닫기
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+          >
+            저장
+          </button>
+          <button
+            type="button"
+            onClick={handleApply}
+            className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(0,0,0,0.25)] hover:opacity-90"
+          >
+            다음 블록에 적용
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

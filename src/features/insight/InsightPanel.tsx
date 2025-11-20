@@ -258,10 +258,36 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.geminiApiKey, settings?.autoMessageInterval]);
 
-  // 마크다운 파싱 (성능 최적화: insight 변경 시에만 재계산)
-  const parsedHtml = useMemo(() => {
-    if (!insight) return '';
-    return parseMarkdown(insight);
+  // 마크다운 파싱 (비동기/idle 처리로 렌더 블로킹 최소화)
+  const [parsedHtml, setParsedHtml] = useState('');
+  const parseJobRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!insight) {
+      setParsedHtml('');
+      return;
+    }
+
+    const schedule =
+      (window as any).requestIdleCallback ||
+      ((cb: (dl: any) => void) => setTimeout(() => cb({ didTimeout: false, timeRemaining: () => 16 }), 0));
+    const cancel =
+      (window as any).cancelIdleCallback ||
+      ((handle: number) => {
+        clearTimeout(handle);
+      });
+
+    const job = schedule(() => {
+      setParsedHtml(parseMarkdown(insight));
+      parseJobRef.current = null;
+    });
+    parseJobRef.current = job as number;
+
+    return () => {
+      if (parseJobRef.current !== null) {
+        cancel(parseJobRef.current);
+        parseJobRef.current = null;
+      }
+    };
   }, [insight]);
 
   // 프로그레스 퍼센트 계산

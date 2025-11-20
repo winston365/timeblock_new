@@ -13,7 +13,7 @@
  *   - personaUtils: PersonaContext 빌드
  */
 
-import { callGeminiAPI, generateWaifuPersona } from './geminiApi';
+import { callGeminiAPI, generateWaifuPersona, SYSTEM_PERSONA_PROMPT } from './geminiApi';
 import { buildPersonaContext } from '@/shared/lib/personaUtils';
 import type { DailyData, GameState, WaifuState } from '@/shared/types/domain';
 
@@ -101,16 +101,21 @@ export async function callAIWithContext(params: AICallParams): Promise<AICallRes
     additionalInstructions = '',
   } = params;
 
-  // ===== ✅ 1단계: 현재 내상태 context 수집 =====
-  const personaContext = await buildPersonaContext({
-    dailyData,
-    gameState,
-    waifuState,
-    currentEnergy,
-  });
-
-  // ===== ✅ 2단계: AI 페르소나 프롬프트 생성 (기본 성격) =====
-  const basePersonaPrompt = generateWaifuPersona(personaContext);
+  // ===== ✅ 1단계: 타입별 페르소나 프롬프트 =====
+  let basePersonaPrompt: string;
+  if (type === 'task-breakdown') {
+    // 작업 세분화는 고정 페르소나만 사용 (컨텍스트 제외)
+    basePersonaPrompt = SYSTEM_PERSONA_PROMPT;
+  } else {
+    // chat/insight/custom: 컨텍스트 포함 페르소나 프롬프트 생성
+    const personaContext = await buildPersonaContext({
+      dailyData,
+      gameState,
+      waifuState,
+      currentEnergy,
+    });
+    basePersonaPrompt = generateWaifuPersona(personaContext);
+  }
 
   // ===== ✅ 3단계: 타입별 프롬프트 조합 =====
   let finalPrompt: string;

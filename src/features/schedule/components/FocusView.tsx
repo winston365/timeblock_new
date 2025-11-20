@@ -29,8 +29,11 @@ export function FocusView({
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
-    const blockEnd = currentBlock?.end ?? 24;
-    const remainingMinutes = (blockEnd - currentHour) * 60 - currentMinute;
+    // 현재 시간대(한 시간 구간) 기준
+    const slotStart = currentHour;
+    const slotEnd = (currentHour + 1) % 24;
+    const slotLabel = `${String(slotStart).padStart(2, '0')}:00 - ${String(slotEnd).padStart(2, '0')}:00 · ${String(currentHour).padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+    const remainingMinutes = Math.max(0, (slotEnd === 0 ? 24 : slotEnd) * 60 - slotStart * 60 - currentMinute);
 
     const recommendedTask = useMemo(() => {
         return recommendNextTask(tasks, {
@@ -64,7 +67,7 @@ export function FocusView({
                 <div>
                     <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">🎯 지금 집중</h1>
                     <p className="mt-1 text-lg text-[var(--color-text-secondary)]">
-                        {blockLabel} · {currentHour}:{currentMinute.toString().padStart(2, '0')}
+                        {slotLabel}
                     </p>
                 </div>
                 <div className="text-right">

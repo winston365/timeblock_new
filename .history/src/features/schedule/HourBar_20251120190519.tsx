@@ -1,14 +1,14 @@
-/**
- * HourBar - 1시간 단위 작업 구간 UI
+﻿/**
+ * HourBar - 1시간 단위 작업 영역
  *
- * @role 타임블록 안의 1시간 구간을 시각화하고 작업을 빠르게 추가/정리한다.
+ * @role 타임블록 내부의 1시간 구간을 시각화하고 작업을 관리합니다.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { useToastStore } from '@/shared/stores/toastStore';
 import TaskCard from './TaskCard';
-import { useDragDropManager } from './hooks/useDragDropManager';
+import { useDragDrop } from './hooks/useDragDrop';
 
 interface HourBarProps {
   hour: number;
@@ -35,19 +35,13 @@ export default function HourBar({
   onToggleTask,
   onDropTask: _onDropTask,
 }: HourBarProps) {
+  const [progress, setProgress] = useState(0);
   const [inlineInputValue, setInlineInputValue] = useState('');
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const toastRef = useRef({ preEndShown: false, restShown: false });
   const addToast = useToastStore(state => state.addToast);
-  const { getDragData, isSameLocation } = useDragDropManager();
 
-  const sortedTasks = useMemo(() => {
-    return [...tasks].sort((a, b) => {
-      const orderA = a.order ?? new Date(a.createdAt).getTime();
-      const orderB = b.order ?? new Date(b.createdAt).getTime();
-      return orderA - orderB;
-    });
-  }, [tasks]);
+  const { isDragOver, handleDragOver, handleDragLeave, handleDrop } = useDragDrop(blockId, hour);
 
   useEffect(() => {
     const updateProgress = () => {
@@ -56,20 +50,25 @@ export default function HourBar({
       const currentMinute = now.getMinutes();
 
       if (currentHour === hour) {
-        // 5분 전 마무리 알림
+        const focusProgress = Math.min((currentMinute / 50) * 100, 100);
+        setProgress(focusProgress);
+
+        // Show a heads-up toast 5 minutes before work ends
         if (currentMinute >= 45 && currentMinute < 50 && !toastRef.current.preEndShown) {
-          addToast('5분 후 마무리! 정리할 것들을 챙겨봐.', 'info', 5000);
+          addToast('5분 남았어. 마무리 준비하자.', 'info', 5000);
           toastRef.current.preEndShown = true;
         }
 
-        // 휴식 시작 알림
+        // Announce the start of the 10 minute break
         if (currentMinute >= 50 && !toastRef.current.restShown) {
-          addToast('휴식 10분 시작! 10분은 온전히 쉬기.', 'success', 5000);
+          addToast('휴식 10분 시작! 10분 동안 재충전해.', 'success', 5000);
           toastRef.current.restShown = true;
         }
       } else if (currentHour > hour) {
+        setProgress(100);
         toastRef.current = { preEndShown: false, restShown: false };
       } else {
+        setProgress(0);
         toastRef.current = { preEndShown: false, restShown: false };
       }
     };
@@ -104,15 +103,15 @@ export default function HourBar({
         type: 'current',
         label:
           workRemaining > 0
-            ? `현재 시간: 작업 ${workRemaining}분 · 휴식 10분`
-            : `현재 시간: 휴식 ${Math.min(restRemaining, 10)}분`,
+            ? `현재 시간: 남은 ${workRemaining}분 · 휴식 10분`
+            : `현재 시간: 휴식 ${Math.min(restRemaining, 10)}분`
       };
     }
 
     if (currentHour > hour) {
       return {
         type: 'past',
-        label: '지난 시간',
+        label: '지난 시간'
       };
     }
 
@@ -120,13 +119,13 @@ export default function HourBar({
     return {
       type: 'upcoming',
       label: '앞선 시간',
-      detail: minutesUntilStart > 0 ? `${minutesUntilStart}분 후 시작` : undefined,
+      detail: minutesUntilStart > 0 ? `${minutesUntilStart}분 후 시작` : undefined
     };
   })();
 
   const statusBadgeClasses: Record<'past' | 'upcoming', string> = {
     past: 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]',
-    upcoming: 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/40',
+    upcoming: 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/40'
   };
 
   const handleInlineInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -144,52 +143,23 @@ export default function HourBar({
     }
   };
 
-  const computeOrderBetween = (prev?: number, next?: number) => {
-    if (prev === undefined && next === undefined) return Date.now();
-    if (prev === undefined) return (next ?? 0) - 1;
-    if (next === undefined) return prev + 1;
-    if (prev === next) return prev + 0.001;
-    return prev + (next - prev) / 2;
+  const handleDropWrapper = async (e: React.DragEvent) => {
+    await handleDrop(e, async (taskId, updates) => {
+      onUpdateTask(taskId, updates);
+    });
   };
 
-  const handleDropToEnd = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const dragData = getDragData(e);
-    if (!dragData) return;
-    const last = sortedTasks[sortedTasks.length - 1];
-    const lastOrder = last ? last.order ?? sortedTasks.length : undefined;
-    await onUpdateTask(dragData.taskId, { timeBlock: blockId, hourSlot: hour, order: (lastOrder ?? 0) + 1 });
-  };
-
-  const handleDropBefore = async (e: React.DragEvent, targetIndex: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const dragData = getDragData(e);
-    if (!dragData) return;
-    const targetTask = sortedTasks[targetIndex];
-    if (!targetTask) return;
-    if (dragData.taskId === targetTask.id && isSameLocation(dragData, blockId, hour)) return;
-
-    const prevTask = sortedTasks[targetIndex - 1];
-    const prevOrder = prevTask?.order ?? (targetIndex - 1);
-    const nextOrder = targetTask.order ?? targetIndex;
-    const newOrder = computeOrderBetween(prevOrder, nextOrder);
-
-    await onUpdateTask(dragData.taskId, { timeBlock: blockId, hourSlot: hour, order: newOrder });
-  };
-
-  const containerClasses =
-    'rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 transition hover:border-[var(--color-primary)]';
+  const containerClasses = [
+    'rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 transition hover:border-[var(--color-primary)]',
+    isDragOver ? 'ring-2 ring-[var(--color-primary)]/70' : '',
+  ].join(' ');
 
   const now = new Date();
   const nowHour = now.getHours();
   const isCurrentHour = nowHour === hour;
   const isPastHour = nowHour > hour;
   const currentMinute = now.getMinutes();
-  const workFill = isCurrentHour
-    ? Math.min((currentMinute / 50) * 100, 100)
-    : currentHourPastFuture(nowHour, hour, 100, 0);
+  const workFill = isCurrentHour ? Math.min((currentMinute / 50) * 100, 100) : currentHourPastFuture(nowHour, hour, 100, 0);
   const restFill =
     isPastHour ? 100 : nowHour < hour ? 0 : currentMinute < 50 ? 0 : Math.min(((currentMinute - 50) / 10) * 100, 100);
   const currentMarker = isCurrentHour ? Math.min((currentMinute / 60) * 100, 100) : 0;
@@ -202,17 +172,20 @@ export default function HourBar({
   return (
     <div
       className={containerClasses}
-      onDragOver={e => e.preventDefault()}
-      onDrop={handleDropToEnd}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDropWrapper}
       data-hour={hour}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-[var(--color-text-secondary)]">
-        <span className="text-sm font-semibold text-[var(--color-text)]">{formatHourRange()}</span>
+        <span className="text-sm font-semibold text-[var(--color-text)]">
+          {formatHourRange()}
+        </span>
         <div className="flex flex-col items-end gap-1 text-right text-xs font-medium sm:flex-row sm:items-center sm:gap-2">
           {hourStatus.type === 'current' ? (
-            <span className="flex items-center gap-1 font-semibold text-[var(--color-primary)]">
+            <span className="flex items-center gap-1 text-[var(--color-primary)] font-semibold">
               <span role="img" aria-label="clock">
-                ⏱
+                🕒
               </span>
               {hourStatus.label}
             </span>
@@ -228,7 +201,7 @@ export default function HourBar({
           )}
           {!isLocked && (
             <span className="text-[11px] font-normal text-[var(--color-text-tertiary)]">
-              Enter로 바로 작업을 추가할 수 있어요
+              Enter로 빠르게 작업을 추가하세요
             </span>
           )}
         </div>
@@ -236,25 +209,23 @@ export default function HourBar({
 
       {!isPastHour && (
         <div
-          className={`relative mb-3 flex h-[12px] overflow-hidden rounded-full bg-black/20 text-xs ${
-            isCurrentHour ? 'ring-2 ring-[var(--color-primary)]/40' : 'opacity-80'
-          }`}
+          className={`relative mb-3 flex h-[12px] overflow-hidden rounded-full bg-black/20 text-xs ${isCurrentHour ? 'ring-2 ring-[var(--color-primary)]/40' : 'opacity-80'}`}
         >
           <div className="relative h-full overflow-hidden rounded-full bg-white/10" style={{ width: '83.33%' }}>
             {isCurrentHour && (
               <>
                 <div
                   className="pointer-events-none absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-white/70"
-                  aria-label="목표선 50분"
-                  title="목표선 50분"
+                  aria-label="50분 목표선"
+                  title="50분 목표선"
                 >
                   <span className="absolute left-1/2 top-[-4px] h-[6px] w-[6px] -translate-x-1/2 rounded-full border border-white/80 bg-black/70 shadow" />
                 </div>
                 <div
                   className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2 -translate-x-1/2 rounded-full border border-white/90 bg-[var(--color-primary)] shadow-[0_0_8px_rgba(0,0,0,0.5)] transition-all"
                   style={{ left: `${currentMarker}%` }}
-                  aria-label="현재 분 진행 위치"
-                  title="현재 분 진행 위치"
+                  aria-label="현재 시각 진행 위치"
+                  title="현재 시각 진행 위치"
                 />
               </>
             )}
@@ -273,21 +244,16 @@ export default function HourBar({
       )}
 
       <div className="flex flex-col gap-2">
-        {sortedTasks.map((task, index) => (
-          <div
+        {tasks.map((task) => (
+          <TaskCard
             key={task.id}
-            onDragOver={e => e.preventDefault()}
-            onDrop={e => handleDropBefore(e, index)}
-          >
-            <TaskCard
-              task={task}
-              onEdit={() => onEditTask(task)}
-              onUpdateTask={(updates: Partial<Task>) => onUpdateTask(task.id, updates)}
-              onDelete={() => onDeleteTask(task.id)}
-              onToggle={() => onToggleTask(task.id)}
-              blockIsLocked={isLocked}
-            />
-          </div>
+            task={task}
+            onEdit={() => onEditTask(task)}
+            onUpdateTask={(updates: Partial<Task>) => onUpdateTask(task.id, updates)}
+            onDelete={() => onDeleteTask(task.id)}
+            onToggle={() => onToggleTask(task.id)}
+            blockIsLocked={isLocked}
+          />
         ))}
 
         {!isLocked && !isPastHour && (
@@ -296,9 +262,9 @@ export default function HourBar({
               ref={inlineInputRef}
               type="text"
               value={inlineInputValue}
-              onChange={e => setInlineInputValue(e.target.value)}
+              onChange={(e) => setInlineInputValue(e.target.value)}
               onKeyDown={handleInlineInputKeyDown}
-              placeholder="작업을 입력하고 Enter로 추가하세요 (기본 15분)"
+              placeholder="작업을 입력하고 Enter를 눌러 추가하세요 (기본 15분)"
               className="w-full rounded-lg border border-dashed border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
             />
           </div>
