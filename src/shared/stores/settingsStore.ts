@@ -11,7 +11,7 @@
 
 import { create } from 'zustand';
 import type { Settings, WaifuMode, AIBreakdownTrigger, DontDoChecklistItem } from '../types/domain';
-import { loadSettings, updateSettings } from '@/data/repositories/settingsRepository';
+import { loadSettings, updateSettings, updateLocalSettings } from '@/data/repositories/settingsRepository';
 
 interface SettingsStore {
   // 상태
@@ -26,6 +26,7 @@ interface SettingsStore {
   updateAutoMessage: (enabled: boolean, interval?: number) => Promise<void>;
   updateAIBreakdownTrigger: (trigger: AIBreakdownTrigger) => Promise<void>;
   updateSettings: (updates: Partial<Settings>) => Promise<void>;
+  updateLocalSettings: (updates: Partial<Settings>) => Promise<void>;
 
   // 하지않기 체크리스트 관리
   addDontDoItem: (item: Omit<DontDoChecklistItem, 'id'>) => Promise<void>;
@@ -198,6 +199,25 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   },
 
   /**
+   * 설정 로컬 업데이트 (Firebase 동기화 안 함)
+   *
+   * @param {Partial<Settings>} updates - 업데이트할 설정 객체
+   * @returns {Promise<void>}
+   */
+  updateLocalSettings: async (updates: Partial<Settings>) => {
+    set({ loading: true, error: null });
+    try {
+      const updatedSettings = await updateLocalSettings(updates);
+      set({ settings: updatedSettings, loading: false });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Failed to update local settings');
+      set({ error: err, loading: false });
+      console.error('Settings store: Failed to update local settings', err);
+      throw err;
+    }
+  },
+
+  /**
    * 설정 새로고침
    *
    * @returns {Promise<void>}
@@ -217,6 +237,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
    * @sideEffects
    *   - 상태를 초기값으로 리셋
    */
+  reset: () => {
+    set({ settings: null, loading: false, error: null });
+  },
+
   /**
    * 하지않기 체크리스트 항목 추가
    */
@@ -280,9 +304,5 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       console.error('Failed to reorder don\'t-do items:', error);
       throw error;
     }
-  },
-
-  reset: () => {
-    set({ settings: null, loading: false, error: null });
   },
 }));

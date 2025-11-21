@@ -72,6 +72,7 @@ interface DailyDataStore {
 interface UpdateTaskOptions {
   skipBehaviorTracking?: boolean;
   skipEmoji?: boolean;
+  ignoreLock?: boolean;
 }
 
 /**
@@ -195,7 +196,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
   updateTask: async (taskId: string, updates: Partial<Task>, options?: UpdateTaskOptions) => {
     const { currentDate, dailyData, loadData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
-    const { skipBehaviorTracking = false, skipEmoji = false } = options || {};
+    const { skipBehaviorTracking = false, skipEmoji = false, ignoreLock = false } = options || {};
 
     // 🔧 Firebase undefined 처리 & hourSlot 자동 계산
     const sanitizedUpdates = sanitizeTaskUpdates(updates);
@@ -218,7 +219,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     }
 
     // 🔍 이동 타입 감지
-    if (originalTask?.timeBlock) {
+    if (originalTask?.timeBlock && !ignoreLock) {
       const blockState = dailyData.timeBlockStates[originalTask.timeBlock];
       if (blockState?.isLocked) {
         const wantsToChangeBlock =
@@ -607,7 +608,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       );
 
       // XP 보상 지급
-      await useGameStateStore.getState().addXP(xpReward, `하지않기 체크`);
+      await useGameStateStore.getState().addXP(xpReward, undefined, 'dont_do_check');
       console.log(`[DailyDataStore] Don't-Do item checked, awarded ${xpReward} XP`);
     } catch (err) {
       console.error('[DailyDataStore] Failed to toggle don\'t-do item, rolling back:', err);

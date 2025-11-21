@@ -204,19 +204,60 @@ export function getSingleFileImagePath(tierName: string): string {
   return `assets/waifu/poses/${tierName}.png`;
 }
 
+// 이미지 존재 여부 캐시
+const existenceCache = new Map<string, boolean>();
+
 /**
  * 이미지가 로드 가능한지 확인합니다.
+ * 캐시된 결과가 있으면 즉시 반환합니다.
  *
  * @param imagePath - 이미지 경로
  * @returns Promise<boolean> - 이미지 로드 가능 여부
  */
 export async function checkImageExists(imagePath: string): Promise<boolean> {
+  if (existenceCache.has(imagePath)) {
+    return existenceCache.get(imagePath)!;
+  }
+
   return new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => resolve(true);
-    img.onerror = () => resolve(false);
+    img.onload = () => {
+      existenceCache.set(imagePath, true);
+      resolve(true);
+    };
+    img.onerror = () => {
+      existenceCache.set(imagePath, false);
+      resolve(false);
+    };
     img.src = imagePath;
   });
+}
+
+/**
+ * 이미지 존재 여부를 수동으로 캐시에 설정합니다.
+ * (Preloader 등에서 사용)
+ */
+export function markImageAsExisting(imagePath: string, exists: boolean) {
+  existenceCache.set(imagePath, exists);
+}
+
+/**
+ * 모든 와이푸 이미지 경로 목록을 반환합니다.
+ * (Preloader 최적화용)
+ */
+export function getAllWaifuImagePaths(): string[] {
+  const paths: string[] = [];
+  
+  Object.entries(IMAGE_FILES).forEach(([tierName, files]) => {
+    // interested는 indifferent 폴더 사용하므로 중복 제외
+    if (tierName === 'interested') return;
+    
+    files.forEach(fileName => {
+      paths.push(`assets/waifu/poses/${tierName}/${fileName}`);
+    });
+  });
+
+  return paths;
 }
 
 /**

@@ -37,7 +37,7 @@ import {
   chatHistoryStrategy,
   tokenUsageStrategy,
 } from './firebase/strategies';
-import type { DailyData, GameState, ChatHistory, DailyTokenUsage, Task } from '@/shared/types/domain';
+import type { DailyData, GameState, ChatHistory, DailyTokenUsage, Task, DailyGoal, Settings } from '@/shared/types/domain';
 import { getFirebaseDatabase } from './firebase/firebaseClient';
 import { ref, onValue, off } from 'firebase/database';
 import { getDeviceId } from './firebase/syncUtils';
@@ -212,6 +212,8 @@ export async function fetchDataFromFirebase(): Promise<{
   waifuState: any | null;
   templates: any[] | null;
   tokenUsage: Record<string, DailyTokenUsage>;
+  globalGoals: DailyGoal[] | null;
+  settings: Settings | null;
 }> {
   try {
     const { getFirebaseDatabase } = await import('./firebase/firebaseClient');
@@ -231,6 +233,8 @@ export async function fetchDataFromFirebase(): Promise<{
       waifuStateSnapshot,
       templatesSnapshot,
       tokenUsageSnapshot,
+      globalGoalsSnapshot,
+      settingsSnapshot,
     ] = await Promise.all([
       get(ref(db, `users/${userId}/dailyData`)),
       get(ref(db, `users/${userId}/gameState`)),
@@ -241,6 +245,8 @@ export async function fetchDataFromFirebase(): Promise<{
       get(ref(db, `users/${userId}/waifuState`)),
       get(ref(db, `users/${userId}/templates`)),
       get(ref(db, `users/${userId}/tokenUsage`)),
+      get(ref(db, `users/${userId}/globalGoals`)),
+      get(ref(db, `users/${userId}/settings`)),
     ]);
 
     // DailyData 처리
@@ -296,6 +302,12 @@ export async function fetchDataFromFirebase(): Promise<{
       }
     });
 
+    const globalGoalsValue = globalGoalsSnapshot.val();
+    const globalGoals = globalGoalsValue?.data || null;
+
+    const settingsValue = settingsSnapshot.val();
+    const settings = settingsValue?.data || null;
+
     console.log('📊 Fetched from Firebase:', {
       dailyData: Object.keys(dailyData).length,
       gameState: !!gameState,
@@ -306,9 +318,11 @@ export async function fetchDataFromFirebase(): Promise<{
       waifuState: !!waifuState,
       templates: templates?.length || 0,
       tokenUsage: Object.keys(tokenUsage).length,
+      globalGoals: globalGoals?.length || 0,
+      settings: !!settings,
     });
 
-    return { dailyData, gameState, globalInbox, completedInbox, energyLevels, shopItems, waifuState, templates, tokenUsage };
+    return { dailyData, gameState, globalInbox, completedInbox, energyLevels, shopItems, waifuState, templates, tokenUsage, globalGoals, settings };
   } catch (error) {
     console.error('Failed to fetch data from Firebase:', error);
     throw error;

@@ -8,7 +8,7 @@
  *   - waifuImageUtils: IMAGE_FILES 상수
  */
 
-import { getWaifuImagePath, getAffectionTier, AFFECTION_TIERS } from './waifuImageUtils';
+import { getAllWaifuImagePaths, markImageAsExisting } from './waifuImageUtils';
 
 /**
  * 모든 와이푸 이미지를 사전 로드합니다.
@@ -27,36 +27,29 @@ export async function preloadWaifuImages(): Promise<void> {
     let successCount = 0;
     let failCount = 0;
 
-    // 각 호감도 티어별로 이미지 프리로드
-    const tiers = Object.values(AFFECTION_TIERS);
+    // 모든 유효한 이미지 경로 가져오기 (중복 제거됨)
+    const allPaths = getAllWaifuImagePaths();
 
-    for (const tier of tiers) {
-        // 각 티어의 중간값으로 호감도 설정 (해당 티어의 이미지를 가져오기 위함)
-        const affection = (tier.min + tier.max) / 2;
+    for (const imagePath of allPaths) {
+        const promise = new Promise<void>((resolve) => {
+            const img = new Image();
 
-        // 각 티어당 최소 4개 이미지 프리로드 (대부분 티어가 4개 이상 보유)
-        for (let i = 0; i < 8; i++) {
-            const imagePath = getWaifuImagePath(affection, i);
+            img.onload = () => {
+                successCount++;
+                markImageAsExisting(imagePath, true);
+                resolve();
+            };
 
-            const promise = new Promise<void>((resolve) => {
-                const img = new Image();
+            img.onerror = () => {
+                failCount++;
+                markImageAsExisting(imagePath, false);
+                resolve();
+            };
 
-                img.onload = () => {
-                    successCount++;
-                    resolve();
-                };
+            img.src = imagePath;
+        });
 
-                img.onerror = () => {
-                    // 이미지 로드 실패는 조용히 처리 (일부 인덱스는 존재하지 않을 수 있음)
-                    failCount++;
-                    resolve();
-                };
-
-                img.src = imagePath;
-            });
-
-            imagePromises.push(promise);
-        }
+        imagePromises.push(promise);
     }
 
     // 모든 이미지 로드 완료 대기

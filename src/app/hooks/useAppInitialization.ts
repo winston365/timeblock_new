@@ -216,6 +216,36 @@ export function useAppInitialization() {
                                     await Promise.all(updates);
                                 }
 
+                                // 3.9 GlobalGoals 저장
+                                if (firebaseData.globalGoals && Array.isArray(firebaseData.globalGoals)) {
+                                    await db.globalGoals.clear();
+                                    if (firebaseData.globalGoals.length > 0) {
+                                        await db.globalGoals.bulkAdd(firebaseData.globalGoals);
+                                    }
+                                }
+
+                                // 3.10 Settings 저장 (병합)
+                                if (firebaseData.settings) {
+                                    const currentSettings = await db.settings.get('current');
+                                    // 현재 로컬 설정(Firebase Config 포함)을 유지하면서 원격 설정 병합
+                                    // 단, firebaseConfig는 로컬 값을 우선 (현재 연결된 설정이므로)
+                                    const mergedSettings = {
+                                        ...firebaseData.settings,
+                                        ...currentSettings,
+                                        firebaseConfig: currentSettings?.firebaseConfig || firebaseData.settings.firebaseConfig,
+                                        // 원격의 중요 설정들은 덮어쓰기 (로컬이 초기값일 수 있으므로)
+                                        dontDoChecklist: firebaseData.settings.dontDoChecklist || currentSettings?.dontDoChecklist,
+                                        waifuMode: firebaseData.settings.waifuMode || currentSettings?.waifuMode,
+                                        templateCategories: firebaseData.settings.templateCategories || currentSettings?.templateCategories,
+                                        timeSlotTags: firebaseData.settings.timeSlotTags || currentSettings?.timeSlotTags,
+                                    };
+                                    
+                                    await db.settings.put({
+                                        key: 'current',
+                                        ...mergedSettings
+                                    });
+                                }
+
                                 // --- 로컬 데이터 업로드 (Firebase에 없는 경우) ---
                                 // 이 부분은 applyRemoteUpdate 내부일 필요는 없지만, 
                                 // 로컬 데이터를 읽어서 Firebase로 보내는 것이므로 Hook과는 무관함 (쓰기가 아님).

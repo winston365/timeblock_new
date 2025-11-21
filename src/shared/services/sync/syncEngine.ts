@@ -9,6 +9,7 @@ import {
     completedInboxStrategy,
     energyLevelsStrategy,
     tokenUsageStrategy,
+    settingsStrategy,
 } from './firebase/strategies';
 import { db } from '@/data/db/dexieClient';
 import { getFirebaseDatabase } from './firebase/firebaseClient';
@@ -110,6 +111,15 @@ export class SyncEngine {
                 await syncToFirebase(tokenUsageStrategy, null as any, primKey as string);
             } else {
                 await syncToFirebase(tokenUsageStrategy, obj, primKey as string);
+            }
+        });
+
+        // 8. Settings (Single object sync)
+        this.registerHooks(db.settings, async (_primKey, obj, op) => {
+            if (op === 'delete') {
+                await syncToFirebase(settingsStrategy, null as any);
+            } else {
+                await syncToFirebase(settingsStrategy, obj);
             }
         });
 
@@ -305,6 +315,38 @@ export class SyncEngine {
 
                 await Promise.all(updates);
             });
+        });
+
+        // 8. Settings Listener
+        const settingsRef = ref(database, `users/${userId}/settings`);
+        onValue(settingsRef, (snapshot) => {
+            const syncData = snapshot.val();
+            if (!syncData || syncData.deviceId === deviceId) return;
+
+            if (syncData.data) {
+                this.applyRemoteUpdate(async () => {
+                    // 로컬 설정과 병합 (Firebase Config 등 로컬 전용 설정 보존)
+                    const currentSettings = await db.settings.get('current');
+                    const mergedSettings = {
+                        ...syncData.data,
+                        ...currentSettings,
+                        // 원격에서 온 중요 설정들로 덮어쓰기
+                        dontDoChecklist: syncData.data.dontDoChecklist,
+                        waifuMode: syncData.data.waifuMode,
+                        templateCategories: syncData.data.templateCategories,
+                        timeSlotTags: syncData.data.timeSlotTags,
+                        autoMessageEnabled: syncData.data.autoMessageEnabled,
+                        autoMessageInterval: syncData.data.autoMessageInterval,
+                        // Firebase Config는 로컬 값 유지 (없으면 원격 값)
+                        firebaseConfig: currentSettings?.firebaseConfig || syncData.data.firebaseConfig,
+                    };
+
+                    await db.settings.put({
+                        ...mergedSettings,
+                        key: 'current'
+                    });
+                });
+            }
         });
 
         console.log('✅ SyncEngine: Listeners started');

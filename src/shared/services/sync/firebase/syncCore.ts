@@ -46,6 +46,13 @@ export interface SyncStrategy<T> {
    * userId 가져오기 (기본: 'user')
    */
   getUserId?: () => string;
+
+  /**
+   * 데이터 직렬화 (선택적)
+   * Firebase에 저장하기 전에 데이터를 변환하거나 필터링합니다.
+   * (예: 민감한 정보 제거)
+   */
+  serialize?: (data: T) => any;
 }
 
 // ============================================================================
@@ -92,8 +99,14 @@ export async function syncToFirebase<T>(
     const path = getFirebasePath(userId, strategy.collection, key);
     const dataRef = ref(db, path);
 
-    // Firebase는 undefined 값을 허용하지 않으므로 사전에 제거 (null로 변환)
-    const sanitizedData = sanitizeForFirebase(data);
+    // 1. Strategy별 커스텀 직렬화 (예: 민감 정보 제거)
+    let dataToSync = data;
+    if (strategy.serialize) {
+      dataToSync = strategy.serialize(data);
+    }
+
+    // 2. Firebase는 undefined 값을 허용하지 않으므로 사전에 제거 (null로 변환)
+    const sanitizedData = sanitizeForFirebase(dataToSync);
 
     // 중복 동기화 방지
     const dataHash = getDataHash(sanitizedData);

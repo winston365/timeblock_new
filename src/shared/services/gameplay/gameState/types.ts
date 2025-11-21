@@ -20,6 +20,7 @@ export type XPGainReason =
   | 'timer_bonus'      // 타이머 보너스
   | 'perfect_block'    // 완벽한 블록 완료
   | 'quest_complete'   // 퀘스트 완료
+  | 'dont_do_check'    // 하지않기 체크리스트 완료
   | 'other';           // 기타
 
 /**
@@ -78,5 +79,6 @@ export const XP_REASON_MESSAGES: Record<XPGainReason, string> = {
   timer_bonus: '⏱️ 타이머 보너스!',
   perfect_block: '완벽한 블록 완료!',
   quest_complete: '퀘스트 완료!',
+  dont_do_check: '하지않기 실천!',
   other: 'XP 획득!',
 };

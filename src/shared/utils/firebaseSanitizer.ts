@@ -29,8 +29,17 @@ export function sanitizeForFirebase<T>(data: T): T {
     const result: any = {};
     for (const key in data) {
         if (Object.prototype.hasOwnProperty.call(data, key)) {
+            // Firebase Key Validation
+            // Keys must be non-empty strings and can't contain ".", "#", "$", "/", "[", or "]"
+            let safeKey = key;
+            if (/[.#$/\[\]]/.test(key) || key === '') {
+                console.warn(`[FirebaseSanitizer] Invalid key detected: "${key}". Replacing invalid characters with "_"`);
+                safeKey = key.replace(/[.#$/\[\]]/g, '_');
+                if (safeKey === '') safeKey = 'invalid_key';
+            }
+
             const value = (data as any)[key];
-            result[key] = sanitizeForFirebase(value);
+            result[safeKey] = sanitizeForFirebase(value);
         }
     }
 

@@ -78,7 +78,7 @@ export const TimeBlockStatus: React.FC<TimeBlockStatusProps> = ({
   return (
     <div
       className={[
-        'mt-4 flex w-full flex-wrap items-center gap-4 rounded-xl border bg-[var(--color-bg)] px-4 py-3 text-left shadow-sm lg:mt-0',
+        'mt-4 flex w-full min-w-0 flex-wrap items-center gap-4 rounded-xl border bg-[var(--color-bg)] px-4 py-3 text-left shadow-sm lg:mt-0',
         config.border,
         config.ring ?? ''
       ]
@@ -94,12 +94,12 @@ export const TimeBlockStatus: React.FC<TimeBlockStatusProps> = ({
           <span className="text-xs text-[var(--color-text-tertiary)]">{config.copy}</span>
         </div>
       </div>
-      <div className="ml-auto flex flex-1 flex-col gap-2 text-right lg:flex-row lg:items-center lg:text-left">
+      <div className="ml-auto flex flex-1 min-w-0 flex-col gap-2 text-right lg:flex-row lg:items-center lg:text-left">
         <div className="text-xs font-semibold text-[var(--color-text-secondary)]">
           {formatMinutesToHM(remainingMinutes)} 남음
         </div>
-        <div className="flex flex-1 flex-col gap-1">
-          <div className={`relative h-[10px] w-full overflow-hidden rounded-full ${config.track}`}>
+        <div className="flex flex-1 min-w-0 flex-col gap-1">
+          <div className={`relative h-[10px] w-full max-w-full overflow-hidden rounded-full ${config.track}`}>
             {isPlanLight && (
               <div className="pointer-events-none absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 bg-sky-300/80" />
             )}

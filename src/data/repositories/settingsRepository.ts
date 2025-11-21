@@ -15,6 +15,7 @@ import { db } from '../db/dexieClient';
 import type { Settings, TimeSlotTagTemplate } from '@/shared/types/domain';
 import { STORAGE_KEYS, DEFAULT_AUTO_MESSAGE_INTERVAL } from '@/shared/lib/constants';
 import { loadData, saveData, updateData, type RepositoryConfig } from './baseRepository';
+import { settingsStrategy } from '@/shared/services/sync/firebase/strategies';
 
 // ============================================================================
 // Repository Configuration
@@ -32,6 +33,7 @@ const DEFAULT_TIME_SLOT_TAGS: TimeSlotTagTemplate[] = [
 const settingsConfig: RepositoryConfig<Settings> = {
   table: db.settings,
   storageKey: STORAGE_KEYS.SETTINGS,
+  firebaseStrategy: settingsStrategy,
   createInitial: () => ({
     geminiApiKey: '',
     autoMessageInterval: DEFAULT_AUTO_MESSAGE_INTERVAL,
@@ -84,7 +86,7 @@ export function createInitialSettings(): Settings {
  *   - 데이터가 없으면 초기 설정 생성 및 저장
  */
 export async function loadSettings(): Promise<Settings> {
-  return loadData(settingsConfig, 'current', { useFirebase: false });
+  return loadData(settingsConfig, 'current');
 }
 
 /**
@@ -98,7 +100,7 @@ export async function loadSettings(): Promise<Settings> {
  *   - localStorage에 백업
  */
 export async function saveSettings(settings: Settings): Promise<void> {
-  await saveData(settingsConfig, 'current', settings, { syncFirebase: false });
+  await saveData(settingsConfig, 'current', settings);
 }
 
 /**
@@ -112,6 +114,21 @@ export async function saveSettings(settings: Settings): Promise<void> {
  *   - localStorage에 백업
  */
 export async function updateSettings(updates: Partial<Settings>): Promise<Settings> {
+  return updateData(settingsConfig, 'current', updates);
+}
+
+/**
+ * 로컬 전용 설정 업데이트 (Firebase 동기화 안 함)
+ *
+ * @param {Partial<Settings>} updates - 업데이트할 필드
+ * @returns {Promise<Settings>} 업데이트된 설정 객체
+ * @throws {Error} 로드 또는 저장 실패 시
+ * @sideEffects
+ *   - IndexedDB에서 기존 설정 조회 및 업데이트
+ *   - localStorage에 백업
+ *   - Firebase 동기화 건너뜀
+ */
+export async function updateLocalSettings(updates: Partial<Settings>): Promise<Settings> {
   return updateData(settingsConfig, 'current', updates, { syncFirebase: false });
 }
 

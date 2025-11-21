@@ -24,6 +24,7 @@ import type {
   Task,
   ShopItem,
   WarmupPresetItem,
+  Settings,
 } from '@/shared/types/domain';
 
 // ============================================================================
@@ -145,4 +146,19 @@ export const globalGoalStrategy: SyncStrategy<DailyGoal[]> = {
 export const warmupPresetStrategy: SyncStrategy<WarmupPresetItem[]> = {
   collection: 'warmupPreset',
   getSuccessMessage: (data) => `Warmup preset synced (${data.length} items)`,
+};
+
+// ============================================================================
+// Settings 전략 (Last-Write-Wins)
+// ============================================================================
+
+export const settingsStrategy: SyncStrategy<Settings> = {
+  collection: 'settings',
+  getSuccessMessage: (data) =>
+    `Settings synced (Auto-msg: ${data.autoMessageEnabled}, Waifu: ${data.waifuMode})`,
+  serialize: (data) => {
+    // 민감한 정보(API Key, Firebase Config)는 동기화에서 제외
+    const { geminiApiKey, firebaseConfig, ...rest } = data;
+    return rest;
+  },
 };

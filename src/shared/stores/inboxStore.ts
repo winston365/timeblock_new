@@ -23,6 +23,7 @@ import { taskCompletionService } from '@/shared/services/gameplay/taskCompletion
 import { getLocalDate } from '@/shared/lib/utils';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { useRealityCheckStore } from '@/shared/stores/realityCheckStore';
+import { eventBus } from '@/shared/lib/eventBus';
 
 interface InboxStore {
     // 상태
@@ -117,9 +118,10 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
 
             const updatedTask = await toggleInboxTaskCompletion(taskId);
 
+            let result: any = null;
             if (!wasCompleted && updatedTask.completed) {
                 // XP/퀘스트/와이푸 토스트 포함 공통 완료 파이프라인 재사용
-                await taskCompletionService.handleTaskCompletion({
+                result = await taskCompletionService.handleTaskCompletion({
                     task: updatedTask,
                     wasCompleted,
                     date: getLocalDate(),
@@ -135,6 +137,33 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
                         updatedTask.adjustedDuration
                     );
                 }
+
+                // 🎉 Event Bus: task:completed 이벤트 발행
+                console.log('[InboxStore] Emitting task:completed event:', {
+                    taskId: updatedTask.id,
+                    xpEarned: result?.xpEarned || 0,
+                });
+                eventBus.emit('task:completed', {
+                    taskId: updatedTask.id,
+                    xpEarned: result?.xpEarned || 0,
+                    isPerfectBlock: false, // 인박스 작업은 블록이 없으므로 항상 false
+                    blockId: undefined,
+                    goalId: updatedTask.goalId || undefined,
+                    adjustedDuration: updatedTask.adjustedDuration,
+                }, {
+                    source: 'inboxStore.toggleTaskCompletion',
+                });
+            }
+
+            // Goal 진행률 이벤트 (Goal Subscriber가 처리)
+            if (updatedTask.goalId) {
+                eventBus.emit('goal:progressChanged', {
+                    goalId: updatedTask.goalId,
+                    taskId: updatedTask.id,
+                    action: 'completed',
+                }, {
+                    source: 'inboxStore.toggleTaskCompletion',
+                });
             }
 
             await get().loadData();

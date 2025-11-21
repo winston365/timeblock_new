@@ -192,7 +192,7 @@ export default function ScheduleView() {
 
       for (const task of tasksToMove) {
         try {
-          await updateTask(task.id, { timeBlock: null }, { skipBehaviorTracking: true });
+          await updateTask(task.id, { timeBlock: null }, { skipBehaviorTracking: true, ignoreLock: true });
         } catch (error) {
           console.error(`Failed to move task ${task.id} to inbox:`, error);
         }

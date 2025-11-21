@@ -81,8 +81,10 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
       setWaifuImageChangeInterval(settings.waifuImageChangeInterval ?? 600000);
     }
 
-    // 이미지 프리로드 (백그라운드)
-    preloadWaifuImages().catch((err) => console.error('[WaifuPanel] Image preload failed:', err));
+    // 이미지 프리로드 (백그라운드) - 초기 렌더링 후 지연 실행하여 첫 이미지 로딩 우선순위 보장
+    const timer = setTimeout(() => {
+      preloadWaifuImages().catch((err) => console.error('[WaifuPanel] Image preload failed:', err));
+    }, 2000);
 
     // Time-aware Lighting Logic
     const updateLighting = () => {
@@ -99,7 +101,10 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     };
     updateLighting();
     const interval = setInterval(updateLighting, 60000 * 30); // Check every 30 mins
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timer);
+    };
   }, [settings]);
 
   // 이미지 변경 함수

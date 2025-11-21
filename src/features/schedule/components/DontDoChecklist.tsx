@@ -20,9 +20,9 @@ export const DontDoChecklist: React.FC<DontDoChecklistProps> = ({ timeBlockId })
     };
 
     return (
-        <div className="flex flex-col gap-2 border-b border-[var(--color-border)] p-4">
-            <div className="flex items-center justify-between mb-1">
-                <h4 className="text-xs font-semibold text-[var(--color-text-secondary)]">
+        <div className="flex flex-col gap-1.5 border-b border-[var(--color-border)] px-3 py-3">
+            <div className="mb-0.5 flex items-center justify-between">
+                <h4 className="text-[11px] font-semibold text-[var(--color-text-secondary)]">
                     🚫 하지않기 체크리스트
                 </h4>
                 <span className="text-[10px] text-[var(--color-text-tertiary)]">
@@ -30,7 +30,7 @@ export const DontDoChecklist: React.FC<DontDoChecklistProps> = ({ timeBlockId })
                 </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
                 {checklistItems.map((item) => {
                     const isChecked = dailyData?.timeBlockDontDoStatus?.[timeBlockId]?.[item.id] || false;
 
@@ -38,9 +38,9 @@ export const DontDoChecklist: React.FC<DontDoChecklistProps> = ({ timeBlockId })
                         <div
                             key={item.id}
                             onClick={() => handleToggle(item.id, item.xpReward)}
-                            className={`flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 transition-all ${isChecked
+                            className={`flex cursor-pointer items-center justify-between rounded-lg border px-2.5 py-1.5 text-[11px] transition-all ${isChecked
                                 ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10'
-                                : 'border-[var(--color-border)] bg-[var(--color-bg)] hover:border-[var(--color-primary)]/50'
+                                : 'border-[var(--color-border)] bg-[var(--color-bg)] hover:border-[var(--color-primary)]/40'
                                 }`}
                         >
                             <div className="flex items-center gap-2 overflow-hidden">
@@ -48,11 +48,11 @@ export const DontDoChecklist: React.FC<DontDoChecklistProps> = ({ timeBlockId })
                                     <NeonCheckbox
                                         checked={isChecked}
                                         onChange={() => handleToggle(item.id, item.xpReward)}
-                                        size={20}
+                                        size={16}
                                     />
                                 </div>
                                 <span
-                                    className={`truncate text-xs font-medium ${isChecked ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)]'
+                                    className={`truncate text-[11px] font-medium ${isChecked ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)]'
                                         }`}
                                 >
                                     {item.label}
