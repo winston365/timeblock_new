@@ -16,7 +16,7 @@ import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { useEnergy } from '@/features/energy/hooks/useEnergy';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
-import { callAIWithContext, getInsightInstruction } from '@/shared/services/ai/aiService';
+import { callAIWithContext, getInsightPrompt } from '@/shared/services/ai/aiService';
 import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories';
 import confetti from 'canvas-confetti';
 
@@ -55,7 +55,7 @@ interface InsightPanelProps {
  */
 export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
   const { dailyData } = useDailyData();
-  const { gameState, gainXp } = useGameState();
+  const { gameState, addXP } = useGameState();
   const { waifuState } = useWaifu();
   const { currentEnergy } = useEnergy();
   const { settings, loadData: loadSettingsData } = useSettingsStore();
@@ -98,7 +98,7 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
     setCompletedQuickWins(prev => [...prev, id]);
 
     // 2. XP 지급
-    gainXp(xp, '퀵 윈 달성');
+    addXP(xp, '퀵 윈 달성');
 
     // 3. 효과 (컨페티)
     confetti({
@@ -142,7 +142,7 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
         currentEnergy,
         apiKey: settings.geminiApiKey,
         type: 'insight',
-        additionalInstructions: getInsightInstruction(),
+        additionalInstructions: getInsightPrompt(),
       });
 
       const now = new Date();
@@ -388,8 +388,8 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
                         onClick={() => handleQuickWinComplete(win.id, win.xp)}
                         disabled={isCompleted}
                         className={`flex items-center justify-between rounded-xl border p-3 text-left transition-all ${isCompleted
-                            ? 'bg-green-500/10 border-green-500/30 opacity-50'
-                            : 'bg-[var(--color-bg-elevated)] border-[var(--color-border)] hover:border-[var(--color-primary)] hover:scale-[1.02] active:scale-95'
+                          ? 'bg-green-500/10 border-green-500/30 opacity-50'
+                          : 'bg-[var(--color-bg-elevated)] border-[var(--color-border)] hover:border-[var(--color-primary)] hover:scale-[1.02] active:scale-95'
                           }`}
                       >
                         <div className="flex items-center gap-3">

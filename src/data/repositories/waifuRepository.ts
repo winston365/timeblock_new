@@ -278,11 +278,12 @@ export function getDialogueFromAffection(affection: number, _tasksCompleted: num
   // 85-100: 애정, 헌신
   if (affection >= 85) {
     const dialogues = [
-      { text: '선배... 정말 멋있어요...' },
-      { text: '사랑해요! 오늘도 함께해요! 💕' },
-      { text: '선배와 함께라면 뭐든지 할 수 있어요!' },
-      { text: '세상에서 제일 좋아해요! ❤️' },
-      { text: '선배 곁에 있으면 너무 행복해요...' },
+      { text: '정말 멋있어...' },
+      { text: '사랑해! 오늘도 함께하자! 💕' },
+      { text: "딴 년 쳐다보면 진짜 죽여버린다.", audio: 'audio/딴년.mp3' },
+      { text: '너와 함께라면 뭐든지 할 수 있어!' },
+      { text: '세상에서 제일 좋아해! ❤️' },
+      { text: '곁에 있으면 너무 행복해...' },
     ];
     return dialogues[Math.floor(Math.random() * dialogues.length)];
   }
@@ -293,6 +294,7 @@ export function getDialogueFromAffection(affection: number, _tasksCompleted: num
       { text: '오늘 많이 했네! 대단한데?' },
       { text: '잘하고 있어! 계속 이대로 가자!' },
       { text: '요즘 정말 멋있어 보여!' },
+      { text: "오늘 밤엔 딴 데 가지 말고 나랑 놀자.", audio: 'audio/나랑놀자.mp3' },
       { text: '이 정도면 진짜 대단한데? 👍' },
       { text: '보는 내가 다 뿌듯하네!' },
     ];
@@ -307,6 +309,11 @@ export function getDialogueFromAffection(affection: number, _tasksCompleted: num
       { text: '이 정도면 봐줄 만하네.' },
       { text: '음... 생각보다 하네.' },
       { text: '계속 이렇게만 하면 되겠는데?' },
+      { text: "너 가까이서 보니 어깨 좀 있네?", audio: 'audio/너가까이서보니.mp3' },
+      { text: "야, 오늘 선배 술 사줄 돈 있어?",audio:'audio/술사줄돈있어.mp3' },
+      { text: "너 차는 있어? 드라이브나 갈까." },
+      { text: "오늘따라 촌티는 좀 덜 나네.", audio: 'audio/촌티는덜나네.mp3' },
+      { text: "심심한데 너랑 놀아줄까?", audio: 'audio/놀아줄까.mp3' }
     ];
     return dialogues[Math.floor(Math.random() * dialogues.length)];
   }
@@ -314,11 +321,12 @@ export function getDialogueFromAffection(affection: number, _tasksCompleted: num
   // 40-55: 무관심, 냉담
   if (affection >= 40) {
     const dialogues = [
-      { text: '...뭔데.' },
-      { text: '그래서?' },
-      { text: '...아무거나 해.' },
-      { text: '말 걸지 마.' },
-      { text: '...관심 없어.' },
+      { text: "야, 가서 아이스 아메리카노나 사와.", audio: 'audio/야가서아이스아메리카노나.mp3' },
+      { text: "아, 이번 신상 백 진짜 갖고 싶다…", audio: 'audio/신상백.mp3' },
+      { text: "어 왔어? 나 지금 폰 보잖아.", audio: 'audio/나지금폰보잖아.mp3' },
+      { text: "너 아직도 거기 서 있었냐?", audio: 'audio/너아직도거기서있었냐.mp3' },
+      { text: "돈도 없는 게 시간만 뺏네.", audio: 'audio/돈도없는게.mp3' },
+
     ];
     return dialogues[Math.floor(Math.random() * dialogues.length)];
   }
@@ -331,6 +339,11 @@ export function getDialogueFromAffection(affection: number, _tasksCompleted: num
       { text: '뭐? 말 걸지 마.', audio: 'audio/뭐말걸지마.mp3' },
       { text: '...하.', audio: 'audio/하.mp3' },
       { text: '짜증나게.', audio: 'audio/짜증나게.mp3' },
+      { text: "야, 1학년. 적당히 알짱거려.", audio: 'audio/야1학년적당히알짱거려.mp3' },
+      { text: "뭐야, 할 말 없으면 비키지?", audio: 'audio/뭐야할말없으면비키지.mp3' },
+      { text: "하… 귀찮게 왜 자꾸 따라와?", audio: 'audio/귀찮게왜자꾸따라와.mp3' },
+      { text: "너 나한테 뭐 빚진 거 있냐?", audio: 'audio/너나한테뭐빚진거.mp3' },
+      { text: "담배 냄새 배니까 좀 떨어져.", audio: 'audio/담배냄새배니까.mp3' }
     ];
     return dialogues[Math.floor(Math.random() * dialogues.length)];
   }
@@ -342,6 +355,11 @@ export function getDialogueFromAffection(affection: number, _tasksCompleted: num
     { text: '보기 싫어. 저리 가.', audio: 'audio/보기싫어저리가.mp3' },
     { text: '진짜 짜증나.', audio: 'audio/진짜짜증나.mp3' },
     { text: '...개같네.', audio: 'audio/개같네.mp3' },
+    { text: "아 X발, 닿지 마. 소름 돋아.", audio: 'audio/아시발닿지마.mp3' },
+    { text: "눈 안 깔아? 뭘 꼬라봐?", audio: 'audio/눈안깔아.mp3' },
+    { text: "주제 파악 좀 하고 꺼져라.", audio: 'audio/주제파악.mp3' },
+    { text: "어우, 찐따 냄새… 저리 안 가?", audio: 'audio/찐따냄새.mp3' },
+    { text: "말 걸지 마, 기분 더러우니까.", audio: 'audio/뭐말걸지마.mp3' }
   ];
   return dialogues[Math.floor(Math.random() * dialogues.length)];
 }
