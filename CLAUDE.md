@@ -53,18 +53,19 @@ dailyDataStore.updateTask()
 
 ### Firebase Synchronization Architecture
 
-Located in `src/shared/services/sync/`:
+Located in `src/shared/services/sync/firebase/`:
 
 - **Strategy Pattern**: Each data type has a `SyncStrategy<T>` implementation
 - **Conflict Resolution**: Last-Write-Wins (LWW) via `conflictResolver.ts`
 - **Retry Queue**: Failed syncs are queued and retried (`syncRetryQueue.ts`)
 - **Deduplication**: Hash-based duplicate detection prevents redundant syncs
-- **Server-First Templates**: Firebase Cloud Function (`functions/index.js`) generates tasks from templates daily at 00:00 KST. Client observes, doesn't generate.
+- **Server-First Templates**: Firebase Cloud Function (`functions/index.js`) generates tasks from templates daily at 00:00 KST. Client observes via `AppShell.tsx` + `useAppInitialization.ts`
+- **Documentation**: See `src/shared/services/sync/firebase/README.md` for detailed sync behavior
 
 **Important**: When modifying data structures, update all three layers:
-1. Dexie schema in `src/data/db/schema.ts`
+1. Dexie schema in `src/data/db/dexieClient.ts`
 2. Repository in `src/data/repositories/`
-3. Sync strategy in `src/shared/services/sync/strategies/`
+3. Sync strategy in `src/shared/services/sync/firebase/`
 
 ### Feature-Based Organization
 
@@ -77,7 +78,16 @@ features/
   ├── tasks/         # Task management
   ├── gemini/        # AI chat integration
   ├── gamification/  # XP, quests, achievements
-  └── [12 more features...]
+  ├── goals/         # Goal management
+  ├── template/      # Template management
+  ├── focus/         # Focus timer
+  ├── shop/          # Shop system
+  ├── settings/      # App settings
+  ├── quickadd/      # Quick task entry
+  ├── insight/       # Analytics and insights
+  ├── stats/         # Statistics
+  ├── energy/        # Energy level tracking
+  └── feedback/      # User feedback
 ```
 
 Each feature typically contains:
@@ -88,7 +98,7 @@ Each feature typically contains:
 
 ### State Management - Zustand Stores
 
-8 specialized stores in `src/shared/stores/`:
+12 specialized stores in `src/shared/stores/`:
 
 1. **dailyDataStore** - Central task & time-block state
 2. **gameStateStore** - XP, level, quests, streaks
@@ -98,6 +108,10 @@ Each feature typically contains:
 6. **uiStore** - UI state (modals, panels)
 7. **toastStore** - Toast notifications
 8. **realityCheckStore** - Reality check modals
+9. **goalStore** - Global goals management
+10. **templateStore** - Template management
+11. **completedTasksStore** - Completed tasks history
+12. **inboxStore** - Global inbox tasks
 
 **Pattern**: Stores delegate all persistence to repositories. They implement optimistic updates with rollback on failure.
 
@@ -133,19 +147,22 @@ Tasks are assigned to blocks and hour slots. The schedule UI (`src/features/sche
 
 ### Database Schema (Dexie)
 
-7 schema versions with migrations. Core tables:
+8 schema versions with migrations. Core tables:
 
 - **dailyData** - Daily tasks and blocks (keyed by date YYYY-MM-DD)
 - **gameState** - Player progression (singleton)
 - **templates** - Reusable task templates with recurrence
 - **globalInbox** - Date-independent tasks
 - **globalGoals** - Long-term goals with time tracking
+- **completedInbox** - Completed tasks history (added in v7)
 - **shopItems** - Purchasable items with XP
 - **waifuState** - Companion affection and interactions
 - **energyLevels** - Hourly energy tracking
 - **chatHistory** - Gemini AI conversation history
+- **dailyTokenUsage** - Daily Gemini API token usage tracking
+- **systemState** - System-level state (key-value store)
 
-Schema defined in `src/data/db/schema.ts`. When adding fields, increment version and add migration.
+Schema defined in `src/data/db/dexieClient.ts`. When adding fields, increment version and add migration.
 
 ### Gamification System
 
@@ -212,12 +229,37 @@ try {
 
 **Server-side only**: Firebase Function runs daily at 00:00 KST, generates tasks from templates with `autoGenerate: true`. Client reads from Firebase, never generates locally. Uses `lastTemplateGeneration` timestamp to prevent duplicate generation.
 
+## Event Bus System
+
+Event-driven UI logic uses `src/shared/lib/eventBus/EventBus.ts`:
+
+- **Pattern**: `[domain]:[action]` naming convention (e.g., `task:completed`, `block:locked`)
+- **Usage**: Subscribe to events in components, unsubscribe in `useEffect` cleanup
+- **Debugging**: Enable logger/performance middleware in dev mode
+- **Performance Monitor**: Access via `window.__performanceMonitor` for debugging cascaded handlers
+
+## App Initialization
+
+Daily reset and client-side template handling:
+
+- **Entry Point**: `src/App.tsx` → `AppShell` component
+- **Initialization Hook**: `src/app/hooks/useAppInitialization.ts`
+- **Daily Reset**: Runs on app start, handles date transitions
+- **Template Observation**: Client observes Firebase for server-generated templates (never generates locally)
+
+## Debugging Tools
+
+- **SyncLog Modal**: For debugging Firebase sync issues
+- **Performance Monitor**: `window.__performanceMonitor` - tracks event bus performance
+- **Event Bus Logger**: Enable in dev mode for event tracing
+
 ## Configuration
 
 - **Vite**: `vite.config.ts` - Path alias `@/` → `./src/`
 - **TypeScript**: Strict mode, ES2020 target
 - **Tailwind**: Custom design system in `tailwind.config.ts` with CSS variables
 - **Firebase**: `.firebaserc` - Project ID `test1234-edcb6`
+  - **Config**: `src/data/firebase/config.ts` (gitignored, user-provided via Settings)
 - **Electron Builder**: `electron-builder.json` - Packaging config
 
 ## Path Aliases
