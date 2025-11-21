@@ -84,7 +84,7 @@ export interface AICallResult {
  *   apiKey: settings.geminiApiKey,
  *   model: settings.geminiModel,
  *   type: 'insight',
- *   additionalInstructions: getInsightInstruction()
+ *   additionalInstructions: getInsightPrompt()
  * });
  * ```
  */
@@ -159,8 +159,8 @@ export async function callAIWithContext(params: AICallParams): Promise<AICallRes
  *
  * @returns {string} 인사이트 생성 지시사항 프롬프트
  */
-export function getInsightInstruction(): string {
-  return `
+export function getInsightPrompt(): string {
+  const prompt = `
 ---
 
 ## 💡 오늘의 인사이트 작성 (종합 분석)
@@ -168,7 +168,7 @@ export function getInsightInstruction(): string {
 위 데이터를 기반으로 **오늘의 인사이트**를 작성해줘.
 **반드시 아래 JSON 형식으로만 출력해줘.** (마크다운 코드블록 없이 순수 JSON만)
 
-\```json
+\`\`\`json
 {
   "status": {
     "emoji": "string (현재 상태를 나타내는 이모지)",
@@ -195,7 +195,7 @@ export function getInsightInstruction(): string {
     "comment": "string (현재 성과에 대한 칭찬이나 격려)"
   }
 }
-\```
+\`\`\`
 
 ### 🔍 분석 기준
 1. **Status (상태)**
@@ -209,13 +209,14 @@ export function getInsightInstruction(): string {
    - 에너지가 높으면 '가장 중요한 작업' 추천
 
 3. **Quick Wins (도파민 메뉴)**
-   - 에너지가 낮거나(Red/Yellow), 진행이 막혔을 때 3개 제안
+   - **무조건 3개 제안할 것** (사용자가 원할 때 언제든 수행 가능하도록)
    - 아주 사소한 것들 (물 마시기, 스트레칭, 책상 정리 등)
-   - 에너지가 높으면 빈 배열 []
+   - 완료 시 XP 보상이 있는 작은 작업들
 
 4. **Progress (중간 성과)**
+   - **무조건 포함할 것** (사용자가 언제든 확인 가능해야 함)
    - 현재까지의 진행 상황을 게임 랭크로 평가
    - 긍정적인 피드백 위주
-
 `;
+  return prompt;
 }
