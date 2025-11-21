@@ -13,6 +13,8 @@ import { exposeDebugToWindow } from '@/shared/services/sync/firebase/firebaseDeb
 import type { Template, Task } from '@/shared/types/domain';
 import { Toaster, toast } from 'react-hot-toast';
 import SyncErrorToast from '@/shared/components/SyncErrorToast';
+import { eventBus, loggerMiddleware, performanceMiddleware } from '@/shared/lib/eventBus';
+import { initAllSubscribers } from '@/shared/subscribers';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { setErrorCallback, retryNow } from '@/shared/services/sync/firebase/syncRetryQueue';
@@ -147,6 +149,21 @@ export default function AppShell() {
       console.error('Failed to retry sync:', error);
     }
   };
+
+  // Event Bus 초기화 (앱 시작 시 한 번만)
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      // 개발 환경에서만 미들웨어 활성화
+      eventBus.use(loggerMiddleware);
+      eventBus.use(performanceMiddleware);
+      console.log('✅ [AppShell] Event Bus middleware registered');
+    }
+
+    // Subscribers 초기화
+    initAllSubscribers();
+
+    console.log('✅ [AppShell] Event Bus initialized');
+  }, []);
 
   // 디버그 함수 노출
   useEffect(() => {

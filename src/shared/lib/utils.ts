@@ -207,16 +207,7 @@ export function calculateTaskXP(task: Task): number {
   const resistanceMultiplier = RESISTANCE_MULTIPLIERS[task.resistance];
   const finalXP = Math.round(baseXP * resistanceMultiplier);
 
-  console.log(`[calculateTaskXP] 🎯 Task: "${task.text}"`, {
-    actualDuration: task.actualDuration,
-    adjustedDuration: task.adjustedDuration,
-    baseDuration: task.baseDuration,
-    resistance: task.resistance,
-    duration,
-    baseXP,
-    resistanceMultiplier,
-    finalXP
-  });
+
 
   return finalXP;
 }

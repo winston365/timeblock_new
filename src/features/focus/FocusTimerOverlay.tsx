@@ -216,7 +216,9 @@ export function FocusTimerOverlay() {
             {String(Math.floor(remainingMinutes)).padStart(2, '0')}:{String(remainingSeconds).padStart(2, '0')}
           </div>
           <div className="mt-2 rounded-full bg-white/5 px-3 py-1 text-xs text-white/70">
-            {currentTask ? `${slotKey} 종료 예상` : `${slotLabel} 종료 예상`}
+            {currentTask && startTime
+              ? `${String(taskEndTimestamp.getHours()).padStart(2, '0')}:${String(taskEndTimestamp.getMinutes()).padStart(2, '0')} 종료 예상`
+              : `${slotLabel} 종료 예상`}
           </div>
         </div>
       </div>

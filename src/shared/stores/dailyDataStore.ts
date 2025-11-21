@@ -42,6 +42,7 @@ import { taskCompletionService } from '@/shared/services/gameplay/taskCompletion
 import { trackTaskTimeBlockChange } from '@/shared/services/behavior/procrastinationMonitor';
 import { db } from '@/data/db/dexieClient';
 import { scheduleEmojiSuggestion } from '@/shared/services/ai/emojiSuggester';
+import { eventBus } from '@/shared/lib/eventBus';
 
 interface DailyDataStore {
   // 상태
@@ -343,7 +344,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
    * Task 완료 토글 (모바일/인박스에 위임)
    */
   toggleTaskCompletion: async (taskId: string) => {
-    const { currentDate, dailyData, loadData } = get();
+    const { currentDate, dailyData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
 
     const originalTasks = dailyData.tasks;
@@ -373,13 +374,15 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
       const updatedTask = await toggleTaskInRepo(taskId, currentDate);
 
+      // Task completion 처리
+      let result: any = null;
       if (!wasCompleted && updatedTask.completed) {
         if (taskInDaily && updatedTask.timeBlock) {
           blockState = dailyData.timeBlockStates[updatedTask.timeBlock];
           blockTasks = optimisticTasks.filter(t => t.timeBlock === updatedTask.timeBlock);
         }
 
-        const result = await taskCompletionService.handleTaskCompletion({
+        result = await taskCompletionService.handleTaskCompletion({
           task: updatedTask,
           wasCompleted,
           date: currentDate,
@@ -416,11 +419,33 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
             updatedTask.adjustedDuration
           );
         }
+
+        // 🎉 Event Bus: task:completed 이벤트 발행
+        console.log('[DailyDataStore] About to emit task:completed event:', {
+          taskId: updatedTask.id,
+          xpEarned: result?.xpEarned || 0,
+        });
+        eventBus.emit('task:completed', {
+          taskId: updatedTask.id,
+          xpEarned: result?.xpEarned || 0,
+          isPerfectBlock: result?.isPerfectBlock || false,
+          blockId: updatedTask.timeBlock || undefined,
+          goalId: updatedTask.goalId || undefined,
+          adjustedDuration: updatedTask.adjustedDuration,
+        }, {
+          source: 'dailyDataStore.toggleTaskCompletion',
+        });
       }
 
+      // Goal 진행률 이벤트 (Goal Subscriber가 처리)
       if (updatedTask.goalId) {
-        await recalculateGlobalGoalProgress(updatedTask.goalId, currentDate);
-        await loadData(currentDate, true);
+        eventBus.emit('goal:progressChanged', {
+          goalId: updatedTask.goalId,
+          taskId: updatedTask.id,
+          action: 'completed',
+        }, {
+          source: 'dailyDataStore.toggleTaskCompletion',
+        });
       }
     } catch (err) {
       console.error('[DailyDataStore] Failed to toggle task completion, rolling back:', err);
