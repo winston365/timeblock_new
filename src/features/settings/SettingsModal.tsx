@@ -11,7 +11,7 @@
 
 import { useState, useEffect } from 'react';
 import { initializeFirebase } from '@/shared/services/sync/firebaseService';
-import type { TimeSlotTagTemplate } from '@/shared/types/domain';
+import type { TimeSlotTagTemplate, DontDoChecklistItem } from '@/shared/types/domain';
 import {
   getSyncLogs,
   clearSyncLogs,
@@ -97,7 +97,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
   } = useSettingsStore();
 
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'gemini' | 'firebase' | 'appearance' | 'logs'>('gemini');
+  const [activeTab, setActiveTab] = useState<'gemini' | 'firebase' | 'appearance' | 'logs' | 'dontdo'>('gemini');
   const [currentTheme, setCurrentTheme] = useState<string>(() => {
     return localStorage.getItem('theme') || '';
   });
@@ -112,6 +112,9 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string>('');
 
+  // Don't-Do 체크리스트 로컬 상태 (저장은 모달 닫을 때)
+  const [localDontDoList, setLocalDontDoList] = useState<DontDoChecklistItem[]>([]);
+
   // 설정 로드
   useEffect(() => {
     if (isOpen) {
@@ -124,7 +127,15 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
         setAppVersion('Web Version');
       }
     }
-  }, [isOpen, loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  // settings에서 dontDoChecklist가 변경되면 로컬 상태 동기화
+  useEffect(() => {
+    if (settings?.dontDoChecklist) {
+      setLocalDontDoList(settings.dontDoChecklist);
+    }
+  }, [settings?.dontDoChecklist]);
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -180,6 +191,11 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
   const handleSave = async () => {
     try {
       setSaving(true);
+
+      // Don't-Do 리스트 저장 (로컬 상태와 store가 다른 경우에만)
+      if (JSON.stringify(localDontDoList) !== JSON.stringify(settings?.dontDoChecklist)) {
+        await updateSettings({ dontDoChecklist: localDontDoList });
+      }
 
       // Firebase 설정이 있으면 재초기화 (Store에서 이미 저장됨, 여기서는 적용만)
       if (settings?.firebaseConfig) {
@@ -294,6 +310,13 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
     });
   };
 
+  // Don't-Do 항목 로컬 상태 업데이트 (즉시 반영, 저장은 나중에)
+  const handleDontDoItemChange = (id: string, updates: Partial<DontDoChecklistItem>) => {
+    setLocalDontDoList(prev => prev.map(item =>
+      item.id === id ? { ...item, ...updates } : item
+    ));
+  };
+
   const updateTagTemplate = (id: string, key: keyof TimeSlotTagTemplate, value: string) => {
     updateSettings({
       timeSlotTags: tagTemplates.map(tag => (tag.id === id ? { ...tag, [key]: value } : tag)),
@@ -368,6 +391,15 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
             onClick={() => setActiveTab('firebase')}
           >
             🔥 Firebase
+          </button>
+          <button
+            className={`${tabButtonBase} ${activeTab === 'dontdo'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+              : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+              }`}
+            onClick={() => setActiveTab('dontdo')}
+          >
+            🚫 하지않기
           </button>
           <button
             className={`${tabButtonBase} ${activeTab === 'logs'
@@ -872,6 +904,96 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                 </div>
               )}
 
+              {/* 하지않기 체크리스트 탭 */}
+              {activeTab === 'dontdo' && (
+                <div className={sectionClass}>
+                  <div className={infoBoxClass}>
+                    <strong>🚫 하지않기 체크리스트:</strong> 하지 말아야 할 행동들을 정의하고, 이를 참았을 때 얻을 수 있는 XP 보상을 설정하세요.
+                    타임블록에서 해당 항목을 체크하면 XP를 획득합니다.
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    {localDontDoList.map((item, index) => (
+                      <div key={item.id} className="flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3">
+                        <div className="flex flex-col gap-1">
+                          <button
+                            onClick={() => {
+                              if (index > 0) {
+                                const newItems = [...localDontDoList];
+                                [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
+                                setLocalDontDoList(newItems);
+                              }
+                            }}
+                            disabled={index === 0}
+                            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text)] disabled:opacity-30"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (index < localDontDoList.length - 1) {
+                                const newItems = [...localDontDoList];
+                                [newItems[index + 1], newItems[index]] = [newItems[index], newItems[index + 1]];
+                                setLocalDontDoList(newItems);
+                              }
+                            }}
+                            disabled={index === localDontDoList.length - 1}
+                            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text)] disabled:opacity-30"
+                          >
+                            ▼
+                          </button>
+                        </div>
+
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={item.label}
+                            onChange={(e) => handleDontDoItemChange(item.id, { label: e.target.value })}
+                            className="w-full bg-transparent text-sm font-medium text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-tertiary)]"
+                            placeholder="항목 이름 (예: 유튜브 보지 않기)"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2 rounded-xl bg-[var(--color-bg-tertiary)] px-3 py-1.5">
+                          <span className="text-xs text-[var(--color-text-secondary)]">XP</span>
+                          <input
+                            type="number"
+                            value={item.xpReward}
+                            onChange={(e) => handleDontDoItemChange(item.id, { xpReward: Number(e.target.value) })}
+                            className="w-16 bg-transparent text-right text-sm font-bold text-[var(--color-primary)] outline-none"
+                          />
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setLocalDontDoList(prev => prev.filter(i => i.id !== item.id));
+                          }}
+                          className="ml-2 rounded-xl p-2 text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary)] hover:text-red-500"
+                          title="삭제"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))}
+
+                    <button
+                      onClick={() => {
+                        const newItem: DontDoChecklistItem = {
+                          id: `dontdo-${Date.now()}`,
+                          label: '',
+                          xpReward: 15,
+                          order: localDontDoList.length
+                        };
+                        setLocalDontDoList(prev => [...prev, newItem]);
+                      }}
+                      className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-border)] p-4 text-sm text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                    >
+                      <span>➕ 새 항목 추가</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* 로그 탭 */}
               {activeTab === 'logs' && (
                 <div className={sectionClass}>
@@ -1050,6 +1172,6 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
           </button>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

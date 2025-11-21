@@ -18,6 +18,7 @@ import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { setErrorCallback, retryNow } from '@/shared/services/sync/firebase/syncRetryQueue';
 import { useAppInitialization } from './hooks/useAppInitialization';
 import { FocusTimerOverlay } from '@/features/focus/FocusTimerOverlay';
+import { useFocusModeStore } from '@/features/schedule/stores/focusModeStore';
 import { RealityCheckModal } from '@/features/feedback/RealityCheckModal';
 import GlobalTaskBreakdown from '@/features/tasks/GlobalTaskBreakdown';
 
@@ -66,21 +67,25 @@ export default function AppShell() {
     return saved === 'true';
   });
 
+  const { isFocusMode } = useFocusModeStore();
+  const effectiveLeftCollapsed = leftSidebarCollapsed || isFocusMode;
+  const effectiveRightCollapsed = rightPanelsCollapsed || isFocusMode;
+
   const gridTemplateColumns = useMemo(() => {
-    if (leftSidebarCollapsed && rightPanelsCollapsed) {
+    if (effectiveLeftCollapsed && effectiveRightCollapsed) {
       return '0 1fr 0 0';
     }
-    if (leftSidebarCollapsed) {
+    if (effectiveLeftCollapsed) {
       return '0 minmax(600px, 1fr) 320px 336px';
     }
-    if (rightPanelsCollapsed) {
+    if (effectiveRightCollapsed) {
       return '380px minmax(600px, 1fr) 0 0';
     }
     return '380px minmax(600px, 1fr) 320px 336px';
-  }, [leftSidebarCollapsed, rightPanelsCollapsed]);
+  }, [effectiveLeftCollapsed, effectiveRightCollapsed]);
 
-  const leftToggleStyle = { left: leftSidebarCollapsed ? 0 : 380 };
-  const rightToggleStyle = { right: rightPanelsCollapsed ? 0 : 656 };
+  const leftToggleStyle = { left: effectiveLeftCollapsed ? 0 : 380 };
+  const rightToggleStyle = { right: effectiveRightCollapsed ? 0 : 656 };
 
   const { gameState, updateQuestProgress } = useGameState();
   const { visibility } = useWaifuCompanionStore();
@@ -220,53 +225,59 @@ export default function AppShell() {
   return (
     <div className="flex h-screen flex-col bg-[var(--color-bg-base)] text-[var(--color-text)]">
       <a href="#main-content" className="skip-to-content">스케줄로 이동</a>
-      <TopToolbar
-        gameState={gameState}
-        onOpenGeminiChat={() => setShowGeminiChat(true)}
-        onOpenTemplates={() => setShowTemplates(true)}
-      />
+      {!isFocusMode && (
+        <TopToolbar
+          gameState={gameState}
+          onOpenGeminiChat={() => setShowGeminiChat(true)}
+          onOpenTemplates={() => setShowTemplates(true)}
+        />
+      )}
       <main
         id="main-content"
         className="relative flex flex-1 overflow-hidden"
         style={{ display: 'grid', gridTemplateColumns }}
       >
-        <button
-          className={`panel-toggle-btn left-toggle absolute top-[80px] z-50 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition
-            ${leftSidebarCollapsed
-              ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-              : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)]/80 text-[var(--color-text-secondary)] shadow-sm hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'}
-          `}
-          onClick={toggleLeftSidebar}
-          style={leftToggleStyle}
-          title={leftSidebarCollapsed ? '좌측 패널 열기' : '좌측 패널 닫기'}
-          aria-label={leftSidebarCollapsed ? '좌측 패널 열기' : '좌측 패널 닫기'}
-        >
-          <span className="text-base">{leftSidebarCollapsed ? '⟨' : '〈'}</span>
-          <span className="hidden sm:inline">{leftSidebarCollapsed ? '열기' : '닫기'}</span>
-        </button>
-        <LeftSidebar activeTab={activeTab} onTabChange={setActiveTab} collapsed={leftSidebarCollapsed} />
+        {!isFocusMode && (
+          <button
+            className={`panel-toggle-btn left-toggle absolute top-[80px] z-50 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition
+              ${effectiveLeftCollapsed
+                ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
+                : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)]/80 text-[var(--color-text-secondary)] shadow-sm hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'}
+            `}
+            onClick={toggleLeftSidebar}
+            style={leftToggleStyle}
+            title={leftSidebarCollapsed ? '좌측 패널 열기' : '좌측 패널 닫기'}
+            aria-label={leftSidebarCollapsed ? '좌측 패널 열기' : '좌측 패널 닫기'}
+          >
+            <span className="text-base">{leftSidebarCollapsed ? '⟨' : '〈'}</span>
+            <span className="hidden sm:inline">{leftSidebarCollapsed ? '열기' : '닫기'}</span>
+          </button>
+        )}
+        <LeftSidebar activeTab={activeTab} onTabChange={setActiveTab} collapsed={effectiveLeftCollapsed} />
         <CenterContent activeTab={activeTab} dailyData={null} />
-        <InsightPanel collapsed={rightPanelsCollapsed} />
+        <InsightPanel collapsed={effectiveRightCollapsed} />
         <RightPanel
           activeTab={rightPanelTab}
           onTabChange={setRightPanelTab}
           onShopPurchaseSuccess={handleShopPurchaseSuccess}
-          collapsed={rightPanelsCollapsed}
+          collapsed={effectiveRightCollapsed}
         />
-        <button
-          className={`panel-toggle-btn right-toggle absolute top-[80px] z-50 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition
-            ${rightPanelsCollapsed
-              ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-              : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)]/80 text-[var(--color-text-secondary)] shadow-sm hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'}
-          `}
-          onClick={toggleRightPanels}
-          style={rightToggleStyle}
-          title={rightPanelsCollapsed ? '우측 패널 열기' : '우측 패널 닫기'}
-          aria-label={rightPanelsCollapsed ? '우측 패널 열기' : '우측 패널 닫기'}
-        >
-          <span className="text-base">{rightPanelsCollapsed ? '⟩' : '〉'}</span>
-          <span className="hidden sm:inline">{rightPanelsCollapsed ? '열기' : '닫기'}</span>
-        </button>
+        {!isFocusMode && (
+          <button
+            className={`panel-toggle-btn right-toggle absolute top-[80px] z-50 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition
+              ${effectiveRightCollapsed
+                ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
+                : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)]/80 text-[var(--color-text-secondary)] shadow-sm hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'}
+            `}
+            onClick={toggleRightPanels}
+            style={rightToggleStyle}
+            title={effectiveRightCollapsed ? '우측 패널 열기' : '우측 패널 닫기'}
+            aria-label={effectiveRightCollapsed ? '우측 패널 열기' : '우측 패널 닫기'}
+          >
+            <span className="text-base">{effectiveRightCollapsed ? '⟩' : '〉'}</span>
+            <span className="hidden sm:inline">{effectiveRightCollapsed ? '열기' : '닫기'}</span>
+          </button>
+        )}
       </main>
       <aside
         className={waifuContainerClass}

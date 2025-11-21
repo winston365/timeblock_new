@@ -247,6 +247,10 @@ export default function ScheduleView() {
         actualDuration: 0,
         createdAt: new Date().toISOString(),
         completedAt: null,
+        preparation1: '',
+        preparation2: '',
+        preparation3: '',
+        goalId: null,
       };
       await addTask(newTask);
       showWaifu(`"${text.trim()}" 추가했어! 고마워~`);
@@ -542,11 +546,10 @@ export default function ScheduleView() {
           <button
             type="button"
             onClick={handleToggleFocusMode}
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-              isFocusMode
-                ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-                : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-light)] hover:text-[var(--color-text)]'
-            }`}
+            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${isFocusMode
+              ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+              : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-light)] hover:text-[var(--color-text)]'
+              }`}
           >
             <span className="text-lg">⏱</span>
             {isFocusMode ? '지금모드 종료' : '지금모드 보기'}
@@ -574,34 +577,35 @@ export default function ScheduleView() {
         />
       ) : (
         <div className="space-y-4">
-          {blocksToRender.map(block => {
+          {blocksToRender.map((block, index) => {
             const blockTasks = sortTasks(dailyData.tasks.filter(task => task.timeBlock === block.id));
             const blockState = dailyData.timeBlockStates[block.id];
             const isCurrentBlock = block.id === currentBlockId;
             const isPastBlock = currentHour >= block.end;
 
             return (
-              <TimeBlock
-                key={block.id}
-                block={block}
-                tasks={blockTasks}
-                state={blockState}
-                isCurrentBlock={isCurrentBlock}
-                isPastBlock={isPastBlock}
-                onAddTask={() => handleAddTask(block.id as TimeBlockId)}
-                onCreateTask={handleCreateTask}
-                onEditTask={handleEditTask}
-                onUpdateTask={handleUpdateTask}
-                onDeleteTask={handleDeleteTask}
-                onToggleTask={handleToggleTask}
-                onToggleLock={() => handleToggleLock(block.id)}
-                onUpdateBlockState={updateBlockState}
-                onDropTask={handleDropTask}
-                hourSlotTags={hourSlotTags}
-                tagTemplates={tagTemplates}
-                recentTagIds={recentTagIds}
-                onSelectHourTag={handleSelectHourTag}
-              />
+              <div key={block.id} style={{ zIndex: blocksToRender.length - index, position: 'relative' }}>
+                <TimeBlock
+                  block={block}
+                  tasks={blockTasks}
+                  state={blockState}
+                  isCurrentBlock={isCurrentBlock}
+                  isPastBlock={isPastBlock}
+                  onAddTask={() => handleAddTask(block.id as TimeBlockId)}
+                  onCreateTask={handleCreateTask}
+                  onEditTask={handleEditTask}
+                  onUpdateTask={handleUpdateTask}
+                  onDeleteTask={handleDeleteTask}
+                  onToggleTask={handleToggleTask}
+                  onToggleLock={() => handleToggleLock(block.id)}
+                  onUpdateBlockState={updateBlockState}
+                  onDropTask={handleDropTask}
+                  hourSlotTags={hourSlotTags}
+                  tagTemplates={tagTemplates}
+                  recentTagIds={recentTagIds}
+                  onSelectHourTag={handleSelectHourTag}
+                />
+              </div>
             );
           })}
           {!showPastBlocks && pastBlocks.length > 0 && (
@@ -651,14 +655,14 @@ interface WarmupPresetModalProps {
 function WarmupPresetModal({ preset, onSave, onApply, onClose }: WarmupPresetModalProps) {
   const [draft, setDraft] = useState<WarmupPresetItem[]>(preset);
 
-  const handleChange = (index: number, field: keyof WarmupItem, value: string) => {
+  const handleChange = (index: number, field: keyof WarmupPresetItem, value: string) => {
     setDraft(prev =>
       prev.map((item, i) =>
         i === index
           ? {
-              ...item,
-              [field]: field === 'baseDuration' ? Math.max(1, Number(value) || 1) : value,
-            }
+            ...item,
+            [field]: field === 'baseDuration' ? Math.max(1, Number(value) || 1) : value,
+          }
           : item,
       ),
     );

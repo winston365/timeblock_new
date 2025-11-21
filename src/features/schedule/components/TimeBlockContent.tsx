@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { Task, TimeBlockState, TimeBlockId, TimeSlotTagTemplate } from '@/shared/types/domain';
 import HourBar from '../HourBar';
+import { DontDoChecklist } from './DontDoChecklist';
 
 interface TimeBlockContentProps {
     isExpanded: boolean;
@@ -75,7 +76,7 @@ export const TimeBlockContent: React.FC<TimeBlockContentProps> = ({
     ];
 
     return (
-        <div className="flex flex-col gap-0 bg-[var(--color-bg-base)]/50" onClick={handleBlockContentClick}>
+        <div className="flex flex-col gap-0 bg-[var(--color-bg-base)]/50 rounded-b-2xl" onClick={handleBlockContentClick}>
             {!isPastBlock && (
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] px-4 py-3 text-[11px] text-[var(--color-text-tertiary)]">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -86,11 +87,10 @@ export const TimeBlockContent: React.FC<TimeBlockContentProps> = ({
                                     key={key}
                                     type="button"
                                     onClick={() => handleFilterChange(key)}
-                                    className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
-                                        isActive
-                                            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-                                            : 'border-[var(--color-border)] text-[var(--color-text-tertiary)] hover:border-[var(--color-border-light)] hover:text-[var(--color-text-secondary)]'
-                                    }`}
+                                    className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${isActive
+                                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                                        : 'border-[var(--color-border)] text-[var(--color-text-tertiary)] hover:border-[var(--color-border-light)] hover:text-[var(--color-text-secondary)]'
+                                        }`}
                                 >
                                     {label}
                                 </button>
@@ -103,12 +103,7 @@ export const TimeBlockContent: React.FC<TimeBlockContentProps> = ({
                 </div>
             )}
 
-            {filteredTasks.length === 0 && tasks.length === 0 && !isPastBlock && (
-                <div className="flex flex-col items-center justify-center border-b border-[var(--color-border)] border-dashed py-8 text-[var(--color-text-tertiary)]">
-                    <span className="mb-2 text-2xl">🪄</span>
-                    <p className="text-sm">작업을 드래그하여 옮기거나 추가해보세요</p>
-                </div>
-            )}
+            <DontDoChecklist timeBlockId={block.id} />
 
             {tasks.length > 0 && filteredTasks.length === 0 && !isPastBlock && (
                 <div className="border-b border-[var(--color-border)] px-4 py-3 text-[11px] text-[var(--color-text-tertiary)]">
@@ -126,7 +121,7 @@ export const TimeBlockContent: React.FC<TimeBlockContentProps> = ({
                         blockId={block.id as TimeBlockId}
                         tasks={hourTasks}
                         isLocked={state?.isLocked || false}
-                        tagId={hourSlotTags[hour] ?? null}
+                        tagId={hourSlotTags?.[hour] || null}
                         tagTemplates={tagTemplates}
                         recentTagIds={recentTagIds}
                         onSelectTag={(tagId) => onSelectHourTag?.(hour, tagId)}
@@ -136,11 +131,7 @@ export const TimeBlockContent: React.FC<TimeBlockContentProps> = ({
                             }
                         }}
                         onEditTask={onEditTask}
-                        onUpdateTask={(taskId, updates) => {
-                            if (onUpdateTask) {
-                                onUpdateTask(taskId, updates);
-                            }
-                        }}
+                        onUpdateTask={onUpdateTask || (() => { })}
                         onDeleteTask={onDeleteTask}
                         onToggleTask={onToggleTask}
                         onDropTask={(taskId, targetHour) => {

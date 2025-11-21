@@ -62,6 +62,7 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
         goals,
         timeBlockStates,
         hourSlotTags,
+        timeBlockDontDoStatus: data.timeBlockDontDoStatus || {},
         updatedAt: data.updatedAt,
       };
     }
@@ -76,6 +77,7 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
         const goals = Array.isArray(firebaseData.goals) ? firebaseData.goals : [];
         const timeBlockStates = firebaseData.timeBlockStates || {};
         const hourSlotTags = firebaseData.hourSlotTags || {};
+        const timeBlockDontDoStatus = firebaseData.timeBlockDontDoStatus || {};
 
         const sanitizedData: DailyData = {
           tasks: tasks.map(task => ({
@@ -85,11 +87,12 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
           goals,
           timeBlockStates,
           hourSlotTags,
+          timeBlockDontDoStatus,
           updatedAt: firebaseData.updatedAt || Date.now(),
         };
 
         // Firebase 데이터를 IndexedDB에 저장
-        await saveDailyData(date, sanitizedData.tasks, sanitizedData.timeBlockStates, hourSlotTags);
+        await saveDailyData(date, sanitizedData.tasks, sanitizedData.timeBlockStates, hourSlotTags, timeBlockDontDoStatus);
 
         addSyncLog('firebase', 'load', `Loaded daily data for ${date} from Firebase`, { taskCount: tasks.length });
         return sanitizedData;
@@ -141,13 +144,13 @@ export async function saveDailyData(
     let hourSlot = task.hourSlot;
     if (hourSlot === undefined && task.timeBlock) {
       const block = TIME_BLOCKS.find(b => b.id === task.timeBlock);
-      hourSlot = block ? block.start : null;
+      hourSlot = block ? block.start : undefined;
     }
 
     return {
       ...task,
       // 로컬 데이터 무결성을 위한 최소한의 보정
-      hourSlot: hourSlot !== undefined ? hourSlot : null,
+      hourSlot: hourSlot !== undefined && hourSlot !== null ? hourSlot : undefined,
     };
   });
 

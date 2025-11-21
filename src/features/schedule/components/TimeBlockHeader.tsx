@@ -92,7 +92,7 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
   children
 }) => {
   const headerClassName = [
-    'flex cursor-pointer flex-col gap-3 px-5 py-4 select-none transition-colors duration-200',
+    'flex cursor-pointer flex-col gap-3 px-5 py-4 select-none transition-colors duration-200 rounded-t-2xl',
     isCurrentBlock ? 'bg-[var(--color-bg-elevated)]/80 backdrop-blur-sm' : 'bg-transparent'
   ].join(' ');
 

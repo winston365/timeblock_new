@@ -217,6 +217,11 @@ export default function HourBar({
   const containerClasses =
     'rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 transition hover:border-[var(--color-primary)]';
 
+  const plannedFill = useMemo(() => {
+    const totalMinutes = tasks.reduce((acc, task) => acc + (task.adjustedDuration || task.baseDuration || 15), 0);
+    return Math.min((totalMinutes / 50) * 100, 100);
+  }, [tasks]);
+
   const now = new Date();
   const nowHour = now.getHours();
   const isCurrentHour = nowHour === hour;
@@ -224,7 +229,7 @@ export default function HourBar({
   const currentMinute = now.getMinutes();
   const workFill = isCurrentHour
     ? Math.min((currentMinute / 50) * 100, 100)
-    : currentHourPastFuture(nowHour, hour, 100, 0);
+    : currentHourPastFuture(nowHour, hour, 0, 100);
   const restFill =
     isPastHour ? 100 : nowHour < hour ? 0 : currentMinute < 50 ? 0 : Math.min(((currentMinute - 50) / 10) * 100, 100);
   const currentMarker = isCurrentHour ? Math.min((currentMinute / 60) * 100, 100) : 0;
@@ -255,10 +260,10 @@ export default function HourBar({
               style={
                 activeTag
                   ? {
-                      backgroundColor: activeTag.color,
-                      color: getBadgeTextColor(activeTag.color),
-                      borderColor: activeTag.color,
-                    }
+                    backgroundColor: activeTag.color,
+                    color: getBadgeTextColor(activeTag.color),
+                    borderColor: activeTag.color,
+                  }
                   : undefined
               }
             >
@@ -352,11 +357,17 @@ export default function HourBar({
 
       {!isPastHour && (
         <div
-          className={`relative mb-3 flex h-[12px] overflow-hidden rounded-full bg-black/20 text-xs ${
-            isCurrentHour ? 'ring-2 ring-[var(--color-primary)]/40' : 'opacity-80'
-          }`}
+          className={`relative mb-3 flex h-[12px] overflow-hidden rounded-full bg-black/20 text-xs ${isCurrentHour ? 'ring-2 ring-[var(--color-primary)]/40' : 'opacity-80'
+            }`}
         >
           <div className="relative h-full overflow-hidden rounded-full bg-white/10" style={{ width: '83.33%' }}>
+            {/* Planned Time Overlay */}
+            <div
+              className="absolute top-0 left-0 h-full bg-emerald-500/40 transition-all duration-300"
+              style={{ width: `${plannedFill}%` }}
+              title={`계획된 시간: ${Math.round((plannedFill / 100) * 50)}분`}
+            />
+
             {isCurrentHour && (
               <>
                 <div

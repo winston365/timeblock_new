@@ -78,7 +78,7 @@ export const TimeBlockStatus: React.FC<TimeBlockStatusProps> = ({
   return (
     <div
       className={[
-        'mt-4 flex w-full flex-wrap items-center gap-4 rounded-xl border bg-[var(--color-bg)] px-4 py-3 text-left shadow-sm lg:ml-6 lg:mt-0',
+        'mt-4 flex w-full flex-wrap items-center gap-4 rounded-xl border bg-[var(--color-bg)] px-4 py-3 text-left shadow-sm lg:mt-0',
         config.border,
         config.ring ?? ''
       ]
