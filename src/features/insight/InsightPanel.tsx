@@ -3,51 +3,47 @@
  *
  * @role 과거 10일 데이터를 분석하여 동기부여, 격려, 할일 제안 제공
  * @input 없음
- * @output AI 생성 인사이트 텍스트
+ * @output AI 생성 인사이트 (JSON 구조화 데이터)
  * @external_dependencies
  *   - geminiApi: AI 인사이트 생성
  *   - repositories: 과거 데이터 로드
  *   - hooks: 현재 상태 (에너지, 작업, 게임 상태)
  */
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDailyData, useGameState } from '@/shared/hooks';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { useEnergy } from '@/features/energy/hooks/useEnergy';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { callAIWithContext, getInsightInstruction } from '@/shared/services/ai/aiService';
-import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories';
+import confetti from 'canvas-confetti';
 
-/**
- * 간단한 마크다운 → HTML 변환
- */
-function parseMarkdown(markdown: string): string {
-  return markdown
-    // ## 헤더
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    // ### 헤더
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    // **굵게**
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // *기울임*
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // - 리스트
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    // 리스트 묶기
-    .replace(/(<li>.*<\/li>\n?)+/gs, '<ul>$&</ul>')
-    // 빈 줄 → <br>
-    .replace(/\n\n/g, '</p><p>')
-    // 전체를 <p>로 감싸기
-    .replace(/^(.+)$/gm, (match) => {
-      if (match.startsWith('<h') || match.startsWith('<ul') || match.startsWith('</ul>') || match.startsWith('<li')) {
-        return match;
-      }
-      return match;
-    })
-    // 줄바꿈 처리
-    .replace(/\n/g, '<br />');
+// ✅ 인사이트 데이터 구조 정의
+interface InsightData {
+  status: {
+    emoji: string;
+    title: string;
+    description: string;
+    color: 'green' | 'yellow' | 'red';
+  };
+  action: {
+    task: string;
+    reason: string;
+  };
+  motivation: string;
+  quickWins?: {
+    id: string;
+    task: string;
+    xp: number;
+  }[];
+  progress?: {
+    rank: 'S' | 'A' | 'B' | 'C';
+    totalXp: number;
+    mvpTask: string;
+    comment: string;
+  };
 }
 
 interface InsightPanelProps {
@@ -59,27 +55,65 @@ interface InsightPanelProps {
  */
 export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
   const { dailyData } = useDailyData();
-  const { gameState } = useGameState();
+  const { gameState, gainXp } = useGameState();
   const { waifuState } = useWaifu();
   const { currentEnergy } = useEnergy();
   const { settings, loadData: loadSettingsData } = useSettingsStore();
   const { show: showWaifu } = useWaifuCompanionStore();
 
-  const [insight, setInsight] = useState<string>('');
+  const [insightData, setInsightData] = useState<InsightData | null>(null);
+  const [legacyInsight, setLegacyInsight] = useState<string>(''); // 구버전(텍스트) 호환용
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number>(0); // 남은 시간 (초)
-  const [totalTime, setTotalTime] = useState<number>(0); // 전체 시간 (초)
-  const [retryCount, setRetryCount] = useState<number>(0); // 재시도 횟수
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [totalTime, setTotalTime] = useState<number>(0);
+  const [retryCount, setRetryCount] = useState<number>(0);
+  const [completedQuickWins, setCompletedQuickWins] = useState<string[]>([]);
 
-  // 초기 로드 추적용 ref
   const initialLoadRef = useRef(false);
-  // 재시도 타이머 ref
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
-   * 인사이트 생성 함수 (재시도 로직 포함)
+   * JSON 파싱 헬퍼
+   */
+  const parseInsightResponse = (text: string): InsightData | null => {
+    try {
+      // 마크다운 코드블록 제거 (```json ... ```)
+      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(cleanText);
+    } catch (e) {
+      console.warn('Failed to parse insight JSON:', e);
+      return null;
+    }
+  };
+
+  /**
+   * 퀵 윈 완료 처리
+   */
+  const handleQuickWinComplete = (id: string, xp: number) => {
+    if (completedQuickWins.includes(id)) return;
+
+    // 1. 상태 업데이트
+    setCompletedQuickWins(prev => [...prev, id]);
+
+    // 2. XP 지급
+    gainXp(xp, '퀵 윈 달성');
+
+    // 3. 효과 (컨페티)
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#FFD700', '#FFA500', '#FF4500'],
+    });
+
+    // 4. 와이푸 칭찬
+    showWaifu(`멋져요! 작은 승리를 거뒀네요! (+${xp} XP)`);
+  };
+
+  /**
+   * 인사이트 생성 함수
    */
   const generateInsight = async (isRetry = false) => {
     if (!settings?.geminiApiKey) {
@@ -88,13 +122,11 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
       return;
     }
 
-    // 기존 재시도 타이머 취소
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = null;
     }
 
-    // 재시도가 아닌 경우 (수동 새로고침) 재시도 카운트 리셋
     if (!isRetry) {
       setRetryCount(0);
     }
@@ -103,8 +135,7 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
     setError(null);
 
     try {
-      // ✅ 통합 AI 호출 (PersonaContext 빌드 + 프롬프트 생성 + API 호출)
-      const { text, tokenUsage } = await callAIWithContext({
+      const { text } = await callAIWithContext({
         dailyData,
         gameState,
         waifuState,
@@ -115,18 +146,26 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
       });
 
       const now = new Date();
-      setInsight(text);
-      setLastUpdated(now);
-      setRetryCount(0); // 성공 시 재시도 카운트 리셋
+      const parsed = parseInsightResponse(text);
 
-      // 마지막 생성 시간과 텍스트를 Dexie에 저장
+      if (parsed) {
+        setInsightData(parsed);
+        setLegacyInsight('');
+        setCompletedQuickWins([]); // 새로 생성되면 완료 기록 초기화
+      } else {
+        // 파싱 실패 시 텍스트로 저장 (구버전 호환)
+        setInsightData(null);
+        setLegacyInsight(text);
+      }
+
+      setLastUpdated(now);
+      setRetryCount(0);
+
       await setSystemState(SYSTEM_KEYS.LAST_INSIGHT_TIME, now.toISOString());
       await setSystemState(SYSTEM_KEYS.LAST_INSIGHT_TEXT, text);
 
-      // 와이푸 컴패니언 연동 - 인사이트 생성 성공 시 와이푸가 배달
       showWaifu(`💡 새로운 인사이트가 도착했어요!`);
 
-      // 윈도우 알림 표시 (Electron 환경에서만)
       if (window.electronAPI) {
         try {
           await window.electronAPI.showNotification(
@@ -138,26 +177,21 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
         }
       }
 
-      // 토큰 사용량 저장 (전체 로그에 기록)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류';
       console.error('Insight generation error:', err);
 
-      // 재시도 로직 (최대 3번)
       if (retryCount < 3) {
         const nextRetryCount = retryCount + 1;
         setRetryCount(nextRetryCount);
         setError(`⚠️ 오류 발생: ${errorMessage}\n\n10초 후 재시도합니다... (${nextRetryCount}/3)`);
 
-        // 10초 후 재시도
         retryTimeoutRef.current = setTimeout(() => {
-          console.log(`Retrying insight generation... (${nextRetryCount}/3)`);
           generateInsight(true);
         }, 10000);
       } else {
-        // 3번 모두 실패
-        setError(`❌ 인사이트 생성 실패 (3회 재시도 완료)\n\n오류 내용: ${errorMessage}\n\n새로고침 버튼을 눌러 다시 시도하거나, API 키와 네트워크 연결을 확인해주세요.`);
-        setRetryCount(0); // 재시도 카운트 리셋
+        setError(`❌ 인사이트 생성 실패 (3회 재시도 완료)\n\n오류 내용: ${errorMessage}`);
+        setRetryCount(0);
       }
     } finally {
       setLoading(false);
@@ -169,44 +203,37 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
     loadSettingsData();
   }, [loadSettingsData]);
 
-  // 초기 인사이트 로드 및 자동 생성 체크
+  // 초기 로드 및 자동 생성 체크
   useEffect(() => {
     const checkAndGenerate = async () => {
       if (!settings?.geminiApiKey || initialLoadRef.current) return;
       initialLoadRef.current = true;
 
-      // 마지막 생성 시간 확인 (Dexie)
       const lastTimeStr = await getSystemState<string>(SYSTEM_KEYS.LAST_INSIGHT_TIME);
-      const refreshInterval = (settings.autoMessageInterval || 15) * 60 * 1000; // ms
+      const refreshInterval = (settings.autoMessageInterval || 15) * 60 * 1000;
 
       if (lastTimeStr) {
         const lastTime = new Date(lastTimeStr);
         const now = new Date();
         const timeSinceLastGeneration = now.getTime() - lastTime.getTime();
 
-        // 설정된 간격이 지났으면 생성
         if (timeSinceLastGeneration >= refreshInterval) {
-          console.log('Auto-generating insight (interval passed)');
           generateInsight(false);
         } else {
-          // 간격이 안 지났으면 기존 인사이트 표시
-          console.log('Skipping auto-generation (interval not passed yet)');
           setLoading(false);
-
-          // 기존 인사이트 텍스트 불러오기 (Dexie)
           const lastInsightText = await getSystemState<string>(SYSTEM_KEYS.LAST_INSIGHT_TEXT);
           if (lastInsightText) {
-            setInsight(lastInsightText);
+            const parsed = parseInsightResponse(lastInsightText);
+            if (parsed) {
+              setInsightData(parsed);
+            } else {
+              setLegacyInsight(lastInsightText);
+            }
             setLastUpdated(lastTime);
           }
-
-          // 남은 시간 계산하여 타이머 설정
-          const remainingTime = Math.ceil((refreshInterval - timeSinceLastGeneration) / 1000);
-          setTimeLeft(remainingTime);
+          setTimeLeft(Math.ceil((refreshInterval - timeSinceLastGeneration) / 1000));
         }
       } else {
-        // 처음 실행하는 경우 즉시 생성
-        console.log('First time insight generation');
         generateInsight(false);
       }
     };
@@ -215,16 +242,14 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.geminiApiKey]);
 
-  // 컴포넌트 언마운트 시 재시도 타이머 정리
+  // 타이머 정리
   useEffect(() => {
     return () => {
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-      }
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
     };
   }, []);
 
-  // 자동 갱신 타이머 (설정된 주기에만 실행)
+  // 자동 갱신 타이머
   useEffect(() => {
     if (!settings?.geminiApiKey) return;
 
@@ -232,63 +257,41 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
     const totalSeconds = refreshInterval * 60;
     setTotalTime(totalSeconds);
 
-    // 타이머 카운트다운 (1초마다)
     const countdownInterval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          return totalSeconds; // 리셋
-        }
-        return prev - 1;
-      });
+      setTimeLeft((prev) => (prev <= 1 ? totalSeconds : prev - 1));
     }, 1000);
 
-    // AI 호출 인터벌
     const aiInterval = setInterval(() => {
       generateInsight(false);
-      setTimeLeft(totalSeconds); // 타이머 리셋
+      setTimeLeft(totalSeconds);
     }, refreshInterval * 60 * 1000);
 
     return () => {
       clearInterval(countdownInterval);
       clearInterval(aiInterval);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.geminiApiKey, settings?.autoMessageInterval]);
 
-  // 마크다운 파싱 (비동기/idle 처리로 렌더 블로킹 최소화)
-  const [parsedHtml, setParsedHtml] = useState('');
-  const parseJobRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (!insight) {
-      setParsedHtml('');
-      return;
-    }
-
-    const schedule =
-      (window as any).requestIdleCallback ||
-      ((cb: (dl: any) => void) => setTimeout(() => cb({ didTimeout: false, timeRemaining: () => 16 }), 0));
-    const cancel =
-      (window as any).cancelIdleCallback ||
-      ((handle: number) => {
-        clearTimeout(handle);
-      });
-
-    const job = schedule(() => {
-      setParsedHtml(parseMarkdown(insight));
-      parseJobRef.current = null;
-    });
-    parseJobRef.current = job as number;
-
-    return () => {
-      if (parseJobRef.current !== null) {
-        cancel(parseJobRef.current);
-        parseJobRef.current = null;
-      }
-    };
-  }, [insight]);
-
-  // 프로그레스 퍼센트 계산
   const progress = totalTime > 0 ? ((totalTime - timeLeft) / totalTime) * 100 : 0;
+
+  // 상태별 색상 매핑
+  const getStatusColor = (color: string) => {
+    switch (color) {
+      case 'green': return 'text-green-500 bg-green-500/10 border-green-500/20';
+      case 'yellow': return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
+      case 'red': return 'text-red-500 bg-red-500/10 border-red-500/20';
+      default: return 'text-[var(--color-text)] bg-[var(--color-bg-base)] border-[var(--color-border)]';
+    }
+  };
+
+  const getRankColor = (rank: string) => {
+    switch (rank) {
+      case 'S': return 'text-purple-500 bg-purple-500/10 border-purple-500/20';
+      case 'A': return 'text-blue-500 bg-blue-500/10 border-blue-500/20';
+      case 'B': return 'text-green-500 bg-green-500/10 border-green-500/20';
+      default: return 'text-gray-500 bg-gray-500/10 border-gray-500/20';
+    }
+  };
 
   return (
     <aside
@@ -298,6 +301,7 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
       aria-label="오늘의 인사이트"
       aria-hidden={collapsed}
     >
+      {/* 헤더 */}
       <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3 shrink-0">
         <h3 className="text-sm font-bold text-[var(--color-text)]">💡 오늘의 인사이트</h3>
         <button
@@ -306,10 +310,11 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
           disabled={loading}
           aria-label="인사이트 새로고침"
         >
-          🔄
+          <span className={loading ? 'animate-spin' : ''}>🔄</span>
         </button>
       </div>
 
+      {/* 타이머 바 */}
       {totalTime > 0 && !loading && (
         <div className="flex flex-col gap-1 text-[var(--color-text-secondary)] shrink-0">
           <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--color-bg-tertiary)]">
@@ -324,34 +329,138 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] p-4 text-sm leading-relaxed text-[var(--color-text-secondary)]">
-        {loading && (
+      {/* 컨텐츠 영역 */}
+      <div className="flex-1 overflow-y-auto rounded-xl bg-[var(--color-bg-base)] p-3 text-sm scrollbar-hide">
+        {loading ? (
           <div className="flex h-full flex-col items-center justify-center gap-4 text-[var(--color-text)]">
             <div className="flex items-center justify-center">
               <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-transparent border-t-blue-400 text-4xl text-blue-400 animate-spin">
                 <div className="h-16 w-16 rounded-full border-4 border-transparent border-t-red-400 text-2xl text-red-400 animate-spin" />
               </div>
             </div>
-            <p className="text-xs text-[var(--color-text-secondary)]">인사이트 분석 중...</p>
+            <p className="text-xs text-[var(--color-text-secondary)]">AI가 분석 중입니다...</p>
           </div>
-        )}
+        ) : error ? (
+          <div className="whitespace-pre-line text-xs text-[var(--color-danger)] text-center p-4">{error}</div>
+        ) : insightData ? (
+          <div className="flex flex-col gap-3 h-full">
+            {/* 1. 상태 카드 */}
+            <div className={`flex flex-col gap-2 rounded-xl border p-4 ${getStatusColor(insightData.status.color)}`}>
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">{insightData.status.emoji}</span>
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold opacity-70">CURRENT VIBE</span>
+                  <span className="font-bold">{insightData.status.title}</span>
+                </div>
+              </div>
+              <p className="text-xs opacity-90 leading-relaxed">
+                {insightData.status.description}
+              </p>
+            </div>
 
-        {!loading && error && (
-          <div className="whitespace-pre-line text-xs text-[var(--color-danger)]">{error}</div>
-        )}
+            {/* 2. 액션 카드 */}
+            <div className="flex flex-col gap-2 rounded-xl border border-[var(--color-primary)] bg-[var(--color-primary)]/5 p-4">
+              <div className="flex items-center gap-2 text-[var(--color-primary)]">
+                <span className="text-lg">🔥</span>
+                <span className="text-xs font-bold">NOW ACTION</span>
+              </div>
+              <div className="text-lg font-bold text-[var(--color-text)]">
+                {insightData.action.task}
+              </div>
+              <p className="text-xs text-[var(--color-text-secondary)]">
+                {insightData.action.reason}
+              </p>
+            </div>
 
-        {!loading && !error && !insight && (
+            {/* 3. 퀵 윈 (도파민 메뉴) */}
+            {insightData.quickWins && insightData.quickWins.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-[var(--color-text-secondary)] px-1">
+                  <span className="text-lg">⚡</span>
+                  <span className="text-xs font-bold">QUICK WINS (1분 컷)</span>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {insightData.quickWins.map((win) => {
+                    const isCompleted = completedQuickWins.includes(win.id);
+                    return (
+                      <button
+                        key={win.id}
+                        onClick={() => handleQuickWinComplete(win.id, win.xp)}
+                        disabled={isCompleted}
+                        className={`flex items-center justify-between rounded-xl border p-3 text-left transition-all ${isCompleted
+                            ? 'bg-green-500/10 border-green-500/30 opacity-50'
+                            : 'bg-[var(--color-bg-elevated)] border-[var(--color-border)] hover:border-[var(--color-primary)] hover:scale-[1.02] active:scale-95'
+                          }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">{isCompleted ? '✅' : '🎁'}</span>
+                          <span className={`text-sm ${isCompleted ? 'line-through opacity-70' : ''}`}>
+                            {win.task}
+                          </span>
+                        </div>
+                        {!isCompleted && (
+                          <span className="text-xs font-bold text-[var(--color-primary)]">
+                            +{win.xp} XP
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 4. 중간 성과 리포트 */}
+            {insightData.progress && (
+              <div className={`flex flex-col gap-2 rounded-xl border p-4 ${getRankColor(insightData.progress.rank)}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📊</span>
+                    <span className="text-xs font-bold">PROGRESS REPORT</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs opacity-70">RANK</span>
+                    <span className="text-xl font-black">{insightData.progress.rank}</span>
+                  </div>
+                </div>
+
+                <div className="my-2 h-px w-full bg-current opacity-20" />
+
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="opacity-70">오늘 획득 XP</span>
+                    <span className="font-bold">{insightData.progress.totalXp} XP</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="opacity-70">MVP 작업</span>
+                    <span className="font-bold truncate max-w-[120px]">{insightData.progress.mvpTask}</span>
+                  </div>
+                </div>
+
+                <p className="mt-2 text-xs font-medium italic opacity-90 text-center">
+                  "{insightData.progress.comment}"
+                </p>
+              </div>
+            )}
+
+            {/* 5. 동기부여 카드 */}
+            <div className="mt-auto rounded-xl bg-[var(--color-bg-elevated)] p-4 text-center border border-[var(--color-border)]">
+              <span className="text-2xl block mb-2">✨</span>
+              <p className="text-sm font-medium italic text-[var(--color-text)]">
+                "{insightData.motivation}"
+              </p>
+            </div>
+          </div>
+        ) : legacyInsight ? (
+          // 구버전 텍스트 데이터 폴백
+          <div className="prose prose-invert prose-sm max-w-none text-[var(--color-text)] whitespace-pre-wrap">
+            {legacyInsight}
+          </div>
+        ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-[var(--color-text-secondary)]">
             <span className="text-3xl">💡</span>
             <p className="text-xs">새로고침하여 인사이트를 받아보세요</p>
           </div>
-        )}
-
-        {!loading && !error && insight && (
-          <div
-            className="prose prose-invert prose-sm max-w-none space-y-2 text-[var(--color-text)]"
-            dangerouslySetInnerHTML={{ __html: parsedHtml }}
-          />
         )}
       </div>
 
