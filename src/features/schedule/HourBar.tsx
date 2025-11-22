@@ -9,6 +9,7 @@ import type { Task, TimeBlockId, TimeSlotTagTemplate } from '@/shared/types/doma
 import { useToastStore } from '@/shared/stores/toastStore';
 import TaskCard from './TaskCard';
 import { useDragDropManager } from './hooks/useDragDropManager';
+import { db } from '@/data/db/dexieClient';
 
 interface HourBarProps {
   hour: number;
@@ -49,6 +50,43 @@ export default function HourBar({
   const toastRef = useRef({ preEndShown: false, restShown: false });
   const addToast = useToastStore(state => state.addToast);
   const { getDragData, isSameLocation } = useDragDropManager();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Load collapse state from Dexie
+  useEffect(() => {
+    const loadState = async () => {
+      try {
+        const record = await db.systemState.get('collapsedHourBars');
+        const collapsedSet = new Set((record?.value as string[]) || []);
+        setIsCollapsed(collapsedSet.has(`${blockId}_${hour}`));
+      } catch (error) {
+        console.error('Failed to load collapse state:', error);
+      }
+    };
+    loadState();
+  }, [blockId, hour]);
+
+  const toggleCollapse = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+
+    try {
+      const key = `${blockId}_${hour}`;
+      const record = await db.systemState.get('collapsedHourBars');
+      const collapsedSet = new Set((record?.value as string[]) || []);
+
+      if (newState) {
+        collapsedSet.add(key);
+      } else {
+        collapsedSet.delete(key);
+      }
+
+      await db.systemState.put({ key: 'collapsedHourBars', value: Array.from(collapsedSet) });
+    } catch (error) {
+      console.error('Failed to save collapse state:', error);
+    }
+  };
 
   const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => {
@@ -246,8 +284,21 @@ export default function HourBar({
       onDrop={handleDropToEnd}
       data-hour={hour}
     >
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-[var(--color-text-secondary)]">
+      <div
+        className="mb-3 flex cursor-pointer flex-wrap items-center justify-between gap-3 rounded-lg px-2 py-1 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-tertiary)]/40"
+        onClick={toggleCollapse}
+      >
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleCollapse}
+            className="flex items-center justify-center rounded-md p-1 text-[var(--color-text-tertiary)] transition hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)]"
+            aria-label={isCollapsed ? '펼치기' : '접기'}
+          >
+            <span className={`transform transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}>
+              ▼
+            </span>
+          </button>
           <span className="text-sm font-semibold text-[var(--color-text)]">{formatHourRange()}</span>
           <div className="relative">
             <button
@@ -355,82 +406,86 @@ export default function HourBar({
         </div>
       </div>
 
-      {!isPastHour && (
-        <div
-          className={`relative mb-3 flex h-[12px] overflow-hidden rounded-full bg-black/20 text-xs ${isCurrentHour ? 'ring-2 ring-[var(--color-primary)]/40' : 'opacity-80'
-            }`}
-        >
-          <div className="relative h-full overflow-hidden rounded-full bg-white/10" style={{ width: '83.33%' }}>
-            {/* Planned Time Overlay */}
+      {!isCollapsed && (
+        <>
+          {!isPastHour && (
             <div
-              className="absolute top-0 left-0 h-full bg-emerald-500/40 transition-all duration-300"
-              style={{ width: `${plannedFill}%` }}
-              title={`계획된 시간: ${Math.round((plannedFill / 100) * 50)}분`}
-            />
-
-            {isCurrentHour && (
-              <>
+              className={`relative mb-3 flex h-[12px] overflow-hidden rounded-full bg-black/20 text-xs ${isCurrentHour ? 'ring-2 ring-[var(--color-primary)]/40' : 'opacity-80'
+                }`}
+            >
+              <div className="relative h-full overflow-hidden rounded-full bg-white/10" style={{ width: '83.33%' }}>
+                {/* Planned Time Overlay */}
                 <div
-                  className="pointer-events-none absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-white/70"
-                  aria-label="목표선 50분"
-                  title="목표선 50분"
-                >
-                  <span className="absolute left-1/2 top-[-4px] h-[6px] w-[6px] -translate-x-1/2 rounded-full border border-white/80 bg-black/70 shadow" />
-                </div>
-                <div
-                  className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2 -translate-x-1/2 rounded-full border border-white/90 bg-[var(--color-primary)] shadow-[0_0_8px_rgba(0,0,0,0.5)] transition-all"
-                  style={{ left: `${currentMarker}%` }}
-                  aria-label="현재 분 진행 위치"
-                  title="현재 분 진행 위치"
+                  className="absolute top-0 left-0 h-full bg-emerald-500/40 transition-all duration-300"
+                  style={{ width: `${plannedFill}%` }}
+                  title={`계획된 시간: ${Math.round((plannedFill / 100) * 50)}분`}
                 />
-              </>
+
+                {isCurrentHour && (
+                  <>
+                    <div
+                      className="pointer-events-none absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-white/70"
+                      aria-label="목표선 50분"
+                      title="목표선 50분"
+                    >
+                      <span className="absolute left-1/2 top-[-4px] h-[6px] w-[6px] -translate-x-1/2 rounded-full border border-white/80 bg-black/70 shadow" />
+                    </div>
+                    <div
+                      className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2 -translate-x-1/2 rounded-full border border-white/90 bg-[var(--color-primary)] shadow-[0_0_8px_rgba(0,0,0,0.5)] transition-all"
+                      style={{ left: `${currentMarker}%` }}
+                      aria-label="현재 분 진행 위치"
+                      title="현재 분 진행 위치"
+                    />
+                  </>
+                )}
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-indigo-300 via-indigo-400 to-indigo-200 transition-all duration-300"
+                  style={{ width: `${workFill}%` }}
+                />
+              </div>
+              <div className="relative h-full overflow-hidden rounded-full bg-amber-500/20" style={{ width: '16.67%' }}>
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-300 to-amber-500 transition-all duration-300"
+                  style={{ width: `${restFill}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2">
+            {sortedTasks.map((task, index) => (
+              <div
+                key={task.id}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => handleDropBefore(e, index)}
+              >
+                <TaskCard
+                  task={task}
+                  onEdit={() => onEditTask(task)}
+                  onUpdateTask={(updates: Partial<Task>) => onUpdateTask(task.id, updates)}
+                  onDelete={() => onDeleteTask(task.id)}
+                  onToggle={() => onToggleTask(task.id)}
+                  blockIsLocked={isLocked}
+                />
+              </div>
+            ))}
+
+            {!isLocked && !isPastHour && (
+              <div className="w-full">
+                <input
+                  ref={inlineInputRef}
+                  type="text"
+                  value={inlineInputValue}
+                  onChange={e => setInlineInputValue(e.target.value)}
+                  onKeyDown={handleInlineInputKeyDown}
+                  placeholder="작업을 입력하고 Enter로 추가하세요 (기본 15분)"
+                  className="w-full rounded-lg border border-dashed border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
+                />
+              </div>
             )}
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-indigo-300 via-indigo-400 to-indigo-200 transition-all duration-300"
-              style={{ width: `${workFill}%` }}
-            />
           </div>
-          <div className="relative h-full overflow-hidden rounded-full bg-amber-500/20" style={{ width: '16.67%' }}>
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-amber-300 to-amber-500 transition-all duration-300"
-              style={{ width: `${restFill}%` }}
-            />
-          </div>
-        </div>
+        </>
       )}
-
-      <div className="flex flex-col gap-2">
-        {sortedTasks.map((task, index) => (
-          <div
-            key={task.id}
-            onDragOver={e => e.preventDefault()}
-            onDrop={e => handleDropBefore(e, index)}
-          >
-            <TaskCard
-              task={task}
-              onEdit={() => onEditTask(task)}
-              onUpdateTask={(updates: Partial<Task>) => onUpdateTask(task.id, updates)}
-              onDelete={() => onDeleteTask(task.id)}
-              onToggle={() => onToggleTask(task.id)}
-              blockIsLocked={isLocked}
-            />
-          </div>
-        ))}
-
-        {!isLocked && !isPastHour && (
-          <div className="w-full">
-            <input
-              ref={inlineInputRef}
-              type="text"
-              value={inlineInputValue}
-              onChange={e => setInlineInputValue(e.target.value)}
-              onKeyDown={handleInlineInputKeyDown}
-              placeholder="작업을 입력하고 Enter로 추가하세요 (기본 15분)"
-              className="w-full rounded-lg border border-dashed border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
-            />
-          </div>
-        )}
-      </div>
     </div>
   );
 }

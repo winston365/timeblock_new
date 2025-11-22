@@ -15,7 +15,7 @@ import type { Template } from '@/shared/types/domain';
 import { useTemplateStore } from '@/shared/stores/templateStore';
 import { TemplateModal } from './TemplateModal';
 import { RESISTANCE_LABELS, TIME_BLOCKS } from '@/shared/types/domain';
-import { calculateTaskXP } from '@/shared/lib/utils';
+import { calculateTaskXP, getLocalDate } from '@/shared/lib/utils';
 
 interface TemplatesModalProps {
   isOpen: boolean;
@@ -126,11 +126,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
     const date = targetDate.getDate();
     const weekday = ['일', '월', '화', '수', '목', '금', '토'][targetDate.getDay()];
 
-    if (year !== today.getFullYear()) {
-      return `${year}년 ${month}월 ${date}일 (${weekday})`;
-    }
-
-    return `${month}월 ${date}일 (${weekday})`;
+    return `${year}년 ${month}월 ${date}일 (${weekday})`;
   };
 
   // 필터링 로직
@@ -165,7 +161,24 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
       );
     }
 
-    return filtered;
+    return filtered.sort((a, b) => {
+      const daysA = getDaysUntilNextOccurrence(a);
+      const daysB = getDaysUntilNextOccurrence(b);
+
+      // 둘 다 주기가 있는 경우: 남은 일수가 적은 순서로 정렬
+      if (daysA !== null && daysB !== null) {
+        return daysA - daysB;
+      }
+
+      // A만 주기가 있는 경우: A를 위로
+      if (daysA !== null) return -1;
+
+      // B만 주기가 있는 경우: B를 위로
+      if (daysB !== null) return 1;
+
+      // 둘 다 주기가 없는 경우: 이름순 정렬
+      return a.name.localeCompare(b.name);
+    });
   }, [templates, searchQuery, selectedCategory, showFavoritesOnly, showDailyOnly, showUpcomingOnly]);
 
   const handleAddTemplate = () => {
@@ -211,13 +224,13 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
         template.resistance,
         template.timeBlock,
         false,
-        template.preparation1,
-        template.preparation2,
-        template.preparation3,
+        template.preparation1 || '',
+        template.preparation2 || '',
+        template.preparation3 || '',
         'none',
         [],
         1,
-        template.category,
+        template.category || '',
         false,
         template.imageUrl
       );
@@ -358,6 +371,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredTemplates.map(template => {
                 const nextOccurrence = getNextOccurrenceLabel(template);
+                const isGeneratedToday = template.lastGeneratedDate === getLocalDate();
                 return (
                   <div
                     key={template.id}
@@ -394,8 +408,13 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
                             🔄 자동
                           </span>
                         )}
+                        {isGeneratedToday && (
+                          <span className="rounded bg-emerald-500/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-[2px]">
+                            ✅ 오늘 추가됨
+                          </span>
+                        )}
                         {nextOccurrence && (
-                          <span className="rounded bg-[var(--color-bg-elevated)]/90 px-1.5 py-0.5 text-[10px] font-bold text-[var(--color-text)] shadow-sm ring-1 ring-[var(--color-border)]">
+                          <span className="rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-[2px]">
                             📅 {nextOccurrence}
                           </span>
                         )}

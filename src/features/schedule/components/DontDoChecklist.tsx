@@ -12,6 +12,11 @@ export const DontDoChecklist: React.FC<DontDoChecklistProps> = ({ timeBlockId })
     const { dailyData, toggleDontDoItem } = useDailyDataStore();
 
     const checklistItems = settings?.dontDoChecklist || [];
+    const totalCount = checklistItems.length;
+    const checkedCount = checklistItems.filter(item =>
+        dailyData?.timeBlockDontDoStatus?.[timeBlockId]?.[item.id]
+    ).length;
+    const progress = totalCount > 0 ? (checkedCount / totalCount) * 100 : 0;
 
     if (checklistItems.length === 0) return null;
 
@@ -21,13 +26,31 @@ export const DontDoChecklist: React.FC<DontDoChecklistProps> = ({ timeBlockId })
 
     return (
         <div className="flex flex-col gap-1.5 border-b border-[var(--color-border)] px-3 py-3">
-            <div className="mb-0.5 flex items-center justify-between">
-                <h4 className="text-[11px] font-semibold text-[var(--color-text-secondary)]">
-                    🚫 하지않기 체크리스트
-                </h4>
-                <span className="text-[10px] text-[var(--color-text-tertiary)]">
-                    참아내면 XP 획득!
+            <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <h4 className="text-[11px] font-semibold text-[var(--color-text-secondary)]">
+                        🛡️ 의지력 게이지
+                    </h4>
+                    {progress === 100 && (
+                        <span className="animate-pulse rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-500">
+                            👑 절제 마스터
+                        </span>
+                    )}
+                </div>
+                <span className="text-[10px] font-medium text-[var(--color-text-tertiary)]">
+                    {checkedCount}/{totalCount} ({Math.round(progress)}%)
                 </span>
+            </div>
+
+            {/* Willpower Bar */}
+            <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-[var(--color-bg-tertiary)]">
+                <div
+                    className={`h-full transition-all duration-500 ${progress === 100
+                        ? 'bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_0_10px_rgba(251,191,36,0.5)]'
+                        : 'bg-gradient-to-r from-blue-400 to-emerald-400'
+                        }`}
+                    style={{ width: `${progress}%` }}
+                />
             </div>
 
             <div className="grid grid-cols-2 gap-1.5">

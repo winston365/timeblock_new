@@ -17,7 +17,6 @@ import { useTimeBlockCalculations } from './hooks/useTimeBlockCalculations';
 import { useTimeBlockTimer } from './hooks/useTimeBlockTimer';
 import { toast } from 'react-hot-toast';
 import { TimeBlockHeader } from './components/TimeBlockHeader';
-import { TimeBlockStatus } from './components/TimeBlockStatus';
 import { TimeBlockContent } from './components/TimeBlockContent';
 
 interface TimeBlockProps {
@@ -162,28 +161,8 @@ const TimeBlock = memo(function TimeBlock({
   };
 
   const completionPercentage = totalDuration > 0 ? (completedDuration / totalDuration) * 100 : 0;
-  const blockDurationMinutes = Math.max((block.end - block.start) * 60, 1);
-  const completedPortion = Math.min(completedDuration, blockDurationMinutes);
-  const plannedPortion = Math.min(Math.max(pendingDuration, 0), blockDurationMinutes - completedPortion);
-  const idlePortion = Math.max(blockDurationMinutes - (completedPortion + plannedPortion), 0);
 
-  // 총 소요 시간이 블록 시간을 초과하는 경우, 각 세그먼트를 정규화
-  const totalSegments = completedPortion + plannedPortion + idlePortion;
-  const normalizationFactor = totalSegments > blockDurationMinutes ? blockDurationMinutes / totalSegments : 1;
-
-  const completionSegments = [
-    { key: 'completed', value: completedPortion * normalizationFactor, className: 'bg-[var(--color-primary)]', label: '완료' },
-    { key: 'planned', value: plannedPortion * normalizationFactor, className: 'bg-amber-400/80', label: '진행 중' },
-    { key: 'idle', value: idlePortion * normalizationFactor, className: 'bg-[var(--color-bg-tertiary)]/60', label: '대기' }
-  ]
-    .filter(segment => segment.value > 0)
-    .map(segment => ({
-      ...segment,
-      width: `${Math.min((segment.value / blockDurationMinutes) * 100, 100)}%`
-    }));
-  const completionTooltip = `완료 ${formatMinutesToHM(completedDuration)} / 전체 ${formatMinutesToHM(blockDurationMinutes)}`;
   const timeRemainingLabel = timeRemaining?.text ?? formatMinutesToHM(remainingMinutes);
-  const showAlertProgress = isCurrentBlock && (timeStatus === 'tight' || timeStatus === 'critical');
   const planLoadRatio = remainingMinutes > 0 ? pendingDuration / remainingMinutes : 0;
   const needsPlanBoost = planLoadRatio >= 1.6;
   const statusAccent = useMemo(() => ({
@@ -254,46 +233,11 @@ const TimeBlock = memo(function TimeBlock({
           onToggleExpand={() => setIsExpanded(!isExpanded)}
           onToggleLock={onToggleLock}
           timer={timer}
-        >
-          {isCurrentBlock && timeRemaining && (
-            <TimeBlockStatus
-              timeStatus={timeStatus}
-              remainingMinutes={remainingMinutes}
-              pendingDuration={pendingDuration}
-              formatMinutesToHM={formatMinutesToHM}
-            />
-          )}
-        </TimeBlockHeader>
+          remainingMinutes={remainingMinutes}
+          formatMinutesToHM={formatMinutesToHM}
+        />
 
-        {showAlertProgress && (
-          <div className="px-5 pb-3 pt-2">
-            <div
-              className="flex items-center gap-3"
-              title={completionTooltip}
-              aria-label={completionTooltip}
-            >
-              <div className="h-3 flex-1 overflow-hidden rounded-full bg-[var(--color-bg-tertiary)]/40">
-                <div className="flex h-full w-full">
-                  {completionSegments.length > 0 ? (
-                    completionSegments.map(segment => (
-                      <div
-                        key={segment.key}
-                        className={`h-full transition-all duration-500 ${segment.className}`}
-                        style={{ width: segment.width }}
-                        aria-label={`${segment.label} ${segment.width}`}
-                      />
-                    ))
-                  ) : (
-                    <div className="h-full w-full bg-transparent" />
-                  )}
-                </div>
-              </div>
-              <span className="text-xs font-semibold text-[var(--color-text-tertiary)]">
-                {Math.round(completionPercentage) || 0}%
-              </span>
-            </div>
-          </div>
-        )}
+
 
         <TimeBlockContent
           isExpanded={isExpanded}
