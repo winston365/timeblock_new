@@ -87,7 +87,7 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
   planLoadRatio,
   onRequestAddTask,
   onToggleExpand,
-  onToggleLock,
+  // onToggleLock is no longer used - timer-based lock only
   timer,
   children
 }) => {
@@ -170,40 +170,27 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
                 timer.handleStartLockTimer(e);
               }
             }}
-            className="flex flex-1 min-w-[140px] flex-col rounded-xl border border-[var(--color-border)] px-3 py-2 text-left transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+            className={`flex flex-1 items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition ${state?.lockTimerStartedAt
+              ? 'border-amber-400 bg-amber-400/10 hover:bg-amber-400/20'
+              : 'border-[var(--color-border)] hover:border-[var(--color-primary)]'
+              }`}
           >
-            <span className="text-xs font-semibold text-[var(--color-text)]">타이머</span>
-            <span className="text-[11px] text-[var(--color-text-tertiary)]">
-              {state?.lockTimerStartedAt ? `남은 ${timer.formatRemainingTime()}` : '3분 뒤 자동 잠금'}
-            </span>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-bold text-[var(--color-text)]">
+                ⏱️ 자동 잠금 타이머
+              </span>
+              <span className="text-xs text-[var(--color-text-tertiary)]">
+                {state?.lockTimerStartedAt ? '작동 중 · 클릭하여 취소' : '3분 후 자동 잠금 · 클릭하여 시작'}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className={`font-mono text-3xl font-bold tabular-nums ${state?.lockTimerStartedAt ? 'text-amber-400' : 'text-[var(--color-text-secondary)]'
+                }`}>
+                {timer.formatRemainingTime()}
+              </span>
+            </div>
           </button>
         )}
-
-        <button
-          type="button"
-          role="switch"
-          aria-checked={state?.isLocked ?? false}
-          onClick={e => {
-            e.stopPropagation();
-            onToggleLock?.();
-          }}
-          className="flex flex-1 min-w-[140px] items-center justify-between rounded-xl border border-[var(--color-border)] px-3 py-2 text-left transition hover:border-amber-400"
-        >
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-[var(--color-text)]">블록 잠금</span>
-            <span className="text-[11px] text-[var(--color-text-tertiary)]">
-              {state?.isLocked ? '잠금 해제' : '작업 완료 시 잠금'}
-            </span>
-          </div>
-          <div
-            className={`relative h-5 w-10 rounded-full transition ${state?.isLocked ? 'bg-amber-400' : 'bg-[var(--color-border)]'}`}
-          >
-            <span
-              className={`absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white transition ${state?.isLocked ? 'right-1' : 'left-1'
-                }`}
-            />
-          </div>
-        </button>
 
         {needsPlanBoost && !isPastBlock && onRequestAddTask && (
           <button

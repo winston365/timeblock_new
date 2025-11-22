@@ -172,6 +172,23 @@ export default function AppShell() {
     }
   }, [dbInitialized]);
 
+  // 비활동 알림 서비스 초기화
+  useEffect(() => {
+    if (!dbInitialized) return;
+
+    // 동적 import로 서비스 불러오기
+    import('@/shared/services/behavior/inactivityAlertService').then(({ inactivityAlertService }) => {
+      inactivityAlertService.start();
+      console.log('✅ [AppShell] Inactivity alert service started');
+
+      // 컴포넌트 언마운트 시 서비스 정리
+      return () => {
+        inactivityAlertService.stop();
+        console.log('🛑 [AppShell] Inactivity alert service stopped');
+      };
+    });
+  }, [dbInitialized]);
+
   // F1 단축키: 대량 할 일 추가 모달 열기
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

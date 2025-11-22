@@ -140,8 +140,8 @@ const TimeBlock = memo(function TimeBlock({
     if (!task) return;
     if (!task.completed) {
       if (!state?.isLocked) {
-        toast('블록을 먼저 잠궈야 작업을 완료할 수 있습니다! (잠금 버튼 🔒 클릭)', {
-          icon: '🔒',
+        toast('타이머를 먼저 시작해야 작업을 완료할 수 있습니다! (타이머 버튼 ⏱️ 클릭)', {
+          icon: '⏱️',
           style: {
             borderRadius: '10px',
             background: '#333',
