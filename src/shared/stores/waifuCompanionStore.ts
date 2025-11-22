@@ -46,6 +46,8 @@ interface WaifuCompanionState {
   /** 자동 숨김 타이머 ID */
   autoHideTimer: number | null;
 
+  /** 현재 표시 중인 이미지 경로 (리마운트 시에도 유지) */
+  currentImagePath: string | null;
 
   /** 와이푸 표정 오버라이드 */
   expressionOverride: WaifuExpressionOverride | null;
@@ -73,6 +75,9 @@ interface WaifuCompanionState {
 
   /** 와이푸 표정 오버라이드 설정 */
   setExpressionOverride: (imagePath?: string, durationMs?: number) => void;
+
+  /** 현재 이미지 경로 설정 (리마운트 시에도 유지) */
+  setCurrentImagePath: (path: string) => void;
 }
 
 /**
@@ -90,6 +95,7 @@ export const useWaifuCompanionStore = create<WaifuCompanionState>((set, get) => 
   audioPath: undefined,
   isPinned: false,
   autoHideTimer: null,
+  currentImagePath: null,
   expressionOverride: null,
   expressionTimer: null,
 
@@ -240,5 +246,9 @@ export const useWaifuCompanionStore = create<WaifuCompanionState>((set, get) => 
       expressionOverride: { imagePath },
       expressionTimer: timer,
     });
+  },
+
+  setCurrentImagePath: (path: string) => {
+    set({ currentImagePath: path });
   },
 }));
