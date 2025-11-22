@@ -1,38 +1,31 @@
 import { useRealityCheckStore } from '@/shared/stores/realityCheckStore';
 import { useToastStore } from '@/shared/stores/toastStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
-import { useState } from 'react';
 
 export function RealityCheckModal() {
     const { isOpen, taskTitle, estimatedDuration, closeRealityCheck } = useRealityCheckStore();
     const { addXP } = useGameStateStore();
     const { addToast } = useToastStore();
-    const [showReward, setShowReward] = useState(false);
 
     if (!isOpen) return null;
 
-    const handleFeedback = async (type: 'faster' | 'ontime' | 'slower') => {
-        // 1. XP Reward
-        try {
-            await addXP(5, undefined); // 'Reality Check Feedback' is not needed as blockId, and reason is handled internally or default
-            setShowReward(true);
-        } catch (error) {
-            console.error('Failed to add XP:', error);
-        }
-
-        // 2. Feedback Message
+    const handleFeedback = (type: 'faster' | 'ontime' | 'slower') => {
+        // 1. Feedback Message (즉시 표시)
         let message = '';
-        if (type === 'faster') message = '🚀 대단해요! 예상보다 빨리 끝내셨네요.';
-        if (type === 'ontime') message = '🎯 완벽합니다! 예상이 정확했어요.';
-        if (type === 'slower') message = '⏳ 조금 더 걸렸네요. 다음엔 여유를 둬보세요!';
+        if (type === 'faster') message = '🚀 대단해요! 예상보다 빨리 끝내셨네요. +5 XP';
+        if (type === 'ontime') message = '🎯 완벽합니다! 예상이 정확했어요. +5 XP';
+        if (type === 'slower') message = '⏳ 조금 더 걸렸네요. 다음엔 여유를 둬보세요! +5 XP';
 
         addToast(message, 'success');
 
-        // 3. Close after short delay to show reward
-        setTimeout(() => {
-            closeRealityCheck();
-            setShowReward(false);
-        }, 1000);
+        // 2. 모달 즉시 닫기 (낙관적 업데이트)
+        closeRealityCheck();
+
+        // 3. XP 처리는 백그라운드에서 비동기로 처리
+        addXP(5, undefined).catch((error) => {
+            console.error('Failed to add XP:', error);
+            // XP 추가 실패 시에도 사용자 경험에는 영향 없음
+        });
     };
 
     return (
@@ -74,13 +67,6 @@ export function RealityCheckModal() {
                         <span className="text-xs font-bold uppercase tracking-wider text-amber-500">더 걸렸음</span>
                     </button>
                 </div>
-
-                {/* Floating Reward Animation */}
-                {showReward && (
-                    <div className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 animate-float-up-fade text-2xl font-bold text-yellow-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-                        +5 XP
-                    </div>
-                )}
 
                 <button
                     onClick={closeRealityCheck}
