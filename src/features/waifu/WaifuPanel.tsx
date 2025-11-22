@@ -13,7 +13,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
-import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier } from './waifuImageUtils';
+import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier, checkImageExists } from './waifuImageUtils';
 import { getDialogueFromAffection } from '@/data/repositories/waifuRepository';
 import { preloadWaifuImages } from './waifuImagePreloader';
 import { audioService } from '@/shared/services/media/audioService';
@@ -49,11 +49,12 @@ interface WaifuPanelProps {
  */
 export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
   const { waifuState, loading, currentMood, currentDialogue, currentAudio, refresh: refreshWaifu, onInteract } = useWaifu();
-  const { message: companionMessage, isPinned, togglePin, expressionOverride, show: showWaifu } = useWaifuCompanionStore();
+  const { message: companionMessage, isPinned, togglePin, expressionOverride, show: showWaifu, currentImagePath: storedImagePath, setCurrentImagePath } = useWaifuCompanionStore();
   const { settings } = useSettingsStore();
   const { addXP } = useGameStateStore();
 
-  const [displayImagePath, setDisplayImagePath] = useState<string>('');
+  // storedImagePath가 있으면 즉시 사용 (리마운트 시에도 이미지 유지)
+  const [displayImagePath, setDisplayImagePath] = useState<string>(storedImagePath || '');
 
   // useRef로 변경하여 리렌더링 및 의존성 사이클 방지
   const currentImageIndexRef = useRef<number>(-1);
@@ -119,6 +120,7 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     // 일반 모드일 경우 base.png 사용
     if (waifuMode === 'normal') {
       setDisplayImagePath(baseImage);
+      setCurrentImagePath(baseImage);
       lastImageChangeTime.current = Date.now();
       return;
     }
@@ -132,19 +134,30 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     // 이미지 경로 가져오기 (비동기 체크 포함)
     const path = await getWaifuImagePathWithFallback(affection, newImageNumber);
 
-    // Smooth Transition: Preload and fade
-    if (path !== displayImagePath) {
-      const img = new Image();
-      img.src = path;
-      img.onload = () => {
-        setNextImagePath(path);
-        setIsTransitioning(true);
-        setTimeout(() => {
-          setDisplayImagePath(path);
-          setIsTransitioning(false);
-          setNextImagePath('');
-        }, 300); // Match CSS transition duration
-      };
+    // 이미지 변경이 필요한 경우
+    if (path && path !== displayImagePath) {
+      // 캐시된 이미지인지 확인 (checkImageExists는 캐시 사용)
+      const isCached = await checkImageExists(path);
+
+      if (isCached) {
+        // 캐시된 이미지는 즉시 표시 (트랜지션 없이)
+        setDisplayImagePath(path);
+        setCurrentImagePath(path);
+      } else {
+        // 캐시되지 않은 이미지는 프리로드 후 표시
+        const img = new Image();
+        img.src = path;
+        img.onload = () => {
+          setNextImagePath(path);
+          setIsTransitioning(true);
+          setTimeout(() => {
+            setDisplayImagePath(path);
+            setCurrentImagePath(path);
+            setIsTransitioning(false);
+            setNextImagePath('');
+          }, 300); // Match CSS transition duration
+        };
+      }
     }
 
     currentImageIndexRef.current = newImageNumber; // Ref 업데이트
@@ -153,7 +166,7 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     if (source === 'manual') {
       lastManualChangeTime.current = Date.now();
     }
-  }, [waifuState, waifuMode, displayImagePath]); // currentImageIndex 의존성 제거
+  }, [waifuState, waifuMode, displayImagePath, setCurrentImagePath]); // currentImageIndex 의존성 제거
 
   // 초기 이미지 로드 및 호감도 변경 시 이미지 업데이트
   useEffect(() => {
@@ -165,10 +178,21 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
 
     if (imagePath) {
       setDisplayImagePath(imagePath);
+      setCurrentImagePath(imagePath);
     } else if (waifuState) {
+      // storedImagePath가 이미 있고, 호감도 티어가 같으면 재로딩 불필요
+      if (storedImagePath && displayImagePath) {
+        // 이미 이미지가 표시되어 있으면 스킵 (호감도 티어가 변경된 경우에만 업데이트)
+        const currentTier = getAffectionTier(waifuState.affection);
+        const pathIncludesTier = storedImagePath.includes(currentTier.name) ||
+                                  (currentTier.name === 'interested' && storedImagePath.includes('indifferent'));
+        if (pathIncludesTier) {
+          return; // 같은 티어면 이미지 변경 불필요
+        }
+      }
       changeImage(waifuState.affection, 'auto');
     }
-  }, [expressionOverride?.imagePath, imagePath, waifuState?.affection, changeImage]);
+  }, [expressionOverride?.imagePath, imagePath, waifuState?.affection, changeImage, storedImagePath, displayImagePath, setCurrentImagePath]);
 
   // 설정된 간격마다 자동으로 이미지 및 대사 변경
   useEffect(() => {
