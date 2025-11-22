@@ -227,6 +227,12 @@ export async function buildPersonaContext(
     // ✅ 오늘의 모든 블록별 상세 할일 정보
     allBlockTasks,
 
+    // ✅ 시간대별 속성 태그 (예: 딥워크, 아침 루틴 등)
+    hourSlotTags: dailyData?.hourSlotTags,
+
+    // ✅ 블록별 "하지않기" 체크리스트 상태
+    timeBlockDontDoStatus: dailyData?.timeBlockDontDoStatus,
+
     // 에너지 정보
     currentEnergy: currentEnergy ?? 0,
     energyRecordedAt: null,

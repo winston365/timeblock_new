@@ -178,6 +178,12 @@ export interface PersonaContext {
   // ✅ 오늘의 모든 블록별 상세 할일 정보 (시간대바별 구분)
   allBlockTasks: Record<string, DetailedTask[]>;
 
+  // ✅ 시간대별 속성 태그 (예: 딥워크, 아침 루틴 등)
+  hourSlotTags?: Record<number, string | null>;
+
+  // ✅ 블록별 "하지않기" 체크리스트 상태
+  timeBlockDontDoStatus?: Record<string, Record<string, boolean>>;
+
   // 에너지 정보
   currentEnergy: number;
   energyRecordedAt: number | null;

@@ -264,7 +264,10 @@ export default function TaskCard({
                       <button
                         key={duration}
                         className={`rounded-lg px-2 py-1.5 transition ${task.baseDuration === duration ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-white/5 text-[var(--color-text-secondary)]'}`}
-                        onClick={() => handleDurationChange(duration)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDurationChange(duration);
+                        }}
                       >
                         {duration}m
                       </button>
@@ -273,13 +276,13 @@ export default function TaskCard({
                 )}
                 {showResistancePicker && (
                   <div className="absolute left-0 top-full z-[9999] mt-2 flex min-w-[120px] flex-col gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-1.5 text-xs shadow-xl backdrop-blur-md">
-                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-emerald-200" onClick={() => handleResistanceChange('low')}>
+                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-emerald-200" onClick={(e) => { e.stopPropagation(); handleResistanceChange('low'); }}>
                       💧 쉬움 (x1.0)
                     </button>
-                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-amber-200" onClick={() => handleResistanceChange('medium')}>
+                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-amber-200" onClick={(e) => { e.stopPropagation(); handleResistanceChange('medium'); }}>
                       🌊 보통 (x1.3)
                     </button>
-                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-rose-200" onClick={() => handleResistanceChange('high')}>
+                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-rose-200" onClick={(e) => { e.stopPropagation(); handleResistanceChange('high'); }}>
                       🌪️ 어려움 (x1.6)
                     </button>
                   </div>
@@ -383,17 +386,17 @@ export default function TaskCard({
                 )}
 
                 {/* 핵심 메타데이터 (항상 표시) */}
-              <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-[var(--color-text-secondary)] relative">
-                {!hideMetadata && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-2 py-0.5 font-semibold text-[var(--color-primary)] shadow-sm">
-                    🪙 +{xp} XP
-                  </span>
-                )}
-                <button
-                  type="button"
-                  className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 font-semibold hover:border-[var(--color-primary)] hover:text-[var(--color-text)] transition-colors"
-                  data-task-interactive="true"
-                  onClick={(e) => {
+                <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-[var(--color-text-secondary)] relative">
+                  {!hideMetadata && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-2 py-0.5 font-semibold text-[var(--color-primary)] shadow-sm">
+                      🪙 +{xp} XP
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 font-semibold hover:border-[var(--color-primary)] hover:text-[var(--color-text)] transition-colors"
+                    data-task-interactive="true"
+                    onClick={(e) => {
                       e.stopPropagation();
                       setShowDurationPicker(prev => !prev);
                       setShowResistancePicker(false);
@@ -418,17 +421,20 @@ export default function TaskCard({
                       ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-200'
                       : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 text-[var(--color-text-secondary)]'
                       }`}
-                >
-                  Prep {preparationCount}/3
-                </span>
+                  >
+                    Prep {preparationCount}/3
+                  </span>
 
-                {showDurationPicker && (
-                  <div className="absolute left-0 top-full z-[9999] mt-2 grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 text-xs shadow-xl backdrop-blur-md w-[180px]">
-                    {durationOptions.map((duration) => (
+                  {showDurationPicker && (
+                    <div className="absolute left-0 top-full z-[9999] mt-2 grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 text-xs shadow-xl backdrop-blur-md w-[180px]">
+                      {durationOptions.map((duration) => (
                         <button
                           key={duration}
                           className={`rounded-lg px-2 py-1.5 transition ${task.baseDuration === duration ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-white/5 text-[var(--color-text-secondary)]'}`}
-                          onClick={() => handleDurationChange(duration)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDurationChange(duration);
+                          }}
                         >
                           {duration}m
                         </button>
@@ -437,13 +443,13 @@ export default function TaskCard({
                   )}
                   {showResistancePicker && (
                     <div className="absolute left-0 top-full z-[9999] mt-2 flex min-w-[120px] flex-col gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-1.5 text-xs shadow-xl backdrop-blur-md">
-                      <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-emerald-200" onClick={() => handleResistanceChange('low')}>
+                      <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-emerald-200" onClick={(e) => { e.stopPropagation(); handleResistanceChange('low'); }}>
                         💧 쉬움 (x1.0)
                       </button>
-                      <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-amber-200" onClick={() => handleResistanceChange('medium')}>
+                      <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-amber-200" onClick={(e) => { e.stopPropagation(); handleResistanceChange('medium'); }}>
                         🌊 보통 (x1.3)
                       </button>
-                      <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-rose-200" onClick={() => handleResistanceChange('high')}>
+                      <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-rose-200" onClick={(e) => { e.stopPropagation(); handleResistanceChange('high'); }}>
                         🌪️ 어려움 (x1.6)
                       </button>
                     </div>

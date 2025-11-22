@@ -64,9 +64,9 @@ export default function InboxTab() {
           id: generateId('task'),
           text: inlineInputValue.trim(),
           memo: '',
-          baseDuration: 30, // 기본 30분
+          baseDuration: 15, // 기본 15분
           resistance: 'low',
-          adjustedDuration: 30,
+          adjustedDuration: 15,
           timeBlock: null, // 인박스는 항상 null
           completed: false,
           actualDuration: 0,
@@ -114,9 +114,9 @@ export default function InboxTab() {
           id: generateId('task'),
           text: taskData.text || '',
           memo: taskData.memo || '',
-          baseDuration: taskData.baseDuration || 30,
+          baseDuration: taskData.baseDuration || 15,
           resistance: taskData.resistance || 'low',
-          adjustedDuration: taskData.adjustedDuration || 30,
+          adjustedDuration: taskData.adjustedDuration || 15,
           timeBlock: null, // 인박스는 항상 null
           completed: false,
           actualDuration: 0,
@@ -138,8 +138,8 @@ export default function InboxTab() {
       setIsModalOpen(false);
       setEditingTask(null);
     } catch (error) {
-        console.error('Failed to save task:', error);
-        toast.error('작업 저장에 실패했습니다.');
+      console.error('Failed to save task:', error);
+      toast.error('작업 저장에 실패했습니다.');
     }
   };
 
@@ -290,7 +290,7 @@ export default function InboxTab() {
             value={inlineInputValue}
             onChange={(e) => setInlineInputValue(e.target.value)}
             onKeyDown={handleInlineInputKeyDown}
-            placeholder="작업을 입력하고 Enter로 추가하세요 (기본 30분)"
+            placeholder="작업을 입력하고 Enter로 추가하세요 (기본 15분)"
             className="w-full rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:bg-[var(--color-bg-elevated)] focus:shadow-sm"
           />
         </div>

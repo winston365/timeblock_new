@@ -666,14 +666,14 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                                             id="gemini-model"
                                             type="text"
                                             className={inputClass}
-                                            placeholder="gemini-2.0-flash-exp"
+                                            placeholder="gemini-3-pro-preview"
                                             value={localSettings?.geminiModel || ''}
                                             onChange={(e) =>
                                                 setLocalSettings(prev => prev ? ({ ...prev, geminiModel: e.target.value }) : prev)
                                             }
                                         />
                                         <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                                            사용할 Gemini 모델명을 입력하세요. (예: gemini-2.0-flash-exp, gemini-1.5-pro)
+                                            사용할 Gemini 모델명을 입력하세요. (예: gemini-3-pro-preview, gemini-2.0-flash-exp, gemini-1.5-pro)
                                         </small>
                                     </div>
 

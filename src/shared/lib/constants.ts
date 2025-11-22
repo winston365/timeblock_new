@@ -86,7 +86,7 @@ export const STORAGE_KEYS = {
 // ============================================================================
 // Gemini API
 // ============================================================================
-export const GEMINI_MODEL = 'gemini-2.0-flash-exp';
+export const GEMINI_MODEL = 'gemini-3-pro-preview';
 export const GEMINI_API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 // ============================================================================

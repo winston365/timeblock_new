@@ -321,7 +321,7 @@ export type AIBreakdownTrigger = 'always' | 'high_difficulty' | 'manual';
  */
 export interface Settings {
   geminiApiKey: string;
-  geminiModel?: string; // Gemini 모델명 (기본: gemini-2.0-flash-exp)
+  geminiModel?: string; // Gemini 모델명 (기본: gemini-3-pro-preview)
   firebaseConfig?: {
     apiKey: string;
     authDomain: string;

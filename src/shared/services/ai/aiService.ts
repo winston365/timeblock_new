@@ -35,7 +35,7 @@ export interface AICallParams {
 
   // ===== 2. AI 설정 (필수) =====
   apiKey: string;
-  model?: string;  // Gemini 모델명 (선택, 기본: gemini-2.0-flash-exp)
+  model?: string;  // Gemini 모델명 (선택, 기본: gemini-3-pro-preview)
 
   // ===== 3. 개별 요청 내용 =====
   type: AICallType;
@@ -180,7 +180,7 @@ export function getInsightPrompt(): string {
     "task": "string (지금 당장 해야 할 단 하나의 작업)",
     "reason": "string (이 작업을 지금 해야 하는 이유)"
   },
-  "motivation": "string (짧고 강렬한 동기부여 한마디)",
+  "motivation": "string (짧고 강렬한 동기부여 한마디[스토아 철학 느낌])",
   "quickWins": [
     {
       "id": "string (unique id)",
@@ -199,19 +199,19 @@ export function getInsightPrompt(): string {
 
 ### 🔍 분석 기준
 1. **Status (상태)**
-   - Green: 에너지 > 70 또는 집중력 높은 시간대
+   - Green: 에너지 > 70 또는 집중력 높은 시간대 
    - Yellow: 에너지 40-70 또는 일반적인 시간대
    - Red: 에너지 < 40 또는 늦은 밤/휴식 필요
 
 2. **Action (추천 작업)**
    - **단 하나만** 추천할 것 (ADHD 친화적)
-   - 에너지가 낮으면 '휴식'이나 '작은 정리' 추천
+   - 에너지가 낮거나 기록이 안돼있으면 '휴식'이나 '작은 정리' 추천
    - 에너지가 높으면 '가장 중요한 작업' 추천
 
 3. **Quick Wins (도파민 메뉴)**
    - **무조건 3개 제안할 것** (사용자가 원할 때 언제든 수행 가능하도록)
    - 아주 사소한 것들 (물 마시기, 스트레칭, 책상 정리 등)
-   - 완료 시 XP 보상이 있는 작은 작업들
+   - 완료 시 XP 보상이 있는 작은 작업들(예상 소요 시간이 5분 이하여야 함)
 
 4. **Progress (중간 성과)**
    - **무조건 포함할 것** (사용자가 언제든 확인 가능해야 함)
