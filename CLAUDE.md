@@ -10,8 +10,8 @@ TimeBlock Planner is a gamified daily task management desktop application built 
 
 ```bash
 # Development
-npm run dev                    # Start Vite dev server
-npm run electron:dev          # Run Electron app in development mode
+npm run dev                    # Start Vite dev server (web only)
+npm run electron:dev          # Run Electron app in development mode (preferred E2E loop)
 npm run electron:prod         # Run production build locally
 
 # Build
@@ -23,24 +23,30 @@ npm run dist:mac              # Build macOS app
 npm run dist:linux            # Build Linux package
 
 # Code Quality
-npm run lint                  # Run ESLint on TypeScript files
+npm run lint                  # Run ESLint on TypeScript files (only automated check - no test suite)
 npm run bump                  # Bump patch version and commit
 
 # Preview
 npm run preview               # Preview production build
 ```
 
+**Note**: There is no dedicated test suite. Manually verify in both `npm run preview` and `npm run electron:prod` when behavior could diverge between web and desktop.
+
 ## Architecture Overview
+
+### Entry Point
+
+`src/main.tsx` → `AppShell` is the main entry. Daily reset and template auto-generation runs inside `app/AppShell.tsx` + `app/hooks/useAppInitialization.ts`.
 
 ### Data Persistence - 3-Tier Fallback System
 
-The app uses a sophisticated 3-layer data persistence strategy with automatic fallback:
+The app uses a 3-layer data persistence strategy with automatic fallback:
 
 1. **IndexedDB** (Primary) - Via Dexie ORM
 2. **localStorage** (Secondary) - Synchronous fallback
 3. **Firebase Realtime Database** (Cloud) - Remote sync and backup
 
-**Critical Pattern**: All data operations go through the **Repository Pattern** (`src/data/repositories/`). Each repository implements the 3-tier fallback and syncs across all layers.
+**Critical Pattern**: All data operations go through the **Repository Pattern** (`src/data/repositories/`). Each repository extends `baseRepository.ts` and is the only layer that should touch storage APIs.
 
 ```typescript
 // Example flow: Update dailyData
@@ -62,9 +68,11 @@ Located in `src/shared/services/sync/`:
 - **Server-First Templates**: Firebase Cloud Function (`functions/index.js`) generates tasks from templates daily at 00:00 KST. Client observes, doesn't generate.
 
 **Important**: When modifying data structures, update all three layers:
-1. Dexie schema in `src/data/db/schema.ts`
+1. Dexie schema in `src/data/db/dexieClient.ts`
 2. Repository in `src/data/repositories/`
 3. Sync strategy in `src/shared/services/sync/strategies/`
+
+When altering sync behavior, keep Last-Write-Wins + retry queue semantics described in `src/shared/services/firebase/README.md`.
 
 ### Feature-Based Organization
 
@@ -77,18 +85,23 @@ features/
   ├── tasks/         # Task management
   ├── gemini/        # AI chat integration
   ├── gamification/  # XP, quests, achievements
-  └── [12 more features...]
+  ├── goals/         # Global goals panel
+  ├── template/      # Task templates
+  ├── settings/      # Settings & sync log modals
+  ├── shop/          # XP shop
+  └── ...
 ```
 
 Each feature typically contains:
 - `components/` - UI components
 - `hooks/` - Feature-specific React hooks
 - `utils/` - Helper functions
+- `stores/` - Feature-specific Zustand stores (if needed)
 - `types.ts` - TypeScript definitions (if needed)
 
 ### State Management - Zustand Stores
 
-8 specialized stores in `src/shared/stores/`:
+12 specialized stores in `src/shared/stores/`:
 
 1. **dailyDataStore** - Central task & time-block state
 2. **gameStateStore** - XP, level, quests, streaks
@@ -98,8 +111,16 @@ Each feature typically contains:
 6. **uiStore** - UI state (modals, panels)
 7. **toastStore** - Toast notifications
 8. **realityCheckStore** - Reality check modals
+9. **inboxStore** - Global inbox tasks
+10. **goalStore** - Global goals
+11. **templateStore** - Task templates
+12. **completedTasksStore** - Completed inbox tasks
 
 **Pattern**: Stores delegate all persistence to repositories. They implement optimistic updates with rollback on failure.
+
+### Event Bus
+
+Event-driven UI logic uses `src/shared/lib/eventBus` with `[domain]:[action]` names. Unsubscribe in `useEffect` cleanup and enable logger/performance middleware in dev for tracing.
 
 ### Handler Pattern - Task Completion Pipeline
 
@@ -127,25 +148,26 @@ When adding new task completion side effects, create a new handler implementing 
 
 **Block States**: `lock`, `perfect`, `failed`, `timer` (managed via `timeBlockStates` table)
 
-Tasks are assigned to blocks and hour slots. The schedule UI (`src/features/schedule/`) renders this visually.
-
 ## Key Domain Concepts
 
 ### Database Schema (Dexie)
 
-7 schema versions with migrations. Core tables:
+8 schema versions with migrations in `src/data/db/dexieClient.ts`. Core tables:
 
 - **dailyData** - Daily tasks and blocks (keyed by date YYYY-MM-DD)
-- **gameState** - Player progression (singleton)
+- **gameState** - Player progression (singleton, key: 'current')
 - **templates** - Reusable task templates with recurrence
 - **globalInbox** - Date-independent tasks
+- **completedInbox** - Completed inbox tasks (v7+)
 - **globalGoals** - Long-term goals with time tracking
 - **shopItems** - Purchasable items with XP
 - **waifuState** - Companion affection and interactions
 - **energyLevels** - Hourly energy tracking
 - **chatHistory** - Gemini AI conversation history
+- **systemState** - System state key-value store (v6+)
+- **settings** - App settings including dontDoChecklist (v8+)
 
-Schema defined in `src/data/db/schema.ts`. When adding fields, increment version and add migration.
+When adding fields, increment version and add migration. Ensure migrations are idempotent and backfill both IndexedDB and Firebase.
 
 ### Gamification System
 
@@ -166,7 +188,7 @@ AI companion with affection system (0-100) and dynamic poses:
 - **Interaction Modes**: Normal vs Characteristic (personality-driven)
 - **Auto-Messages**: Configurable interval messages
 
-Assets in `public/waifu/`, state managed in `waifuCompanionStore` and `waifuState` table.
+Assets in `src/features/waifu/poses/`, state managed in `waifuCompanionStore` and `waifuRepository`.
 
 ### AI Integration (Gemini)
 
@@ -174,15 +196,16 @@ Assets in `public/waifu/`, state managed in `waifuCompanionStore` and `waifuStat
 - **Features**: Full-screen chat, task breakdown, motivational messages
 - **Token Tracking**: Daily usage limits via `dailyTokenUsage` table
 - **Categories**: task-advice, motivation, qa, analysis
+- **Persona Context**: Build persona context using `src/shared/lib/personaUtils` before invoking `geminiApi.ts`
 
-Service layer in `src/shared/services/ai/`.
+Service layer in `src/shared/services/ai/` and `src/features/gemini/`.
 
 ## Electron App Structure
 
 - **Main Process**: `electron/main/index.ts` - Window management, IPC, auto-update
 - **Preload**: `electron/preload/index.ts` - Secure IPC bridge
 - **Global Shortcut**: Ctrl+Shift+Space (Cmd+Shift+Space on macOS) opens QuickAdd window
-- **QuickAdd Mode**: `?mode=quickadd` query param loads standalone quick task entry
+- **QuickAdd Mode**: `?mode=quickadd` query param loads standalone quick task entry via `inboxRepository` → sync pipeline
 
 Security: `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`
 
@@ -212,13 +235,19 @@ try {
 
 **Server-side only**: Firebase Function runs daily at 00:00 KST, generates tasks from templates with `autoGenerate: true`. Client reads from Firebase, never generates locally. Uses `lastTemplateGeneration` timestamp to prevent duplicate generation.
 
+## Debugging
+
+- **SyncLogModal**: Use `src/features/settings/SyncLogModal.tsx` to debug Firebase sync issues
+- **Performance Monitor**: Enable `window.__performanceMonitor` in dev for event bus tracing
+- Firebase credentials are user-provided through Settings modal; `src/data/firebase/config.ts` is gitignored
+
 ## Configuration
 
 - **Vite**: `vite.config.ts` - Path alias `@/` → `./src/`
 - **TypeScript**: Strict mode, ES2020 target
 - **Tailwind**: Custom design system in `tailwind.config.ts` with CSS variables
 - **Firebase**: `.firebaserc` - Project ID `test1234-edcb6`
-- **Electron Builder**: `electron-builder.json` - Packaging config
+- **Electron Builder**: `electron-builder.json` - Packaging config (artifacts in `release/`)
 
 ## Path Aliases
 
@@ -229,3 +258,10 @@ import { someUtil } from '@/shared/utils';
 ```
 
 `@/` resolves to `./src/` (configured in `vite.config.ts` and `tsconfig.json`).
+
+## Coding Conventions
+
+- Components: PascalCase
+- Hooks/services: camelCase
+- Feature-first layout
+- Never call Firebase APIs directly from UI or stores - always go through repositories
