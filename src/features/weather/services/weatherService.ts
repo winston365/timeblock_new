@@ -3,106 +3,76 @@
  * refer 프로젝트 기반
  */
 
-import type { WeatherData, HourlyWeather } from '@/shared/types/weather';
+import type { DayForecast } from '@/shared/types/weather';
 import { fetchWeatherWithGemini } from '@/shared/services/ai/geminiWeather';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { db } from '@/data/db/dexieClient';
 
-export async function fetchWeatherFromGoogle(city: string = '서울 은평구', forceRefresh: boolean = false): Promise<{ current: WeatherData; hourly: HourlyWeather[]; timestamp?: number }> {
+export interface OutfitCard {
+    option: number;
+    vibe: string;
+    running: string;
+    outing: string;
+}
+
+export interface WeatherInsightResult {
+    intro: string;
+    cards: OutfitCard[];
+    markdown: string;
+}
+
+function isValidForecast(forecast: unknown): forecast is DayForecast[] {
+    return Array.isArray(forecast) && forecast.length > 0;
+}
+
+export async function fetchWeatherFromGoogle(
+    city: string = '서울 은평구',
+    forceRefresh: boolean = false
+): Promise<{ forecast: DayForecast[]; timestamp?: number }> {
     try {
         // 1. Dexie 캐시 확인 (강제 새로고침이 아닐 경우)
         if (!forceRefresh) {
             const cached = await loadCachedWeather();
-            if (cached) {
+            if (cached && isValidForecast(cached.forecast)) {
                 console.log('[WeatherService] Using cached data from Dexie');
                 return cached;
             }
         }
 
         // 2. API 호출
-        const geminiApiKey = useSettingsStore.getState().settings.geminiApiKey;
+        const geminiApiKey = useSettingsStore.getState().settings?.geminiApiKey;
         if (!geminiApiKey) {
             throw new Error('Gemini API 키가 설정되지 않았습니다.');
         }
 
         console.log('[WeatherService] Fetching with Gemini Google Search...');
         const data = await fetchWeatherWithGemini(city, geminiApiKey);
+        if (!isValidForecast(data?.forecast)) {
+            throw new Error('날씨 응답 데이터가 올바르지 않습니다.');
+        }
 
-        // 3. 데이터 가공
-        const firstHour = data.hourly[0];
-
-        // 오늘 남은 시간 중 가장 높은 강수확률 계산
-        const maxChanceOfRain = data.hourly.reduce((max, hour) => {
-            return Math.max(max, hour.chanceOfRain || 0);
-        }, 0);
-
-        const current: WeatherData = {
-            temp: firstHour ? Math.round(firstHour.temperature) : 0,
-            feelsLike: firstHour ? Math.round(firstHour.temperature) : 0, // Gemini가 체감온도를 따로 주지 않으면 temp 사용
-            condition: firstHour?.condition || '알 수 없음',
-            icon: mapConditionToIcon(firstHour?.condition || '알 수 없음'),
-            humidity: firstHour?.humidity,
-            chanceOfRain: maxChanceOfRain, // 현재 시간이 아닌 오늘 최대 강수확률 사용
-            location: data.resolvedAddress || city,
-        };
-
-        const hourly: HourlyWeather[] = data.hourly.map((hour) => ({
-            time: hour.time,
-            temp: Math.round(hour.temperature),
-            feelsLike: Math.round(hour.temperature),
-            icon: getTimeBasedIcon(hour.time, hour.condition),
-            chanceOfRain: hour.chanceOfRain,
-        }));
-
-        // 4. Dexie에 저장
+        // 3. Dexie에 저장
         const timestamp = Date.now();
-        await cacheWeather(current, hourly, timestamp);
+        await cacheWeather(data.forecast, timestamp);
 
-        return { current, hourly, timestamp };
+        return { forecast: data.forecast, timestamp };
     } catch (error) {
         console.error('[WeatherService] Error:', error);
         throw error;
     }
 }
 
-function getTimeBasedIcon(time: string, condition: string): string {
-    const hour = parseInt(time.split(':')[0]);
-    const isNight = hour >= 18 || hour < 6;
-    const c = condition.toLowerCase();
-
-    if (c.includes('맑음') || c.includes('clear')) return isNight ? '🌙' : '☀️';
-    if (c.includes('구름') || c.includes('흐림') || c.includes('cloud') || c.includes('cloudy')) {
-        return c.includes('조금') || c.includes('약간') ? (isNight ? '☁️' : '🌤️') : '☁️';
-    }
-    if (c.includes('비') || c.includes('rain')) return '🌧️';
-    if (c.includes('눈') || c.includes('snow')) return '❄️';
-    if (c.includes('천둥') || c.includes('thunder')) return '⛈️';
-    if (c.includes('안개') || c.includes('fog')) return '🌫️';
-
-    return isNight ? '🌙' : '🌤️';
-}
-
-function mapConditionToIcon(condition: string): string {
-    const c = condition.toLowerCase();
-
-    if (c.includes('맑음') || c.includes('clear')) return '☀️';
-    if (c.includes('구름') || c.includes('흐림') || c.includes('cloud') || c.includes('cloudy')) {
-        if (c.includes('조금') || c.includes('약간')) return '🌤️';
-        if (c.includes('많음')) return '☁️';
-        return '⛅';
-    }
-    if (c.includes('비') || c.includes('rain')) return '🌧️';
-    if (c.includes('눈') || c.includes('snow')) return '❄️';
-    if (c.includes('천둥') || c.includes('thunder')) return '⛈️';
-    if (c.includes('안개') || c.includes('fog')) return '🌫️';
-
-    return '🌤️';
-}
-
-export async function loadCachedWeather(): Promise<{ current: WeatherData; hourly: HourlyWeather[]; timestamp: number } | null> {
+export async function loadCachedWeather(): Promise<{ forecast: DayForecast[]; timestamp: number } | null> {
     try {
         const cached = await db.weather.get('latest');
         if (!cached) return null;
+
+        // 기본 필드 검증
+        if (!cached.data || !isValidForecast(cached.data.forecast) || !cached.timestamp || !cached.lastUpdatedDate) {
+            console.warn('[WeatherService] Cached weather data invalid. Ignoring cache.');
+            await db.weather.delete('latest').catch((err) => console.error('[WeatherService] Failed to clear invalid cache', err));
+            return null;
+        }
 
         // 오늘 날짜 확인 (YYYY-MM-DD)
         const today = new Date().toISOString().split('T')[0];
@@ -111,19 +81,19 @@ export async function loadCachedWeather(): Promise<{ current: WeatherData; hourl
             return null;
         }
 
-        return { ...cached.data, timestamp: cached.timestamp };
+        return { forecast: cached.data.forecast, timestamp: cached.timestamp };
     } catch (error) {
         console.error('[WeatherService] Dexie load failed:', error);
         return null;
     }
 }
 
-export async function cacheWeather(current: WeatherData, hourly: HourlyWeather[], timestamp: number): Promise<void> {
+export async function cacheWeather(forecast: DayForecast[], timestamp: number): Promise<void> {
     try {
         const today = new Date().toISOString().split('T')[0];
         await db.weather.put({
             id: 'latest',
-            data: { current, hourly },
+            data: { forecast },
             timestamp: timestamp,
             lastUpdatedDate: today
         });
@@ -132,47 +102,84 @@ export async function cacheWeather(current: WeatherData, hourly: HourlyWeather[]
     }
 }
 
-export function getWeatherInsight(temp: number, feelsLike: number, condition: string, chanceOfRain: number = 0, hourly: HourlyWeather[] = []): string {
-    const c = condition.toLowerCase();
-    let intro = '';
-    let rainForecast = '';
-    let outfitAdvice = '';
+type InsightContext = {
+    humidity?: number;
+    chanceOfRain?: number;
+    tonightLow?: number;
+};
 
-    // 1. 인사말 & 체감온도 코멘트 (20대 여자 아나운서 톤)
+export function getWeatherInsight(
+    temp: number,
+    feelsLike: number,
+    _condition: string,
+    context: InsightContext = {}
+): WeatherInsightResult {
+    const { humidity, chanceOfRain, tonightLow } = context;
+    const introParts: string[] = [];
+
+    // 1. 인사말 & 체감온도 코멘트 (마크다운 포맷)
     const diff = feelsLike - temp;
     if (diff <= -3) {
-        intro = `여러분, 오늘 바람이 꽤 차가워요! 🌬️ 실제 온도보다 체감온도가 ${Math.abs(diff)}도나 더 낮게 느껴지네요.`;
+        introParts.push(`바람이 꽤 차가워요! 체감온도가 **${Math.abs(diff)}도**나 더 낮게 느껴집니다.`);
     } else if (diff >= 3) {
-        intro = `습도가 높아서 실제보다 더 덥게 느껴지는 날이에요! 💦 체감온도가 ${diff}도 더 높으니 불쾌지수 조심하세요.`;
+        introParts.push(`습도가 높아서 실제보다 덥게 느껴져요. 체감온도가 **${diff}도** 더 높습니다.`);
     } else {
-        intro = `현재 기온은 ${temp}도, 체감온도도 비슷해요! 😊`;
+        introParts.push(`현재 기온은 **${temp}°C**, 체감온도도 비슷해요! 😊`);
     }
 
-    // 2. 상세 비 예보 분석
-    const rainStart = hourly.find(h => (h.chanceOfRain || 0) >= 30);
-    if (rainStart) {
-        // 비가 시작되는 시간 찾음
-        const rainEnd = hourly.find((h, i) => {
-            const startIndex = hourly.indexOf(rainStart);
-            return i > startIndex && (h.chanceOfRain || 0) < 30;
-        });
-
-        if (rainEnd) {
-            rainForecast = `\n\n☔ **비 예보 분석**\n"${rainStart.time}경부터 비가 올 확률이 높아져서 ${rainEnd.time}쯤 그칠 것으로 보여요."\n외출하실 때 우산 꼭 챙기세요!`;
+    if (chanceOfRain !== undefined) {
+        if (chanceOfRain >= 60) {
+            introParts.unshift(`비 올 확률이 ${chanceOfRain}%예요. 우산 꼭 챙기세요! ☔`);
+        } else if (chanceOfRain >= 20) {
+            introParts.unshift(`가벼운 비 가능성(${chanceOfRain}%)은 있지만 크게 걱정하진 않아도 돼요.`);
         } else {
-            rainForecast = `\n\n☔ **비 예보 분석**\n"${rainStart.time}경부터 비 소식이 있고, 밤까지 이어질 수 있어요."\n든든한 우산이 필요하겠어요!`;
+            introParts.unshift(`비 소식은 거의 없어요. 🌤️`);
         }
-    } else {
-        rainForecast = `\n\n☀️ **비 예보 분석**\n"오늘 비 소식은 없어요!"\n안심하고 활동하셔도 좋아요.`;
     }
 
-    // 3. 복장 추천 (3가지 옵션)
-    outfitAdvice = getOutfitRecommendations(feelsLike);
+    if (humidity !== undefined) {
+        if (humidity >= 75) {
+            introParts.push(`습도 ${humidity}%라 약간 눅눅할 수 있어요. 통풍 잘 되는 옷 추천!`);
+        } else if (humidity <= 35) {
+            introParts.push(`습도 ${humidity}%로 건조해요. 보습과 수분 챙기세요.`);
+        }
+    }
 
-    return intro + rainForecast + outfitAdvice;
+    if (tonightLow !== undefined && tonightLow < temp - 3) {
+        introParts.push(`저녁엔 **${tonightLow}°C**까지 내려가요. 늦게 나가면 겉옷이 필요합니다.`);
+    }
+
+    const intro = introParts.join(' ').trim();
+
+    // 2. 복장 추천 (마크다운 포맷)
+    const { running, outing, cards } = getOutfitRecommendations(feelsLike);
+    const markdown = `${intro}\n\n---\n\n## 👗 추천 코디 (3가지 옵션)\n\n### 🏃 달리기\n${running}\n\n### 👔 외출\n${outing}`;
+
+    return { intro, cards, markdown };
 }
 
-function getOutfitRecommendations(feelsLike: number): string {
+type ParsedOption = { option: number; vibe: string; text: string };
+
+function parseOptionLines(text: string): ParsedOption[] {
+    return text
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean)
+        .map(line => {
+            const match = line.match(/옵션(\d+)\(([^)]*)\):\s*(.+)/);
+            if (!match) {
+                return null;
+            }
+            return {
+                option: Number(match[1]),
+                vibe: match[2] || '추천',
+                text: match[3],
+            };
+        })
+        .filter((v): v is ParsedOption => v !== null);
+}
+
+function getOutfitRecommendations(feelsLike: number): { running: string; outing: string; cards: OutfitCard[] } {
     let running = '';
     let outing = '';
 
@@ -193,5 +200,21 @@ function getOutfitRecommendations(feelsLike: number): string {
         outing = '- 옵션1(휴양지룩): 민소매 원피스/티셔츠 + 샌들\n- 옵션2(표준): 린넨 소재 상하의 + 선글라스\n- 옵션3(실내에어컨): 반팔 + 얇은 셔츠(휴대용)';
     }
 
-    return `\n\n👗 **추천 코디 (3가지 옵션)**\n\n🏃 **달리기**\n${running}\n\n👔 **외출**\n${outing}`;
+    const runningOptions = parseOptionLines(running);
+    const outingOptions = parseOptionLines(outing);
+    const cardCount = Math.max(runningOptions.length, outingOptions.length);
+
+    const cards: OutfitCard[] = Array.from({ length: cardCount }).map((_, idx) => {
+        const runningOpt = runningOptions[idx];
+        const outingOpt = outingOptions[idx];
+
+        return {
+            option: (runningOpt?.option ?? outingOpt?.option ?? idx) || idx + 1,
+            vibe: runningOpt?.vibe || outingOpt?.vibe || '추천',
+            running: runningOpt?.text || '러닝 코디 정보 없음',
+            outing: outingOpt?.text || '외출 코디 정보 없음',
+        };
+    });
+
+    return { running, outing, cards };
 }

@@ -27,6 +27,56 @@ import {
   toggleInboxTaskCompletion,
 } from './inboxRepository';
 
+function ensureBaseBlockState(state?: TimeBlockState): TimeBlockState {
+  return {
+    isLocked: state?.isLocked ?? false,
+    isPerfect: state?.isPerfect ?? false,
+    isFailed: state?.isFailed ?? false,
+    lockTimerStartedAt: state?.lockTimerStartedAt,
+    lockTimerDuration: state?.lockTimerDuration,
+  };
+}
+
+function normalizeTimeBlockStates(record: any): { states: TimeBlockStates; mutated: boolean } {
+  const baseStates: TimeBlockStates =
+    record?.timeBlockStates && typeof record.timeBlockStates === 'object'
+      ? { ...record.timeBlockStates }
+      : {};
+
+  let mutated = false;
+
+  Object.keys(record || {}).forEach((key) => {
+    if (!key.startsWith('timeBlockStates.')) return;
+
+    const remainder = key.replace(/^timeBlockStates\./, '');
+    const segments = remainder.split('.').filter(Boolean);
+    if (segments.length < 2) return;
+
+    const [blockId, ...rest] = segments;
+    if (!blockId || rest.length === 0) return;
+
+    const existingState = baseStates[blockId];
+    const targetState: any = ensureBaseBlockState(existingState);
+    let cursor: any = targetState;
+
+    rest.forEach((segment, index) => {
+      if (index === rest.length - 1) {
+        cursor[segment] = record[key];
+      } else {
+        if (typeof cursor[segment] !== 'object' || cursor[segment] === null) {
+          cursor[segment] = {};
+        }
+        cursor = cursor[segment];
+      }
+    });
+
+    baseStates[blockId] = targetState;
+    mutated = true;
+  });
+
+  return { states: baseStates, mutated };
+}
+
 // ============================================================================
 // DailyData CRUD
 // ============================================================================
@@ -49,11 +99,21 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
     const data = await db.dailyData.get(date);
 
     if (data) {
+      const { states: normalizedStates, mutated } = normalizeTimeBlockStates(data);
+
       // 데이터 유효성 검사
       const tasks = Array.isArray(data.tasks) ? data.tasks : [];
-      const timeBlockStates = data.timeBlockStates || {};
+      const timeBlockStates = normalizedStates || {};
       const goals = data.goals || [];
       const hourSlotTags = data.hourSlotTags || {};
+      const timeBlockDontDoStatus = data.timeBlockDontDoStatus || {};
+
+      if (mutated) {
+        await db.dailyData.put({
+          ...data,
+          timeBlockStates,
+        });
+      }
 
       addSyncLog('dexie', 'load', `DailyData loaded for ${date}`, { taskCount: tasks.length });
       // IndexedDB에 데이터가 있으면 반환
@@ -62,7 +122,7 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
         goals,
         timeBlockStates,
         hourSlotTags,
-        timeBlockDontDoStatus: data.timeBlockDontDoStatus || {},
+        timeBlockDontDoStatus,
         updatedAt: data.updatedAt,
       };
     }
@@ -75,7 +135,8 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
         // 데이터 유효성 검사
         const tasks = Array.isArray(firebaseData.tasks) ? firebaseData.tasks : [];
         const goals = Array.isArray(firebaseData.goals) ? firebaseData.goals : [];
-        const timeBlockStates = firebaseData.timeBlockStates || {};
+        const { states: normalizedStates } = normalizeTimeBlockStates(firebaseData);
+        const timeBlockStates = normalizedStates || {};
         const hourSlotTags = firebaseData.hourSlotTags || {};
         const timeBlockDontDoStatus = firebaseData.timeBlockDontDoStatus || {};
 

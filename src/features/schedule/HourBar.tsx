@@ -252,8 +252,10 @@ export default function HourBar({
     await onUpdateTask(dragData.taskId, { timeBlock: blockId, hourSlot: hour, order: newOrder });
   };
 
-  const containerClasses =
-    'rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 transition hover:border-[var(--color-primary)]';
+  const containerClasses = [
+    'rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] transition hover:border-[var(--color-primary)]',
+    isCollapsed ? 'px-3 py-2' : 'p-4'
+  ].join(' ');
 
   const plannedFill = useMemo(() => {
     const totalMinutes = tasks.reduce((acc, task) => acc + (task.adjustedDuration || task.baseDuration || 15), 0);
@@ -285,7 +287,7 @@ export default function HourBar({
       data-hour={hour}
     >
       <div
-        className="mb-3 flex cursor-pointer flex-wrap items-center justify-between gap-3 rounded-lg px-2 py-1 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-tertiary)]/40"
+        className={`${isCollapsed ? 'mb-1' : 'mb-3'} flex cursor-pointer flex-wrap items-center justify-between gap-3 rounded-lg px-2 py-1 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-tertiary)]/40`}
         onClick={toggleCollapse}
       >
         <div className="flex items-center gap-2">

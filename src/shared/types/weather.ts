@@ -22,9 +22,19 @@ export interface HourlyWeather {
     chanceOfRain?: number;
 }
 
-export interface WeatherState {
-    current: WeatherData | null;
+/**
+ * 일별 예보 데이터
+ */
+export interface DayForecast {
+    date: 'today' | 'tomorrow' | 'dayAfter';
+    dateLabel: string; // '오늘' | '내일' | '모레'
+    current: WeatherData;
     hourly: HourlyWeather[];
+}
+
+export interface WeatherState {
+    forecast: DayForecast[]; // 3일치 예보
+    selectedDay: number; // 0=오늘, 1=내일, 2=모레
     loading: boolean;
     error: string | null;
     lastUpdated: number | null;

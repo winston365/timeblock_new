@@ -3,24 +3,20 @@
  * 
  * 날씨 정보 상태 관리
  */
-/**
- * Weather Zustand Store
- * 
- * 날씨 정보 상태 관리
- */
 
 import { create } from 'zustand';
 import type { WeatherState } from '@/shared/types/weather';
-import { fetchWeatherFromGoogle, loadCachedWeather, cacheWeather } from '../services/weatherService';
+import { fetchWeatherFromGoogle } from '../services/weatherService';
 
 interface WeatherStore extends WeatherState {
     fetchWeather: (forceRefresh?: boolean) => Promise<void>;
+    setSelectedDay: (day: number) => void;
     shouldRefetch: () => boolean;
 }
 
 export const useWeatherStore = create<WeatherStore>((set, get) => ({
-    current: null,
-    hourly: [],
+    forecast: [],
+    selectedDay: 0,
     loading: false,
     error: null,
     lastUpdated: null,
@@ -32,12 +28,15 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
         try {
             set({ loading: true, error: null });
 
-            // weatherService가 내부적으로 캐싱을 처리함
-            const { current, hourly, timestamp } = await fetchWeatherFromGoogle('서울 은평구', forceRefresh);
+            const { forecast, timestamp } = await fetchWeatherFromGoogle('서울 은평구', forceRefresh);
+            const safeForecast = Array.isArray(forecast) ? forecast : [];
+            if (safeForecast.length === 0) {
+                throw new Error('예보 데이터가 비어 있습니다.');
+            }
 
             set({
-                current,
-                hourly,
+                forecast: safeForecast,
+                selectedDay: 0,
                 loading: false,
                 lastUpdated: timestamp || Date.now(),
             });
@@ -49,6 +48,11 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
             });
         }
     },
+
+    /**
+     * 선택된 날짜 변경
+     */
+    setSelectedDay: (day: number) => set({ selectedDay: day }),
 
     /**
      * 재fetch 필요 여부 확인 (30분 경과)

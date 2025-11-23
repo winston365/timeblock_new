@@ -10,9 +10,42 @@
  * Firebase는 `undefined`를 저장할 수 없으므로 이 변환이 필수적입니다.
  *
  * @param data - 정제할 데이터
+ * @param currentPath - 현재 경로 (디버깅용, 내부 사용)
  * @returns 정제된 데이터 (undefined가 null로 변환됨)
  */
-export function sanitizeForFirebase<T>(data: T): T {
+function sanitizeKeySegment(segment: string): string {
+    const safe = segment.replace(/[.#$/\[\]]/g, '_');
+    return safe === '' ? 'invalid_key' : safe;
+}
+
+function setDeepValue(target: Record<string, any>, path: string[], value: any) {
+    if (path.length === 0) return;
+
+    let node = target;
+    path.forEach((segment, index) => {
+        if (index === path.length - 1) {
+            if (
+                node[segment] &&
+                typeof node[segment] === 'object' &&
+                typeof value === 'object' &&
+                !Array.isArray(node[segment]) &&
+                !Array.isArray(value)
+            ) {
+                node[segment] = { ...node[segment], ...value };
+            } else {
+                node[segment] = value;
+            }
+            return;
+        }
+
+        if (!node[segment] || typeof node[segment] !== 'object') {
+            node[segment] = {};
+        }
+        node = node[segment];
+    });
+}
+
+export function sanitizeForFirebase<T>(data: T, currentPath: string = ''): T {
     if (data === undefined) {
         return null as unknown as T;
     }
@@ -22,7 +55,7 @@ export function sanitizeForFirebase<T>(data: T): T {
     }
 
     if (Array.isArray(data)) {
-        return data.map(item => sanitizeForFirebase(item)) as unknown as T;
+        return data.map((item, index) => sanitizeForFirebase(item, `${currentPath}[${index}]`)) as unknown as T;
     }
 
     // 객체인 경우
@@ -31,15 +64,37 @@ export function sanitizeForFirebase<T>(data: T): T {
         if (Object.prototype.hasOwnProperty.call(data, key)) {
             // Firebase Key Validation
             // Keys must be non-empty strings and can't contain ".", "#", "$", "/", "[", or "]"
-            let safeKey = key;
-            if (/[.#$/\[\]]/.test(key) || key === '') {
-                console.warn(`[FirebaseSanitizer] Invalid key detected: "${key}". Replacing invalid characters with "_"`);
-                safeKey = key.replace(/[.#$/\[\]]/g, '_');
-                if (safeKey === '') safeKey = 'invalid_key';
-            }
+            // IMPORTANT: We only check the IMMEDIATE key, not the accumulated path
+            const hasInvalidChars = /[.#$/\[\]]/.test(key);
 
-            const value = (data as any)[key];
-            result[safeKey] = sanitizeForFirebase(value);
+            if (hasInvalidChars || key === '') {
+                const fullPath = currentPath ? `${currentPath}.${key}` : key;
+
+                // dotted path를 가진 키는 중첩 객체로 복원하여 동기화
+                if (key.includes('.')) {
+                    console.warn(
+                        `[FirebaseSanitizer] Invalid key detected: "${fullPath}". ` +
+                        'Converting dotted path to nested key structure.'
+                    );
+                    const segments = key.split('.').filter(Boolean).map(sanitizeKeySegment);
+                    const value = (data as any)[key];
+                    const sanitizedValue = sanitizeForFirebase(value, fullPath);
+                    setDeepValue(result, segments, sanitizedValue);
+                } else {
+                    console.warn(
+                        `[FirebaseSanitizer] Invalid key detected: "${fullPath}". ` +
+                        `Key "${key}" contains invalid characters. Replacing with "_"`
+                    );
+                    const safeKey = sanitizeKeySegment(key);
+                    const value = (data as any)[key];
+                    result[safeKey] = sanitizeForFirebase(value, fullPath);
+                }
+            } else {
+                // Valid key - proceed normally
+                const value = (data as any)[key];
+                const fullPath = currentPath ? `${currentPath}.${key}` : key;
+                result[key] = sanitizeForFirebase(value, fullPath);
+            }
         }
     }
 

@@ -125,7 +125,7 @@ export default function ScheduleView() {
     }, 30 * 1000);
 
     return () => clearInterval(interval);
-  }, [dailyData]);
+  }, [dailyData, warmupPreset]);
 
   const getCurrentBlockId = (): TimeBlockId => {
     const hour = currentHour;
@@ -525,13 +525,7 @@ export default function ScheduleView() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6 pb-24">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold text-[var(--color-text)]">오늘 타임블록</h2>
-          <p className="text-xs text-[var(--color-text-tertiary)]">
-            현재 타임블록을 기준으로 일정을 관리하세요.
-          </p>
-        </div>
+      <div className="mb-6 flex flex-wrap items-center gap-4">
         <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-text-secondary)]">
           <span>전체 {dailyData.tasks.length}개</span>
           <span>인박스 {dailyData.tasks.filter(t => t.timeBlock === null).length}개</span>

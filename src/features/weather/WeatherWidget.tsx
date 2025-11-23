@@ -7,13 +7,15 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useWeatherStore } from './stores/weatherStore';
-import { getWeatherInsight } from './services/weatherService';
+import { getWeatherInsight, type WeatherInsightResult, type OutfitCard } from './services/weatherService';
 import { RefreshCw, Sparkles } from 'lucide-react';
+import type { HourlyWeather } from '@/shared/types/weather';
 
 export default function WeatherWidget() {
-    const { current, hourly, loading, error, fetchWeather, shouldRefetch, lastUpdated } = useWeatherStore();
+    const { forecast, selectedDay, loading, error, fetchWeather, setSelectedDay, shouldRefetch, lastUpdated } = useWeatherStore();
     const [isExpanded, setIsExpanded] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const safeForecast = Array.isArray(forecast) ? forecast : [];
 
     // 초기 로드
     useEffect(() => {
@@ -22,10 +24,17 @@ export default function WeatherWidget() {
 
     const handleRefresh = async (e: React.MouseEvent) => {
         e.stopPropagation();
+        if (isRefreshing) return;
         setIsRefreshing(true);
-        await fetchWeather(true); // 강제 새로고침
-        setIsRefreshing(false);
+        try {
+            await fetchWeather(true); // 강제 새로고침
+        } finally {
+            setIsRefreshing(false);
+        }
     };
+
+    // 현재 선택된 날짜의 예보
+    const currentForecast = safeForecast[selectedDay];
 
     // 배경 그라데이션 결정
     const getBackgroundGradient = (condition: string = '') => {
@@ -37,13 +46,21 @@ export default function WeatherWidget() {
         return 'from-blue-500 to-indigo-600'; // 기본
     };
 
-    const insight = useMemo(() => {
-        if (!current) return '';
-        return getWeatherInsight(current.temp, current.feelsLike, current.condition, current.chanceOfRain, hourly);
-    }, [current, hourly]);
+    const insight: WeatherInsightResult | null = useMemo(() => {
+        if (!currentForecast) return null;
+        const { current, hourly } = currentForecast;
+        const temps = Array.isArray(hourly) ? hourly.map(h => h.temp).filter((t) => Number.isFinite(t)) : [];
+        const tonightLow = temps.length ? Math.min(...temps) : undefined;
+
+        return getWeatherInsight(current.temp, current.feelsLike, current.condition, {
+            humidity: current.humidity,
+            chanceOfRain: current.chanceOfRain,
+            tonightLow,
+        });
+    }, [currentForecast]);
 
     // 로딩 상태
-    if (loading && !current) {
+    if (loading && safeForecast.length === 0) {
         return (
             <div className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-sm">
                 <div className="w-5 h-5 border-2 text-blue-400 animate-spin border-gray-300 flex items-center justify-center border-t-blue-400 rounded-full">
@@ -56,7 +73,7 @@ export default function WeatherWidget() {
     }
 
     // 에러 상태
-    if (error || !current) {
+    if (error || safeForecast.length === 0) {
         return (
             <button
                 onClick={() => fetchWeather(true)}
@@ -68,7 +85,7 @@ export default function WeatherWidget() {
         );
     }
 
-    const bgGradient = getBackgroundGradient(current.condition);
+    const bgGradient = currentForecast ? getBackgroundGradient(currentForecast.current.condition) : 'from-blue-500 to-indigo-600';
 
     return (
         <div className="relative">
@@ -78,15 +95,15 @@ export default function WeatherWidget() {
                 className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r ${bgGradient} bg-opacity-20 border border-white/10 backdrop-blur-sm hover:brightness-110 transition-all duration-200 cursor-pointer group shadow-sm`}
             >
                 <span className="text-2xl filter drop-shadow-md group-hover:scale-110 transition-transform">
-                    {current.icon}
+                    {currentForecast?.current.icon}
                 </span>
                 <span className="font-light text-lg text-white drop-shadow-sm">
-                    {current.temp}°
+                    {currentForecast?.current.temp}°
                 </span>
             </button>
 
             {/* 드롭다운 모달 (2컬럼 레이아웃) */}
-            {isExpanded && (
+            {isExpanded && currentForecast && (
                 <>
                     <div
                         className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px]"
@@ -101,68 +118,85 @@ export default function WeatherWidget() {
                             <div className="absolute top-[-20%] left-[-20%] w-[150%] h-[150%] bg-white/5 rounded-full blur-3xl pointer-events-none"></div>
 
                             {/* 헤더 (새로고침) */}
-                            <div className="absolute top-4 left-4 z-10">
+                            <div className="absolute top-4 left-4 z-20">
                                 <button
+                                    type="button"
                                     onClick={handleRefresh}
-                                    className={`p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors ${isRefreshing ? 'animate-spin' : ''}`}
+                                    className={`p-2 rounded-full bg-white/15 hover:bg-white/25 transition-colors pointer-events-auto ${isRefreshing ? 'animate-spin' : ''}`}
+                                    disabled={isRefreshing}
                                     title="날씨 새로고침"
                                 >
                                     <RefreshCw size={16} className="text-white/80" />
                                 </button>
                             </div>
 
+                            {/* Day Selector Tabs */}
+                            <div className="flex justify-center gap-2 mt-4 px-6 z-10">
+                                {safeForecast.map((day, idx) => (
+                                    <button
+                                        key={day.date}
+                                        onClick={() => setSelectedDay(idx)}
+                                        className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${selectedDay === idx
+                                                ? 'bg-white/30 text-white shadow-lg scale-105'
+                                                : 'bg-white/10 text-white/70 hover:bg-white/20'
+                                            }`}
+                                    >
+                                        {day.dateLabel}
+                                    </button>
+                                ))}
+                            </div>
+
                             {/* 메인 날씨 정보 */}
                             <div className="flex-1 p-8 flex flex-col items-center justify-center relative z-0">
                                 <div className="text-sm font-medium text-white/70 mb-1 tracking-wider uppercase">
-                                    {current.location}
+                                    {currentForecast.current.location}
                                 </div>
 
                                 <div className="text-9xl font-thin tracking-tighter mb-2 drop-shadow-lg">
-                                    {current.temp}°
+                                    {currentForecast.current.temp}°
                                 </div>
 
                                 <div className="text-3xl font-medium mb-8 flex items-center gap-3">
-                                    <span>{current.icon}</span>
-                                    <span>{current.condition}</span>
+                                    <span>{currentForecast.current.icon}</span>
+                                    <span>{currentForecast.current.condition}</span>
                                 </div>
 
                                 <div className="flex gap-8 text-sm font-light text-white/80">
                                     <div className="flex flex-col items-center">
                                         <span className="text-xs opacity-60 mb-1">체감</span>
-                                        <span className="font-medium text-lg">{current.feelsLike}°</span>
+                                        <span className="font-medium text-lg">{currentForecast.current.feelsLike}°</span>
                                     </div>
                                     <div className="w-px h-10 bg-white/20"></div>
                                     <div className="flex flex-col items-center">
                                         <span className="text-xs opacity-60 mb-1">습도</span>
-                                        <span className="font-medium text-lg">{current.humidity}%</span>
+                                        <span className="font-medium text-lg">{currentForecast.current.humidity}%</span>
                                     </div>
-                                    {current.chanceOfRain !== undefined && (
+                                    {currentForecast.current.chanceOfRain !== undefined && (
                                         <>
                                             <div className="w-px h-10 bg-white/20"></div>
                                             <div className="flex flex-col items-center">
                                                 <span className="text-xs opacity-60 mb-1">강수확률</span>
-                                                <span className="font-medium text-lg">{current.chanceOfRain}%</span>
+                                                <span className="font-medium text-lg">{currentForecast.current.chanceOfRain}%</span>
                                             </div>
                                         </>
                                     )}
                                 </div>
                             </div>
 
-                            {/* 시간별 예보 */}
+                            {/* 온도 차트 */}
                             <div className="bg-black/10 backdrop-blur-md border-t border-white/10 p-5">
-                                <div className="text-xs font-medium text-white/50 mb-3 px-1 uppercase tracking-wider flex justify-between items-center">
-                                    <span>Hourly Forecast</span>
-                                    <span className="text-[10px] opacity-50">Feels Like</span>
+                                <div className="text-xs font-medium text-white/50 mb-3 px-1 uppercase tracking-wider">
+                                    Temperature
                                 </div>
-                                <div className="flex overflow-x-auto pb-2 gap-5 no-scrollbar snap-x">
-                                    {hourly?.map((hour, i) => (
-                                        <div key={i} className="flex flex-col items-center min-w-[60px] snap-start">
-                                            <span className="text-xs text-white/60 mb-2">{hour.time}</span>
-                                            <span className="text-2xl mb-2 drop-shadow-sm">{hour.icon}</span>
-                                            <span className="text-lg font-medium">{hour.feelsLike}°</span>
-                                        </div>
-                                    ))}
+                                <TemperatureChart hourly={currentForecast.hourly} />
+                            </div>
+
+                            {/* 강수 확률 차트 */}
+                            <div className="bg-black/10 backdrop-blur-md border-t border-white/10 p-5">
+                                <div className="text-xs font-medium text-white/50 mb-3 px-1 uppercase tracking-wider">
+                                    Precipitation
                                 </div>
+                                <PrecipitationChart hourly={currentForecast.hourly} />
                             </div>
 
                             {/* 푸터 */}
@@ -179,29 +213,28 @@ export default function WeatherWidget() {
                         </div>
 
                         {/* 오른쪽 컬럼: AI 인사이트 */}
-                        <div className="flex-1 bg-white/5 backdrop-blur-md flex flex-col relative">
+                        <div className="flex-1 bg-[#0b1220]/90 text-slate-50 backdrop-blur-md flex flex-col relative border-l border-white/5">
                             <div className="p-6 border-b border-white/10 flex items-center gap-3">
-                                <div className="p-2 bg-white/10 rounded-full">
-                                    <Sparkles size={20} className="text-yellow-300" />
+                                <div className="p-2 bg-amber-500/15 rounded-full border border-amber-400/30">
+                                    <Sparkles size={20} className="text-amber-300" />
                                 </div>
-                                <span className="font-bold text-lg text-white/90 tracking-wide">Weather Insight</span>
+                                <span className="font-bold text-lg text-slate-100 tracking-wide">Weather Insight</span>
                             </div>
 
-                            <div className="flex-1 p-6 overflow-y-auto custom-scrollbar relative">
+                            <div className="flex-1 p-6 overflow-y-auto custom-scrollbar relative bg-gradient-to-b from-white/5 via-white/2 to-transparent">
                                 {/* 로딩 오버레이 */}
                                 {isRefreshing && (
                                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-20 rounded-lg">
                                         <div className="flex flex-col items-center gap-3">
-                                            <div className="w-10 h-10 border-3 border-white/20 border-t-white animate-spin rounded-full"></div>
-                                            <span className="text-sm text-white/80 font-medium">인사이트 업데이트 중...</span>
+                                            <div className="w-10 h-10 border-3 border-amber-200/40 border-t-amber-300 animate-spin rounded-full"></div>
+                                            <span className="text-sm text-amber-100 font-medium">인사이트 업데이트 중...</span>
                                         </div>
                                     </div>
                                 )}
 
-                                <div className="prose prose-invert prose-sm max-w-none">
-                                    <p className="text-base font-light leading-relaxed text-white/90 whitespace-pre-line">
-                                        {insight}
-                                    </p>
+                                <div className="space-y-4">
+                                    <MarkdownText text={insight?.intro ?? ''} />
+                                    <OutfitCards cards={insight?.cards ?? []} />
                                 </div>
                             </div>
                         </div>
@@ -209,6 +242,173 @@ export default function WeatherWidget() {
                     </div>
                 </>
             )}
+        </div>
+    );
+}
+
+/**
+ * 온도 차트 컴포넌트 (CSS 기반)
+ */
+function TemperatureChart({ hourly }: { hourly: HourlyWeather[] }) {
+    if (hourly.length === 0) return null;
+
+    const maxTemp = Math.max(...hourly.map(h => h.temp));
+    const minTemp = Math.min(...hourly.map(h => h.temp));
+    const range = maxTemp - minTemp || 1;
+
+    return (
+        <div className="relative h-32 flex items-end gap-1">
+            {hourly.map((hour, i) => {
+                const height = ((hour.temp - minTemp) / range) * 100;
+                return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
+                        <span className="text-xs text-white/60">{hour.temp}°</span>
+                        <div className="flex-1 flex items-end w-full">
+                            <div
+                                className="w-full bg-gradient-to-t from-blue-400 to-orange-300 rounded-t transition-all"
+                                style={{ height: `${Math.max(height, 10)}%` }}
+                            />
+                        </div>
+                        <span className="text-[10px] text-white/40 mt-1">{hour.time}</span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+/**
+ * 강수 확률 차트 컴포넌트 (CSS 기반)
+ */
+function PrecipitationChart({ hourly }: { hourly: HourlyWeather[] }) {
+    if (hourly.length === 0) return null;
+
+    return (
+        <div className="relative h-24 flex items-end gap-1">
+            {hourly.map((hour, i) => {
+                const chance = hour.chanceOfRain || 0;
+                const color = chance > 70 ? 'bg-blue-500' : chance > 40 ? 'bg-blue-400' : 'bg-blue-300/50';
+
+                return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
+                        <span className="text-[10px] text-white/60">{chance}%</span>
+                        <div className="flex-1 flex items-end w-full">
+                            <div
+                                className={`w-full ${color} rounded-t transition-all`}
+                                style={{ height: `${Math.max(chance, 5)}%` }}
+                            />
+                        </div>
+                        <span className="text-[10px] text-white/40 mt-1">{hour.time}</span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+/**
+ * 마크다운 텍스트 렌더러 (간단한 포맷팅)
+ */
+function MarkdownText({ text }: { text: string }) {
+    const lines = text.split('\n');
+
+    return (
+        <div className="space-y-3 text-slate-50">
+            {lines.map((line, i) => {
+                const trimmed = line.trim();
+
+                // 헤더 (##)
+                if (trimmed.startsWith('## ')) {
+                    return <h3 key={i} className="text-xl font-bold text-slate-100 mt-4 mb-2">{trimmed.slice(3)}</h3>;
+                }
+
+                // 헤더 (###)
+                if (trimmed.startsWith('### ')) {
+                    return <h4 key={i} className="text-lg font-semibold text-slate-200 mt-3 mb-1">{trimmed.slice(4)}</h4>;
+                }
+
+                // 수평선
+                if (trimmed === '---') {
+                    return <hr key={i} className="border-white/20 my-4" />;
+                }
+
+                // 리스트
+                if (trimmed.startsWith('- ')) {
+                    return <li key={i} className="ml-4 text-slate-100/90 leading-relaxed">{formatBold(trimmed.slice(2))}</li>;
+                }
+
+                // 빈 줄
+                if (!trimmed) {
+                    return <div key={i} className="h-2" />;
+                }
+
+                // 일반 텍스트 (볼드 지원)
+                return <p key={i} className="text-base text-slate-100 leading-relaxed">{formatBold(trimmed)}</p>;
+            })}
+        </div>
+    );
+}
+
+/**
+ * 볼드 텍스트 포맷팅 (**text**)
+ */
+function formatBold(text: string): React.ReactNode {
+    const parts = text.split(/\*\*(.*?)\*\*/g);
+    return parts.map((part, i) =>
+        i % 2 === 1 ? <strong key={i} className="font-bold text-white">{part}</strong> : part
+    );
+}
+
+/**
+ * Outfit recommendation cards
+ */
+function OutfitCards({ cards }: { cards: OutfitCard[] }) {
+    if (!cards || cards.length === 0) return null;
+
+    const icons = ['🌿', '🎽', '🔥'];
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                    <span className="text-base">👗</span>
+                    <span>추천 코디</span>
+                </div>
+                <span className="text-xs text-slate-300">3가지 옵션</span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+                {cards.map((card, idx) => (
+                    <div
+                        key={`${card.option}-${card.vibe}-${idx}`}
+                        className="min-w-0 rounded-2xl bg-slate-800/70 border border-slate-700/60 p-3 shadow-lg backdrop-blur-md"
+                    >
+                        <div className="flex items-start justify-between mb-2.5">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-lg text-amber-300">{icons[idx] ?? '✨'}</span>
+                                <div>
+                                    <p className="text-[9px] uppercase tracking-[0.18em] text-slate-400">Outfit</p>
+                                    <p className="text-sm font-semibold text-slate-50 leading-tight">옵션 {card.option}</p>
+                                </div>
+                            </div>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-100 border border-amber-400/25 whitespace-nowrap">
+                                {card.vibe}
+                            </span>
+                        </div>
+
+                        <div className="space-y-1.5 text-[13px] text-slate-100 leading-snug">
+                            <div className="flex items-start gap-2 min-w-0">
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-100 border border-emerald-400/25 flex-shrink-0">러닝</span>
+                                <span className="leading-snug break-words min-w-0">{card.running}</span>
+                            </div>
+                            <div className="flex items-start gap-2 min-w-0">
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-100 border border-amber-400/25 flex-shrink-0">외출</span>
+                                <span className="leading-snug break-words min-w-0">{card.outing}</span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }

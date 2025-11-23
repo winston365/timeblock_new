@@ -52,8 +52,9 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    minWidth: 1200,
-    minHeight: 700,
+    // Allow the window to shrink further in production builds
+    minWidth: 900,
+    minHeight: 600,
     webPreferences: {
       // 보안 설정 (Production-Ready)
       nodeIntegration: false,        // ✅ Node.js 직접 접근 차단
