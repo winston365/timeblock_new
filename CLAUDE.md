@@ -8,6 +8,8 @@ TimeBlock Planner is a gamified daily task management desktop application built 
 
 ## Development Commands
 
+**Requirements**: Node.js 18+
+
 ```bash
 # Development
 npm run dev                    # Start Vite dev server (web only)
@@ -36,7 +38,7 @@ npm run preview               # Preview production build
 
 ### Entry Point
 
-`src/main.tsx` → `AppShell` is the main entry. Daily reset and template auto-generation runs inside `app/AppShell.tsx` + `app/hooks/useAppInitialization.ts`.
+`src/main.tsx` → `AppShell` is the main entry. Daily reset and template auto-generation runs inside `src/app/AppShell.tsx` + `src/app/hooks/useAppInitialization.ts`.
 
 ### Data Persistence - 3-Tier Fallback System
 
@@ -59,20 +61,21 @@ dailyDataStore.updateTask()
 
 ### Firebase Synchronization Architecture
 
-Located in `src/shared/services/sync/`:
+Located in `src/shared/services/sync/firebase/`:
 
-- **Strategy Pattern**: Each data type has a `SyncStrategy<T>` implementation
+- **Strategy Pattern**: Each data type has a `SyncStrategy<T>` implementation (`strategies.ts`)
 - **Conflict Resolution**: Last-Write-Wins (LWW) via `conflictResolver.ts`
 - **Retry Queue**: Failed syncs are queued and retried (`syncRetryQueue.ts`)
 - **Deduplication**: Hash-based duplicate detection prevents redundant syncs
+- **Core Sync**: `syncCore.ts` handles the actual sync pipeline
 - **Server-First Templates**: Firebase Cloud Function (`functions/index.js`) generates tasks from templates daily at 00:00 KST. Client observes, doesn't generate.
 
 **Important**: When modifying data structures, update all three layers:
 1. Dexie schema in `src/data/db/dexieClient.ts`
 2. Repository in `src/data/repositories/`
-3. Sync strategy in `src/shared/services/sync/strategies/`
+3. Sync strategy in `src/shared/services/sync/firebase/strategies.ts`
 
-When altering sync behavior, keep Last-Write-Wins + retry queue semantics described in `src/shared/services/firebase/README.md`.
+When altering sync behavior, keep Last-Write-Wins + retry queue semantics.
 
 ### Feature-Based Organization
 
@@ -188,7 +191,7 @@ AI companion with affection system (0-100) and dynamic poses:
 - **Interaction Modes**: Normal vs Characteristic (personality-driven)
 - **Auto-Messages**: Configurable interval messages
 
-Assets in `src/features/waifu/poses/`, state managed in `waifuCompanionStore` and `waifuRepository`.
+Assets in `src/features/waifu/poses/` and `public/assets/waifu/poses/`, state managed in `waifuCompanionStore` and `waifuRepository`.
 
 ### AI Integration (Gemini)
 
