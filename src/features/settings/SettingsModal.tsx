@@ -32,11 +32,11 @@ const PRICE_PER_MILLION_OUTPUT = 12.0;
 const modalOverlayClass =
     'fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(0,0,0,0.65)] p-4 backdrop-blur';
 const modalContainerClass =
-    'flex h-[min(95vh,820px)] w-full max-w-[760px] flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-[0_45px_80px_rgba(0,0,0,0.5)]';
-const tabsWrapperClass =
-    'flex gap-1 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-4';
+    'flex h-[min(95vh,820px)] w-full max-w-[960px] flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-[0_45px_80px_rgba(0,0,0,0.5)]';
+const sidebarClass =
+    'flex w-56 flex-col gap-1 border-r border-[var(--color-border)] bg-[var(--color-bg-tertiary)] py-4';
 const tabButtonBase =
-    'flex-1 border-b-2 px-4 py-3 text-sm font-semibold transition-colors duration-200';
+    'mx-2 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-200';
 const sectionClass = 'flex flex-col gap-5 text-sm text-[var(--color-text)]';
 const sectionDescriptionClass = 'text-sm text-[var(--color-text-secondary)] leading-relaxed';
 const formGroupClass = 'flex flex-col gap-2 text-sm text-[var(--color-text-secondary)]';
@@ -95,7 +95,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
     } = useSettingsStore();
 
     const [saving, setSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'gemini' | 'firebase' | 'appearance' | 'logs' | 'dontdo'>('gemini');
+    const [activeTab, setActiveTab] = useState<'gemini' | 'firebase' | 'appearance' | 'logs' | 'dontdo' | 'shortcuts'>('gemini');
     const [currentTheme, setCurrentTheme] = useState<string>(() => {
         return localStorage.getItem('theme') || '';
     });
@@ -132,7 +132,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
         if (isOpen && settings) {
             // 이미 로컬 설정이 있고, 모달이 열려있는 상태라면 덮어쓰지 않음 (사용자 입력 보존)
             // 단, 처음 열릴 때는 초기화
-            setLocalSettings(prev => prev || JSON.parse(JSON.stringify(settings)));
+            setLocalSettings(prev => prev || structuredClone(settings));
         }
         if (!isOpen) {
             setLocalSettings(null);
@@ -420,849 +420,1045 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                     </button>
                 </div>
 
-                <div className={tabsWrapperClass}>
-                    <button
-                        className={`${tabButtonBase} ${activeTab === 'appearance'
-                            ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                            : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                            }`}
-                        onClick={() => setActiveTab('appearance')}
-                    >
-                        🎨 테마
-                    </button>
-                    <button
-                        className={`${tabButtonBase} ${activeTab === 'gemini'
-                            ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                            : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                            }`}
-                        onClick={() => setActiveTab('gemini')}
-                    >
-                        🤖 Gemini AI
-                    </button>
-                    <button
-                        className={`${tabButtonBase} ${activeTab === 'firebase'
-                            ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                            : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                            }`}
-                        onClick={() => setActiveTab('firebase')}
-                    >
-                        🔥 Firebase
-                    </button>
-                    <button
-                        className={`${tabButtonBase} ${activeTab === 'dontdo'
-                            ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                            : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                            }`}
-                        onClick={() => setActiveTab('dontdo')}
-                    >
-                        🚫 하지않기
-                    </button>
-                    <button
-                        className={`${tabButtonBase} ${activeTab === 'logs'
-                            ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                            : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                            }`}
-                        onClick={() => setActiveTab('logs')}
-                    >
-                        📊 로그
-                    </button>
-                </div>
+                {/* 왼쪽 사이드바와 오른쪽 콘텐츠 영역 */}
+                <div className="flex flex-1 overflow-hidden">
+                    {/* 왼쪽 네비게이션 사이드바 */}
+                    <nav className={sidebarClass}>
+                        <button
+                            className={`${tabButtonBase} ${activeTab === 'appearance'
+                                ? 'bg-[var(--color-primary)] text-white shadow-lg'
+                                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
+                                }`}
+                            onClick={() => setActiveTab('appearance')}
+                        >
+                            <span className="text-lg">🎨</span>
+                            <span>테마</span>
+                        </button>
+                        <button
+                            className={`${tabButtonBase} ${activeTab === 'gemini'
+                                ? 'bg-[var(--color-primary)] text-white shadow-lg'
+                                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
+                                }`}
+                            onClick={() => setActiveTab('gemini')}
+                        >
+                            <span className="text-lg">🤖</span>
+                            <span>Gemini AI</span>
+                        </button>
+                        <button
+                            className={`${tabButtonBase} ${activeTab === 'firebase'
+                                ? 'bg-[var(--color-primary)] text-white shadow-lg'
+                                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
+                                }`}
+                            onClick={() => setActiveTab('firebase')}
+                        >
+                            <span className="text-lg">🔥</span>
+                            <span>Firebase</span>
+                        </button>
+                        <button
+                            className={`${tabButtonBase} ${activeTab === 'dontdo'
+                                ? 'bg-[var(--color-primary)] text-white shadow-lg'
+                                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
+                                }`}
+                            onClick={() => setActiveTab('dontdo')}
+                        >
+                            <span className="text-lg">🚫</span>
+                            <span>하지않기</span>
+                        </button>
+                        <button
+                            className={`${tabButtonBase} ${activeTab === 'logs'
+                                ? 'bg-[var(--color-primary)] text-white shadow-lg'
+                                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
+                                }`}
+                            onClick={() => setActiveTab('logs')}
+                        >
+                            <span className="text-lg">📊</span>
+                            <span>로그</span>
+                        </button>
+                        <button
+                            className={`${tabButtonBase} ${activeTab === 'shortcuts'
+                                ? 'bg-[var(--color-primary)] text-white shadow-lg'
+                                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
+                                }`}
+                            onClick={() => setActiveTab('shortcuts')}
+                        >
+                            <span className="text-lg">⌨️</span>
+                            <span>단축키</span>
+                        </button>
+                    </nav>
 
-                <div className="flex-1 overflow-y-auto px-6 py-5">
-                    {loading ? (
-                        <div className="flex h-64 items-center justify-center text-sm text-[var(--color-text-secondary)]">로딩 중...</div>
-                    ) : (
-                        <>
-                            {/* 테마 설정 */}
-                            {activeTab === 'appearance' && (
-                                <div className={sectionClass}>
-                                    <h3>🎨 테마 설정</h3>
-                                    <p className={sectionDescriptionClass}>
-                                        다양한 색감 테마를 선택하여 나만의 작업 환경을 만들어보세요.
-                                    </p>
+                    {/* 오른쪽 콘텐츠 영역 */}
+                    <div className="flex-1 overflow-y-auto px-6 py-5">
+                        {loading ? (
+                            <div className="flex h-64 items-center justify-center text-sm text-[var(--color-text-secondary)]">로딩 중...</div>
+                        ) : (
+                            <>
+                                {/* 테마 설정 */}
+                                {activeTab === 'appearance' && (
+                                    <div className={sectionClass}>
+                                        <h3>🎨 테마 설정</h3>
+                                        <p className={sectionDescriptionClass}>
+                                            다양한 색감 테마를 선택하여 나만의 작업 환경을 만들어보세요.
+                                        </p>
 
-                                    <div className={formGroupClass}>
-                                        <label htmlFor="theme-select">테마 선택</label>
-                                        <select
-                                            id="theme-select"
-                                            className={inputClass}
-                                            value={currentTheme}
-                                            onChange={(e) => handleThemeChange(e.target.value)}
-                                        >
-                                            <option value="">Indigo (기본)</option>
-                                            <option value="ocean">🌊 Ocean - 차분하고 집중력 향상</option>
-                                            <option value="forest">🌲 Forest - 편안하고 자연스러운</option>
-                                            <option value="sunset">🌅 Sunset - 따뜻하고 활력적인</option>
-                                            <option value="purple">💜 Purple Dream - 창의적이고 우아한</option>
-                                            <option value="rose">🌸 Rose Gold - 세련되고 모던한</option>
-                                            <option value="midnight">🌃 Midnight - 깊고 프로페셔널한</option>
-                                            <option value="cyberpunk">⚡ Cyberpunk - 네온과 미래적인</option>
-                                            <option value="mocha">☕ Mocha - 부드럽고 눈에 편안한</option>
-                                        </select>
-                                    </div>
-
-                                    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
-                                        <h4 className="text-sm font-semibold text-[var(--color-text)]">미리보기</h4>
-                                        <div className="mt-4 flex items-center justify-center gap-6">
-                                            {[
-                                                { label: 'Primary', style: 'bg-[var(--color-primary)]' },
-                                                { label: 'Surface', style: 'bg-[var(--color-bg-surface)]' },
-                                                { label: 'Elevated', style: 'bg-[var(--color-bg-elevated)]' },
-                                            ].map(color => (
-                                                <div key={color.label} className="flex flex-col items-center gap-2">
-                                                    <div className={`h-16 w-16 rounded-2xl border-2 border-[var(--color-border)] ${color.style}`} />
-                                                    <span className="text-xs text-[var(--color-text-secondary)]">{color.label}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className={infoBoxClass}>
-                                        <strong>💡 팁:</strong> 테마는 즉시 적용되며, 자동으로 저장됩니다.
-                                        작업 환경에 맞는 테마를 선택하여 눈의 피로를 줄이고 집중력을 높여보세요!
-                                    </div>
-
-                                    <div className="my-6 border-t border-[var(--color-border)]" />
-
-                                    <h3>ℹ️ 앱 정보</h3>
-                                    <div className={formGroupClass}>
-                                        <label className="font-semibold text-[var(--color-text)]">현재 버전</label>
-                                        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4 py-3 font-mono text-sm font-semibold text-[var(--color-primary)]">
-                                            v{appVersion}
-                                        </div>
-                                        <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                                            새 버전이 출시되면 앱 시작 시 자동으로 알림이 표시됩니다.
-                                        </small>
-                                    </div>
-
-                                    <div className={formGroupClass}>
-                                        <label className="font-semibold text-[var(--color-text)]">수동 업데이트 확인</label>
-                                        <button
-                                            className={`${primaryButtonClass} w-full`}
-                                            onClick={handleCheckForUpdates}
-                                            disabled={checkingUpdate}
-                                        >
-                                            {checkingUpdate ? '⏳ 확인 중...' : '🔄 지금 업데이트 확인'}
-                                        </button>
-                                        {updateStatus && (
-                                            <div className={`mt-3 rounded-2xl px-3 py-2 text-xs ${updateClass}`}>
-                                                {updateStatus}
-                                            </div>
-                                        )}
-                                        <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                                            자동 업데이트가 작동하지 않을 때 이 버튼으로 수동 확인할 수 있습니다.
-                                        </small>
-                                    </div>
-
-                                    <div className={infoBoxClass}>
-                                        <strong>🚀 자동 업데이트:</strong> TimeBlock Planner는 GitHub Releases를 통해 자동으로 업데이트됩니다.
-                                        앱 시작 후 5초 뒤 최신 버전을 확인하며, 새 버전이 있으면 다운로드 및 설치 안내가 표시됩니다.
-                                    </div>
-
-                                    <div className={`${infoBoxClass} mt-4`}>
-                                        <strong>🔧 업데이트 문제 해결:</strong>
-                                        <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-6">
-                                            <li>앱을 <strong>프로덕션 빌드</strong>로 실행했는지 확인 (개발 모드에서는 업데이트 비활성화)</li>
-                                            <li>GitHub Releases에 <code>.exe</code>, <code>.exe.blockmap</code>, <code>latest.yml</code> 파일이 있는지 확인</li>
-                                            <li>네트워크 연결 확인 (GitHub에 접근 가능해야 함)</li>
-                                            <li>현재 버전이 <code>v{appVersion}</code>이고, 새 릴리스가 더 높은 버전인지 확인</li>
-                                        </ul>
-                                    </div>
-
-                                    <div className="my-6 border-t border-[var(--color-border)]" />
-
-                                    <h3>👧 와이푸 모드 설정</h3>
-                                    <p className={sectionDescriptionClass}>
-                                        와이푸 이미지 표시 방식을 선택할 수 있습니다.
-                                    </p>
-
-                                    <div className={formGroupClass}>
-                                        <label htmlFor="waifu-mode-select">모드 선택</label>
-                                        <select
-                                            id="waifu-mode-select"
-                                            className={inputClass}
-                                            value={localSettings?.waifuMode || 'characteristic'}
-                                            onChange={(e) =>
-                                                setLocalSettings(prev => prev ? ({ ...prev, waifuMode: e.target.value as any }) : prev)
-                                            }
-                                        >
-                                            <option value="characteristic">특성 모드 (호감도에 따라 변화)</option>
-                                            <option value="normal">일반 모드 (기본 이미지 고정)</option>
-                                        </select>
-                                        <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                                            {localSettings?.waifuMode === 'characteristic'
-                                                ? '호감도에 따라 다양한 표정의 이미지가 표시됩니다.'
-                                                : '호감도와 관계없이 기본 이미지만 표시됩니다.'}
-                                        </small>
-                                    </div>
-
-                                    <div className={formGroupClass}>
-                                        <label htmlFor="waifu-interval-select">이미지 자동 변경 주기</label>
-                                        <select
-                                            id="waifu-interval-select"
-                                            className={inputClass}
-                                            value={localSettings?.waifuImageChangeInterval ?? 600000}
-                                            onChange={(e) =>
-                                                setLocalSettings(prev => prev ? ({ ...prev, waifuImageChangeInterval: parseInt(e.target.value) }) : prev)
-                                            }
-                                        >
-                                            <option value="300000">5분마다 변경</option>
-                                            <option value="600000">10분마다 변경 (기본)</option>
-                                            <option value="900000">15분마다 변경</option>
-                                            <option value="1800000">30분마다 변경</option>
-                                            <option value="0">자동 변경 안함</option>
-                                        </select>
-                                        <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                                            {localSettings?.waifuImageChangeInterval === 0
-                                                ? '이미지가 자동으로 변경되지 않습니다. 클릭할 때만 변경됩니다.'
-                                                : `설정한 주기마다 이미지와 대사가 자동으로 변경됩니다.`}
-                                        </small>
-                                    </div>
-
-                                    <div className={infoBoxClass}>
-                                        <strong>💡 참고:</strong> 설정은 로컬 저장소에 저장되어 페이지를 새로고침해도 유지됩니다.
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Gemini 설정 */}
-                            {activeTab === 'gemini' && (
-                                <div className={sectionClass}>
-                                    <h3>Gemini AI 설정</h3>
-                                    <p className={sectionDescriptionClass}>
-                                        Google Gemini API를 사용하여 AI 챗봇 기능을 이용할 수 있습니다.
-                                    </p>
-
-                                    <div className={formGroupClass}>
-                                        <label htmlFor="gemini-api-key">
-                                            Gemini API 키 <span className="required">*</span>
-                                        </label>
-                                        <input
-                                            id="gemini-api-key"
-                                            type="password"
-                                            className={inputClass}
-                                            placeholder="AIzaSy..."
-                                            value={localSettings?.geminiApiKey || ''}
-                                            onChange={(e) =>
-                                                setLocalSettings(prev => prev ? ({ ...prev, geminiApiKey: e.target.value }) : prev)
-                                            }
-                                        />
-                                        <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                                            <a
-                                                href="https://makersuite.google.com/app/apikey"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="theme-select">테마 선택</label>
+                                            <select
+                                                id="theme-select"
+                                                className={inputClass}
+                                                value={currentTheme}
+                                                onChange={(e) => handleThemeChange(e.target.value)}
                                             >
-                                                API 키 발급받기 →
-                                            </a>
-                                        </small>
-                                    </div>
-
-                                    <div className={formGroupClass}>
-                                        <label htmlFor="gemini-model">
-                                            🤖 Gemini 모델명
-                                        </label>
-                                        <input
-                                            id="gemini-model"
-                                            type="text"
-                                            className={inputClass}
-                                            placeholder="gemini-3-pro-preview"
-                                            value={localSettings?.geminiModel || ''}
-                                            onChange={(e) =>
-                                                setLocalSettings(prev => prev ? ({ ...prev, geminiModel: e.target.value }) : prev)
-                                            }
-                                        />
-                                        <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                                            사용할 Gemini 모델명을 입력하세요. (예: gemini-3-pro-preview, gemini-2.0-flash-exp, gemini-1.5-pro)
-                                        </small>
-                                    </div>
-
-                                    <div className={`${formGroupClass} flex-row items-center gap-3`}>
-                                        <div className="flex flex-col gap-1">
-                                            <span className="text-sm font-semibold text-[var(--color-text)]">작업 자동 이모지</span>
-                                            <span className="text-[0.8rem] text-[var(--color-text-tertiary)]">
-                                                제목 기반 추천 이모지를 접두로 붙입니다 (비용 절약을 위해 기본 OFF)
-                                            </span>
+                                                <option value="">Indigo (기본)</option>
+                                                <option value="ocean">🌊 Ocean - 차분하고 집중력 향상</option>
+                                                <option value="forest">🌲 Forest - 편안하고 자연스러운</option>
+                                                <option value="sunset">🌅 Sunset - 따뜻하고 활력적인</option>
+                                                <option value="purple">💜 Purple Dream - 창의적이고 우아한</option>
+                                                <option value="rose">🌸 Rose Gold - 세련되고 모던한</option>
+                                                <option value="midnight">🌃 Midnight - 깊고 프로페셔널한</option>
+                                                <option value="cyberpunk">⚡ Cyberpunk - 네온과 미래적인</option>
+                                                <option value="mocha">☕ Mocha - 부드럽고 눈에 편안한</option>
+                                            </select>
                                         </div>
-                                        <label className="relative ml-auto inline-flex items-center cursor-pointer select-none">
-                                            <input
-                                                type="checkbox"
-                                                className="sr-only peer"
-                                                checked={!!localSettings?.autoEmojiEnabled}
+
+                                        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
+                                            <h4 className="text-sm font-semibold text-[var(--color-text)]">미리보기</h4>
+                                            <div className="mt-4 flex items-center justify-center gap-6">
+                                                {[
+                                                    { label: 'Primary', style: 'bg-[var(--color-primary)]' },
+                                                    { label: 'Surface', style: 'bg-[var(--color-bg-surface)]' },
+                                                    { label: 'Elevated', style: 'bg-[var(--color-bg-elevated)]' },
+                                                ].map(color => (
+                                                    <div key={color.label} className="flex flex-col items-center gap-2">
+                                                        <div className={`h-16 w-16 rounded-2xl border-2 border-[var(--color-border)] ${color.style}`} />
+                                                        <span className="text-xs text-[var(--color-text-secondary)]">{color.label}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className={infoBoxClass}>
+                                            <strong>💡 팁:</strong> 테마는 즉시 적용되며, 자동으로 저장됩니다.
+                                            작업 환경에 맞는 테마를 선택하여 눈의 피로를 줄이고 집중력을 높여보세요!
+                                        </div>
+
+                                        <div className="my-6 border-t border-[var(--color-border)]" />
+
+                                        <h3>ℹ️ 앱 정보</h3>
+                                        <div className={formGroupClass}>
+                                            <label className="font-semibold text-[var(--color-text)]">현재 버전</label>
+                                            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4 py-3 font-mono text-sm font-semibold text-[var(--color-primary)]">
+                                                v{appVersion}
+                                            </div>
+                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                새 버전이 출시되면 앱 시작 시 자동으로 알림이 표시됩니다.
+                                            </small>
+                                        </div>
+
+                                        <div className={formGroupClass}>
+                                            <label className="font-semibold text-[var(--color-text)]">수동 업데이트 확인</label>
+                                            <button
+                                                className={`${primaryButtonClass} w-full`}
+                                                onClick={handleCheckForUpdates}
+                                                disabled={checkingUpdate}
+                                            >
+                                                {checkingUpdate ? '⏳ 확인 중...' : '🔄 지금 업데이트 확인'}
+                                            </button>
+                                            {updateStatus && (
+                                                <div className={`mt-3 rounded-2xl px-3 py-2 text-xs ${updateClass}`}>
+                                                    {updateStatus}
+                                                </div>
+                                            )}
+                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                자동 업데이트가 작동하지 않을 때 이 버튼으로 수동 확인할 수 있습니다.
+                                            </small>
+                                        </div>
+
+                                        <div className={infoBoxClass}>
+                                            <strong>🚀 자동 업데이트:</strong> TimeBlock Planner는 GitHub Releases를 통해 자동으로 업데이트됩니다.
+                                            앱 시작 후 5초 뒤 최신 버전을 확인하며, 새 버전이 있으면 다운로드 및 설치 안내가 표시됩니다.
+                                        </div>
+
+                                        <div className={`${infoBoxClass} mt-4`}>
+                                            <strong>🔧 업데이트 문제 해결:</strong>
+                                            <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-6">
+                                                <li>앱을 <strong>프로덕션 빌드</strong>로 실행했는지 확인 (개발 모드에서는 업데이트 비활성화)</li>
+                                                <li>GitHub Releases에 <code>.exe</code>, <code>.exe.blockmap</code>, <code>latest.yml</code> 파일이 있는지 확인</li>
+                                                <li>네트워크 연결 확인 (GitHub에 접근 가능해야 함)</li>
+                                                <li>현재 버전이 <code>v{appVersion}</code>이고, 새 릴리스가 더 높은 버전인지 확인</li>
+                                            </ul>
+                                        </div>
+
+                                        <div className="my-6 border-t border-[var(--color-border)]" />
+
+                                        <h3>👧 와이푸 모드 설정</h3>
+                                        <p className={sectionDescriptionClass}>
+                                            와이푸 이미지 표시 방식을 선택할 수 있습니다.
+                                        </p>
+
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="waifu-mode-select">모드 선택</label>
+                                            <select
+                                                id="waifu-mode-select"
+                                                className={inputClass}
+                                                value={localSettings?.waifuMode || 'characteristic'}
                                                 onChange={(e) =>
-                                                    setLocalSettings(prev => prev ? ({ ...prev, autoEmojiEnabled: e.target.checked }) : prev)
+                                                    setLocalSettings(prev => prev ? ({ ...prev, waifuMode: e.target.value as any }) : prev)
+                                                }
+                                            >
+                                                <option value="characteristic">특성 모드 (호감도에 따라 변화)</option>
+                                                <option value="normal">일반 모드 (기본 이미지 고정)</option>
+                                            </select>
+                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                {localSettings?.waifuMode === 'characteristic'
+                                                    ? '호감도에 따라 다양한 표정의 이미지가 표시됩니다.'
+                                                    : '호감도와 관계없이 기본 이미지만 표시됩니다.'}
+                                            </small>
+                                        </div>
+
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="waifu-interval-select">이미지 자동 변경 주기</label>
+                                            <select
+                                                id="waifu-interval-select"
+                                                className={inputClass}
+                                                value={localSettings?.waifuImageChangeInterval ?? 600000}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => prev ? ({ ...prev, waifuImageChangeInterval: parseInt(e.target.value) }) : prev)
+                                                }
+                                            >
+                                                <option value="300000">5분마다 변경</option>
+                                                <option value="600000">10분마다 변경 (기본)</option>
+                                                <option value="900000">15분마다 변경</option>
+                                                <option value="1800000">30분마다 변경</option>
+                                                <option value="0">자동 변경 안함</option>
+                                            </select>
+                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                {localSettings?.waifuImageChangeInterval === 0
+                                                    ? '이미지가 자동으로 변경되지 않습니다. 클릭할 때만 변경됩니다.'
+                                                    : `설정한 주기마다 이미지와 대사가 자동으로 변경됩니다.`}
+                                            </small>
+                                        </div>
+
+                                        <div className={infoBoxClass}>
+                                            <strong>💡 참고:</strong> 설정은 로컬 저장소에 저장되어 페이지를 새로고침해도 유지됩니다.
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Firebase 설정 */}
+                                {activeTab === 'firebase' && (
+                                    <div className={sectionClass}>
+                                        <h3>🔥 Firebase 설정</h3>
+                                        <p className={sectionDescriptionClass}>
+                                            데이터 동기화 및 백업을 위한 Firebase 설정입니다.
+                                        </p>
+
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="bark-api-key">
+                                                🔔 Bark API 키 (알림용)
+                                            </label>
+                                            <input
+                                                id="bark-api-key"
+                                                type="password"
+                                                className={inputClass}
+                                                placeholder="Bark 앱의 Key 입력"
+                                                value={localSettings?.barkApiKey || ''}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => prev ? ({ ...prev, barkApiKey: e.target.value }) : prev)
                                                 }
                                             />
-                                            <div className="group h-12 w-24 rounded-full border border-gray-600 bg-gradient-to-tr from-rose-100 via-rose-400 to-rose-500 shadow-md shadow-gray-900 transition duration-300 peer-checked:bg-gradient-to-tr peer-checked:from-green-100 peer-checked:via-lime-400 peer-checked:to-lime-500">
-                                                <span className="absolute left-1 top-1 flex h-10 w-10 items-center justify-center rounded-full border border-gray-600 bg-gray-50 text-lg transition-all duration-300 -rotate-180 peer-checked:translate-x-12 peer-checked:rotate-0 peer-hover:scale-95">
-                                                    {localSettings?.autoEmojiEnabled ? '✔️' : '✖️'}
-                                                </span>
-                                            </div>
-                                        </label>
-                                    </div>
+                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                <a
+                                                    href="https://apps.apple.com/us/app/bark-customed-notifications/id1403753865"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    Bark 앱 설치 및 키 확인 →
+                                                </a>
+                                            </small>
+                                        </div>
 
-                                    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-4">
-                                        <div className="mb-2 flex items-center justify-between">
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-semibold text-[var(--color-text)]">시간대 속성 템플릿</span>
+                                        <div className="my-4 border-t border-[var(--color-border)]" />
+                                    </div>
+                                )}
+
+                                {activeTab === 'gemini' && (
+                                    <div className={sectionClass}>
+                                        <h3>Gemini AI 설정</h3>
+                                        <p className={sectionDescriptionClass}>
+                                            Google Gemini API를 사용하여 AI 챗봇 기능을 이용할 수 있습니다.
+                                        </p>
+
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="gemini-api-key">
+                                                Gemini API 키 <span className="required">*</span>
+                                            </label>
+                                            <input
+                                                id="gemini-api-key"
+                                                type="password"
+                                                className={inputClass}
+                                                placeholder="AIzaSy..."
+                                                value={localSettings?.geminiApiKey || ''}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => prev ? ({ ...prev, geminiApiKey: e.target.value }) : prev)
+                                                }
+                                            />
+                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                <a
+                                                    href="https://makersuite.google.com/app/apikey"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    API 키 발급받기 →
+                                                </a>
+                                            </small>
+                                        </div>
+
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="gemini-model">
+                                                🤖 Gemini 모델명
+                                            </label>
+                                            <input
+                                                id="gemini-model"
+                                                type="text"
+                                                className={inputClass}
+                                                placeholder="gemini-3-pro-preview"
+                                                value={localSettings?.geminiModel || ''}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => prev ? ({ ...prev, geminiModel: e.target.value }) : prev)
+                                                }
+                                            />
+                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                사용할 Gemini 모델명을 입력하세요. (예: gemini-3-pro-preview, gemini-2.0-flash-exp, gemini-1.5-pro)
+                                            </small>
+                                        </div>
+
+                                        <div className={`${formGroupClass} flex-row items-center gap-3`}>
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-sm font-semibold text-[var(--color-text)]">작업 자동 이모지</span>
                                                 <span className="text-[0.8rem] text-[var(--color-text-tertiary)]">
-                                                    시간대 헤더에 표시할 속성(휴식/청소/집중 등)을 관리하세요.
+                                                    제목 기반 추천 이모지를 접두로 붙입니다 (비용 절약을 위해 기본 OFF)
                                                 </span>
                                             </div>
-                                            <button
-                                                type="button"
-                                                className={primaryButtonClass}
-                                                onClick={addTagTemplate}
-                                            >
-                                                + 템플릿 추가
-                                            </button>
+                                            <label className="relative ml-auto inline-flex items-center cursor-pointer select-none">
+                                                <input
+                                                    type="checkbox"
+                                                    className="sr-only peer"
+                                                    checked={!!localSettings?.autoEmojiEnabled}
+                                                    onChange={(e) =>
+                                                        setLocalSettings(prev => prev ? ({ ...prev, autoEmojiEnabled: e.target.checked }) : prev)
+                                                    }
+                                                />
+                                                <div className="group h-12 w-24 rounded-full border border-gray-600 bg-gradient-to-tr from-rose-100 via-rose-400 to-rose-500 shadow-md shadow-gray-900 transition duration-300 peer-checked:bg-gradient-to-tr peer-checked:from-green-100 peer-checked:via-lime-400 peer-checked:to-lime-500">
+                                                    <span className="absolute left-1 top-1 flex h-10 w-10 items-center justify-center rounded-full border border-gray-600 bg-gray-50 text-lg transition-all duration-300 -rotate-180 peer-checked:translate-x-12 peer-checked:rotate-0 peer-hover:scale-95">
+                                                        {localSettings?.autoEmojiEnabled ? '✔️' : '✖️'}
+                                                    </span>
+                                                </div>
+                                            </label>
+                                        </div>
+
+                                        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-4">
+                                            <div className="mb-2 flex items-center justify-between">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-semibold text-[var(--color-text)]">시간대 속성 템플릿</span>
+                                                    <span className="text-[0.8rem] text-[var(--color-text-tertiary)]">
+                                                        시간대 헤더에 표시할 속성(휴식/청소/집중 등)을 관리하세요.
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className={primaryButtonClass}
+                                                    onClick={addTagTemplate}
+                                                >
+                                                    + 템플릿 추가
+                                                </button>
+                                            </div>
+
+                                            <div className="flex flex-col gap-3">
+                                                {tagTemplates.length === 0 && (
+                                                    <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text-tertiary)]">
+                                                        아직 템플릿이 없습니다. “+ 템플릿 추가” 버튼으로 시작하세요.
+                                                    </div>
+                                                )}
+
+                                                {tagTemplates.map((tag) => (
+                                                    <div
+                                                        key={tag.id}
+                                                        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3"
+                                                    >
+                                                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                                            <div
+                                                                className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[12px] font-semibold shadow-sm"
+                                                                style={{
+                                                                    backgroundColor: tag.color,
+                                                                    color: getBadgeTextColor(tag.color),
+                                                                }}
+                                                            >
+                                                                <span aria-hidden="true">{tag.icon || '🏷️'}</span>
+                                                                {tag.label || '이름 없음'}
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeTagTemplate(tag.id)}
+                                                                className="text-xs font-semibold text-[var(--color-danger)] hover:underline"
+                                                            >
+                                                                삭제
+                                                            </button>
+                                                        </div>
+                                                        <div className="grid gap-2 sm:grid-cols-[1.2fr_0.8fr_0.8fr]">
+                                                            <input
+                                                                className={inputClass}
+                                                                placeholder="라벨 (예: 휴식, 청소)"
+                                                                value={tag.label}
+                                                                onChange={(e) => updateTagTemplate(tag.id, 'label', e.target.value)}
+                                                            />
+                                                            <div className="flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-2">
+                                                                <input
+                                                                    type="color"
+                                                                    className="h-10 w-10 rounded-lg border border-[var(--color-border-light)] bg-transparent"
+                                                                    value={tag.color}
+                                                                    onChange={(e) => updateTagTemplate(tag.id, 'color', e.target.value)}
+                                                                />
+                                                                <span className="text-xs text-[var(--color-text-tertiary)]">배경색</span>
+                                                            </div>
+                                                            <input
+                                                                className={inputClass}
+                                                                placeholder="아이콘/이모지 (예: 🧹)"
+                                                                value={tag.icon || ''}
+                                                                onChange={(e) => updateTagTemplate(tag.id, 'icon', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <input
+                                                            className={`${inputClass} mt-2`}
+                                                            placeholder="툴팁 메모 (선택)"
+                                                            value={tag.note || ''}
+                                                            onChange={(e) => updateTagTemplate(tag.id, 'note', e.target.value)}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="insight-interval">
+                                                💡 인사이트 자동 갱신 주기 (분)
+                                            </label>
+                                            <input
+                                                id="insight-interval"
+                                                type="number"
+                                                className={inputClass}
+                                                placeholder="15"
+                                                min="5"
+                                                max="120"
+                                                value={localSettings?.autoMessageInterval || 15}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => prev ? ({ ...prev, autoMessageInterval: parseInt(e.target.value) || 15 }) : prev)
+                                                }
+                                            />
+                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                오늘의 인사이트 패널이 자동으로 갱신되는 주기입니다. (최소 5분, 최대 120분)
+                                            </small>
+                                        </div>
+
+                                        <div className={infoBoxClass}>
+                                            <strong>💡 참고:</strong> Gemini API 키가 없어도 앱의 다른 기능은 정상적으로
+                                            사용할 수 있습니다. AI 챗봇 및 인사이트 기능만 제한됩니다.
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Firebase 설정 */}
+                                {activeTab === 'firebase' && (
+                                    <div className={sectionClass}>
+                                        <h3>Firebase 설정</h3>
+                                        <p className="section-description">
+                                            Firebase Realtime Database를 사용하여 다중 장치 간 데이터를 동기화할 수
+                                            있습니다.
+                                        </p>
+
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="firebase-api-key">API Key</label>
+                                            <input
+                                                id="firebase-api-key"
+                                                type="password"
+                                                className={inputClass}
+                                                placeholder="AIzaSy..."
+                                                value={localSettings?.firebaseConfig?.apiKey || ''}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => {
+                                                        if (!prev) return prev;
+                                                        const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
+                                                        return {
+                                                            ...prev,
+                                                            firebaseConfig: {
+                                                                ...currentConfig,
+                                                                apiKey: e.target.value,
+                                                            },
+                                                        };
+                                                    })
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="firebase-auth-domain">Auth Domain</label>
+                                            <input
+                                                id="firebase-auth-domain"
+                                                type="text"
+                                                className={inputClass}
+                                                placeholder="your-app.firebaseapp.com"
+                                                value={localSettings?.firebaseConfig?.authDomain || ''}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => {
+                                                        if (!prev) return prev;
+                                                        const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
+                                                        return {
+                                                            ...prev,
+                                                            firebaseConfig: {
+                                                                ...currentConfig,
+                                                                authDomain: e.target.value,
+                                                            },
+                                                        };
+                                                    })
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="firebase-database-url">Database URL</label>
+                                            <input
+                                                id="firebase-database-url"
+                                                type="text"
+                                                className={inputClass}
+                                                placeholder="https://your-app.firebaseio.com"
+                                                value={localSettings?.firebaseConfig?.databaseURL || ''}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => {
+                                                        if (!prev) return prev;
+                                                        const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
+                                                        return {
+                                                            ...prev,
+                                                            firebaseConfig: {
+                                                                ...currentConfig,
+                                                                databaseURL: e.target.value,
+                                                            },
+                                                        };
+                                                    })
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="firebase-project-id">Project ID</label>
+                                            <input
+                                                id="firebase-project-id"
+                                                type="text"
+                                                className={inputClass}
+                                                placeholder="your-app"
+                                                value={localSettings?.firebaseConfig?.projectId || ''}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => {
+                                                        if (!prev) return prev;
+                                                        const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
+                                                        return {
+                                                            ...prev,
+                                                            firebaseConfig: {
+                                                                ...currentConfig,
+                                                                projectId: e.target.value,
+                                                            },
+                                                        };
+                                                    })
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="firebase-storage-bucket">Storage Bucket</label>
+                                            <input
+                                                id="firebase-storage-bucket"
+                                                type="text"
+                                                className={inputClass}
+                                                placeholder="your-app.appspot.com"
+                                                value={localSettings?.firebaseConfig?.storageBucket || ''}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => {
+                                                        if (!prev) return prev;
+                                                        const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
+                                                        return {
+                                                            ...prev,
+                                                            firebaseConfig: {
+                                                                ...currentConfig,
+                                                                storageBucket: e.target.value,
+                                                            },
+                                                        };
+                                                    })
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="firebase-messaging-sender-id">Messaging Sender ID</label>
+                                            <input
+                                                id="firebase-messaging-sender-id"
+                                                type="text"
+                                                className={inputClass}
+                                                placeholder="123456789012"
+                                                value={localSettings?.firebaseConfig?.messagingSenderId || ''}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => {
+                                                        if (!prev) return prev;
+                                                        const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
+                                                        return {
+                                                            ...prev,
+                                                            firebaseConfig: {
+                                                                ...currentConfig,
+                                                                messagingSenderId: e.target.value,
+                                                            },
+                                                        };
+                                                    })
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="firebase-app-id">App ID</label>
+                                            <input
+                                                id="firebase-app-id"
+                                                type="text"
+                                                className={inputClass}
+                                                placeholder="1:123456789012:web:abc123def456"
+                                                value={localSettings?.firebaseConfig?.appId || ''}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => {
+                                                        if (!prev) return prev;
+                                                        const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
+                                                        return {
+                                                            ...prev,
+                                                            firebaseConfig: {
+                                                                ...currentConfig,
+                                                                appId: e.target.value,
+                                                            },
+                                                        };
+                                                    })
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className={infoBoxClass}>
+                                            <strong>💡 참고:</strong> Firebase 설정이 없어도 앱은 로컬 저장소(IndexedDB)를
+                                            사용하여 정상적으로 동작합니다. 다중 장치 동기화 기능만 제한됩니다.
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 하지않기 체크리스트 탭 */}
+                                {activeTab === 'dontdo' && (
+                                    <div className={sectionClass}>
+                                        <div className={infoBoxClass}>
+                                            <strong>🚫 하지않기 체크리스트:</strong> 하지 말아야 할 행동들을 정의하고, 이를 참았을 때 얻을 수 있는 XP 보상을 설정하세요.
+                                            타임블록에서 해당 항목을 체크하면 XP를 획득합니다.
                                         </div>
 
                                         <div className="flex flex-col gap-3">
-                                            {tagTemplates.length === 0 && (
-                                                <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text-tertiary)]">
-                                                    아직 템플릿이 없습니다. “+ 템플릿 추가” 버튼으로 시작하세요.
-                                                </div>
-                                            )}
-
-                                            {tagTemplates.map((tag) => (
-                                                <div
-                                                    key={tag.id}
-                                                    className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3"
-                                                >
-                                                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                                                        <div
-                                                            className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[12px] font-semibold shadow-sm"
-                                                            style={{
-                                                                backgroundColor: tag.color,
-                                                                color: getBadgeTextColor(tag.color),
-                                                            }}
-                                                        >
-                                                            <span aria-hidden="true">{tag.icon || '🏷️'}</span>
-                                                            {tag.label || '이름 없음'}
-                                                        </div>
+                                            {(localSettings?.dontDoChecklist || []).map((item, index) => (
+                                                <div key={item.id} className="flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3">
+                                                    <div className="flex flex-col gap-1">
                                                         <button
-                                                            type="button"
-                                                            onClick={() => removeTagTemplate(tag.id)}
-                                                            className="text-xs font-semibold text-[var(--color-danger)] hover:underline"
+                                                            onClick={() => {
+                                                                if (index > 0) {
+                                                                    setLocalSettings(prev => {
+                                                                        if (!prev) return prev;
+                                                                        const newItems = [...(prev.dontDoChecklist || [])];
+                                                                        [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
+                                                                        return { ...prev, dontDoChecklist: newItems };
+                                                                    });
+                                                                }
+                                                            }}
+                                                            disabled={index === 0}
+                                                            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text)] disabled:opacity-30"
                                                         >
-                                                            삭제
+                                                            ▲
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (index < (localSettings?.dontDoChecklist || []).length - 1) {
+                                                                    setLocalSettings(prev => {
+                                                                        if (!prev) return prev;
+                                                                        const newItems = [...(prev.dontDoChecklist || [])];
+                                                                        [newItems[index + 1], newItems[index]] = [newItems[index], newItems[index + 1]];
+                                                                        return { ...prev, dontDoChecklist: newItems };
+                                                                    });
+                                                                }
+                                                            }}
+                                                            disabled={index === (localSettings?.dontDoChecklist || []).length - 1}
+                                                            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text)] disabled:opacity-30"
+                                                        >
+                                                            ▼
                                                         </button>
                                                     </div>
-                                                    <div className="grid gap-2 sm:grid-cols-[1.2fr_0.8fr_0.8fr]">
+
+                                                    <div className="flex-1">
                                                         <input
-                                                            className={inputClass}
-                                                            placeholder="라벨 (예: 휴식, 청소)"
-                                                            value={tag.label}
-                                                            onChange={(e) => updateTagTemplate(tag.id, 'label', e.target.value)}
-                                                        />
-                                                        <div className="flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-2">
-                                                            <input
-                                                                type="color"
-                                                                className="h-10 w-10 rounded-lg border border-[var(--color-border-light)] bg-transparent"
-                                                                value={tag.color}
-                                                                onChange={(e) => updateTagTemplate(tag.id, 'color', e.target.value)}
-                                                            />
-                                                            <span className="text-xs text-[var(--color-text-tertiary)]">배경색</span>
-                                                        </div>
-                                                        <input
-                                                            className={inputClass}
-                                                            placeholder="아이콘/이모지 (예: 🧹)"
-                                                            value={tag.icon || ''}
-                                                            onChange={(e) => updateTagTemplate(tag.id, 'icon', e.target.value)}
+                                                            type="text"
+                                                            value={item.label}
+                                                            onChange={(e) => handleDontDoItemChange(item.id, { label: e.target.value })}
+                                                            className="w-full bg-transparent text-sm font-medium text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-tertiary)]"
+                                                            placeholder="항목 이름 (예: 유튜브 보지 않기)"
                                                         />
                                                     </div>
-                                                    <input
-                                                        className={`${inputClass} mt-2`}
-                                                        placeholder="툴팁 메모 (선택)"
-                                                        value={tag.note || ''}
-                                                        onChange={(e) => updateTagTemplate(tag.id, 'note', e.target.value)}
-                                                    />
+
+                                                    <div className="flex items-center gap-2 rounded-xl bg-[var(--color-bg-tertiary)] px-3 py-1.5">
+                                                        <span className="text-xs text-[var(--color-text-secondary)]">XP</span>
+                                                        <input
+                                                            type="number"
+                                                            value={item.xpReward}
+                                                            onChange={(e) => handleDontDoItemChange(item.id, { xpReward: Number(e.target.value) })}
+                                                            className="w-16 bg-transparent text-right text-sm font-bold text-[var(--color-primary)] outline-none"
+                                                        />
+                                                    </div>
+
+                                                    <button
+                                                        onClick={() => {
+                                                            setLocalSettings(prev => prev ? ({
+                                                                ...prev,
+                                                                dontDoChecklist: (prev.dontDoChecklist || []).filter(i => i.id !== item.id)
+                                                            }) : prev);
+                                                        }}
+                                                        className="ml-2 rounded-xl p-2 text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary)] hover:text-red-500"
+                                                        title="삭제"
+                                                    >
+                                                        🗑️
+                                                    </button>
                                                 </div>
                                             ))}
+
+                                            <button
+                                                onClick={() => {
+                                                    const newItem: DontDoChecklistItem = {
+                                                        id: `dontdo-${Date.now()}`,
+                                                        label: '',
+                                                        xpReward: 15,
+                                                        order: (localSettings?.dontDoChecklist || []).length
+                                                    };
+                                                    setLocalSettings(prev => prev ? ({
+                                                        ...prev,
+                                                        dontDoChecklist: [...(prev.dontDoChecklist || []), newItem]
+                                                    }) : prev);
+                                                }}
+                                                className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-border)] p-4 text-sm text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                                            >
+                                                <span>➕ 새 항목 추가</span>
+                                            </button>
                                         </div>
                                     </div>
+                                )}
 
-                                    <div className={formGroupClass}>
-                                        <label htmlFor="insight-interval">
-                                            💡 인사이트 자동 갱신 주기 (분)
-                                        </label>
-                                        <input
-                                            id="insight-interval"
-                                            type="number"
-                                            className={inputClass}
-                                            placeholder="15"
-                                            min="5"
-                                            max="120"
-                                            value={localSettings?.autoMessageInterval || 15}
-                                            onChange={(e) =>
-                                                setLocalSettings(prev => prev ? ({ ...prev, autoMessageInterval: parseInt(e.target.value) || 15 }) : prev)
-                                            }
-                                        />
-                                        <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                                            오늘의 인사이트 패널이 자동으로 갱신되는 주기입니다. (최소 5분, 최대 120분)
-                                        </small>
-                                    </div>
+                                {/* 단축키 탭 */}
+                                {activeTab === 'shortcuts' && (
+                                    <div className={sectionClass}>
+                                        <h3>⌨️ 단축키 설정</h3>
+                                        <p className={sectionDescriptionClass}>
+                                            자주 사용하는 기능의 단축키를 설정할 수 있습니다.
+                                        </p>
 
-                                    <div className={infoBoxClass}>
-                                        <strong>💡 참고:</strong> Gemini API 키가 없어도 앱의 다른 기능은 정상적으로
-                                        사용할 수 있습니다. AI 챗봇 및 인사이트 기능만 제한됩니다.
-                                    </div>
-                                </div>
-                            )}
+                                        <div className={infoBoxClass}>
+                                            <strong>💡 사용법:</strong> 입력란을 클릭하고 원하는 키 조합을 누르세요.
+                                            Ctrl, Shift, Alt 키와 함께 사용하거나, 입력 필드가 아닐 때는 '1', '2', 'Q' 같은 간단한 키도 사용할 수 있습니다.
+                                        </div>
 
-                            {/* Firebase 설정 */}
-                            {activeTab === 'firebase' && (
-                                <div className={sectionClass}>
-                                    <h3>Firebase 설정</h3>
-                                    <p className="section-description">
-                                        Firebase Realtime Database를 사용하여 다중 장치 간 데이터를 동기화할 수
-                                        있습니다.
-                                    </p>
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="left-panel-key">
+                                                🔷 좌측 패널 토글
+                                            </label>
+                                            <input
+                                                id="left-panel-key"
+                                                type="text"
+                                                className={inputClass}
+                                                placeholder="Ctrl+B (기본값)"
+                                                value={localSettings?.leftPanelToggleKey || ''}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => prev ? ({ ...prev, leftPanelToggleKey: e.target.value }) : prev)
+                                                }
+                                                onKeyDown={(e) => {
+                                                    e.preventDefault();
+                                                    const keys = [];
+                                                    if (e.ctrlKey) keys.push('Ctrl');
+                                                    if (e.shiftKey) keys.push('Shift');
+                                                    if (e.altKey) keys.push('Alt');
+                                                    if (e.key !== 'Control' && e.key !== 'Shift' && e.key !== 'Alt') {
+                                                        keys.push(e.key.toUpperCase());
+                                                    }
+                                                    if (keys.length >= 1) {
+                                                        const shortcut = keys.join('+');
+                                                        setLocalSettings(prev => prev ? ({ ...prev, leftPanelToggleKey: shortcut }) : prev);
+                                                    }
+                                                }}
+                                            />
+                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                좌측 패널(인박스, 완료, 통계 등)을 열고 닫습니다.
+                                            </small>
+                                        </div>
 
-                                    <div className={formGroupClass}>
-                                        <label htmlFor="firebase-api-key">API Key</label>
-                                        <input
-                                            id="firebase-api-key"
-                                            type="password"
-                                            className={inputClass}
-                                            placeholder="AIzaSy..."
-                                            value={localSettings?.firebaseConfig?.apiKey || ''}
-                                            onChange={(e) =>
-                                                setLocalSettings(prev => {
-                                                    if (!prev) return prev;
-                                                    const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
-                                                    return {
-                                                        ...prev,
-                                                        firebaseConfig: {
-                                                            ...currentConfig,
-                                                            apiKey: e.target.value,
-                                                        },
-                                                    };
-                                                })
-                                            }
-                                        />
-                                    </div>
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="right-panel-key">
+                                                🔶 우측 패널 토글
+                                            </label>
+                                            <input
+                                                id="right-panel-key"
+                                                type="text"
+                                                className={inputClass}
+                                                placeholder="Ctrl+Shift+B (기본값)"
+                                                value={localSettings?.rightPanelToggleKey || ''}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => prev ? ({ ...prev, rightPanelToggleKey: e.target.value }) : prev)
+                                                }
+                                                onKeyDown={(e) => {
+                                                    e.preventDefault();
+                                                    const keys = [];
+                                                    if (e.ctrlKey) keys.push('Ctrl');
+                                                    if (e.shiftKey) keys.push('Shift');
+                                                    if (e.altKey) keys.push('Alt');
+                                                    if (e.key !== 'Control' && e.key !== 'Shift' && e.key !== 'Alt') {
+                                                        keys.push(e.key.toUpperCase());
+                                                    }
+                                                    if (keys.length >= 1) {
+                                                        const shortcut = keys.join('+');
+                                                        setLocalSettings(prev => prev ? ({ ...prev, rightPanelToggleKey: shortcut }) : prev);
+                                                    }
+                                                }}
+                                            />
+                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                우측 패널(인사이트, 퀘스트, 샵)을 열고 닫습니다.
+                                            </small>
+                                        </div>
 
-                                    <div className={formGroupClass}>
-                                        <label htmlFor="firebase-auth-domain">Auth Domain</label>
-                                        <input
-                                            id="firebase-auth-domain"
-                                            type="text"
-                                            className={inputClass}
-                                            placeholder="your-app.firebaseapp.com"
-                                            value={localSettings?.firebaseConfig?.authDomain || ''}
-                                            onChange={(e) =>
-                                                setLocalSettings(prev => {
-                                                    if (!prev) return prev;
-                                                    const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
-                                                    return {
-                                                        ...prev,
-                                                        firebaseConfig: {
-                                                            ...currentConfig,
-                                                            authDomain: e.target.value,
-                                                        },
-                                                    };
-                                                })
-                                            }
-                                        />
-                                    </div>
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="bulk-add-key">
+                                                📝 대량 할 일 추가
+                                            </label>
+                                            <input
+                                                id="bulk-add-key"
+                                                type="text"
+                                                className={inputClass}
+                                                placeholder="F1 (기본값)"
+                                                value={localSettings?.bulkAddModalKey || ''}
+                                                onChange={(e) =>
+                                                    setLocalSettings(prev => prev ? ({ ...prev, bulkAddModalKey: e.target.value }) : prev)
+                                                }
+                                                onKeyDown={(e) => {
+                                                    e.preventDefault();
+                                                    const keys = [];
+                                                    if (e.ctrlKey) keys.push('Ctrl');
+                                                    if (e.shiftKey) keys.push('Shift');
+                                                    if (e.altKey) keys.push('Alt');
+                                                    if (e.key !== 'Control' && e.key !== 'Shift' && e.key !== 'Alt') {
+                                                        // F1-F12 같은 특수 키는 그대로, 일반 키는 대문자로
+                                                        const keyName = e.key.startsWith('F') && e.key.length <= 3 ? e.key : e.key.toUpperCase();
+                                                        keys.push(keyName);
+                                                    }
+                                                    if (keys.length >= 1) {
+                                                        const shortcut = keys.join('+');
+                                                        setLocalSettings(prev => prev ? ({ ...prev, bulkAddModalKey: shortcut }) : prev);
+                                                    }
+                                                }}
+                                            />
+                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                대량 할 일 추가 모달을 엽니다. 간단한 키(예: 'B')도 사용 가능합니다.
+                                            </small>
+                                        </div>
 
-                                    <div className={formGroupClass}>
-                                        <label htmlFor="firebase-database-url">Database URL</label>
-                                        <input
-                                            id="firebase-database-url"
-                                            type="text"
-                                            className={inputClass}
-                                            placeholder="https://your-app.firebaseio.com"
-                                            value={localSettings?.firebaseConfig?.databaseURL || ''}
-                                            onChange={(e) =>
-                                                setLocalSettings(prev => {
-                                                    if (!prev) return prev;
-                                                    const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
-                                                    return {
-                                                        ...prev,
-                                                        firebaseConfig: {
-                                                            ...currentConfig,
-                                                            databaseURL: e.target.value,
-                                                        },
-                                                    };
-                                                })
-                                            }
-                                        />
-                                    </div>
-
-                                    <div className={formGroupClass}>
-                                        <label htmlFor="firebase-project-id">Project ID</label>
-                                        <input
-                                            id="firebase-project-id"
-                                            type="text"
-                                            className={inputClass}
-                                            placeholder="your-app"
-                                            value={localSettings?.firebaseConfig?.projectId || ''}
-                                            onChange={(e) =>
-                                                setLocalSettings(prev => {
-                                                    if (!prev) return prev;
-                                                    const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
-                                                    return {
-                                                        ...prev,
-                                                        firebaseConfig: {
-                                                            ...currentConfig,
-                                                            projectId: e.target.value,
-                                                        },
-                                                    };
-                                                })
-                                            }
-                                        />
-                                    </div>
-
-                                    <div className={formGroupClass}>
-                                        <label htmlFor="firebase-storage-bucket">Storage Bucket</label>
-                                        <input
-                                            id="firebase-storage-bucket"
-                                            type="text"
-                                            className={inputClass}
-                                            placeholder="your-app.appspot.com"
-                                            value={localSettings?.firebaseConfig?.storageBucket || ''}
-                                            onChange={(e) =>
-                                                setLocalSettings(prev => {
-                                                    if (!prev) return prev;
-                                                    const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
-                                                    return {
-                                                        ...prev,
-                                                        firebaseConfig: {
-                                                            ...currentConfig,
-                                                            storageBucket: e.target.value,
-                                                        },
-                                                    };
-                                                })
-                                            }
-                                        />
-                                    </div>
-
-                                    <div className={formGroupClass}>
-                                        <label htmlFor="firebase-messaging-sender-id">Messaging Sender ID</label>
-                                        <input
-                                            id="firebase-messaging-sender-id"
-                                            type="text"
-                                            className={inputClass}
-                                            placeholder="123456789012"
-                                            value={localSettings?.firebaseConfig?.messagingSenderId || ''}
-                                            onChange={(e) =>
-                                                setLocalSettings(prev => {
-                                                    if (!prev) return prev;
-                                                    const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
-                                                    return {
-                                                        ...prev,
-                                                        firebaseConfig: {
-                                                            ...currentConfig,
-                                                            messagingSenderId: e.target.value,
-                                                        },
-                                                    };
-                                                })
-                                            }
-                                        />
-                                    </div>
-
-                                    <div className={formGroupClass}>
-                                        <label htmlFor="firebase-app-id">App ID</label>
-                                        <input
-                                            id="firebase-app-id"
-                                            type="text"
-                                            className={inputClass}
-                                            placeholder="1:123456789012:web:abc123def456"
-                                            value={localSettings?.firebaseConfig?.appId || ''}
-                                            onChange={(e) =>
-                                                setLocalSettings(prev => {
-                                                    if (!prev) return prev;
-                                                    const currentConfig = prev.firebaseConfig || { apiKey: '', authDomain: '', databaseURL: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
-                                                    return {
-                                                        ...prev,
-                                                        firebaseConfig: {
-                                                            ...currentConfig,
-                                                            appId: e.target.value,
-                                                        },
-                                                    };
-                                                })
-                                            }
-                                        />
-                                    </div>
-
-                                    <div className={infoBoxClass}>
-                                        <strong>💡 참고:</strong> Firebase 설정이 없어도 앱은 로컬 저장소(IndexedDB)를
-                                        사용하여 정상적으로 동작합니다. 다중 장치 동기화 기능만 제한됩니다.
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* 하지않기 체크리스트 탭 */}
-                            {activeTab === 'dontdo' && (
-                                <div className={sectionClass}>
-                                    <div className={infoBoxClass}>
-                                        <strong>🚫 하지않기 체크리스트:</strong> 하지 말아야 할 행동들을 정의하고, 이를 참았을 때 얻을 수 있는 XP 보상을 설정하세요.
-                                        타임블록에서 해당 항목을 체크하면 XP를 획득합니다.
-                                    </div>
-
-                                    <div className="flex flex-col gap-3">
-                                        {(localSettings?.dontDoChecklist || []).map((item, index) => (
-                                            <div key={item.id} className="flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3">
-                                                <div className="flex flex-col gap-1">
-                                                    <button
-                                                        onClick={() => {
-                                                            if (index > 0) {
-                                                                setLocalSettings(prev => {
-                                                                    if (!prev) return prev;
-                                                                    const newItems = [...(prev.dontDoChecklist || [])];
-                                                                    [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
-                                                                    return { ...prev, dontDoChecklist: newItems };
-                                                                });
-                                                            }
-                                                        }}
-                                                        disabled={index === 0}
-                                                        className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text)] disabled:opacity-30"
-                                                    >
-                                                        ▲
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (index < (localSettings?.dontDoChecklist || []).length - 1) {
-                                                                setLocalSettings(prev => {
-                                                                    if (!prev) return prev;
-                                                                    const newItems = [...(prev.dontDoChecklist || [])];
-                                                                    [newItems[index + 1], newItems[index]] = [newItems[index], newItems[index + 1]];
-                                                                    return { ...prev, dontDoChecklist: newItems };
-                                                                });
-                                                            }
-                                                        }}
-                                                        disabled={index === (localSettings?.dontDoChecklist || []).length - 1}
-                                                        className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text)] disabled:opacity-30"
-                                                    >
-                                                        ▼
-                                                    </button>
+                                        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
+                                            <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">📋 기본 단축키 목록</h4>
+                                            <div className="grid gap-2 text-xs">
+                                                <div className="flex justify-between items-center py-2 border-b border-[var(--color-border)]">
+                                                    <span className="text-[var(--color-text-secondary)]">대량 할 일 추가</span>
+                                                    <kbd className="rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-2 py-1 font-mono text-[var(--color-text)]">
+                                                        {localSettings?.bulkAddModalKey || 'F1'}
+                                                    </kbd>
                                                 </div>
-
-                                                <div className="flex-1">
-                                                    <input
-                                                        type="text"
-                                                        value={item.label}
-                                                        onChange={(e) => handleDontDoItemChange(item.id, { label: e.target.value })}
-                                                        className="w-full bg-transparent text-sm font-medium text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-tertiary)]"
-                                                        placeholder="항목 이름 (예: 유튜브 보지 않기)"
-                                                    />
+                                                <div className="flex justify-between items-center py-2 border-b border-[var(--color-border)]">
+                                                    <span className="text-[var(--color-text-secondary)]">좌측 패널 토글</span>
+                                                    <kbd className="rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-2 py-1 font-mono text-[var(--color-text)]">
+                                                        {localSettings?.leftPanelToggleKey || 'Ctrl+B'}
+                                                    </kbd>
                                                 </div>
-
-                                                <div className="flex items-center gap-2 rounded-xl bg-[var(--color-bg-tertiary)] px-3 py-1.5">
-                                                    <span className="text-xs text-[var(--color-text-secondary)]">XP</span>
-                                                    <input
-                                                        type="number"
-                                                        value={item.xpReward}
-                                                        onChange={(e) => handleDontDoItemChange(item.id, { xpReward: Number(e.target.value) })}
-                                                        className="w-16 bg-transparent text-right text-sm font-bold text-[var(--color-primary)] outline-none"
-                                                    />
-                                                </div>
-
-                                                <button
-                                                    onClick={() => {
-                                                        setLocalSettings(prev => prev ? ({
-                                                            ...prev,
-                                                            dontDoChecklist: (prev.dontDoChecklist || []).filter(i => i.id !== item.id)
-                                                        }) : prev);
-                                                    }}
-                                                    className="ml-2 rounded-xl p-2 text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary)] hover:text-red-500"
-                                                    title="삭제"
-                                                >
-                                                    🗑️
-                                                </button>
-                                            </div>
-                                        ))}
-
-                                        <button
-                                            onClick={() => {
-                                                const newItem: DontDoChecklistItem = {
-                                                    id: `dontdo-${Date.now()}`,
-                                                    label: '',
-                                                    xpReward: 15,
-                                                    order: (localSettings?.dontDoChecklist || []).length
-                                                };
-                                                setLocalSettings(prev => prev ? ({
-                                                    ...prev,
-                                                    dontDoChecklist: [...(prev.dontDoChecklist || []), newItem]
-                                                }) : prev);
-                                            }}
-                                            className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-border)] p-4 text-sm text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-                                        >
-                                            <span>➕ 새 항목 추가</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* 로그 탭 */}
-                            {activeTab === 'logs' && (
-                                <div className={sectionClass}>
-                                    {/* 서브 탭 */}
-                                    <div className="flex gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-2">
-                                        <button
-                                            className={`flex-1 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${logSubTab === 'sync'
-                                                ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
-                                                : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                                                }`}
-                                            onClick={() => setLogSubTab('sync')}
-                                        >
-                                            🔄 동기화 로그
-                                        </button>
-                                        <button
-                                            className={`flex-1 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${logSubTab === 'tokens'
-                                                ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
-                                                : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                                                }`}
-                                            onClick={() => setLogSubTab('tokens')}
-                                        >
-                                            🪙 Gemini 토큰
-                                        </button>
-                                    </div>
-
-                                    {/* 동기화 로그 */}
-                                    {logSubTab === 'sync' && (
-                                        <>
-                                            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-4 py-3 text-xs text-[var(--color-text-secondary)]">
-                                                <label className="flex items-center gap-2">
-                                                    <span>타입:</span>
-                                                    <select
-                                                        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-sm text-[var(--color-text)]"
-                                                        value={filterType}
-                                                        onChange={(e) => setFilterType(e.target.value as SyncType | 'all')}
-                                                    >
-                                                        <option value="all">전체</option>
-                                                        <option value="dexie">Dexie</option>
-                                                        <option value="firebase">Firebase</option>
-                                                    </select>
-                                                </label>
-
-                                                <label className="flex items-center gap-2">
-                                                    <span>액션:</span>
-                                                    <select
-                                                        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-sm text-[var(--color-text)]"
-                                                        value={filterAction}
-                                                        onChange={(e) => setFilterAction(e.target.value as SyncAction | 'all')}
-                                                    >
-                                                        <option value="all">전체</option>
-                                                        <option value="save">저장</option>
-                                                        <option value="load">로드</option>
-                                                        <option value="sync">동기화</option>
-                                                        <option value="error">오류</option>
-                                                    </select>
-                                                </label>
-
-                                                <div className="ml-auto flex flex-wrap items-center gap-2">
-                                                    <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-[0.65rem] uppercase tracking-[0.3em]">
-                                                        총 {filteredLogs.length}개
-                                                    </span>
-                                                    <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-[0.65rem] uppercase tracking-[0.3em] text-indigo-200">
-                                                        Dexie {logs.filter((l) => l.type === 'dexie').length}
-                                                    </span>
-                                                    <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-[0.65rem] uppercase tracking-[0.3em] text-amber-200">
-                                                        Firebase {logs.filter((l) => l.type === 'firebase').length}
-                                                    </span>
-                                                    <button
-                                                        className="rounded-2xl border border-rose-400/70 px-3 py-1 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/20"
-                                                        onClick={handleClearLogs}
-                                                    >
-                                                        🗑️ 로그 삭제
-                                                    </button>
+                                                <div className="flex justify-between items-center py-2">
+                                                    <span className="text-[var(--color-text-secondary)]">우측 패널 토글</span>
+                                                    <kbd className="rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-2 py-1 font-mono text-[var(--color-text)]">
+                                                        {localSettings?.rightPanelToggleKey || 'Ctrl+Shift+B'}
+                                                    </kbd>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                )}
 
-                                            <div className="flex max-h-[420px] flex-col gap-3 overflow-y-auto">
-                                                {filteredLogs.length === 0 ? (
-                                                    <div className="flex h-48 items-center justify-center rounded-2xl border border-dashed border-[var(--color-border)] text-sm text-[var(--color-text-secondary)]">
-                                                        {logs.length === 0 ? '동기화 로그가 없습니다.' : '필터 조건에 맞는 로그가 없습니다.'}
-                                                    </div>
-                                                ) : (
-                                                    filteredLogs.map((log) => (
-                                                        <div
-                                                            key={log.id}
-                                                            className="flex flex-col gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3 text-xs transition hover:bg-[var(--color-bg-elevated)]"
+                                {/* 로그 탭 */}
+                                {activeTab === 'logs' && (
+                                    <div className={sectionClass}>
+                                        {/* 서브 탭 */}
+                                        <div className="flex gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-2">
+                                            <button
+                                                className={`flex-1 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${logSubTab === 'sync'
+                                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
+                                                    : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                                                    }`}
+                                                onClick={() => setLogSubTab('sync')}
+                                            >
+                                                🔄 동기화 로그
+                                            </button>
+                                            <button
+                                                className={`flex-1 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${logSubTab === 'tokens'
+                                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
+                                                    : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+                                                    }`}
+                                                onClick={() => setLogSubTab('tokens')}
+                                            >
+                                                🪙 Gemini 토큰
+                                            </button>
+                                        </div>
+
+                                        {/* 동기화 로그 */}
+                                        {logSubTab === 'sync' && (
+                                            <>
+                                                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-4 py-3 text-xs text-[var(--color-text-secondary)]">
+                                                    <label className="flex items-center gap-2">
+                                                        <span>타입:</span>
+                                                        <select
+                                                            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-sm text-[var(--color-text)]"
+                                                            value={filterType}
+                                                            onChange={(e) => setFilterType(e.target.value as SyncType | 'all')}
                                                         >
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className={getTypeBadgeClass(log.type)}>{log.type}</span>
-                                                                    <span className="font-mono text-[var(--color-text-tertiary)]">{formatTime(log.timestamp)}</span>
-                                                                </div>
-                                                                <span title={log.action} className="text-base">
-                                                                    {getActionIcon(log.action)}
-                                                                </span>
-                                                            </div>
-                                                            <div className="font-medium text-[var(--color-text)]">{log.message}</div>
-                                                            {log.details && (
-                                                                <pre className="mt-1 overflow-x-auto rounded bg-[var(--color-bg-tertiary)] p-2 font-mono text-[10px] text-[var(--color-text-secondary)]">
-                                                                    {JSON.stringify(log.details, null, 2)}
-                                                                </pre>
-                                                            )}
+                                                            <option value="all">전체</option>
+                                                            <option value="dexie">Dexie</option>
+                                                            <option value="firebase">Firebase</option>
+                                                        </select>
+                                                    </label>
+
+                                                    <label className="flex items-center gap-2">
+                                                        <span>액션:</span>
+                                                        <select
+                                                            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-sm text-[var(--color-text)]"
+                                                            value={filterAction}
+                                                            onChange={(e) => setFilterAction(e.target.value as SyncAction | 'all')}
+                                                        >
+                                                            <option value="all">전체</option>
+                                                            <option value="save">저장</option>
+                                                            <option value="load">로드</option>
+                                                            <option value="sync">동기화</option>
+                                                            <option value="error">오류</option>
+                                                        </select>
+                                                    </label>
+
+                                                    <div className="ml-auto flex flex-wrap items-center gap-2">
+                                                        <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-[0.65rem] uppercase tracking-[0.3em]">
+                                                            총 {filteredLogs.length}개
+                                                        </span>
+                                                        <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-[0.65rem] uppercase tracking-[0.3em] text-indigo-200">
+                                                            Dexie {logs.filter((l) => l.type === 'dexie').length}
+                                                        </span>
+                                                        <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-[0.65rem] uppercase tracking-[0.3em] text-amber-200">
+                                                            Firebase {logs.filter((l) => l.type === 'firebase').length}
+                                                        </span>
+                                                        <button
+                                                            className="rounded-2xl border border-rose-400/70 px-3 py-1 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/20"
+                                                            onClick={handleClearLogs}
+                                                        >
+                                                            🗑️ 로그 삭제
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex max-h-[420px] flex-col gap-3 overflow-y-auto">
+                                                    {filteredLogs.length === 0 ? (
+                                                        <div className="flex h-48 items-center justify-center rounded-2xl border border-dashed border-[var(--color-border)] text-sm text-[var(--color-text-secondary)]">
+                                                            {logs.length === 0 ? '동기화 로그가 없습니다.' : '필터 조건에 맞는 로그가 없습니다.'}
                                                         </div>
-                                                    ))
-                                                )}
-                                            </div>
-                                        </>
-                                    )}
+                                                    ) : (
+                                                        filteredLogs.map((log) => (
+                                                            <div
+                                                                key={log.id}
+                                                                className="flex flex-col gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3 text-xs transition hover:bg-[var(--color-bg-elevated)]"
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={getTypeBadgeClass(log.type)}>{log.type}</span>
+                                                                        <span className="font-mono text-[var(--color-text-tertiary)]">{formatTime(log.timestamp)}</span>
+                                                                    </div>
+                                                                    <span title={log.action} className="text-base">
+                                                                        {getActionIcon(log.action)}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="font-medium text-[var(--color-text)]">{log.message}</div>
+                                                                {log.details && (
+                                                                    <pre className="mt-1 overflow-x-auto rounded bg-[var(--color-bg-tertiary)] p-2 font-mono text-[10px] text-[var(--color-text-secondary)]">
+                                                                        {JSON.stringify(log.details, null, 2)}
+                                                                    </pre>
+                                                                )}
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
 
-                                    {/* 토큰 사용량 */}
-                                    {logSubTab === 'tokens' && (
-                                        <div className="flex flex-col gap-4">
-                                            <div className={infoBoxClass}>
-                                                <strong>💰 예상 비용:</strong> Gemini 2.5 Flash 기준 (Input $2.00/1M, Output $12.00/1M)
-                                            </div>
+                                        {/* 토큰 사용량 */}
+                                        {logSubTab === 'tokens' && (
+                                            <div className="flex flex-col gap-4">
+                                                <div className={infoBoxClass}>
+                                                    <strong>💰 예상 비용:</strong> Gemini 2.5 Flash 기준 (Input $2.00/1M, Output $12.00/1M)
+                                                </div>
 
-                                            <div className="overflow-hidden rounded-2xl border border-[var(--color-border)]">
-                                                {tokenUsage.length === 0 ? (
-                                                    <div className="flex h-48 items-center justify-center text-sm text-[var(--color-text-secondary)]">
-                                                        토큰 사용 기록이 없습니다.
-                                                    </div>
-                                                ) : (
-                                                    <div className="overflow-x-auto">
-                                                        <table className="w-full border-collapse text-sm">
-                                                            <thead>
-                                                                <tr className="bg-[var(--color-bg-tertiary)] text-[0.65rem] uppercase tracking-[0.3em] text-[var(--color-text-secondary)]">
-                                                                    <th className="border border-[var(--color-border)] px-3 py-2 text-left">날짜</th>
-                                                                    <th className="border border-[var(--color-border)] px-3 py-2 text-left">메시지</th>
-                                                                    <th className="border border-[var(--color-border)] px-3 py-2 text-left">입력 토큰</th>
-                                                                    <th className="border border-[var(--color-border)] px-3 py-2 text-left">출력 토큰</th>
-                                                                    <th className="border border-[var(--color-border)] px-3 py-2 text-left">총 토큰</th>
-                                                                    <th className="border border-[var(--color-border)] px-3 py-2 text-left">예상 비용</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {tokenUsage
-                                                                    .sort((a, b) => b.date.localeCompare(a.date))
-                                                                    .map((usage) => {
-                                                                        const { inputCost, outputCost, totalCost } = calculateTokenCost(usage.promptTokens, usage.candidatesTokens);
-                                                                        return (
-                                                                            <tr key={usage.date} className="border-t border-[var(--color-border)] bg-[var(--color-bg)]">
-                                                                                <td className="border border-[var(--color-border)] px-3 py-2 font-mono">{usage.date}</td>
-                                                                                <td className="border border-[var(--color-border)] px-3 py-2">{usage.messageCount.toLocaleString()}개</td>
-                                                                                <td className="border border-[var(--color-border)] px-3 py-2">{usage.promptTokens.toLocaleString()}</td>
-                                                                                <td className="border border-[var(--color-border)] px-3 py-2">{usage.candidatesTokens.toLocaleString()}</td>
-                                                                                <td className="border border-[var(--color-border)] px-3 py-2 font-semibold text-[var(--color-primary)]">{usage.totalTokens.toLocaleString()}</td>
-                                                                                <td className="border border-[var(--color-border)] px-3 py-2">
-                                                                                    <div className="flex flex-col text-[var(--color-text-secondary)]">
-                                                                                        <span>{formatCost(totalCost)}</span>
-                                                                                        <span className="text-[10px]">입력 {formatCost(inputCost)} · 출력 {formatCost(outputCost)}</span>
-                                                                                    </div>
-                                                                                </td>
-                                                                            </tr>
-                                                                        );
-                                                                    })}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                )}
+                                                <div className="overflow-hidden rounded-2xl border border-[var(--color-border)]">
+                                                    {tokenUsage.length === 0 ? (
+                                                        <div className="flex h-48 items-center justify-center text-sm text-[var(--color-text-secondary)]">
+                                                            토큰 사용 기록이 없습니다.
+                                                        </div>
+                                                    ) : (
+                                                        <div className="overflow-x-auto">
+                                                            <table className="w-full border-collapse text-sm">
+                                                                <thead>
+                                                                    <tr className="bg-[var(--color-bg-tertiary)] text-[0.65rem] uppercase tracking-[0.3em] text-[var(--color-text-secondary)]">
+                                                                        <th className="border border-[var(--color-border)] px-3 py-2 text-left">날짜</th>
+                                                                        <th className="border border-[var(--color-border)] px-3 py-2 text-left">메시지</th>
+                                                                        <th className="border border-[var(--color-border)] px-3 py-2 text-left">입력 토큰</th>
+                                                                        <th className="border border-[var(--color-border)] px-3 py-2 text-left">출력 토큰</th>
+                                                                        <th className="border border-[var(--color-border)] px-3 py-2 text-left">총 토큰</th>
+                                                                        <th className="border border-[var(--color-border)] px-3 py-2 text-left">예상 비용</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {tokenUsage
+                                                                        .sort((a, b) => b.date.localeCompare(a.date))
+                                                                        .map((usage) => {
+                                                                            const { inputCost, outputCost, totalCost } = calculateTokenCost(usage.promptTokens, usage.candidatesTokens);
+                                                                            return (
+                                                                                <tr key={usage.date} className="border-t border-[var(--color-border)] bg-[var(--color-bg)]">
+                                                                                    <td className="border border-[var(--color-border)] px-3 py-2 font-mono">{usage.date}</td>
+                                                                                    <td className="border border-[var(--color-border)] px-3 py-2">{usage.messageCount.toLocaleString()}개</td>
+                                                                                    <td className="border border-[var(--color-border)] px-3 py-2">{usage.promptTokens.toLocaleString()}</td>
+                                                                                    <td className="border border-[var(--color-border)] px-3 py-2">{usage.candidatesTokens.toLocaleString()}</td>
+                                                                                    <td className="border border-[var(--color-border)] px-3 py-2 font-semibold text-[var(--color-primary)]">{usage.totalTokens.toLocaleString()}</td>
+                                                                                    <td className="border border-[var(--color-border)] px-3 py-2">
+                                                                                        <div className="flex flex-col text-[var(--color-text-secondary)]">
+                                                                                            <span>{formatCost(totalCost)}</span>
+                                                                                            <span className="text-[10px]">입력 {formatCost(inputCost)} · 출력 {formatCost(outputCost)}</span>
+                                                                                        </div>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            );
+                                                                        })}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </>
-                    )}
+                                        )}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex justify-end border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-6 py-4">

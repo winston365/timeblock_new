@@ -101,6 +101,15 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
 
     // 4. 데이터가 없으면 초기 상태 반환
     addSyncLog('dexie', 'load', `No data found for ${date}, creating empty data`);
+
+    // ✅ 오늘 날짜의 데이터가 처음 생성되는 경우라면, 목표 진행률 초기화
+    if (date === getLocalDate()) {
+      console.log('[DailyDataRepository] New day detected, resetting goal progress...');
+      // 순환 참조 방지를 위해 동적 import 사용
+      const { resetDailyGoalProgress } = await import('./globalGoalRepository');
+      await resetDailyGoalProgress();
+    }
+
     return createEmptyDailyData();
   } catch (error) {
     console.error(`Failed to load daily data for ${date}:`, error);

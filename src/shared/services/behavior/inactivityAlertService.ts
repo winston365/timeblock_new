@@ -128,16 +128,32 @@ class InactivityAlertService {
         this.alertCount++;
         console.log(`[InactivityAlert] Showing alert (${this.alertCount})`);
 
+        const title = '⏰ TimeBlock 알림';
+        const body = '1시간 동안 활동이 없었습니다. 휴식 후 다시 시작해보세요!';
+
         try {
-            // Electron API를 통해 네이티브 알림 표시
+            // 1. Electron API 시도
             if (window.electronAPI?.showNotification) {
-                await window.electronAPI.showNotification(
-                    '⏰ TimeBlock 알림',
-                    '1시간 동안 활동이 없었습니다. 휴식 후 다시 시작해보세요!'
-                );
-            } else {
-                console.warn('[InactivityAlert] electronAPI.showNotification not available');
+                await window.electronAPI.showNotification(title, body);
+                return;
             }
+
+            // 2. 브라우저 Native Notification API 시도 (Fallback)
+            if ('Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    new Notification(title, { body, icon: '/icon.png' });
+                } else if (Notification.permission !== 'denied') {
+                    const permission = await Notification.requestPermission();
+                    if (permission === 'granted') {
+                        new Notification(title, { body, icon: '/icon.png' });
+                    }
+                } else {
+                    console.warn('[InactivityAlert] Notification permission denied');
+                }
+                return;
+            }
+
+            console.warn('[InactivityAlert] No notification method available');
         } catch (error) {
             console.error('[InactivityAlert] Failed to show notification:', error);
         }

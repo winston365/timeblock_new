@@ -13,6 +13,7 @@ import { MemoModal } from './MemoModal';
 import { useDragDropManager } from './hooks/useDragDropManager';
 import { NeonCheckbox } from '@/shared/components/ui/NeonCheckbox';
 import { toast } from 'react-hot-toast';
+import { useXPParticleStore } from '@/features/gamification/stores/xpParticleStore';
 
 interface TaskCardProps {
   task: Task;
@@ -140,6 +141,11 @@ export default function TaskCard({
       });
       return;
     }
+
+    // XP Particle Effect Trigger
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    useXPParticleStore.getState().spawnParticle(rect.left + rect.width / 2, rect.top + rect.height / 2, xp);
+
     onToggle();
   };
 

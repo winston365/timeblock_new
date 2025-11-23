@@ -185,14 +185,14 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
         // 이미 이미지가 표시되어 있으면 스킵 (호감도 티어가 변경된 경우에만 업데이트)
         const currentTier = getAffectionTier(waifuState.affection);
         const pathIncludesTier = storedImagePath.includes(currentTier.name) ||
-                                  (currentTier.name === 'interested' && storedImagePath.includes('indifferent'));
+          (currentTier.name === 'interested' && storedImagePath.includes('indifferent'));
         if (pathIncludesTier) {
           return; // 같은 티어면 이미지 변경 불필요
         }
       }
       changeImage(waifuState.affection, 'auto');
     }
-  }, [expressionOverride?.imagePath, imagePath, waifuState?.affection, changeImage, storedImagePath, displayImagePath, setCurrentImagePath]);
+  }, [expressionOverride?.imagePath, imagePath, waifuState?.affection, changeImage, storedImagePath]);
 
   // 설정된 간격마다 자동으로 이미지 및 대사 변경
   useEffect(() => {

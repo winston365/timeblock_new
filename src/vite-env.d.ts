@@ -36,6 +36,7 @@ interface ElectronAPI {
   getAppVersion: () => Promise<string>;
   closeQuickAddWindow: () => Promise<boolean>;
   showNotification: (title: string, body: string) => Promise<boolean>;
+  fetchWeather: (city?: string) => Promise<string>;
 }
 
 interface Window {

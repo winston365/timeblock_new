@@ -1,10 +1,7 @@
 /**
  * Dexie (IndexedDB) 클라이언트 설정
  *
- * @role IndexedDB를 Dexie로 관리, 앱의 모든 로컬 데이터 저장/조회 담당 (dailyData, gameState, templates, shopItems, waifuState, energyLevels, settings, chatHistory, dailyTokenUsage)
- * @input 도메인 타입 (DailyData, GameState, Template 등)
- * @output Dexie DB 인스턴스 및 헬퍼 함수
- * @dependencies Dexie, domain 타입
+ * @role IndexedDB를 Dexie로 관리, 앱의 모든 로컬 데이터 저장/조회 담당
  */
 
 import Dexie, { type Table } from 'dexie';
@@ -22,25 +19,6 @@ import type {
   DailyGoal
 } from '@/shared/types/domain';
 
-// ============================================================================
-// Database Schema
-// ============================================================================
-
-/**
- * 타임블록 앱의 IndexedDB 스키마
- * - dailyData: 일일 작업 및 블록 상태 (date를 primary key로)
- * - gameState: 게임 상태 (단일 레코드, 'current' 키 사용)
- * - templates: 작업 템플릿 (id를 primary key로)
- * - shopItems: 상점 아이템 (id를 primary key로)
- * - waifuState: 와이푸 상태 (단일 레코드, 'current' 키 사용)
- * - energyLevels: 에너지 레벨 기록 (복합 id: date + timestamp)
- * - settings: 앱 설정 (단일 레코드, 'current' 키 사용)
- * - chatHistory: Gemini 채팅 히스토리 (date를 primary key로)
- * - dailyTokenUsage: 일일 토큰 사용량 (date를 primary key로)
- * - globalInbox: 전역 인박스 작업 (날짜 독립적, id를 primary key로)
- * - globalGoals: 전역 목표 (날짜 독립적, id를 primary key로)
- * - systemState: 시스템 상태 (key를 primary key로)
- */
 export class TimeBlockDB extends Dexie {
   // 테이블 선언
   dailyData!: Table<DailyData & { date: string }, string>;
@@ -53,9 +31,11 @@ export class TimeBlockDB extends Dexie {
   chatHistory!: Table<ChatHistory, string>;
   dailyTokenUsage!: Table<DailyTokenUsage, string>;
   globalInbox!: Table<Task, string>;
-  completedInbox!: Table<Task, string>; // ✅ 완료된 인박스 작업 (globalInbox와 분리)
+  completedInbox!: Table<Task, string>;
   globalGoals!: Table<DailyGoal, string>;
   systemState!: Table<{ key: string; value: any }, string>;
+  images!: Table<{ id: string; data: Blob | string }, string>;
+  weather!: Table<{ id: string; data: any; timestamp: number; lastUpdatedDate: string }, string>;
 
   constructor() {
     super('timeblock_db');
@@ -96,8 +76,6 @@ export class TimeBlockDB extends Dexie {
       chatHistory: 'date, updatedAt',
       dailyTokenUsage: 'date, updatedAt',
       globalInbox: 'id, createdAt, completed',
-    }).upgrade(async (tx) => {
-      // ... (migration logic same as before)
     });
 
     // 스키마 버전 4
@@ -112,8 +90,6 @@ export class TimeBlockDB extends Dexie {
       chatHistory: 'date, updatedAt',
       dailyTokenUsage: 'date, updatedAt',
       globalInbox: 'id, createdAt, completed',
-    }).upgrade(async (tx) => {
-      // ... (migration logic same as before)
     });
 
     // 스키마 버전 5
@@ -129,11 +105,9 @@ export class TimeBlockDB extends Dexie {
       dailyTokenUsage: 'date, updatedAt',
       globalInbox: 'id, createdAt, completed',
       globalGoals: 'id, createdAt, order',
-    }).upgrade(async (tx) => {
-      // ... (migration logic same as before)
     });
 
-    // 스키마 버전 6 - 시스템 상태 추가
+    // 스키마 버전 6
     this.version(6).stores({
       dailyData: 'date, updatedAt',
       gameState: 'key',
@@ -149,7 +123,7 @@ export class TimeBlockDB extends Dexie {
       systemState: 'key',
     });
 
-    // 스키마 버전 7 - completedInbox 추가 (완료된 인박스 작업 분리)
+    // 스키마 버전 7
     this.version(7).stores({
       dailyData: 'date, updatedAt',
       gameState: 'key',
@@ -161,26 +135,19 @@ export class TimeBlockDB extends Dexie {
       chatHistory: 'date, updatedAt',
       dailyTokenUsage: 'date, updatedAt',
       globalInbox: 'id, createdAt, completed',
-      completedInbox: 'id, completedAt, createdAt', // ✅ 완료된 인박스 작업
+      completedInbox: 'id, completedAt, createdAt',
       globalGoals: 'id, createdAt, order',
       systemState: 'key',
     }).upgrade(async (tx) => {
-      // 기존 globalInbox에서 완료된 작업을 completedInbox로 이동
-      const completedTasks = await tx.table('globalInbox').where('completed').equals(true).toArray();
-
+      const completedTasks = await tx.table('globalInbox').where('completed').equals(1).toArray(); // Dexie boolean index fix
       if (completedTasks.length > 0) {
-        // completedInbox에 추가
         await tx.table('completedInbox').bulkAdd(completedTasks);
-
-        // globalInbox에서 삭제
         const completedIds = completedTasks.map((t: Task) => t.id);
         await tx.table('globalInbox').bulkDelete(completedIds);
-
-        console.log(`✅ Migrated ${completedTasks.length} completed inbox tasks to completedInbox`);
       }
     });
 
-    // 스키마 버전 8 - 하지않기 체크리스트 기본 항목 초기화
+    // 스키마 버전 8
     this.version(8).stores({
       dailyData: 'date, updatedAt',
       gameState: 'key',
@@ -196,7 +163,6 @@ export class TimeBlockDB extends Dexie {
       globalGoals: 'id, createdAt, order',
       systemState: 'key',
     }).upgrade(async (tx) => {
-      // Settings에 하지않기 체크리스트 기본 항목 추가
       const settings = await tx.table('settings').get('current');
       if (settings && !settings.dontDoChecklist) {
         settings.dontDoChecklist = [
@@ -208,39 +174,57 @@ export class TimeBlockDB extends Dexie {
           { id: 'dnd-6', label: '음식 배달 주문', xpReward: 15, order: 5 },
         ];
         await tx.table('settings').put(settings);
-        console.log('✅ Initialized default don\'t-do checklist items');
       }
+    });
+
+    // 스키마 버전 9
+    this.version(9).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      energyLevels: 'id, date, timestamp, hour',
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      globalInbox: 'id, createdAt, completed',
+      completedInbox: 'id, completedAt, createdAt',
+      globalGoals: 'id, createdAt, order',
+      systemState: 'key',
+      images: 'id',
+    });
+
+    // 스키마 버전 10 - 날씨 캐시 추가
+    this.version(10).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      energyLevels: 'id, date, timestamp, hour',
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      globalInbox: 'id, createdAt, completed',
+      completedInbox: 'id, completedAt, createdAt',
+      globalGoals: 'id, createdAt, order',
+      systemState: 'key',
+      images: 'id',
+      weather: 'id', // ✅ 날씨 캐시
     });
   }
 }
 
-// 싱글톤 인스턴스
 export const db = new TimeBlockDB();
-
-// ============================================================================
-// Database Helpers
-// ============================================================================
 
 export async function initializeDatabase(): Promise<void> {
   try {
     await db.open();
     await getDatabaseInfo();
-    await migrateFromLocalStorage();
   } catch (error) {
     console.error('❌ Failed to initialize Dexie DB:', error);
-    try {
-      await db.delete();
-      await db.open();
-      await migrateFromLocalStorage();
-    } catch (retryError) {
-      console.error('❌ Failed to recreate database:', retryError);
-      throw retryError;
-    }
   }
-}
-
-async function migrateFromLocalStorage(): Promise<void> {
-  // ... (migration logic same as before)
 }
 
 export async function getDatabaseInfo(): Promise<{

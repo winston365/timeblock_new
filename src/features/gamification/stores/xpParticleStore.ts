@@ -1,0 +1,39 @@
+import { create } from 'zustand';
+
+interface Particle {
+    id: string;
+    startX: number;
+    startY: number;
+    amount: number;
+    color?: string;
+}
+
+interface XPParticleState {
+    particles: Particle[];
+    targetPosition: { x: number; y: number } | null;
+    spawnParticle: (x: number, y: number, amount: number, color?: string) => void;
+    removeParticle: (id: string) => void;
+    setTargetPosition: (x: number, y: number) => void;
+}
+
+export const useXPParticleStore = create<XPParticleState>((set) => ({
+    particles: [],
+    targetPosition: null,
+
+    spawnParticle: (startX, startY, amount, color) => {
+        const id = Math.random().toString(36).substring(7);
+        set((state) => ({
+            particles: [...state.particles, { id, startX, startY, amount, color }],
+        }));
+    },
+
+    removeParticle: (id) => {
+        set((state) => ({
+            particles: state.particles.filter((p) => p.id !== id),
+        }));
+    },
+
+    setTargetPosition: (x, y) => {
+        set({ targetPosition: { x, y } });
+    },
+}));

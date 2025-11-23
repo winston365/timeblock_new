@@ -50,6 +50,11 @@ const electronAPI = {
   showNotification: (title: string, body: string): Promise<{ success: boolean; message?: string }> => {
     return ipcRenderer.invoke('show-notification', title, body);
   },
+
+  // 날씨 정보 fetch (CORS 회피)
+  fetchWeather: (city?: string): Promise<string> => {
+    return ipcRenderer.invoke('fetch-weather', city);
+  },
 };
 
 // ============================================================================

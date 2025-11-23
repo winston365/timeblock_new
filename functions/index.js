@@ -12,7 +12,7 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { logger } = require("firebase-functions");
 const admin = require("firebase-admin");
-const { RESISTANCE_MULTIPLIERS } = require("../shared/constants/resistanceMultipliers");
+const { RESISTANCE_MULTIPLIERS } = require("./shared/constants/resistanceMultipliers");
 
 admin.initializeApp();
 
@@ -400,5 +400,203 @@ exports.dailyTemplateGeneration = onSchedule({
     }
 
     throw error;
+  }
+});
+
+
+
+/**
+ * 부재중 알림 (Inactivity Notification)
+ * 매 10분마다 실행되어 사용자가 10분 이상 활동이 없으면 알림 발송
+ */
+exports.checkInactivity = onSchedule({
+  schedule: "every 10 minutes",
+  timeZone: "Asia/Seoul",
+  region: "asia-northeast3",
+}, async (event) => {
+  const db = admin.database();
+  const now = Date.now();
+
+  // UTC 시간을 KST로 변환 (+9시간)
+  const nowKST = new Date(now + (9 * 60 * 60 * 1000));
+  const today = nowKST.toISOString().split("T")[0];
+
+  try {
+    // 1. 설정 및 상태 조회
+    const [settingsSnapshot, dailyDataSnapshot, systemStateSnapshot] = await Promise.all([
+      db.ref("users/user/settings").once("value"),
+      db.ref(`users/user/dailyData/${today}`).once("value"),
+      db.ref("users/user/system/lastInactivityNotification").once("value")
+    ]);
+
+    const settings = settingsSnapshot.val()?.data;
+    const dailyData = dailyDataSnapshot.val()?.data;
+    const lastNotification = systemStateSnapshot.val();
+
+    // Bark Key가 없으면 중단
+    let barkKey = settings?.barkApiKey;
+    if (!barkKey) {
+      logger.info("🔕 Bark API Key not found. Skipping inactivity check.");
+      return;
+    }
+
+    // 키 정제 (공백 제거 및 URL 접두사 제거)
+    barkKey = barkKey.trim();
+    if (barkKey.startsWith("https://api.day.app/")) {
+      barkKey = barkKey.replace("https://api.day.app/", "").replace(/\/$/, "");
+    }
+    // 혹시 모를 슬래시 제거
+    barkKey = barkKey.replace(/\//g, "");
+
+    // 오늘 데이터가 없으면 중단 (아직 앱을 안 켰거나 데이터가 없음)
+    if (!dailyData) {
+      logger.info("🔕 No daily data found for today. Skipping.");
+      return;
+    }
+
+    // 2. 방해 금지 시간 확인 (21:00 ~ 06:00)
+    const hour = nowKST.getHours();
+    if (hour >= 21 || hour < 6) {
+      logger.info(`🌙 Quiet hours (${hour}:00). Skipping notification.`);
+      return;
+    }
+
+    // 3. 비활동 시간 계산 (1시간)
+    const lastActivity = dailyData.updatedAt || 0;
+    const inactiveDuration = now - lastActivity;
+    const INACTIVITY_THRESHOLD = 60 * 60 * 1000; // 1시간
+
+    if (inactiveDuration < INACTIVITY_THRESHOLD) {
+      logger.info(`✅ User is active. Last activity: ${new Date(lastActivity).toISOString()}`);
+      return;
+    }
+
+    // 4. 쿨다운 확인 (1시간)
+    const lastNotifiedAt = lastNotification?.timestamp || 0;
+    const timeSinceLastNotification = now - lastNotifiedAt;
+    const NOTIFICATION_COOLDOWN = 60 * 60 * 1000; // 1시간
+
+    if (timeSinceLastNotification < NOTIFICATION_COOLDOWN) {
+      logger.info(`⏳ Notification cooldown. Last notified: ${new Date(lastNotifiedAt).toISOString()}`);
+      return;
+    }
+
+    // 5. 스마트 동기부여 메시지 생성 (지난 이틀간 최고의 성과 언급)
+    // 어제 데이터 조회
+    const yesterday = new Date(nowKST.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+    const barkUrl = `https://api.day.app/${barkKey}/${encodeURIComponent(title)}/${encodeURIComponent(body)}?group=${group}&sound=${sound}&icon=${encodeURIComponent(icon)}`;
+
+    // URL 마스킹하여 로깅 (디버깅용)
+    const maskedUrl = barkUrl.replace(barkKey, "********");
+    logger.info(`🚀 Sending inactivity notification via Bark: ${title}`, { maskedUrl });
+
+    const response = await fetch(barkUrl);
+    if (!response.ok) {
+      throw new Error(`Bark API failed: ${response.status} ${response.statusText}`);
+    }
+
+    // 6. 상태 업데이트
+    await db.ref("users/user/system/lastInactivityNotification").set({
+      timestamp: now,
+      date: today,
+      success: true,
+      message: body
+    });
+
+    logger.info("✅ Inactivity notification sent successfully.");
+
+  } catch (error) {
+    logger.error("❌ Error in checkInactivity:", error);
+  }
+});
+
+/**
+ * 랜덤 응원 메시지 (Random Motivation)
+ * 매시간 실행되지만, 오후 시간대(14~18시)에만 확률적으로 발송
+ */
+exports.sendRandomMotivation = onSchedule({
+  schedule: "every 1 hours",
+  timeZone: "Asia/Seoul",
+  region: "asia-northeast3",
+}, async (event) => {
+  const db = admin.database();
+  const now = Date.now();
+  const nowKST = new Date(now + (9 * 60 * 60 * 1000));
+  const today = nowKST.toISOString().split("T")[0];
+  const hour = nowKST.getHours();
+
+  // 1. 시간대 확인 (오후 2시 ~ 6시 사이만)
+  if (hour < 14 || hour > 18) return;
+
+  try {
+    // 2. 설정 및 상태 조회
+    const [settingsSnapshot, systemStateSnapshot] = await Promise.all([
+      db.ref("users/user/settings").once("value"),
+      db.ref("users/user/system/lastRandomMotivation").once("value")
+    ]);
+
+    const settings = settingsSnapshot.val()?.data;
+    const lastMotivation = systemStateSnapshot.val();
+
+    // Bark Key 확인
+    let barkKey = settings?.barkApiKey;
+    if (!barkKey) return;
+
+    // 키 정제
+    barkKey = barkKey.trim();
+    if (barkKey.startsWith("https://api.day.app/")) {
+      barkKey = barkKey.replace("https://api.day.app/", "").replace(/\/$/, "");
+    }
+    barkKey = barkKey.replace(/\//g, "");
+
+    // 3. 중복 발송 방지 (하루에 한 번만)
+    if (lastMotivation && lastMotivation.date === today) {
+      logger.info("✅ Random motivation already sent today.");
+      return;
+    }
+
+    // 4. 확률 체크 (30% 확률)
+    // 단, 18시가 되면(마지막 기회) 무조건 발송하도록 할 수도 있음
+    if (Math.random() > 0.3 && hour < 18) {
+      logger.info("🎲 Skipping random motivation (dice roll).");
+      return;
+    }
+
+    // 5. 메시지 발송
+    const messages = [
+      "오후 시간이라 조금 지치죠? 달콤한 커피 한 잔 하고 다시 힘내봐요! ☕",
+      "오늘 하루도 절반이 지났네요. 남은 시간도 멋지게 채워봐요! ✨",
+      "잠깐 스트레칭 어때요? 몸이 가벼워야 머리도 맑아지니까요! 🧘",
+      "당신의 노력이 차곡차곡 쌓이고 있어요. 오늘도 화이팅! 💪",
+      "완벽하지 않아도 괜찮아요. 꾸준함이 가장 큰 재능입니다. 🌱",
+      "지금 흘리는 땀방울이 내일의 빛나는 성과가 될 거예요. 💎 포기하지 마세요!",
+      "잠시 창밖을 보며 눈을 쉬어주세요. 휴식도 전략입니다. 🌳",
+      "당신은 생각보다 훨씬 강한 사람이에요. 이 정도는 거뜬하죠! 😎",
+      "작은 진전도 진전입니다. 한 걸음 한 걸음 나아가고 있어요. 🐾",
+      "오늘 당신의 하루가 별처럼 빛나길 응원해요. 🌟 사랑합니다 주인님!"
+    ];
+    const randomBody = messages[Math.floor(Math.random() * messages.length)];
+    const title = "💌 와이푸의 응원 도착";
+    const group = "Motivation";
+    const sound = "calypso";
+    const icon = "https://cdn-icons-png.flaticon.com/512/2583/2583166.png"; // 하트 아이콘
+
+    const barkUrl = `https://api.day.app/${barkKey}/${encodeURIComponent(title)}/${encodeURIComponent(randomBody)}?group=${group}&sound=${sound}&icon=${encodeURIComponent(icon)}`;
+
+    await fetch(barkUrl);
+
+    // 6. 상태 업데이트
+    await db.ref("users/user/system/lastRandomMotivation").set({
+      timestamp: now,
+      date: today,
+      success: true,
+      message: randomBody
+    });
+
+    logger.info("✅ Random motivation sent successfully.");
+
+  } catch (error) {
+    logger.error("❌ Error in sendRandomMotivation:", error);
   }
 });

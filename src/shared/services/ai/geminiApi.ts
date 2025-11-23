@@ -127,6 +127,79 @@ export async function callGeminiAPI(
 }
 
 /**
+ * Google Search Grounding을 사용하여 Gemini API를 호출합니다 (날씨 등 실시간 정보용)
+ * 
+ * @param prompt - 사용자 프롬프트
+ * @param apiKey - Gemini API 키
+ * @returns AI 응답 텍스트
+ */
+export async function callGeminiAPIWithTools(
+  prompt: string,
+  apiKey: string
+): Promise<{ text: string; tokenUsage?: { promptTokens: number; candidatesTokens: number; totalTokens: number } }> {
+  if (!apiKey) {
+    throw new Error('Gemini API 키가 설정되지 않았습니다.');
+  }
+
+  const modelName = 'gemini-2.5-flash'; // refer 프로젝트와 동일한 모델 사용
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+
+  try {
+    const response = await fetch(`${endpoint}?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [{ text: prompt }],
+        }],
+        tools: [{
+          googleSearch: {}
+        }],
+        generationConfig: {
+          temperature: 0.1, // 사실적인 정보를 위해 낮춤
+          maxOutputTokens: 8192,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(
+        `Gemini API 호출 실패: ${response.status} ${response.statusText}${errorData ? ` - ${JSON.stringify(errorData)}` : ''
+        }`
+      );
+    }
+
+    const data: GeminiResponse = await response.json();
+
+    if (!data.candidates || data.candidates.length === 0) {
+      throw new Error('Gemini API로부터 응답을 받지 못했습니다.');
+    }
+
+    const candidate = data.candidates[0];
+    console.log('[Gemini Tools] Candidate:', JSON.stringify(candidate, null, 2)); // 디버깅용 로그
+
+    const text = candidate.content.parts[0]?.text || '';
+
+    const tokenUsage = data.usageMetadata
+      ? {
+        promptTokens: data.usageMetadata.promptTokenCount,
+        candidatesTokens: data.usageMetadata.candidatesTokenCount,
+        totalTokens: data.usageMetadata.totalTokenCount,
+      }
+      : undefined;
+
+    return { text, tokenUsage };
+  } catch (error) {
+    console.error('Gemini API (Tools) 호출 중 오류:', error);
+    throw error;
+  }
+}
+
+/**
  * 상세 작업 정보 (AI 컨텍스트용)
  */
 export interface DetailedTask {

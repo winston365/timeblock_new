@@ -232,13 +232,16 @@ export async function addXP(
     // 이벤트 생성 (UI 로직 분리)
     const events: import('@/shared/services/gameplay/gameState').GameStateEvent[] = [];
 
-    // XP 획득 이벤트
-    events.push({
-      type: 'xp_gained',
-      amount,
-      reason,
-      blockId,
-    });
+    // 0 XP는 이벤트 생성하지 않음 (무의미한 토스트 방지)
+    if (amount > 0) {
+      // XP 획득 이벤트
+      events.push({
+        type: 'xp_gained',
+        amount,
+        reason,
+        blockId,
+      });
+    }
 
     // 레벨업 이벤트
     if (leveledUp) {

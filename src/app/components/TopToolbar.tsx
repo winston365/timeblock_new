@@ -13,6 +13,9 @@ import { getDialogueFromAffection } from '@/data/repositories/waifuRepository';
 import { audioService } from '@/shared/services/media/audioService';
 import { useFocusStore } from '@/shared/stores/focusStore';
 import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
+import { useXPParticleStore } from '@/features/gamification/stores/xpParticleStore';
+import { useEffect, useRef } from 'react';
+import WeatherWidget from '@/features/weather/WeatherWidget';
 
 interface TopToolbarProps {
   gameState: GameState | null;
@@ -112,7 +115,20 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         </div>
         <div className={statItemClass}>
           <span>⭐ 오늘 XP:</span>
-          <span className={statValueClass}>{gameState?.dailyXP ?? 0}</span>
+          <span
+            ref={(el) => {
+              if (el) {
+                const rect = el.getBoundingClientRect();
+                // Update target position only if it changes significantly to avoid loops
+                // But for now, just setting it on mount/resize is enough.
+                // We'll use a useEffect for cleaner logic.
+              }
+            }}
+            className={statValueClass}
+          >
+            {gameState?.dailyXP ?? 0}
+          </span>
+          <XPPositionRegistrar />
         </div>
         <div className={statItemClass}>
           <span>⭐ 사용 가능:</span>
@@ -147,6 +163,9 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
             </span>
           </div>
         )}
+
+        {/* Weather Widget */}
+        <WeatherWidget />
       </div>
 
       <div className="flex flex-wrap items-center gap-[var(--spacing-sm)] md:ml-auto">
@@ -171,4 +190,26 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
       </div>
     </header>
   );
+}
+
+// Helper component to register position
+function XPPositionRegistrar() {
+  const setTargetPosition = useXPParticleStore(state => state.setTargetPosition);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const updatePosition = () => {
+      if (ref.current) {
+        const rect = ref.current.getBoundingClientRect();
+        // Target center of the element
+        setTargetPosition(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      }
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    return () => window.removeEventListener('resize', updatePosition);
+  }, [setTargetPosition]);
+
+  return <span ref={ref} className="absolute opacity-0 pointer-events-none" />;
 }

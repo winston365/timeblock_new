@@ -17,12 +17,14 @@ import { eventBus, loggerMiddleware, performanceMiddleware } from '@/shared/lib/
 import { initAllSubscribers } from '@/shared/subscribers';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
+import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { setErrorCallback, retryNow } from '@/shared/services/sync/firebase/syncRetryQueue';
 import { useAppInitialization } from './hooks/useAppInitialization';
 import { FocusTimerOverlay } from '@/features/focus/FocusTimerOverlay';
 import { useFocusModeStore } from '@/features/schedule/stores/focusModeStore';
 import { RealityCheckModal } from '@/features/feedback/RealityCheckModal';
 import GlobalTaskBreakdown from '@/features/tasks/GlobalTaskBreakdown';
+import { XPParticleOverlay } from '@/features/gamification/components/XPParticleOverlay';
 
 // 임시로 컴포넌트를 직접 import (나중에 features에서 가져올 것)
 import TopToolbar from './components/TopToolbar';
@@ -68,6 +70,40 @@ export default function AppShell() {
     const saved = localStorage.getItem('rightPanelsCollapsed');
     return saved === 'true';
   });
+
+  // 반응형 레이아웃: 창 크기에 따른 자동 패널 접기 (Progressive Collapsing)
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+
+      // 1200px 미만: 우측 패널 자동 접기
+      if (width < 1200) {
+        setRightPanelsCollapsed(prev => {
+          if (!prev) {
+            localStorage.setItem('rightPanelsCollapsed', 'true');
+            return true;
+          }
+          return prev;
+        });
+      }
+
+      // 800px 미만: 좌측 사이드바 자동 접기
+      if (width < 800) {
+        setLeftSidebarCollapsed(prev => {
+          if (!prev) {
+            localStorage.setItem('leftSidebarCollapsed', 'true');
+            return true;
+          }
+          return prev;
+        });
+      }
+    };
+
+    // 초기 실행 및 이벤트 리스너 등록
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const { isFocusMode } = useFocusModeStore();
   const effectiveLeftCollapsed = leftSidebarCollapsed || isFocusMode;
@@ -189,17 +225,76 @@ export default function AppShell() {
     });
   }, [dbInitialized]);
 
-  // F1 단축키: 대량 할 일 추가 모달 열기
+  // 키보드 단축키 처리 (입력 필드가 아닐 때만)
+  const { settings } = useSettingsStore();
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'F1') {
+      // 입력 필드나 contentEditable 요소에서는 단축키 비활성화
+      const target = e.target as HTMLElement;
+      const isInputField =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        target.closest('[contenteditable="true"]');
+
+      if (isInputField) return;
+
+      // 단축키 매칭 헬퍼 함수
+      const matchesShortcut = (shortcutStr: string) => {
+        const parts = shortcutStr.split('+').map(p => p.trim());
+        const keyPart = parts[parts.length - 1];
+
+        // 수정자 키 확인
+        const needsCtrl = parts.includes('Ctrl');
+        const needsShift = parts.includes('Shift');
+        const needsAlt = parts.includes('Alt');
+
+        // 수정자 키가 하나라도 필요한 경우
+        if (needsCtrl || needsShift || needsAlt) {
+          return (
+            (!needsCtrl || e.ctrlKey) &&
+            (!needsShift || e.shiftKey) &&
+            (!needsAlt || e.altKey) &&
+            e.key.toUpperCase() === keyPart.toUpperCase()
+          );
+        }
+
+        // 단순 키인 경우 (수정자 키 없이)
+        // 이 경우 수정자 키가 눌리지 않았어야 함
+        return (
+          !e.ctrlKey && !e.shiftKey && !e.altKey &&
+          e.key.toUpperCase() === keyPart.toUpperCase()
+        );
+      };
+
+      // F1: 대량 할 일 추가 (설정 가능)
+      const bulkAddKey = settings?.bulkAddModalKey || 'F1';
+      if (matchesShortcut(bulkAddKey)) {
         e.preventDefault();
         setShowBulkAdd(true);
+        return;
+      }
+
+      // 좌측 패널 토글 (기본: Ctrl+B)
+      const leftKey = settings?.leftPanelToggleKey || 'Ctrl+B';
+      if (matchesShortcut(leftKey)) {
+        e.preventDefault();
+        toggleLeftSidebar();
+        return;
+      }
+
+      // 우측 패널 토글 (기본: Ctrl+Shift+B)
+      const rightKey = settings?.rightPanelToggleKey || 'Ctrl+Shift+B';
+      if (matchesShortcut(rightKey)) {
+        e.preventDefault();
+        toggleRightPanels();
+        return;
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [settings?.leftPanelToggleKey, settings?.rightPanelToggleKey, settings?.bulkAddModalKey]);
 
   // 템플릿에서 작업 생성 핸들러
   const handleTaskCreateFromTemplate = async (template: Template) => {
@@ -387,6 +482,7 @@ export default function AppShell() {
       <FocusTimerOverlay />
       <RealityCheckModal />
       <GlobalTaskBreakdown />
+      <XPParticleOverlay />
     </div>
   );
 }

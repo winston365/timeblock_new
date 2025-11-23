@@ -385,6 +385,34 @@ function setupAutoUpdater(): void {
 // ============================================================================
 
 /**
+ * Weather fetch handler (CORS 회피용)
+ */
+ipcMain.handle('fetch-weather', async (_event, city: string = '서울') => {
+  try {
+    const url = `https://www.google.com/search?q=${encodeURIComponent(city)}+날씨`;
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Cache-Control': 'max-age=0',
+      },
+    });
+    return await response.text();
+  } catch (error) {
+    console.error('[IPC] fetch-weather failed:', error);
+    throw error;
+  }
+});
+
+/**
  * 앱 버전 정보 제공
  */
 ipcMain.handle('get-app-version', () => {

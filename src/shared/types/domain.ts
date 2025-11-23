@@ -340,6 +340,11 @@ export interface Settings {
   autoEmojiEnabled?: boolean; // 작업 제목 기반 이모지 자동 추천 사용 여부
   timeSlotTags?: TimeSlotTagTemplate[]; // 시간대 속성 템플릿
   dontDoChecklist?: DontDoChecklistItem[]; // 하지않기 체크리스트 항목
+  barkApiKey?: string; // Bark 알림 API 키
+  // 단축키 설정
+  leftPanelToggleKey?: string; // 좌측 패널 토글 단축키 (기본: 'Ctrl+B')
+  rightPanelToggleKey?: string; // 우측 패널 토글 단축키 (기본: 'Ctrl+Shift+B')
+  bulkAddModalKey?: string; // 대량 추가 모달 단축키 (기본: 'F1')
 }
 
 // ============================================================================

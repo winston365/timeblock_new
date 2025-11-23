@@ -7,6 +7,7 @@
 import { eventBus } from '@/shared/lib/eventBus';
 import { recalculateGlobalGoalProgress } from '@/data/repositories';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
+import { useGoalStore } from '@/shared/stores/goalStore';
 import { getLocalDate } from '@/shared/lib/utils';
 
 /**
@@ -20,7 +21,13 @@ export function initGoalSubscriber(): void {
         try {
             const currentDate = getLocalDate();
             await recalculateGlobalGoalProgress(goalId, currentDate);
-            await useDailyDataStore.getState().refresh();
+
+            // 🔄 Goal Store와 Daily Data Store 모두 갱신
+            await Promise.all([
+                useGoalStore.getState().refresh(),
+                useDailyDataStore.getState().refresh()
+            ]);
+
             console.log(`✅ [GoalSubscriber] Recalculated progress for goal: ${goalId}`);
         } catch (error) {
             console.error('[GoalSubscriber] Failed to recalculate goal progress:', error);

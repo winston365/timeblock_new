@@ -33,13 +33,22 @@ export class XPRewardHandler implements TaskCompletionHandler {
     const xpAmount = calculateTaskXP(task);
 
     // XP 지급 (Store 사용)
-    // Store 내부에서 addXPToRepo 호출 -> State 업데이트 -> 이벤트 처리(Toast)까지 수행됨
+    // skipEvents=true로 설정하여 Store에서의 중복 이벤트 처리 방지
     const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
-    await useGameStateStore.getState().addXP(xpAmount, task.timeBlock || undefined);
+    await useGameStateStore.getState().addXP(xpAmount, task.timeBlock || undefined, true);
 
     console.log(`[${this.name}] ✅ Granted ${xpAmount} XP for task: ${task.text}`);
 
-    // Store에서 이미 이벤트를 처리했으므로 빈 배열 반환 (중복 처리 방지)
-    return [];
+    // 0 XP인 경우 이벤트를 반환하지 않음 (무의미한 토스트 방지)
+    if (xpAmount === 0) {
+      return [];
+    }
+
+    // XP 획득 이벤트 반환 (TaskCompletionService에서 처리)
+    return [{
+      type: 'xp_gained',
+      amount: xpAmount,
+      reason: 'task_complete'
+    }];
   }
 }

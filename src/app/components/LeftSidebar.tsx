@@ -37,7 +37,7 @@ export default function LeftSidebar({ activeTab, onTabChange, collapsed = false 
 
   return (
     <nav
-      className={`left-sidebar flex h-full min-h-0 min-w-0 flex-col overflow-hidden border-r border-[var(--color-border)] bg-[var(--color-bg-base)] text-[var(--color-text)] transition-all duration-300 ${collapsed ? 'w-0 opacity-0' : 'w-full opacity-100'
+      className={`left-sidebar flex h-full min-h-0 min-w-0 flex-col overflow-hidden border-r border-[var(--color-border)] bg-[var(--color-bg-base)] text-[var(--color-text)] transition-all duration-300 ${collapsed ? 'w-0 opacity-0 invisible' : 'w-full opacity-100 visible'
         }`}
       aria-label="메인 네비게이션"
       aria-hidden={collapsed}
@@ -50,8 +50,8 @@ export default function LeftSidebar({ activeTab, onTabChange, collapsed = false 
             <button
               key={tab.id}
               className={`sidebar-tab flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-2 text-[11px] font-medium transition-all duration-200 ${isActive
-                  ? 'bg-[var(--color-bg-elevated)] text-[var(--color-primary)] shadow-sm ring-1 ring-[var(--color-border)]'
-                  : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-secondary)]'
+                ? 'bg-[var(--color-bg-elevated)] text-[var(--color-primary)] shadow-sm ring-1 ring-[var(--color-border)]'
+                : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-secondary)]'
                 }`}
               onClick={() => onTabChange(tab.id)}
               role="tab"

@@ -29,7 +29,7 @@ interface GameStateStore {
 
   // 액션
   loadData: () => Promise<void>;
-  addXP: (amount: number, blockId?: string) => Promise<void>;
+  addXP: (amount: number, blockId?: string, skipEvents?: boolean) => Promise<void>;
   spendXP: (amount: number) => Promise<void>;
   initializeNewDay: () => Promise<void>;
   updateQuestProgress: (questType: 'complete_tasks' | 'earn_xp' | 'lock_blocks' | 'perfect_blocks' | 'prepare_tasks' | 'use_timer', amount?: number) => Promise<void>;
@@ -80,13 +80,13 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
   },
 
   // XP 추가
-  addXP: async (amount: number, blockId?: string) => {
+  addXP: async (amount: number, blockId?: string, skipEvents?: boolean) => {
     try {
       const result = await addXPToRepo(amount, blockId);
       set({ gameState: result.gameState });
 
-      // 이벤트 처리 (UI 업데이트)
-      if (result.events.length > 0) {
+      // skipEvents가 true이면 이벤트 처리 건너뛰기 (중복 방지)
+      if (!skipEvents && result.events.length > 0) {
         const { gameStateEventHandler } = await import('@/shared/services/gameplay/gameState');
         await gameStateEventHandler.handleEvents(result.events);
       }
