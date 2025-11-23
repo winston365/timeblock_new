@@ -86,7 +86,7 @@ export async function callGeminiAPI(
       body: JSON.stringify({
         contents,
         generationConfig: {
-          temperature: 0.9,
+          temperature: 1,
           topK: 40,
           topP: 0.95,
           maxOutputTokens: 8192,

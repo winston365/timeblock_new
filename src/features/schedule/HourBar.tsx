@@ -205,6 +205,13 @@ export default function HourBar({
   const handleInlineInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && inlineInputValue.trim()) {
       e.preventDefault();
+
+      // 2개 제한 검증
+      if (tasks.length >= 2) {
+        addToast('이 시간대에는 최대 2개의 작업만 추가할 수 있습니다.', 'warning', 3000);
+        return;
+      }
+
       try {
         await onCreateTask(inlineInputValue.trim(), hour);
         setInlineInputValue('');
@@ -230,6 +237,16 @@ export default function HourBar({
     e.stopPropagation();
     const dragData = getDragData(e);
     if (!dragData) return;
+
+    // 같은 위치에서 드롭하는 경우는 허용 (재정렬)
+    const isDifferentLocation = !isSameLocation(dragData, blockId, hour);
+
+    // 다른 위치에서 옮겨오는 경우 제한 체크
+    if (isDifferentLocation && tasks.length >= 2) {
+      addToast('이 시간대에는 최대 2개의 작업만 추가할 수 있습니다.', 'warning', 3000);
+      return;
+    }
+
     const last = sortedTasks[sortedTasks.length - 1];
     const lastOrder = last ? last.order ?? sortedTasks.length : undefined;
     await onUpdateTask(dragData.taskId, { timeBlock: blockId, hourSlot: hour, order: (lastOrder ?? 0) + 1 });
@@ -243,6 +260,13 @@ export default function HourBar({
     const targetTask = sortedTasks[targetIndex];
     if (!targetTask) return;
     if (dragData.taskId === targetTask.id && isSameLocation(dragData, blockId, hour)) return;
+
+    // 다른 위치에서 옮겨오는 경우 제한 체크
+    const isDifferentLocation = !isSameLocation(dragData, blockId, hour);
+    if (isDifferentLocation && tasks.length >= 2) {
+      addToast('이 시간대에는 최대 2개의 작업만 추가할 수 있습니다.', 'warning', 3000);
+      return;
+    }
 
     const prevTask = sortedTasks[targetIndex - 1];
     const prevOrder = prevTask?.order ?? (targetIndex - 1);
@@ -474,15 +498,21 @@ export default function HourBar({
 
             {!isLocked && !isPastHour && (
               <div className="w-full">
-                <input
-                  ref={inlineInputRef}
-                  type="text"
-                  value={inlineInputValue}
-                  onChange={e => setInlineInputValue(e.target.value)}
-                  onKeyDown={handleInlineInputKeyDown}
-                  placeholder="작업을 입력하고 Enter로 추가하세요 (기본 15분)"
-                  className="w-full rounded-lg border border-dashed border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
-                />
+                {tasks.length >= 2 ? (
+                  <div className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-2 text-sm text-[var(--color-text-tertiary)] text-center">
+                    ⚠️ 이 시간대에는 최대 2개까지만 추가할 수 있습니다
+                  </div>
+                ) : (
+                  <input
+                    ref={inlineInputRef}
+                    type="text"
+                    value={inlineInputValue}
+                    onChange={e => setInlineInputValue(e.target.value)}
+                    onKeyDown={handleInlineInputKeyDown}
+                    placeholder={`작업을 입력하고 Enter로 추가하세요 (${tasks.length}/2)`}
+                    className="w-full rounded-lg border border-dashed border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
+                  />
+                )}
               </div>
             )}
           </div>
