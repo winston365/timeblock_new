@@ -67,6 +67,7 @@ export default function TaskCard({
   const [timerIconActive, setTimerIconActive] = useState(false);
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const showMinimal = compact && task.timeBlock === null;
 
   const { setDragData } = useDragDropManager();
   const xp = calculateTaskXP(task);
@@ -188,14 +189,10 @@ export default function TaskCard({
   const cardClassName = [
     'group relative rounded-xl border transition-all duration-300 ease-out',
     compact ? 'p-2' : 'p-2.5',
-    // 기본 스타일: 유리 질감
     'bg-[var(--color-bg-elevated)]/80 backdrop-blur-sm',
     'border-[var(--color-border)]',
-    // 완료 상태: 뒤로 밀려나고 흐려짐
     task.completed ? 'opacity-60 scale-[0.98] grayscale-[0.5] border-transparent shadow-none' : 'hover:border-[var(--color-primary)]/50 hover:shadow-lg hover:-translate-y-0.5',
-    // 준비됨 상태: 은은한 오라
     isPrepared && !task.completed ? 'border-emerald-400/40 bg-gradient-to-r from-emerald-500/5 via-transparent to-transparent' : '',
-    // 드래그 중: 집어올린 느낌
     isDragging ? 'scale-105 rotate-2 shadow-2xl border-[var(--color-primary)] z-[10000] cursor-grabbing' : 'cursor-grab',
     hasOpenPicker ? 'z-[10000]' : '',
   ].join(' ');
@@ -217,81 +214,34 @@ export default function TaskCard({
           }}
         >
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-8 h-8" data-task-interactive="true">
+            <div className="flex items-center justify-center w-7 h-7" data-task-interactive="true">
               <NeonCheckbox
                 checked={task.completed}
                 onChange={handleToggleClick}
-                size={24}
+                size={22}
               />
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className={`text-sm font-medium truncate transition-colors ${task.completed ? 'text-[var(--color-text-tertiary)] line-through' : 'text-[var(--color-text)]'}`}>
+              <p className={`text-sm font-semibold truncate transition-colors ${task.completed ? 'text-[var(--color-text-tertiary)] line-through' : 'text-[var(--color-text)]'}`}>
                 {displayText}
               </p>
-              {task.memo && <p className="text-xs text-[var(--color-text-tertiary)] truncate">{task.memo}</p>}
-              <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] relative">
-                {!hideMetadata && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-2 py-0.5 font-semibold text-[var(--color-primary)] shadow-sm">
+              <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-[var(--color-text-tertiary)]">
+                {!hideMetadata && !showMinimal && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-2 py-0.5 font-semibold text-[var(--color-primary)] shadow-sm">
                     🪙 +{xp} XP
                   </span>
                 )}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDurationPicker(prev => !prev);
-                    setShowResistancePicker(false);
-                  }}
-                  className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-text)] transition-colors"
-                  data-task-interactive="true"
-                >
-                  ⌛ {expectedDurationLabel}
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowResistancePicker(prev => !prev);
-                    setShowDurationPicker(false);
-                  }}
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${RESISTANCE_COLORS[task.resistance]}`}
-                  data-task-interactive="true"
-                >
-                  {RESISTANCE_EMOJI[task.resistance]} {RESISTANCE_BADGE_LABEL[task.resistance]}
-                </button>
-                <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 px-2 py-0.5 text-[var(--color-text-secondary)]">
-                  Prep {preparationCount}/3
+                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/50 px-2 py-0.5">
+                  ⏱ {expectedDurationLabel}
                 </span>
-
-                {showDurationPicker && (
-                  <div className="absolute left-0 top-full z-[9999] mt-2 grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 text-xs shadow-xl backdrop-blur-md w-[180px]">
-                    {durationOptions.map((duration) => (
-                      <button
-                        key={duration}
-                        className={`rounded-lg px-2 py-1.5 transition ${task.baseDuration === duration ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-white/5 text-[var(--color-text-secondary)]'}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDurationChange(duration);
-                        }}
-                      >
-                        {duration}m
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {showResistancePicker && (
-                  <div className="absolute left-0 top-full z-[9999] mt-2 flex min-w-[120px] flex-col gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-1.5 text-xs shadow-xl backdrop-blur-md">
-                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-emerald-200" onClick={(e) => { e.stopPropagation(); handleResistanceChange('low'); }}>
-                      💧 쉬움 (x1.0)
-                    </button>
-                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-amber-200" onClick={(e) => { e.stopPropagation(); handleResistanceChange('medium'); }}>
-                      🌊 보통 (x1.3)
-                    </button>
-                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-rose-200" onClick={(e) => { e.stopPropagation(); handleResistanceChange('high'); }}>
-                      🌪️ 어려움 (x1.6)
-                    </button>
-                  </div>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${RESISTANCE_COLORS[task.resistance]}`}>
+                  {RESISTANCE_BADGE_LABEL[task.resistance]}
+                </span>
+                {!showMinimal && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/50 px-2 py-0.5 text-[var(--color-text-secondary)]">
+                    Prep {preparationCount}/3
+                  </span>
                 )}
               </div>
             </div>

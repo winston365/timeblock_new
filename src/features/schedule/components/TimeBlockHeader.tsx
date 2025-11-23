@@ -177,10 +177,16 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const config = STATUS_CONFIG[timeStatus];
   const headerClassName = [
-    'flex cursor-pointer flex-col gap-3 px-5 py-4 select-none transition-colors duration-200 rounded-t-2xl',
-    isCurrentBlock ? 'bg-[var(--color-bg-elevated)]/80 backdrop-blur-sm' : 'bg-transparent'
-  ].join(' ');
+    'relative flex cursor-pointer flex-col gap-3 overflow-hidden rounded-2xl border bg-[var(--color-bg-elevated)]/60 p-4 select-none shadow-[0_15px_40px_rgba(0,0,0,0.25)] transition-colors duration-200 backdrop-blur-sm',
+    config.border,
+    config.glow ?? '',
+    config.ring ?? '',
+    isCurrentBlock ? 'outline outline-1 outline-[var(--color-primary)]/40' : ''
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const timeRangeLabel = `${block.start.toString().padStart(2, '0')}:00 - ${block.end.toString().padStart(2, '0')}:00`;
   const contextKey = isCurrentBlock ? 'current' : isPastBlock ? 'past' : 'upcoming';
@@ -189,89 +195,53 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
   const statusBadge = STATUS_META[statusKey];
   const showTimerControls = !state?.isLocked && !isPastBlock;
   const showRemainingChip = !isCurrentBlock;
+  const remainingDisplay = timeRemainingLabel || formatMinutesToHM(remainingMinutes);
 
-  // Status Calculation
-  const config = STATUS_CONFIG[timeStatus];
+  const handleActionClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onRequestAddTask) {
+      onRequestAddTask();
+      toast.success('인박스/템플릿에서 작업을 채워요');
+    } else {
+      toast('곧 더 많은 액션이 추가될 예정이에요!', { icon: '🚧' });
+    }
+    setIsMenuOpen(false);
+  };
 
   return (
     <div className={headerClassName} onClick={onToggleExpand}>
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-col gap-1">
-          <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-lg font-semibold text-[var(--color-text)]">{block.label}</span>
-            {block.label !== timeRangeLabel && (
-              <span className="text-sm text-[var(--color-text-tertiary)]">{timeRangeLabel}</span>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-semibold ${context.className}`}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2 text-[12px] font-semibold">
+            <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 ${statusBadge.className}`}>
+              <span aria-hidden="true">{config.icon}</span>
+              {config.label}
+            </span>
+            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] ${context.className}`}>
               {context.label}
             </span>
-            {!isCurrentBlock && (
-              <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[12px] font-semibold ${statusBadge.className}`}>
-                <span aria-hidden="true">{statusBadge.icon}</span>
-                {statusBadge.label}
-              </span>
-            )}
             {showRemainingChip && (
-              <span className="rounded-full bg-[var(--color-bg-tertiary)]/70 px-3 py-1 text-[12px] font-semibold text-[var(--color-text-secondary)]">
-                남은 {timeRemainingLabel}
+              <span className="rounded-full bg-[var(--color-bg-tertiary)]/70 px-2.5 py-1 text-[11px] font-semibold text-[var(--color-text-secondary)]">
+                남은 {remainingDisplay}
               </span>
             )}
           </div>
 
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-lg font-bold text-[var(--color-text)]">{block.label}</span>
+            <span className="text-sm text-[var(--color-text-tertiary)]">{timeRangeLabel}</span>
+          </div>
 
+          <p className="text-sm font-medium text-[var(--color-text-secondary)]">
+            {config.copy}
+            {needsPlanBoost ? ' · 계획을 더 채우면 안정적이에요' : ''}
+          </p>
         </div>
 
-        {/* 3분 잠금 타이머 (중앙 배치 & 크기 확대) - Flex Flow 내 배치 */}
-        {isCurrentBlock && showTimerControls && (
-          <div className="flex flex-1 justify-center px-4">
-            <button
-              type="button"
-              onClick={e => {
-                e.stopPropagation();
-                if (state?.lockTimerStartedAt) {
-                  timer.handleCancelLockTimer(e);
-                } else {
-                  timer.handleStartLockTimer(e);
-                }
-              }}
-              className={`flex items-center gap-3 rounded-xl border-2 px-6 py-3 shadow-lg transition-all hover:scale-105 active:scale-95 ${state?.lockTimerStartedAt
-                ? 'border-amber-500 bg-amber-500/20 text-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.3)]'
-                : 'border-[var(--color-primary)] bg-[var(--color-bg-elevated)] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10'
-                }`}
-            >
-              <span className={`text-3xl ${state?.lockTimerStartedAt ? 'animate-pulse' : ''}`}>
-                {state?.lockTimerStartedAt ? '🔒' : '⏱️'}
-              </span>
-              <div className="flex flex-col items-start leading-none">
-                <span className="text-2xl font-extrabold tabular-nums tracking-tight">
-                  {timer.formatRemainingTime()}
-                </span>
-                <span className="text-xs font-bold opacity-90">
-                  {state?.lockTimerStartedAt ? '잠금 중...' : '3분 집중 시작'}
-                </span>
-              </div>
-            </button>
-          </div>
-        )}
-
-
-        <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-secondary)]">
-          <span className="inline-flex items-center gap-1">
-            <span className="text-[var(--color-text-tertiary)]">작업</span>
-            {tasksCount}개
-          </span>
-          {maxXP > 0 && (
-            <span className="inline-flex items-center gap-1 text-[var(--color-reward)]">
-              <span className="text-[var(--color-text-tertiary)]">보상</span>
-              {maxXP} XP
-            </span>
-          )}
-          <span className="inline-flex items-center gap-1">
-            <span className="text-[var(--color-text-tertiary)]">진행률</span>
-            {Math.round(completionPercentage)}%
-          </span>
+        <div className="flex flex-col items-end gap-1 text-right text-[12px] text-[var(--color-text-secondary)]">
+          <span className="font-semibold text-[var(--color-text)]">진행 {Math.round(completionPercentage)}%</span>
+          <span>작업 {tasksCount}개</span>
+          {maxXP > 0 && <span className="text-[var(--color-reward)]">보상 {maxXP} XP</span>}
           {state?.isLocked && (
             <span className="inline-flex items-center gap-1 text-amber-400">
               <span aria-hidden="true">🔒</span>
@@ -287,96 +257,72 @@ export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 pt-1" onClick={e => e.stopPropagation()}>
-        {/* 통합 컨트롤 바 (타이머 + 상태 + 계획보강) */}
-        {isCurrentBlock && (
-          <div className={`relative flex items-center gap-2 rounded-xl border bg-[var(--color-bg-surface)] p-1.5 transition-all duration-300 ${config.border} ${config.ring ?? ''} ${config.glow ?? ''}`}>
+      <div className="relative mt-1 h-2 w-full overflow-hidden rounded-full bg-[var(--color-bg-tertiary)]/60">
+        <div
+          className={`absolute left-0 top-0 h-full ${config.fill}`}
+          style={{ width: `${Math.min(Math.max(completionPercentage, 0), 100)}%` }}
+        />
+      </div>
 
-            {/* Progress Border (Bottom) */}
-            <div className="absolute inset-0 pointer-events-none rounded-xl overflow-hidden">
-              <div
-                className="absolute bottom-0 left-0 h-[3px] bg-[var(--color-primary)]/80 transition-all duration-500"
-                style={{ width: `${Math.min(completionPercentage, 100)}%` }}
-              />
-            </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2" onClick={e => e.stopPropagation()}>
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-full bg-[var(--color-bg-tertiary)] px-3 py-2 text-sm font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-bg-tertiary)]/70"
+          onClick={() => setIsMenuOpen(prev => !prev)}
+        >
+          <span className="text-base">{config.actionIcon}</span>
+          <span>{config.actionLabel}</span>
+          <span className="text-[11px] text-[var(--color-text-tertiary)]">스마트 액션</span>
+        </button>
 
-            {/* 1. 타이머 컨트롤 (이동됨) */}
+        {needsPlanBoost && onRequestAddTask && (
+          <span className="rounded-full bg-rose-500/10 px-3 py-1 text-xs font-bold text-rose-400 ring-1 ring-rose-500/30">
+            보강 추천 {planLoadRatio.toFixed(1)}x
+          </span>
+        )}
 
-            {/* 2. 상태 바 (중앙) - 인터랙티브 배지 */}
-            <div
-              className="group relative flex flex-1 cursor-pointer items-center justify-between rounded-lg px-2 py-1 transition-colors hover:bg-[var(--color-bg-tertiary)]/30"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsMenuOpen(!isMenuOpen);
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <span className={`text-xs transition-all duration-300 ${config.textStyle}`}>
-                  {config.label}
-                </span>
-                <span className="text-[10px] text-[var(--color-text-tertiary)]">·</span>
-                <span className={`text-xs transition-all duration-300 ${config.textStyle}`}>
-                  {formatMinutesToHM(remainingMinutes)} 남음
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] font-medium text-[var(--color-text-tertiary)]">
-                  {Math.round(completionPercentage)}%
-                </span>
-                {/* 스마트 액션 힌트 (호버 시 표시) */}
-                <span className="hidden text-[10px] text-[var(--color-primary)] opacity-0 transition-opacity group-hover:block group-hover:opacity-100">
-                  👇 {config.actionLabel}
-                </span>
-              </div>
-
-              {/* 스마트 액션 메뉴 */}
-              {isMenuOpen && (
-                <div className="absolute left-0 top-full z-50 mt-2 w-full min-w-[180px] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-xl animate-in fade-in zoom-in-95 duration-200">
-                  <div className="px-3 py-2 text-[10px] font-semibold text-[var(--color-text-tertiary)] bg-[var(--color-bg-tertiary)]/30">
-                    💡 스마트 제안
-                  </div>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition hover:bg-[var(--color-bg-tertiary)]"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (config.actionLabel === '작업 채우기' && onRequestAddTask) {
-                        onRequestAddTask();
-                        toast.success('인박스에서 작업을 가져옵니다');
-                      } else {
-                        toast('이 기능은 곧 업데이트됩니다!', { icon: '🚧' });
-                      }
-                      setIsMenuOpen(false);
-                    }}
-                  >
-                    <span className="text-base">{config.actionIcon}</span>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-[var(--color-text)]">{config.actionLabel}</span>
-                      <span className="text-[10px] text-[var(--color-text-tertiary)]">클릭하여 실행</span>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* 3. 계획 보강 (우측, 필요시) */}
-            {needsPlanBoost && onRequestAddTask && (
-              <button
-                type="button"
-                onClick={e => {
-                  e.stopPropagation();
-                  onRequestAddTask();
-                }}
-                className="flex flex-col items-center rounded-lg bg-rose-500/10 px-2 py-1 text-rose-500 transition hover:bg-rose-500/20"
-                title={`${planLoadRatio.toFixed(1)}배 작업 추가 추천`}
-              >
-                <span className="text-xs font-bold">+추가</span>
-                <span className="text-[9px] opacity-80">보강</span>
-              </button>
-            )}
-          </div>
+        {isCurrentBlock && showTimerControls && (
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              if (state?.lockTimerStartedAt) {
+                timer.handleCancelLockTimer(e);
+              } else {
+                timer.handleStartLockTimer(e);
+              }
+            }}
+            className={`ml-auto inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold transition ${state?.lockTimerStartedAt
+              ? 'border-amber-500 bg-amber-500/15 text-amber-300'
+              : 'border-[var(--color-primary)] bg-[var(--color-bg)] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10'
+              }`}
+          >
+            <span className="text-lg">{state?.lockTimerStartedAt ? '🔒' : '⏱️'}</span>
+            <span className="tabular-nums">{timer.formatRemainingTime()}</span>
+            <span className="text-[11px] opacity-80">{state?.lockTimerStartedAt ? '잠금 중' : '3분 집중'}</span>
+          </button>
         )}
       </div>
+
+      {isMenuOpen && (
+        <div
+          className="mt-2 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-3 shadow-xl"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="mb-2 text-[11px] font-semibold text-[var(--color-text-tertiary)]">💡 스마트 제안</div>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition hover:bg-[var(--color-bg-tertiary)]"
+            onClick={handleActionClick}
+          >
+            <span className="text-base">{config.actionIcon}</span>
+            <div className="flex flex-col">
+              <span className="font-semibold text-[var(--color-text)]">{config.actionLabel}</span>
+              <span className="text-[11px] text-[var(--color-text-tertiary)]">상태에 맞춰 바로 실행</span>
+            </div>
+          </button>
+        </div>
+      )}
 
       {children}
     </div >
