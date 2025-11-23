@@ -25,11 +25,6 @@ export function checkIgnitionAvailability(
     gameState: GameState | null,
     isBonus: boolean = false
 ): IgnitionCheckResult {
-    // 보너스는 제한 없음
-    if (isBonus) {
-        return { canIgnite: true };
-    }
-
     if (!gameState) {
         return { canIgnite: false, reason: 'insufficient_xp' };
     }
@@ -45,7 +40,7 @@ export function checkIgnitionAvailability(
         };
     }
 
-    // 쿨다운 체크 (15분 = 900초)
+    // 쿨다운 체크 (15분 = 900초) - 보너스도 적용
     if (gameState.lastIgnitionTime) {
         const elapsed = (now - gameState.lastIgnitionTime) / 1000;
         if (elapsed < 900) {
@@ -56,6 +51,11 @@ export function checkIgnitionAvailability(
                 freeSpinsRemaining: gameState.dailyFreeIgnitions - gameState.usedIgnitions,
             };
         }
+    }
+
+    // 보너스는 무료 횟수 및 XP 체크 무시
+    if (isBonus) {
+        return { canIgnite: true };
     }
 
     // 무료 횟수 체크

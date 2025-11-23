@@ -15,17 +15,30 @@ export default function FloatingIgnitionTrigger() {
     const mouseX = useMotionValue(0);
     const mouseY = useMotionValue(0);
 
-    // Smooth spring physics for following
-    const springConfig = { damping: 25, stiffness: 150, mass: 0.5 };
+    // Smooth spring physics for following (slower for easier clicking)
+    const springConfig = { damping: 30, stiffness: 80, mass: 0.8 };
     const x = useSpring(mouseX, springConfig);
     const y = useSpring(mouseY, springConfig);
 
     useEffect(() => {
         // Check inactivity logic
-        const checkInactivity = () => {
+        const checkInactivity = async () => {
             if (!dailyData) {
                 console.log('[FloatingIgnition] No dailyData');
                 return;
+            }
+
+            // 쿨다운 체크 추가
+            const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
+            const { gameState } = useGameStateStore.getState();
+
+            if (gameState?.lastIgnitionTime) {
+                const elapsed = (Date.now() - gameState.lastIgnitionTime) / 1000;
+                if (elapsed < 900) { // 15분 쿨다운
+                    console.log('[FloatingIgnition] Cooldown active:', Math.ceil((900 - elapsed) / 60), 'mins remaining');
+                    setIsVisible(false);
+                    return;
+                }
             }
 
             const now = Date.now();

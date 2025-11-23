@@ -643,7 +643,7 @@ export default function ScheduleView() {
 
       {/* Floating Ignition Trigger */}
       <button
-        onClick={() => useIgnitionStore.getState().openIgnition()}
+        onClick={() => useIgnitionStore.getState().openIgnitionWithCheck(false)}
         className="fixed bottom-6 right-6 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-2xl shadow-lg transition hover:scale-110 hover:shadow-orange-500/40 active:scale-95"
         title="3분 점화 (시작이 어려울 때)"
       >

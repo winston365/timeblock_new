@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Task, GameState } from '@/shared/types/domain';
+import type { Task } from '@/shared/types/domain';
 import { checkIgnitionAvailability } from '../utils/ignitionLimits';
 import { toast } from 'react-hot-toast';
 
@@ -25,7 +25,7 @@ interface IgnitionState {
     tickTimer: () => void;
 }
 
-export const useIgnitionStore = create<IgnitionState>((set, get) => ({
+export const useIgnitionStore = create<IgnitionState>((set) => ({
     isOpen: false,
     isSpinning: false,
     selectedTask: null,
@@ -94,17 +94,18 @@ export const useIgnitionStore = create<IgnitionState>((set, get) => ({
             selectedTask: null
         });
 
-        // GameState 업데이트 (보너스가 아닐 때만)
-        if (!isBonus && gameState) {
+        // GameState 업데이트 (보너스도 쿨다운 적용)
+        if (gameState) {
             const { updateGameState } = await import('@/data/repositories/gameStateRepository');
             const today = new Date().toISOString().split('T')[0];
 
             // 날짜 변경 시 리셋
             const needsReset = gameState.lastIgnitionResetDate !== today;
 
+            // 보너스는 횟수 차감 안 하지만 쿨다운은 적용
             await updateGameState({
-                usedIgnitions: needsReset ? 1 : (gameState.usedIgnitions + 1),
-                lastIgnitionTime: Date.now(),
+                usedIgnitions: isBonus ? gameState.usedIgnitions : (needsReset ? 1 : (gameState.usedIgnitions + 1)),
+                lastIgnitionTime: Date.now(), // 보너스도 쿨다운 적용
                 lastIgnitionResetDate: today,
             });
         }
