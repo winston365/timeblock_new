@@ -9,10 +9,11 @@
 
 import QuestsPanel from '@/features/gamification/QuestsPanel';
 import ShopPanel from '@/features/shop/ShopPanel';
+import InventoryPanel from '@/features/inventory/InventoryPanel';
 
 interface RightPanelProps {
-  activeTab: 'quest' | 'shop';
-  onTabChange: (tab: 'quest' | 'shop') => void;
+  activeTab: 'quest' | 'shop' | 'inventory';
+  onTabChange: (tab: 'quest' | 'shop' | 'inventory') => void;
   onShopPurchaseSuccess?: (message: string, waifuMessage?: string) => void;
   collapsed?: boolean;
 }
@@ -25,6 +26,7 @@ export default function RightPanel({
 }: RightPanelProps) {
   const tabs = [
     { id: 'quest' as const, label: '퀘스트', icon: '🗒️' },
+    { id: 'inventory' as const, label: '가방', icon: '🎒' },
     { id: 'shop' as const, label: '포인트', icon: '🛒' },
   ];
 
@@ -44,8 +46,8 @@ export default function RightPanel({
             <button
               key={tab.id}
               className={`right-panel-tab flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-xs font-medium transition-all duration-200 ${isActive
-                  ? 'bg-[var(--color-bg-elevated)] text-[var(--color-primary)] shadow-sm ring-1 ring-[var(--color-border)]'
-                  : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-secondary)]'
+                ? 'bg-[var(--color-bg-elevated)] text-[var(--color-primary)] shadow-sm ring-1 ring-[var(--color-border)]'
+                : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-secondary)]'
                 }`}
               onClick={() => onTabChange(tab.id)}
               role="tab"
@@ -84,6 +86,17 @@ export default function RightPanel({
             className="h-full"
           >
             <ShopPanel onPurchaseSuccess={onShopPurchaseSuccess} />
+          </div>
+        )}
+
+        {activeTab === 'inventory' && (
+          <div
+            role="tabpanel"
+            id="right-panel-inventory"
+            aria-labelledby="right-panel-tab-inventory"
+            className="h-full"
+          >
+            <InventoryPanel />
           </div>
         )}
       </div>

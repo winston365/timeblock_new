@@ -19,6 +19,8 @@ import { FocusView } from './components/FocusView';
 import { useFocusModeStore } from './stores/focusModeStore';
 import { fetchFromFirebase, syncToFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { warmupPresetStrategy } from '@/shared/services/sync/firebase/strategies';
+import IgnitionOverlay from '@/features/ignition/IgnitionOverlay';
+import { useIgnitionStore } from '@/features/ignition/stores/useIgnitionStore';
 
 const DEFAULT_WARMUP_PRESET: WarmupPresetItem[] = [
   { text: '책상 정리', baseDuration: 5, resistance: 'low' },
@@ -635,6 +637,18 @@ export default function ScheduleView() {
           onApply={handleApplyWarmupFromModal}
         />
       )}
+
+      {/* 3-Minute Ignition Overlay */}
+      <IgnitionOverlay />
+
+      {/* Floating Ignition Trigger */}
+      <button
+        onClick={() => useIgnitionStore.getState().openIgnition()}
+        className="fixed bottom-6 right-6 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-2xl shadow-lg transition hover:scale-110 hover:shadow-orange-500/40 active:scale-95"
+        title="3분 점화 (시작이 어려울 때)"
+      >
+        🔥
+      </button>
     </div>
   );
 }

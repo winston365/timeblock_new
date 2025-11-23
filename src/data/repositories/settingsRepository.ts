@@ -44,6 +44,7 @@ const settingsConfig: RepositoryConfig<Settings> = {
     aiBreakdownTrigger: 'high_difficulty', // 기본값: 높은 난이도일 때만 자동 실행
     autoEmojiEnabled: false, // 기본값: 자동 이모지 비활성화
     timeSlotTags: DEFAULT_TIME_SLOT_TAGS,
+    ignitionInactivityMinutes: 45, // 기본값: 45분
   }),
   sanitize: (data: Settings) => {
     // 기존 사용자를 위한 마이그레이션
@@ -55,6 +56,7 @@ const settingsConfig: RepositoryConfig<Settings> = {
       aiBreakdownTrigger: data.aiBreakdownTrigger || 'high_difficulty',
       autoEmojiEnabled: data.autoEmojiEnabled ?? false,
       timeSlotTags: Array.isArray(data.timeSlotTags) ? data.timeSlotTags : DEFAULT_TIME_SLOT_TAGS,
+      ignitionInactivityMinutes: data.ignitionInactivityMinutes ?? 45, // 기본값: 45분
     };
   },
   logPrefix: 'Settings',

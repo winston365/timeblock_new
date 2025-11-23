@@ -33,6 +33,8 @@ interface GameStateStore {
   spendXP: (amount: number) => Promise<void>;
   initializeNewDay: () => Promise<void>;
   updateQuestProgress: (questType: 'complete_tasks' | 'earn_xp' | 'lock_blocks' | 'perfect_blocks' | 'prepare_tasks' | 'use_timer', amount?: number) => Promise<void>;
+  addItem: (itemId: string, amount?: number) => Promise<void>;
+  useItem: (itemId: string) => Promise<void>;
   refresh: () => Promise<void>;
   reset: () => void;
 }
@@ -128,6 +130,62 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
       set({ gameState: updatedState });
     } catch (err) {
       console.error('[GameStateStore] Failed to update quest progress:', err);
+      set({ error: err as Error });
+      throw err;
+    }
+  },
+
+  // 아이템 추가
+  addItem: async (itemId: string, amount: number = 1) => {
+    try {
+      const { gameState } = get();
+      if (!gameState) return;
+
+      const currentInventory = gameState.inventory || {};
+      const currentAmount = currentInventory[itemId] || 0;
+      const newInventory = { ...currentInventory, [itemId]: currentAmount + amount };
+
+      // Update local state immediately for responsiveness
+      const updatedState = { ...gameState, inventory: newInventory };
+      set({ gameState: updatedState });
+
+      // Persist changes (using a new repo function or generic update)
+      // For now, we'll assume a generic update function exists or we'll add it
+      const { updateGameState } = await import('@/data/repositories/gameStateRepository');
+      await updateGameState({ inventory: newInventory });
+
+    } catch (err) {
+      console.error('[GameStateStore] Failed to add item:', err);
+      set({ error: err as Error });
+      // Revert on error would be ideal here
+    }
+  },
+
+  // 아이템 사용
+  useItem: async (itemId: string) => {
+    try {
+      const { gameState } = get();
+      if (!gameState) return;
+
+      const currentInventory = gameState.inventory || {};
+      const currentAmount = currentInventory[itemId] || 0;
+
+      if (currentAmount <= 0) {
+        throw new Error('Item not available');
+      }
+
+      const newInventory = { ...currentInventory, [itemId]: currentAmount - 1 };
+
+      // Update local state
+      const updatedState = { ...gameState, inventory: newInventory };
+      set({ gameState: updatedState });
+
+      // Persist
+      const { updateGameState } = await import('@/data/repositories/gameStateRepository');
+      await updateGameState({ inventory: newInventory });
+
+    } catch (err) {
+      console.error('[GameStateStore] Failed to use item:', err);
       set({ error: err as Error });
       throw err;
     }

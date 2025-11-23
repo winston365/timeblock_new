@@ -10,21 +10,21 @@ import { useState, useEffect, useMemo } from 'react';
 import { useGameState } from '@/shared/hooks';
 import { createTaskFromTemplate } from '@/data/repositories/templateRepository';
 import { exposeDebugToWindow } from '@/shared/services/sync/firebase/firebaseDebug';
-import type { Template, Task } from '@/shared/types/domain';
-import { Toaster, toast } from 'react-hot-toast';
-import SyncErrorToast from '@/shared/components/SyncErrorToast';
-import { eventBus, loggerMiddleware, performanceMiddleware } from '@/shared/lib/eventBus';
-import { initAllSubscribers } from '@/shared/subscribers';
-import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
-import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
-import { useSettingsStore } from '@/shared/stores/settingsStore';
-import { setErrorCallback, retryNow } from '@/shared/services/sync/firebase/syncRetryQueue';
-import { useAppInitialization } from './hooks/useAppInitialization';
-import { FocusTimerOverlay } from '@/features/focus/FocusTimerOverlay';
-import { useFocusModeStore } from '@/features/schedule/stores/focusModeStore';
 import { RealityCheckModal } from '@/features/feedback/RealityCheckModal';
 import GlobalTaskBreakdown from '@/features/tasks/GlobalTaskBreakdown';
 import { XPParticleOverlay } from '@/features/gamification/components/XPParticleOverlay';
+import FloatingIgnitionTrigger from '@/features/ignition/components/FloatingIgnitionTrigger';
+import { useAppInitialization } from './hooks/useAppInitialization';
+import { useFocusModeStore } from '@/features/schedule/stores/focusModeStore';
+import { eventBus, loggerMiddleware, performanceMiddleware } from '@/shared/lib/eventBus';
+import { initAllSubscribers } from '@/shared/subscribers';
+import { setErrorCallback, retryNow } from '@/shared/services/sync/firebase/syncRetryQueue';
+import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
+import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
+import { toast, Toaster } from 'react-hot-toast';
+import type { Template, Task } from '@/shared/types/domain';
+import SyncErrorToast from '@/shared/components/SyncErrorToast';
 
 // 임시로 컴포넌트를 직접 import (나중에 features에서 가져올 것)
 import TopToolbar from './components/TopToolbar';
@@ -54,7 +54,7 @@ export default function AppShell() {
   const { isInitialized: dbInitialized, error: initError } = useAppInitialization();
 
   const [activeTab, setActiveTab] = useState<'today' | 'stats' | 'energy' | 'completed' | 'inbox'>('today');
-  const [rightPanelTab, setRightPanelTab] = useState<'quest' | 'shop'>('quest');
+  const [rightPanelTab, setRightPanelTab] = useState<'quest' | 'shop' | 'inventory'>('quest');
   const [showGeminiChat, setShowGeminiChat] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -348,6 +348,7 @@ export default function AppShell() {
     );
   }
 
+
   return (
     <div className="flex h-screen flex-col bg-[var(--color-bg-base)] text-[var(--color-text)]">
       <a href="#main-content" className="skip-to-content">스케줄로 이동</a>
@@ -356,6 +357,7 @@ export default function AppShell() {
           gameState={gameState}
           onOpenGeminiChat={() => setShowGeminiChat(true)}
           onOpenTemplates={() => setShowTemplates(true)}
+          onOpenSettings={() => setShowSettings(true)}
         />
       )}
       <main
@@ -400,14 +402,7 @@ export default function AppShell() {
         onClose={() => setShowTemplates(false)}
         onTaskCreate={handleTaskCreateFromTemplate}
       />
-      <button
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-primary)] text-2xl text-white shadow-lg transition hover:bg-[var(--color-primary-dark)] hover:shadow-xl"
-        onClick={() => setShowSettings(true)}
-        title="설정"
-        aria-label="설정 이동"
-      >
-        ⚙️
-      </button>
+
       <Toaster
         position="top-right"
         toastOptions={{
@@ -435,20 +430,17 @@ export default function AppShell() {
         }}
       />
       {syncErrorToasts.map((toast: SyncErrorToastData, index: number) => (
-        <div key={toast.id} style={{ top: `${80 + index * 100}px` }}>
-          <SyncErrorToast
-            message={toast.message}
-            onClose={() => removeSyncErrorToast(toast.id)}
-            onRetry={toast.canRetry ? () => handleSyncRetry(toast.retryId) : undefined}
-          />
-        </div>
+        <SyncErrorToast
+          key={toast.id}
+          message={toast.message}
+          onClose={() => removeSyncErrorToast(toast.id)}
+          onRetry={toast.canRetry ? () => handleSyncRetry(toast.retryId) : undefined}
+        />
       ))}
-      {/* Focus Mode Overlay */}
-      <FocusTimerOverlay />
       <RealityCheckModal />
       <GlobalTaskBreakdown />
       <XPParticleOverlay />
+      <FloatingIgnitionTrigger />
     </div>
   );
 }
-

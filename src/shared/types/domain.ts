@@ -165,7 +165,93 @@ export interface GameState {
   timeBlockXPHistory: Array<{ date: string; blocks: Record<string, number> }>; // 블록별 XP 히스토리
   completedTasksHistory: Task[]; // 완료 작업 히스토리
   dailyTimerCount: number; // 오늘 타이머 사용 횟수 (몰입 작업 수)
+  inventory: Record<string, number>; // 아이템 인벤토리 (itemId -> quantity)
+
+  // 점화 시스템
+  dailyFreeIgnitions: number; // 일일 무료 횟수 (기본: 3)
+  usedIgnitions: number; // 오늘 사용한 횟수
+  lastIgnitionTime: number | null; // 마지막 점화 시간 (타임스탬프)
+  lastIgnitionResetDate: string; // 마지막 리셋 날짜 (YYYY-MM-DD)
 }
+
+// ============================================================================
+// Inventory & Roulette 타입
+// ============================================================================
+
+/**
+ * 아이템 희귀도
+ */
+export type ItemRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+/**
+ * 인벤토리 아이템 타입
+ */
+export type InventoryItemType =
+  | 'rest_ticket_10'
+  | 'rest_ticket_30'
+  | 'rest_ticket_120'
+  | 'rest_ticket_240';
+
+/**
+ * 인벤토리 아이템 메타데이터
+ */
+export interface InventoryItemMeta {
+  id: InventoryItemType;
+  label: string;
+  description: string;
+  icon: string;
+  rarity: ItemRarity;
+  weight: number; // 룰렛 가중치 (1-100)
+}
+
+/**
+ * 인벤토리 아이템 정의
+ */
+export const INVENTORY_ITEMS: Record<InventoryItemType, InventoryItemMeta> = {
+  rest_ticket_10: {
+    id: 'rest_ticket_10',
+    label: '10분 휴식권',
+    description: '10분간 휴식할 수 있는 권리',
+    icon: '☕',
+    rarity: 'common',
+    weight: 30,
+  },
+  rest_ticket_30: {
+    id: 'rest_ticket_30',
+    label: '30분 휴식권',
+    description: '30분간 휴식할 수 있는 권리',
+    icon: '🛌',
+    rarity: 'rare',
+    weight: 15,
+  },
+  rest_ticket_120: {
+    id: 'rest_ticket_120',
+    label: '2시간 휴식권',
+    description: '2시간 동안 자유롭게 휴식',
+    icon: '🌴',
+    rarity: 'epic',
+    weight: 4,
+  },
+  rest_ticket_240: {
+    id: 'rest_ticket_240',
+    label: '4시간 휴식권',
+    description: '4시간 동안 완전한 자유',
+    icon: '🏖️',
+    rarity: 'legendary',
+    weight: 1,
+  },
+};
+
+/**
+ * 희귀도별 색상
+ */
+export const RARITY_COLORS: Record<ItemRarity, string> = {
+  common: '#10b981',    // emerald
+  rare: '#3b82f6',      // blue
+  epic: '#a855f7',      // purple
+  legendary: '#f59e0b', // amber
+};
+
 
 // ============================================================================
 // Template & Shop 타입
@@ -341,6 +427,7 @@ export interface Settings {
   timeSlotTags?: TimeSlotTagTemplate[]; // 시간대 속성 템플릿
   dontDoChecklist?: DontDoChecklistItem[]; // 하지않기 체크리스트 항목
   barkApiKey?: string; // Bark 알림 API 키
+  ignitionInactivityMinutes?: number; // 점화 버튼 비활동 시간 (분, 기본: 45)
   // 단축키 설정
   leftPanelToggleKey?: string; // 좌측 패널 토글 단축키 (기본: 'Ctrl+B')
   rightPanelToggleKey?: string; // 우측 패널 토글 단축키 (기본: 'Ctrl+Shift+B')

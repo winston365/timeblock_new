@@ -16,14 +16,16 @@ import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
 import { useXPParticleStore } from '@/features/gamification/stores/xpParticleStore';
 import { useEffect, useRef } from 'react';
 import WeatherWidget from '@/features/weather/WeatherWidget';
+import IgnitionButton from '@/features/ignition/components/IgnitionButton';
 
 interface TopToolbarProps {
   gameState: GameState | null;
   onOpenGeminiChat?: () => void;
   onOpenTemplates?: () => void;
+  onOpenSettings?: () => void;
 }
 
-export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplates }: TopToolbarProps) {
+export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplates, onOpenSettings }: TopToolbarProps) {
   const { currentEnergy } = useEnergy();
   const { waifuState, currentMood } = useWaifu();
   const { show } = useWaifuCompanionStore();
@@ -183,10 +185,13 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
             </button>
           </div>
         )}
+        {/* 점화 버튼 */}
+        <IgnitionButton />
         {renderCTA('zen', '🧘 집중모드', toggleFocusMode)}
         {renderCTA('waifu', '💬 와이푸', handleCallWaifu)}
         {renderCTA('templates', '📋 템플릿', onOpenTemplates)}
         {renderCTA('chat', '✨ AI 채팅', onOpenGeminiChat)}
+        {renderCTA('settings', '⚙️ 설정', onOpenSettings)}
       </div>
     </header>
   );

@@ -756,6 +756,29 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                                             </label>
                                         </div>
 
+                                        <div className={formGroupClass}>
+                                            <label htmlFor="ignition-inactivity">
+                                                🔥 점화 버튼 비활동 시간 (분)
+                                            </label>
+                                            <input
+                                                id="ignition-inactivity"
+                                                type="number"
+                                                min="5"
+                                                max="180"
+                                                className={inputClass}
+                                                placeholder="45"
+                                                value={localSettings?.ignitionInactivityMinutes ?? 45}
+                                                onChange={(e) => {
+                                                    const value = parseInt(e.target.value) || 45;
+                                                    const clampedValue = Math.max(5, Math.min(180, value));
+                                                    setLocalSettings(prev => prev ? ({ ...prev, ignitionInactivityMinutes: clampedValue }) : prev);
+                                                }}
+                                            />
+                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                마지막 작업 완료 후 이 시간이 지나면 점화 버튼이 나타납니다 (5-180분)
+                                            </small>
+                                        </div>
+
                                         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-4">
                                             <div className="mb-2 flex items-center justify-between">
                                                 <div className="flex flex-col">

@@ -44,6 +44,13 @@ const gameStateConfig: RepositoryConfig<GameState> = {
     timeBlockXPHistory: [],
     completedTasksHistory: [],
     dailyTimerCount: 0, // 오늘 타이머 사용 횟수
+    inventory: {}, // 아이템 인벤토리 초기화
+
+    // 점화 시스템
+    dailyFreeIgnitions: 3,
+    usedIgnitions: 0,
+    lastIgnitionTime: null,
+    lastIgnitionResetDate: new Date().toISOString().split('T')[0],
   }),
   sanitize: (data: GameState) => {
     // 필수 필드 초기화
@@ -55,6 +62,13 @@ const gameStateConfig: RepositoryConfig<GameState> = {
       completedTasksHistory: Array.isArray(data.completedTasksHistory) ? data.completedTasksHistory : [],
       timeBlockXP: data.timeBlockXP || {},
       dailyTimerCount: typeof data.dailyTimerCount === 'number' ? data.dailyTimerCount : 0,
+      inventory: data.inventory || {},
+
+      // 점화 시스템
+      dailyFreeIgnitions: data.dailyFreeIgnitions ?? 3,
+      usedIgnitions: data.usedIgnitions ?? 0,
+      lastIgnitionTime: data.lastIgnitionTime ?? null,
+      lastIgnitionResetDate: data.lastIgnitionResetDate ?? new Date().toISOString().split('T')[0],
     };
   },
   logPrefix: 'GameState',
@@ -183,6 +197,27 @@ export async function loadGameState(): Promise<GameState> {
  */
 export async function saveGameState(gameState: GameState): Promise<void> {
   await saveData(gameStateConfig, 'current', gameState);
+}
+
+/**
+ * GameState 부분 업데이트
+ *
+ * @param {Partial<GameState>} updates - 업데이트할 필드
+ * @returns {Promise<GameState>} 업데이트된 게임 상태
+ * @throws {Error} 로드 또는 저장 실패 시
+ * @sideEffects
+ *   - saveGameState 호출
+ */
+export async function updateGameState(updates: Partial<GameState>): Promise<GameState> {
+  try {
+    const gameState = await loadGameState();
+    const updatedState = { ...gameState, ...updates };
+    await saveGameState(updatedState);
+    return updatedState;
+  } catch (error) {
+    console.error('Failed to update game state:', error);
+    throw error;
+  }
 }
 
 // ============================================================================
@@ -377,6 +412,11 @@ export async function initializeNewDay(): Promise<GameState> {
 
     // 자동 생성 템플릿에서 작업 생성
     await generateTasksFromAutoTemplates();
+
+    // 전역 목표 진행도 초기화 (매일 리셋)
+    const { resetDailyGoalProgress } = await import('./globalGoalRepository');
+    await resetDailyGoalProgress();
+    console.log('✅ Global goal progress reset for new day');
 
     await saveGameState(gameState);
     return gameState;
