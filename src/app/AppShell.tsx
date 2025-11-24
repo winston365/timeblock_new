@@ -109,6 +109,21 @@ export default function AppShell() {
   const effectiveLeftCollapsed = leftSidebarCollapsed || isFocusMode;
   const effectiveRightCollapsed = rightPanelsCollapsed || isFocusMode;
 
+  const { gameState, updateQuestProgress } = useGameState();
+  const { visibility } = useWaifuCompanionStore();
+
+  // Focus safety when waifu panel is hidden/peeking
+  useEffect(() => {
+    if (visibility === 'visible') return;
+    const container = document.querySelector('.waifu-panel-container');
+    const active = document.activeElement as HTMLElement | null;
+    if (container && active && container.contains(active)) {
+      active.blur();
+      const main = document.getElementById('main-content');
+      main?.focus();
+    }
+  }, [visibility]);
+
   const gridTemplateColumns = useMemo(() => {
     if (effectiveLeftCollapsed && effectiveRightCollapsed) {
       return '0 1fr 0 0';
@@ -121,9 +136,6 @@ export default function AppShell() {
     }
     return '380px minmax(600px, 1fr) 320px 336px';
   }, [effectiveLeftCollapsed, effectiveRightCollapsed]);
-
-  const { gameState, updateQuestProgress } = useGameState();
-  const { visibility } = useWaifuCompanionStore();
 
   const waifuVisibilityClass =
     visibility === 'visible'
@@ -366,6 +378,7 @@ export default function AppShell() {
       )}
       <main
         id="main-content"
+        tabIndex={-1}
         className="relative flex flex-1 overflow-hidden"
         style={{ display: 'grid', gridTemplateColumns }}
       >
@@ -385,6 +398,7 @@ export default function AppShell() {
         aria-label="와이푸 패널"
         role="complementary"
         aria-hidden={visibility !== 'visible'}
+        {...(visibility !== 'visible' ? { inert: 'true' as any } : {})}
       >
         <div className={`waifu-panel-shell relative w-[320px] transform transition-all duration-300 ${waifuVisibilityClass}`}>
           {visibility !== 'visible' && (

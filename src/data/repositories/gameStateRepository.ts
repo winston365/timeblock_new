@@ -114,6 +114,40 @@ export async function loadGameState(): Promise<GameState> {
     if (needsReset) {
       console.log(`🔄 New day detected: ${data.lastLogin} → ${today}`);
 
+      // 히스토리 필드 초기화 (Firebase에서 가져온 데이터에 없을 수 있음)
+      if (!Array.isArray(data.xpHistory)) {
+        data.xpHistory = [];
+      }
+      if (!Array.isArray(data.timeBlockXPHistory)) {
+        data.timeBlockXPHistory = [];
+      }
+
+      // XP 히스토리에 어제 데이터 추가 (데이터 손실 방지)
+      if (data.dailyXP > 0) {
+        data.xpHistory.push({
+          date: data.lastLogin,
+          xp: data.dailyXP,
+        });
+
+        // 최근 7일만 유지
+        if (data.xpHistory.length > 7) {
+          data.xpHistory = data.xpHistory.slice(-7);
+        }
+      }
+
+      // 블록별 XP 히스토리 추가
+      if (Object.keys(data.timeBlockXP || {}).length > 0) {
+        data.timeBlockXPHistory.push({
+          date: data.lastLogin,
+          blocks: { ...data.timeBlockXP },
+        });
+
+        // 최근 5일만 유지
+        if (data.timeBlockXPHistory.length > 5) {
+          data.timeBlockXPHistory = data.timeBlockXPHistory.slice(-5);
+        }
+      }
+
       // 일일 초기화
       data.dailyXP = 0;
       data.availableXP = 0;
@@ -695,18 +729,18 @@ export async function updateQuestProgress(questType: Quest['type'], amount: numb
 
     await saveGameState(gameState);
 
-      // 완료된 퀘스트들의 보상 XP를 addXP를 통해 지급 (토스트 메시지 및 quest_completed 이벤트 발생)
-      for (const quest of completedQuests) {
-        await addXP(quest.reward);
-        // quest_completed 이벤트를 전달하여 토스트/알림 노출
-        const { gameStateEventHandler } = await import('@/shared/services/gameplay/gameState');
-        await gameStateEventHandler.handleEvents([{
-          type: 'quest_completed',
-          questId: quest.id,
-          questTitle: quest.title,
-          reward: quest.reward,
-        }]);
-      }
+    // 완료된 퀘스트들의 보상 XP를 addXP를 통해 지급 (토스트 메시지 및 quest_completed 이벤트 발생)
+    for (const quest of completedQuests) {
+      await addXP(quest.reward);
+      // quest_completed 이벤트를 전달하여 토스트/알림 노출
+      const { gameStateEventHandler } = await import('@/shared/services/gameplay/gameState');
+      await gameStateEventHandler.handleEvents([{
+        type: 'quest_completed',
+        questId: quest.id,
+        questTitle: quest.title,
+        reward: quest.reward,
+      }]);
+    }
 
     return gameState;
   } catch (error) {

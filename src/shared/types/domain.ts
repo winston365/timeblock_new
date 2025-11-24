@@ -431,9 +431,7 @@ export interface Settings {
   ignitionDurationMinutes?: number; // 점화 길이 (분, 기본 3)
   ignitionCooldownMinutes?: number; // 점화 쿨다운 (분, 기본 15)
   ignitionXPCost?: number; // 점화 XP 비용 (기본 50 XP)
-  ignitionDurationMinutes?: number; // 점화 길이 (분, 기본 3)
-  ignitionCooldownMinutes?: number; // 점화 쿨다운 (분, 기본 15)
-  ignitionXPCost?: number; // 점화 XP 비용 (기본 50 XP)
+  justDoItCooldownMinutes?: number; // '그냥해보자!' 쿨다운 (분, 기본 15)
   // 단축키 설정
   leftPanelToggleKey?: string; // 좌측 패널 토글 단축키 (기본: 'Ctrl+B')
   rightPanelToggleKey?: string; // 우측 패널 토글 단축키 (기본: 'Ctrl+Shift+B')

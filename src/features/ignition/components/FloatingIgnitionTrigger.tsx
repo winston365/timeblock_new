@@ -7,7 +7,7 @@ import { Flame } from 'lucide-react';
 
 export default function FloatingIgnitionTrigger() {
     const { dailyData } = useDailyDataStore();
-    const { openIgnitionWithCheck, startSpin, isOpen } = useIgnitionStore();
+    const { openIgnitionWithCheck, isOpen } = useIgnitionStore();
     const { settings } = useSettingsStore();
     const [isVisible, setIsVisible] = useState(false);
     const BONUS_STATE_KEY = 'bonus_ignition_state';
@@ -39,7 +39,7 @@ export default function FloatingIgnitionTrigger() {
             } catch {
                 lastBonusTime = 0;
             }
-            const bonusCooldownMs = (settings?.ignitionCooldownMinutes ?? 15) * 60 * 1000;
+            const bonusCooldownMs = (settings?.justDoItCooldownMinutes ?? 15) * 60 * 1000;
             const bonusElapsed = Date.now() - lastBonusTime;
             if (lastBonusTime && bonusElapsed < bonusCooldownMs) {
                 console.log('[FloatingIgnition] Bonus cooldown active:', Math.ceil((bonusCooldownMs - bonusElapsed) / 60000), 'mins remaining');
@@ -116,7 +116,6 @@ export default function FloatingIgnitionTrigger() {
                     onClick={async () => {
                         const success = await openIgnitionWithCheck(true); // 보너스 = true (제한 무시)
                         if (success) {
-                            startSpin();
                             setIsVisible(false);
                             localStorage.setItem(BONUS_STATE_KEY, JSON.stringify({ lastTime: Date.now() }));
                         }

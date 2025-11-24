@@ -25,24 +25,27 @@ function isValidForecast(forecast: unknown): forecast is DayForecast[] {
     return Array.isArray(forecast) && forecast.length > 0;
 }
 
+export type WeatherFetchResult = { forecast: DayForecast[]; timestamp?: number; status?: 'ok' | 'missing-key' | 'error'; message?: string };
+
 export async function fetchWeatherFromGoogle(
     city: string = '서울 은평구',
     forceRefresh: boolean = false
-): Promise<{ forecast: DayForecast[]; timestamp?: number }> {
+): Promise<WeatherFetchResult> {
     try {
         // 1. Dexie 캐시 확인 (강제 새로고침이 아닐 경우)
         if (!forceRefresh) {
             const cached = await loadCachedWeather();
             if (cached && isValidForecast(cached.forecast)) {
                 console.log('[WeatherService] Using cached data from Dexie');
-                return cached;
+                return { ...cached, status: 'ok' };
             }
         }
 
         // 2. API 호출
         const geminiApiKey = useSettingsStore.getState().settings?.geminiApiKey;
         if (!geminiApiKey) {
-            throw new Error('Gemini API 키가 설정되지 않았습니다.');
+            console.warn('[WeatherService] Gemini API 키가 설정되지 않았습니다. 설정 후 이용해 주세요.');
+            return { forecast: [], timestamp: Date.now(), status: 'missing-key', message: 'Gemini API 키가 설정되지 않았습니다.' };
         }
 
         console.log('[WeatherService] Fetching with Gemini Google Search...');
@@ -55,10 +58,10 @@ export async function fetchWeatherFromGoogle(
         const timestamp = Date.now();
         await cacheWeather(data.forecast, timestamp);
 
-        return { forecast: data.forecast, timestamp };
+        return { forecast: data.forecast, timestamp, status: 'ok' };
     } catch (error) {
         console.error('[WeatherService] Error:', error);
-        throw error;
+        return { forecast: [], timestamp: Date.now(), status: 'error', message: '날씨 정보를 가져오지 못했습니다.' };
     }
 }
 

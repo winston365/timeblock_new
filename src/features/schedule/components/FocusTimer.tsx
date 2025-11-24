@@ -78,6 +78,7 @@ export function FocusTimer({
                     strokeWidth={strokeWidth}
                     fill="transparent"
                     strokeDasharray={circumference}
+                    initial={{ strokeDashoffset: circumference }}
                     animate={{ strokeDashoffset }}
                     transition={{ duration: 1, ease: "easeInOut" }}
                     strokeLinecap="round"

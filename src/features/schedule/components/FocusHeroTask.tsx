@@ -136,7 +136,7 @@ export function FocusHeroTask({
                     <div className="mt-2 w-full rounded-2xl bg-white/5 p-6 border border-white/10">
                         <div className="flex items-center justify-between mb-4">
                             <span className="text-sm font-medium text-white/60">집중 중...</span>
-                            <span className="text-3xl font-bold text-white font-mono">{formatTime(remainingSeconds)}</span>
+                            <span className="text-3xl font-bold text-white font-mono relative -translate-y-5">{formatTime(remainingSeconds)}</span>
                         </div>
 
                         {/* Celebration Message */}
@@ -159,35 +159,51 @@ export function FocusHeroTask({
                         {/* Progress Bar with Milestones */}
                         <div className="relative w-full mt-6">
                             {/* Arc indicators above progress bar */}
-                            <svg className="absolute -top-10 left-0 right-0 h-10 w-full" style={{ overflow: 'visible' }}>
-                                {[25, 50, 75, 100].map((milestone) => {
-                                    const xPos = `${milestone}%`;
-                                    const requiredMinutes = Math.ceil((task.baseDuration * milestone) / 100);
+                            {/* Arc overlay */}
+                            <svg
+                                className="absolute -top-10 left-0 right-0 h-10 w-full"
+                                viewBox="0 0 100 20"
+                                preserveAspectRatio="none"
+                                style={{ overflow: 'visible' }}
+                            >
+                                {[25, 50, 75, 100].map((milestone, idx) => {
+                                    const prev = [0, 25, 50, 75][idx];
+                                    const startX = prev;
+                                    const endX = milestone;
+                                    const controlX = (startX + endX) / 2;
                                     const isReached = progress >= milestone;
-
                                     return (
-                                        <g key={milestone}>
-                                            {/* Small arc */}
-                                            <path
-                                                d={`M ${milestone - 3}% 36 Q ${milestone}% 26, ${milestone + 3}% 36`}
-                                                stroke={isReached ? '#fbbf24' : '#ffffff40'}
-                                                strokeWidth="1.5"
-                                                fill="none"
-                                                className="transition-all"
-                                            />
-                                            {/* Time label */}
-                                            <text
-                                                x={xPos}
-                                                y="22"
-                                                textAnchor="middle"
-                                                className={`text-[10px] font-medium ${isReached ? 'fill-amber-400' : 'fill-white/40'}`}
-                                            >
-                                                {requiredMinutes}분
-                                            </text>
-                                        </g>
+                                        <path
+                                            key={milestone}
+                                            d={`M ${startX} 18 Q ${controlX} 4 ${endX} 18`}
+                                            stroke={isReached ? '#fbbf24' : '#ffffff40'}
+                                            strokeWidth="1.5"
+                                            fill="none"
+                                        />
                                     );
                                 })}
                             </svg>
+
+                            {/* Labels aligned to milestones */}
+                            <div className="absolute -top-11 left-0 right-0 h-5 w-full">
+                                {[25, 50, 75, 100].map((milestone) => {
+                                    const requiredMinutes = Math.ceil((task.baseDuration * milestone) / 100);
+                                    const isReached = progress >= milestone;
+                                    return (
+                                            <div
+                                                key={milestone}
+                                                className="absolute flex flex-col items-center"
+                                                style={{ left: `${milestone}%`, transform: 'translateX(-50%)' }}
+                                            >
+                                                <span
+                                                    className={`text-xs font-medium ${isReached ? 'text-amber-400' : 'text-white/40'}`}
+                                                >
+                                                    {requiredMinutes}분
+                                                </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
 
                             {/* Progress bar */}
                             <div className="relative h-2 w-full overflow-hidden rounded-full bg-white/10">

@@ -25,6 +25,8 @@ interface IgnitionState {
     resetTimer: () => void;
     tickTimer: () => void;
     setSelectedTask: (task: Task | null) => void;
+    history: Task[];
+    addToHistory: (task: Task) => void;
 }
 
 export const useIgnitionStore = create<IgnitionState>((set) => ({
@@ -38,7 +40,7 @@ export const useIgnitionStore = create<IgnitionState>((set) => ({
 
     openIgnition: () => {
         const duration = (useSettingsStore.getState().settings?.ignitionDurationMinutes ?? 3) * 60;
-        set({ isOpen: true, isSpinning: true, timerState: 'idle', timeLeft: duration, microStepText: '', selectedTask: null });
+        set({ isOpen: true, isSpinning: false, timerState: 'idle', timeLeft: duration, microStepText: '', selectedTask: null });
     },
     closeIgnition: () => set({ isOpen: false, isSpinning: false, timerState: 'idle' }),
 
@@ -49,8 +51,12 @@ export const useIgnitionStore = create<IgnitionState>((set) => ({
         const { settings } = useSettingsStore.getState();
 
         // 점화 가능 여부 체크
+        const cooldownMinutes = isBonus
+            ? (settings?.justDoItCooldownMinutes ?? 1)
+            : (settings?.ignitionCooldownMinutes ?? 30);
+
         const check = checkIgnitionAvailability(gameState, isBonus, {
-            cooldownMinutes: settings?.ignitionCooldownMinutes,
+            cooldownMinutes: cooldownMinutes,
             xpCost: settings?.ignitionXPCost,
         });
 
@@ -96,7 +102,7 @@ export const useIgnitionStore = create<IgnitionState>((set) => ({
         const duration = (settings?.ignitionDurationMinutes ?? 3) * 60;
         set({
             isOpen: true,
-            isSpinning: true,
+            isSpinning: false,
             isBonus,
             timerState: 'idle',
             timeLeft: duration,
@@ -152,5 +158,11 @@ export const useIgnitionStore = create<IgnitionState>((set) => ({
         if (state.timerState !== 'running') return {};
         if (state.timeLeft <= 0) return { timerState: 'completed', timeLeft: 0 };
         return { timeLeft: state.timeLeft - 1 };
+    }),
+
+    history: [],
+    addToHistory: (task: Task) => set((state) => {
+        const newHistory = [task, ...state.history].slice(0, 5);
+        return { history: newHistory };
     }),
 }));

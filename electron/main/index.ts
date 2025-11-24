@@ -153,8 +153,8 @@ function createPipWindow(): void {
   }
 
   pipWindow = new BrowserWindow({
-    width: 300,
-    height: 150,
+    width: 240,
+    height: 200,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -566,8 +566,9 @@ ipcMain.handle('show-notification', (event, title: string, body: string) => {
 
 ipcMain.handle('open-pip', () => {
   createPipWindow();
+  // 메인 창은 숨기지 않고 계속 사용 가능하게 둔다
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.hide();
+    mainWindow.show();
   }
 });
 

@@ -36,17 +36,32 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
 
             set({ loading: true, error: null });
 
-            const { forecast, timestamp } = await fetchWeatherFromGoogle('서울 은평구', forceRefresh);
-            const safeForecast = Array.isArray(forecast) ? forecast : [];
+            const result = await fetchWeatherFromGoogle('서울 은평구', forceRefresh);
+
+            if (result.status === 'missing-key') {
+                set({
+                    error: 'Gemini API 키가 설정되지 않았습니다. 설정 > API 키를 입력해 주세요.',
+                    loading: false,
+                    lastErrorAt: Date.now(),
+                });
+                return;
+            }
+
+            const safeForecast = Array.isArray(result.forecast) ? result.forecast : [];
             if (safeForecast.length === 0) {
-                throw new Error('예보 데이터가 비어 있습니다.');
+                set({
+                    error: result.message ?? '예보 데이터가 비어 있습니다.',
+                    loading: false,
+                    lastErrorAt: Date.now(),
+                });
+                return;
             }
 
             set({
                 forecast: safeForecast,
                 selectedDay: Math.min(dayIndex, safeForecast.length - 1),
                 loading: false,
-                lastUpdated: timestamp || Date.now(),
+                lastUpdated: result.timestamp || Date.now(),
                 lastErrorAt: null,
             });
         } catch (error) {

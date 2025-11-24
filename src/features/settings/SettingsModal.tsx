@@ -817,6 +817,24 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                                             </div>
 
                                             <div className={formGroupClass}>
+                                                <label htmlFor="just-do-it-cooldown">'그냥해보자!' 쿨다운 (분)</label>
+                                                <input
+                                                    id="just-do-it-cooldown"
+                                                    type="number"
+                                                    min="1"
+                                                    max="120"
+                                                    className={inputClass}
+                                                    value={localSettings?.justDoItCooldownMinutes ?? 15}
+                                                    onChange={(e) => {
+                                                        const value = parseInt(e.target.value) || 15;
+                                                        const clamped = Math.max(1, Math.min(120, value));
+                                                        setLocalSettings(prev => prev ? ({ ...prev, justDoItCooldownMinutes: clamped }) : prev);
+                                                    }}
+                                                />
+                                                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">비활동 시 나타나는 버튼의 재사용 대기시간</small>
+                                            </div>
+
+                                            <div className={formGroupClass}>
                                                 <label htmlFor="ignition-xp">XP 비용</label>
                                                 <input
                                                     id="ignition-xp"
