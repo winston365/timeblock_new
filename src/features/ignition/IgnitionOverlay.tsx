@@ -28,6 +28,7 @@ export default function IgnitionOverlay() {
         startTimer,
         pauseTimer,
         tickTimer,
+        setSelectedTask: setSelectedTaskInStore,
     } = useIgnitionStore();
 
     const { dailyData, updateTask } = useDailyData();
@@ -77,7 +78,49 @@ export default function IgnitionOverlay() {
         // 1. Not completed
         const tasks = allTasks.filter(t => !t.completed);
 
-        // Add Rest Tickets to the pool with weights and rarity
+        // Calculate weights based on schedule status
+        const currentHour = new Date().getHours();
+        // Import TIME_BLOCKS dynamically or assume structure if import fails (but we should add import)
+        // For now, let's define the logic. We need TIME_BLOCKS.
+        // Since we can't easily add import at top without reading whole file, let's use a local helper or assume it's available.
+        // Actually, I should add the import. But let's try to use the logic with hardcoded blocks if needed, 
+        // or better, let's assume I can add the import in a separate step or just use the logic if I know the blocks.
+        // Let's use the standard blocks structure.
+        const TIME_BLOCKS_LOCAL = [
+            { id: '5-8', start: 5, end: 8 },
+            { id: '8-11', start: 8, end: 11 },
+            { id: '11-14', start: 11, end: 14 },
+            { id: '14-17', start: 14, end: 17 },
+            { id: '17-19', start: 17, end: 19 },
+            { id: '19-24', start: 19, end: 24 },
+        ];
+
+        const currentBlock = TIME_BLOCKS_LOCAL.find(b => currentHour >= b.start && currentHour < b.end);
+        const currentBlockId = currentBlock?.id;
+
+        const tasksWithWeights = tasks.map(task => {
+            let weight = 1.0;
+
+            if (task.timeBlock) {
+                if (task.timeBlock === currentBlockId) {
+                    weight = 1.5; // Current block
+                } else {
+                    const taskBlock = TIME_BLOCKS_LOCAL.find(b => b.id === task.timeBlock);
+                    if (taskBlock && taskBlock.start > currentHour) {
+                        weight = 1.3; // Future block
+                    }
+                }
+            }
+
+            // Base weight multiplier (e.g., 10) to make numbers nicer
+            return {
+                ...task,
+                weight: weight * 10,
+                rarity: undefined,
+            };
+        });
+
+        // Add Rest Tickets
         const restTickets = [
             {
                 id: 'ticket_10',
@@ -117,25 +160,31 @@ export default function IgnitionOverlay() {
             },
         ];
 
-        // Weights: tilt toward tasks, and keep a floor so tickets don't dominate when tasks are few
         const restTotalWeight = restTickets.reduce((sum, ticket) => sum + (ticket.weight || 0), 0);
-        const baseTaskWeight = 8; // base per-task weight before applying floor
-        const minTaskToRestRatio = 1.5; // tasks should keep roughly 60%+ odds
-
-        // Assign weights to tasks with floor
-        const desiredTaskTotal = tasks.length * baseTaskWeight;
-        const flooredTaskTotal = tasks.length > 0
-            ? Math.max(desiredTaskTotal, restTotalWeight * minTaskToRestRatio)
-            : 0;
-        const taskWeight = tasks.length > 0 ? flooredTaskTotal / tasks.length : 0;
-        const tasksWithWeights = tasks.map(task => ({
-            ...task,
-            weight: taskWeight,
-            rarity: undefined,
-        }));
 
         // Combine tasks and tickets
-        const pool = [...tasksWithWeights, ...restTickets];
+        let pool = [...tasksWithWeights, ...restTickets];
+
+        // Cap reward probability at 30%
+        const taskTotalWeight = tasksWithWeights.reduce((sum, t) => sum + t.weight, 0);
+        const currentTotal = taskTotalWeight + restTotalWeight;
+        const maxRewardProb = 0.3;
+
+        if (currentTotal > 0 && (restTotalWeight / currentTotal) >= maxRewardProb) {
+            const requiredTotal = restTotalWeight / 0.25;
+            const boomWeight = Math.max(0, requiredTotal - currentTotal);
+
+            if (boomWeight > 0) {
+                pool.push({
+                    id: 'boom',
+                    text: '💣 꽝',
+                    resistance: 'high',
+                    weight: boomWeight,
+                    rarity: 'common' as const,
+                    color: '#ef4444',
+                } as any);
+            }
+        }
 
         // If no tasks at all, return dummy task
         if (pool.length === 0) {
@@ -190,18 +239,14 @@ export default function IgnitionOverlay() {
             closeIgnition();
             return;
         }
-        const confirmed = confirm('작업을 실제로 완료했나요? 완료 처리하고 30 XP를 받습니다.');
-        if (!confirmed) return;
+
+        // 점화 성공은 작업 완료가 아님. 3분간의 몰입 성공을 의미.
         try {
-            const target = dailyData?.tasks.find(t => t.id === selectedTask.id);
-            if (target && !target.completed) {
-                await updateTask(target.id, { completed: true, completedAt: new Date().toISOString() });
-            }
             await addXP(30);
             closeIgnition();
         } catch (error) {
-            console.error('완료 처리 실패:', error);
-            alert('완료 처리에 실패했습니다.');
+            console.error('보상 지급 실패:', error);
+            alert('보상 지급에 실패했습니다.');
         }
     };
 
@@ -285,12 +330,11 @@ export default function IgnitionOverlay() {
                                             {selectedTask?.resistance === 'low' ? '🟢 쉬움' : selectedTask?.resistance === 'medium' ? '🟡 보통' : '🔴 어려움'}
                                         </span>
                                         {(selectedTask as any)?.rarity && (
-                                            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                                                (selectedTask as any).rarity === 'legendary' ? 'border-amber-400/60 bg-amber-400/10 text-amber-100' :
-                                                    (selectedTask as any).rarity === 'epic' ? 'border-purple-400/60 bg-purple-400/10 text-purple-100' :
-                                                        (selectedTask as any).rarity === 'rare' ? 'border-blue-400/60 bg-blue-400/10 text-blue-100' :
-                                                            'border-emerald-400/60 bg-emerald-400/10 text-emerald-100'
-                                            }`}>
+                                            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${(selectedTask as any).rarity === 'legendary' ? 'border-amber-400/60 bg-amber-400/10 text-amber-100' :
+                                                (selectedTask as any).rarity === 'epic' ? 'border-purple-400/60 bg-purple-400/10 text-purple-100' :
+                                                    (selectedTask as any).rarity === 'rare' ? 'border-blue-400/60 bg-blue-400/10 text-blue-100' :
+                                                        'border-emerald-400/60 bg-emerald-400/10 text-emerald-100'
+                                                }`}>
                                                 휴식권 · {
                                                     (selectedTask as any).rarity === 'legendary' ? '레전더리' :
                                                         (selectedTask as any).rarity === 'epic' ? '에픽' :
@@ -337,13 +381,13 @@ export default function IgnitionOverlay() {
                                                     onClick={closeIgnition}
                                                     className="rounded-xl bg-white/10 px-6 py-3 font-semibold text-white hover:bg-white/20"
                                                 >
-                                                    휴식하기
+                                                    닫기
                                                 </button>
                                                 <button
                                                     onClick={handleCompleteAndReward}
                                                     className="rounded-xl bg-emerald-500 px-6 py-3 font-semibold text-white hover:bg-emerald-600"
                                                 >
-                                                    완료 (30 XP)
+                                                    점화 성공 (30 XP)
                                                 </button>
                                             </div>
                                         </div>
@@ -386,15 +430,19 @@ export default function IgnitionOverlay() {
             )}
             {isTaskModalOpen && selectedTask && !(selectedTask as any).isTicket && (
                 <TaskModal
+                    key={selectedTask.id}
                     task={selectedTask as any}
                     initialBlockId={(selectedTask.timeBlock || null) as TimeBlockId}
                     onSave={async (taskData) => {
                         try {
-                            await updateTask(selectedTask.id, {
+                            const mergedTask = {
+                                ...selectedTask,
                                 ...taskData,
                                 timeBlock: taskData.timeBlock ?? selectedTask.timeBlock ?? null,
                                 memo: taskData.memo ?? selectedTask.memo ?? '',
-                            });
+                            };
+                            await updateTask(selectedTask.id, mergedTask);
+                            setSelectedTaskInStore(mergedTask as any);
                             setIsTaskModalOpen(false);
                         } catch (error) {
                             console.error('작업 저장 실패:', error);

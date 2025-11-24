@@ -24,6 +24,7 @@ interface IgnitionState {
     pauseTimer: () => void;
     resetTimer: () => void;
     tickTimer: () => void;
+    setSelectedTask: (task: Task | null) => void;
 }
 
 export const useIgnitionStore = create<IgnitionState>((set) => ({
@@ -138,6 +139,7 @@ export const useIgnitionStore = create<IgnitionState>((set) => ({
     stopSpin: (task) => set({ isSpinning: false, selectedTask: task }),
 
     setMicroStep: (text) => set({ microStepText: text }),
+    setSelectedTask: (task) => set({ selectedTask: task }),
 
     startTimer: () => set({ timerState: 'running' }),
     pauseTimer: () => set({ timerState: 'paused' }),

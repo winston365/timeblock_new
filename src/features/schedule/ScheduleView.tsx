@@ -567,7 +567,10 @@ export default function ScheduleView() {
         <FocusView
           currentBlockId={currentBlockId}
           tasks={currentBlockTasks}
+          allDailyTasks={dailyData.tasks}
+          isLocked={dailyData.timeBlockStates[currentBlockId]?.isLocked ?? false}
           onEditTask={handleEditTask}
+          onUpdateTask={handleUpdateTask}
           onToggleTask={handleToggleTask}
           onToggleLock={() => handleToggleLock(currentBlockId)}
         />

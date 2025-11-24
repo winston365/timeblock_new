@@ -188,7 +188,7 @@ export default function TaskCard({
 
   const cardClassName = [
     'group relative rounded-xl border transition-all duration-300 ease-out',
-    compact ? 'p-2' : 'p-2.5',
+    compact ? 'p-1.5' : 'p-2.5',
     'bg-[var(--color-bg-elevated)]/80 backdrop-blur-sm',
     'border-[var(--color-border)]',
     task.completed ? 'opacity-60 scale-[0.98] grayscale-[0.5] border-transparent shadow-none' : 'hover:border-[var(--color-primary)]/50 hover:shadow-lg hover:-translate-y-0.5',
@@ -213,34 +213,34 @@ export default function TaskCard({
             onEdit();
           }}
         >
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-7 h-7" data-task-interactive="true">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center w-6 h-6" data-task-interactive="true">
               <NeonCheckbox
                 checked={task.completed}
                 onChange={handleToggleClick}
-                size={22}
+                size={20}
               />
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className={`text-sm font-semibold truncate transition-colors ${task.completed ? 'text-[var(--color-text-tertiary)] line-through' : 'text-[var(--color-text)]'}`}>
+              <p className={`text-[13px] font-semibold truncate transition-colors ${task.completed ? 'text-[var(--color-text-tertiary)] line-through' : 'text-[var(--color-text)]'}`}>
                 {displayText}
               </p>
-              <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-[var(--color-text-tertiary)]">
+              <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] text-[var(--color-text-tertiary)]">
                 {!hideMetadata && !showMinimal && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-2 py-0.5 font-semibold text-[var(--color-primary)] shadow-sm">
-                    🪙 +{xp} XP
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-2 py-0.5 font-semibold text-[var(--color-primary)] shadow-sm">
+                    🪙 <span className="tabular-nums">+{xp}</span> XP
                   </span>
                 )}
-                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/50 px-2 py-0.5">
-                  ⏱ {expectedDurationLabel}
+                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/70 px-2 py-0.5">
+                  ⏱ <span className="tabular-nums">{expectedDurationLabel}</span>
                 </span>
                 <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${RESISTANCE_COLORS[task.resistance]}`}>
                   {RESISTANCE_BADGE_LABEL[task.resistance]}
                 </span>
                 {!showMinimal && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/50 px-2 py-0.5 text-[var(--color-text-secondary)]">
-                    Prep {preparationCount}/3
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/70 px-2 py-0.5 text-[var(--color-text-secondary)]">
+                    Prep <span className="tabular-nums">{preparationCount}</span>/3
                   </span>
                 )}
               </div>

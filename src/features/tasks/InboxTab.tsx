@@ -50,6 +50,7 @@ export default function InboxTab() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [inlineInputValue, setInlineInputValue] = useState('');
+  const [activeTab, setActiveTab] = useState<'all' | 'recent' | 'high' | 'medium' | 'low'>('all');
 
   // 초기 데이터 로드
   useEffect(() => {
@@ -258,6 +259,59 @@ export default function InboxTab() {
       : '',
   ].join(' ');
 
+  const counts = {
+    all: inboxTasks.length,
+    recent: Math.min(inboxTasks.length, 3),
+    high: inboxTasks.filter(t => t.resistance === 'high').length,
+    medium: inboxTasks.filter(t => t.resistance === 'medium').length,
+    low: inboxTasks.filter(t => t.resistance === 'low').length,
+  };
+
+  const filteredTasks = (() => {
+    switch (activeTab) {
+      case 'recent':
+        return [...inboxTasks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3);
+      case 'high':
+        return inboxTasks.filter(t => t.resistance === 'high');
+      case 'medium':
+        return inboxTasks.filter(t => t.resistance === 'medium');
+      case 'low':
+        return inboxTasks.filter(t => t.resistance === 'low');
+      default:
+        return inboxTasks;
+    }
+  })();
+
+  const renderTabs = () => {
+    const tabs: Array<{ id: typeof activeTab; label: string }> = [
+      { id: 'all', label: '전체' },
+      { id: 'recent', label: '최근' },
+      { id: 'high', label: 'High' },
+      { id: 'medium', label: 'Medium' },
+      { id: 'low', label: 'Low' },
+    ];
+    return (
+      <div className="flex items-center gap-1 px-1 py-1 text-[11px] overflow-x-auto whitespace-nowrap scrollbar-none">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold transition ${
+              activeTab === tab.id
+                ? 'text-[var(--color-primary)]'
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+            }`}
+          >
+            <span>{tab.label}</span>
+            <span className="rounded-full bg-[var(--color-bg-elevated)] px-1 py-0.5 text-[10px] font-bold text-[var(--color-text)]">
+              {counts[tab.id]}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="flex h-full flex-col bg-[var(--color-bg-base)]">
       {/* 헤더 */}
@@ -283,6 +337,7 @@ export default function InboxTab() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
+        {renderTabs()}
         {/* 인라인 빠른 추가 입력창 */}
         <div className="mb-3">
           <input
@@ -309,19 +364,16 @@ export default function InboxTab() {
           </div>
         ) : (
           <div className="flex flex-col gap-3 pb-4">
-            {inboxTasks.map(task => (
+            {filteredTasks.map(task => (
               <TaskCard
                 key={task.id}
                 task={task}
                 onEdit={() => handleEditTask(task)}
                 onDelete={() => handleDeleteTask(task.id)}
                 onToggle={() => handleToggleTask(task.id)}
-                onUpdateTask={async (updates) => {
-                  await updateTask(task.id, updates);
-                }}
-                onDragEnd={async () => {
-                  // 드래그 종료 시 새로고침이 필요할 수 있음 (예: 다른 블록으로 이동)
-                  setTimeout(() => loadData(), 500);
+                onUpdateTask={(updates) => updateTask(task.id, updates)}
+                onDragEnd={() => {
+                  setTimeout(() => loadData(), 300);
                 }}
                 compact
               />
@@ -344,5 +396,62 @@ export default function InboxTab() {
         />
       )}
     </div>
+  );
+}
+
+// 섹션별 렌더링 (최근/난이도)
+function renderGroupedTasks(
+  tasks: Task[],
+  onEdit: (task: Task) => void,
+  onDelete: (id: string) => void,
+  onToggle: (id: string) => void,
+  onUpdateTask: (id: string, updates: Partial<Task>) => Promise<void>,
+  refresh: () => Promise<void>
+) {
+  if (tasks.length === 0) return null;
+
+  const sorted = [...tasks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const recent = sorted.slice(0, 3);
+  const rest = sorted.slice(3);
+
+  const byResistance = rest.reduce<Record<'high' | 'medium' | 'low', Task[]>>((acc, t) => {
+    acc[t.resistance]?.push(t);
+    return acc;
+  }, { high: [], medium: [], low: [] });
+
+  const section = (title: string, list: Task[]) => (
+    list.length > 0 && (
+      <div key={title} className="space-y-2">
+        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-[0.08em] px-1">
+          <span className="h-px w-6 bg-[var(--color-border)]" />
+          <span>{title}</span>
+        </div>
+        <div className="flex flex-col gap-3">
+          {list.map(task => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              onEdit={() => onEdit(task)}
+              onDelete={() => onDelete(task.id)}
+              onToggle={() => onToggle(task.id)}
+              onUpdateTask={(updates) => onUpdateTask(task.id, updates)}
+              onDragEnd={() => {
+                setTimeout(() => refresh(), 300);
+              }}
+              compact
+            />
+          ))}
+        </div>
+      </div>
+    )
+  );
+
+  return (
+    <>
+      {section('최근 추가', recent)}
+      {section('High 난이도', byResistance.high)}
+      {section('Medium 난이도', byResistance.medium)}
+      {section('Low 난이도', byResistance.low)}
+    </>
   );
 }

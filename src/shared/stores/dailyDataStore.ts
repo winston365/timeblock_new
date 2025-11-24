@@ -24,6 +24,7 @@ import {
 import { recalculateGlobalGoalProgress } from '@/data/repositories';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { useRealityCheckStore } from '@/shared/stores/realityCheckStore';
+import { useGoalStore } from '@/shared/stores/goalStore';
 import { getLocalDate } from '../lib/utils';
 import {
   sanitizeTaskUpdates,
@@ -179,7 +180,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
       // ✅ 목표 연결 시 진행률 재계산
       if (task.goalId) {
-        await recalculateGlobalGoalProgress(task.goalId, currentDate);
+        await useGoalStore.getState().recalculateProgress(task.goalId, currentDate);
         await loadData(currentDate, true);
       }
     } catch (err) {
@@ -281,7 +282,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
       if (affectedGoalIds.size > 0) {
         for (const goalId of affectedGoalIds) {
-          await recalculateGlobalGoalProgress(goalId, currentDate);
+          await useGoalStore.getState().recalculateProgress(goalId, currentDate);
         }
         await loadData(currentDate, true);
       }
@@ -330,7 +331,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
       // ✅ 목표 연결 시 진행률 재계산
       if (deletedTask?.goalId) {
-        await recalculateGlobalGoalProgress(deletedTask.goalId, currentDate);
+        await useGoalStore.getState().recalculateProgress(deletedTask.goalId, currentDate);
         await loadData(currentDate, true);
       }
     } catch (err) {

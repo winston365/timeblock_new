@@ -1,0 +1,165 @@
+import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import type { Task } from '@/shared/types/domain';
+
+interface FocusHeroTaskProps {
+    task: Task;
+    recommendationMessage: string;
+    isActive: boolean;
+    startTime: number | null;
+    onEdit: (task: Task) => void;
+    onToggle: (taskId: string) => void;
+    onStartNow: (task: Task) => void;
+    onStop: () => void;
+}
+
+export function FocusHeroTask({
+    task,
+    recommendationMessage,
+    isActive,
+    startTime,
+    onEdit,
+    onToggle,
+    onStartNow,
+    onStop
+}: FocusHeroTaskProps) {
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+    useEffect(() => {
+        if (!isActive || !startTime) {
+            setElapsedSeconds(0);
+            return;
+        }
+
+        const interval = setInterval(() => {
+            setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [isActive, startTime]);
+
+    const totalSeconds = task.baseDuration * 60;
+    const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
+    const progress = Math.min(100, (elapsedSeconds / totalSeconds) * 100);
+
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl shadow-2xl"
+        >
+            {/* Dynamic Background Gradient */}
+            <motion.div
+                className="absolute inset-0 -z-10 opacity-30"
+                animate={{
+                    background: isActive
+                        ? [
+                            'radial-gradient(circle at 50% 50%, #ef4444 0%, transparent 70%)',
+                            'radial-gradient(circle at 50% 50%, #f59e0b 0%, transparent 70%)',
+                            'radial-gradient(circle at 50% 50%, #ef4444 0%, transparent 70%)'
+                        ]
+                        : [
+                            'radial-gradient(circle at 0% 0%, #4f46e5 0%, transparent 50%)',
+                            'radial-gradient(circle at 100% 100%, #ec4899 0%, transparent 50%)',
+                            'radial-gradient(circle at 0% 0%, #4f46e5 0%, transparent 50%)',
+                        ],
+                }}
+                transition={{ duration: isActive ? 2 : 10, repeat: Infinity, ease: "linear" }}
+            />
+
+            <div className="flex flex-col gap-6">
+                {/* Header Badge */}
+                <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-bold text-amber-300 border border-amber-500/30">
+                        <span>💡</span>
+                        <span>혜은이 추천!</span>
+                    </span>
+                    <span className="text-sm text-white/60">
+                        {recommendationMessage}
+                    </span>
+                </div>
+
+                {/* Task Content */}
+                <div>
+                    <div className="flex items-start justify-between gap-4">
+                        <h2 className="text-4xl font-bold text-white leading-tight">
+                            {task.text}
+                        </h2>
+                        <button
+                            onClick={() => onEdit(task)}
+                            className="rounded-full p-2 text-white/40 hover:bg-white/10 hover:text-white transition-colors"
+                        >
+                            ✏️
+                        </button>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-3">
+                        <span className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white/80">
+                            ⏱ {task.baseDuration}분
+                        </span>
+                        <span className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium ${task.resistance === 'low' ? 'bg-emerald-500/20 text-emerald-300' :
+                                task.resistance === 'medium' ? 'bg-amber-500/20 text-amber-300' :
+                                    'bg-rose-500/20 text-rose-300'
+                            }`}>
+                            {task.resistance === 'low' ? '🟢 쉬움' : task.resistance === 'medium' ? '🟡 보통' : '🔴 어려움'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Action Button / Timer */}
+                {isActive ? (
+                    <div className="mt-2 w-full rounded-2xl bg-white/5 p-6 border border-white/10">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-sm font-medium text-white/60">집중 중...</span>
+                            <span className="text-3xl font-bold text-white font-mono">{formatTime(remainingSeconds)}</span>
+                        </div>
+                        {/* Progress Bar */}
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                            <motion.div
+                                className="h-full bg-gradient-to-r from-orange-500 to-red-500"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progress}%` }}
+                                transition={{ duration: 0.5 }}
+                            />
+                        </div>
+                        <button
+                            onClick={onStop}
+                            className="mt-4 w-full rounded-xl bg-white/10 py-3 text-sm font-medium text-white/60 hover:bg-white/20 hover:text-white transition-colors"
+                        >
+                            중단하기
+                        </button>
+                    </div>
+                ) : (
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        animate={{
+                            boxShadow: [
+                                "0 0 0 0 rgba(99, 102, 241, 0)",
+                                "0 0 0 10px rgba(99, 102, 241, 0.1)",
+                                "0 0 0 20px rgba(99, 102, 241, 0)",
+                            ]
+                        }}
+                        transition={{
+                            boxShadow: {
+                                duration: 2,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                            }
+                        }}
+                        onClick={() => onStartNow(task)}
+                        className="mt-2 w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 py-4 text-lg font-bold text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all"
+                    >
+                        🚀 지금 시작하기
+                    </motion.button>
+                )}
+            </div>
+        </motion.div>
+    );
+}
