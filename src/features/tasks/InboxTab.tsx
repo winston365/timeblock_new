@@ -60,10 +60,15 @@ export default function InboxTab() {
   const handleInlineInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && inlineInputValue.trim()) {
       e.preventDefault();
+      const trimmedText = inlineInputValue.trim();
+      if (trimmedText.length <= 10) {
+        toast.error('작업 제목을 10자 이상 입력해주세요.');
+        return;
+      }
       try {
         const newTask: Task = {
           id: generateId('task'),
-          text: inlineInputValue.trim(),
+          text: trimmedText,
           memo: '',
           baseDuration: 15, // 기본 15분
           resistance: 'low',

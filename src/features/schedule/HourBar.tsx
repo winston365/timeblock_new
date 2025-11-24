@@ -205,6 +205,12 @@ export default function HourBar({
   const handleInlineInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && inlineInputValue.trim()) {
       e.preventDefault();
+      const trimmedText = inlineInputValue.trim();
+
+      if (trimmedText.length <= 10) {
+        addToast('작업 제목을 10자 이상 입력해주세요.', 'warning', 3000);
+        return;
+      }
 
       // 2개 제한 검증
       if (tasks.length >= 2) {
@@ -213,7 +219,7 @@ export default function HourBar({
       }
 
       try {
-        await onCreateTask(inlineInputValue.trim(), hour);
+        await onCreateTask(trimmedText, hour);
         setInlineInputValue('');
         inlineInputRef.current?.focus();
       } catch (err) {

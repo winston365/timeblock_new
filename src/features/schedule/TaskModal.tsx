@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { toast } from 'react-hot-toast';
 import type { Task, Resistance, TimeBlockId, DailyGoal } from '@/shared/types/domain';
 import { calculateAdjustedDuration } from '@/shared/lib/utils';
 import { suggestTaskEmoji } from '@/shared/services/ai/geminiApi';
@@ -243,15 +244,25 @@ export default function TaskModal({ task, initialBlockId, onSave, onSaveMultiple
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!text.trim()) {
+    const trimmedText = text.trim();
+
+    if (!trimmedText) {
       setError('작업 제목을 입력해주세요.');
+      document.getElementById('task-text')?.focus();
+      return;
+    }
+
+    if (trimmedText.length <= 10) {
+      const message = '작업 제목을 10자 이상 입력해주세요.';
+      setError(message);
+      toast.error(message);
       document.getElementById('task-text')?.focus();
       return;
     }
 
     const adjustedDuration = calculateAdjustedDuration(baseDuration, resistance);
     const taskData = {
-      text: text.trim(),
+      text: trimmedText,
       memo: memo.trim(),
       baseDuration,
       resistance,
