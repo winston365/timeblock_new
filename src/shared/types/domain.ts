@@ -487,3 +487,12 @@ export interface TimeBlockInfo {
   completedDuration: number;
   xp: number;
 }
+
+/**
+ * AI 인사이트 데이터
+ */
+export interface AIInsight {
+  date: string; // YYYY-MM-DD (Primary Key)
+  content: string; // 인사이트 내용
+  createdAt: string; // 생성 시각 (ISO)
+}

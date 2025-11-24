@@ -5,6 +5,9 @@ import { useGameState } from '@/shared/hooks/useGameState';
 import { calculateTaskXP } from '@/shared/lib/utils';
 import { useCompletedTasksStore } from '@/shared/stores/completedTasksStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { callGeminiAPI } from '@/shared/services/ai/geminiApi';
+import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
+import { db } from '@/data/db/dexieClient';
 import { getBlockColor } from './utils/chartColors';
 import {
   Bar,
@@ -20,7 +23,7 @@ import {
   YAxis,
   ReferenceLine,
 } from 'recharts';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback, memo } from 'react';
 
 interface StatsModalProps {
   open: boolean;
@@ -62,7 +65,42 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
     () => BLOCKS_WITH_OTHER.reduce((acc, b) => ({ ...acc, [b.id]: true }), {} as Record<string, boolean>)
   );
 
+  // AI Insight state
+  const [insight, setInsight] = useState<string | null>(null);
+  const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
+  const [insightError, setInsightError] = useState<string | null>(null);
+
   const numberFormatter = useMemo(() => new Intl.NumberFormat('ko-KR'), []);
+
+  // Callback handlers for performance
+  const handleRangeDaysChange = useCallback((days: 7 | 14 | 30) => {
+    setRangeDays(days);
+    setTodayOnly(false);
+  }, []);
+
+  const handleIncludeWeekendsChange = useCallback((include: boolean) => {
+    setIncludeWeekends(include);
+  }, []);
+
+  const handleTodayOnlyChange = useCallback((only: boolean) => {
+    setTodayOnly(only);
+  }, []);
+
+  const handleShowLastWeekComparisonChange = useCallback((show: boolean) => {
+    setShowLastWeekComparison(show);
+  }, []);
+
+  const handleShowAdvancedFiltersToggle = useCallback(() => {
+    setShowAdvancedFilters(prev => !prev);
+  }, []);
+
+  const handleBlockVisibilityChange = useCallback((blockId: string, visible: boolean) => {
+    setBlockVisibility(prev => ({ ...prev, [blockId]: visible }));
+  }, []);
+
+  const handleTabChange = useCallback((tab: 'overview' | 'xp' | 'blocks' | 'insights') => {
+    setActiveTab(tab);
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -70,8 +108,58 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
     }
   }, [open, loadCompletedTasks]);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Esc: Close modal
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+
+      // Tab / Shift+Tab: Navigate tabs
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const tabs: Array<'overview' | 'xp' | 'blocks' | 'insights'> = ['overview', 'xp', 'blocks', 'insights'];
+        const currentIndex = tabs.indexOf(activeTab);
+
+        if (e.shiftKey) {
+          // Shift+Tab: Previous tab
+          const prevIndex = currentIndex === 0 ? tabs.length - 1 : currentIndex - 1;
+          handleTabChange(tabs[prevIndex]);
+        } else {
+          // Tab: Next tab
+          const nextIndex = currentIndex === tabs.length - 1 ? 0 : currentIndex + 1;
+          handleTabChange(tabs[nextIndex]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, activeTab, handleTabChange, onClose]);
+
   const today = getLocalDate();
   const todayXP = gameState?.dailyXP ?? 0;
+
+  // Load insight from DB
+  useEffect(() => {
+    if (activeTab === 'insights' && open) {
+      const loadInsight = async () => {
+        try {
+          const savedInsight = await db.aiInsights.get(today);
+          if (savedInsight) {
+            setInsight(savedInsight.content);
+          }
+        } catch (error) {
+          console.error('Failed to load insight:', error);
+        }
+      };
+      loadInsight();
+    }
+  }, [activeTab, open, today]);
 
   // Completed tasks aggregation
   const completedAgg = useMemo(() => {
@@ -234,6 +322,75 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
     };
   }, [xpHistory, settings?.monthlyXPGoal, today]);
 
+  // Generate AI Insight
+  const generateInsight = useCallback(async () => {
+    if (!settings?.geminiApiKey) {
+      setInsightError('Gemini API 키가 설정되지 않았습니다. 설정에서 키를 입력해주세요.');
+      return;
+    }
+
+    setIsGeneratingInsight(true);
+    setInsightError(null);
+
+    try {
+      // Prepare data
+      const recentXP = xpHistory.slice(-7).map(entry => `${entry.date}: ${entry.xp} XP`).join('\n');
+      const timeBlockData = stackedBlockData.slice(-7).map(entry => {
+        const blocks = Object.entries(entry)
+          .filter(([k, v]) => k !== 'date' && typeof v === 'number' && v > 0)
+          .map(([k, v]) => {
+            const blockLabel = BLOCKS_WITH_OTHER.find(b => b.id === k)?.label || k;
+            return `${blockLabel}: ${v} XP`;
+          })
+          .join(', ');
+        return `${entry.date}: ${blocks}`;
+      }).join('\n');
+
+      const prompt = `
+        당신은 사용자의 생산성 향상을 돕는 AI 코치입니다.
+        다음은 사용자의 최근 7일간의 XP(경험치) 획득 기록과 시간대별 활동 내역입니다.
+        
+        [일별 XP 기록]
+        ${recentXP}
+        
+        [일별 시간대별 활동 내역]
+        ${timeBlockData}
+        
+        이 데이터를 분석하여 다음 내용을 포함한 인사이트를 제공해주세요:
+        1. 전반적인 주간 성과 요약
+        2. 가장 생산적인 시간대와 요일 패턴 분석
+        3. 개선이 필요한 부분 식별
+        4. 다음 주를 위한 구체적인 조언 2-3가지
+        
+        응답은 마크다운 형식을 사용하지 말고, 가독성 좋은 일반 텍스트로 작성해주세요.
+        이모지를 적절히 사용하여 친근하고 격려하는 톤으로 작성해주세요.
+      `;
+
+      const { text, tokenUsage } = await callGeminiAPI(prompt, [], settings.geminiApiKey, settings.geminiModel);
+      setInsight(text);
+
+      if (tokenUsage) {
+        addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens).catch(console.error);
+      }
+
+      // Save to DB
+      try {
+        await db.aiInsights.put({
+          date: today,
+          content: text,
+          createdAt: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Failed to save insight:', error);
+      }
+    } catch (error) {
+      console.error('Failed to generate insight:', error);
+      setInsightError('인사이트 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsGeneratingInsight(false);
+    }
+  }, [xpHistory, stackedBlockData, settings?.geminiApiKey, settings?.geminiModel, today]);
+
   if (!open) return null;
 
   return (
@@ -260,37 +417,37 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
           {/* Tab Navigation */}
           <div className="flex gap-2 px-6 pb-3">
             <button
-              onClick={() => setActiveTab('overview')}
+              onClick={() => handleTabChange('overview')}
               className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${activeTab === 'overview'
-                  ? 'bg-[var(--color-primary)] text-white shadow-md'
-                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
+                ? 'bg-[var(--color-primary)] text-white shadow-md'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
                 }`}
             >
               📊 개요
             </button>
             <button
-              onClick={() => setActiveTab('xp')}
+              onClick={() => handleTabChange('xp')}
               className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${activeTab === 'xp'
-                  ? 'bg-[var(--color-primary)] text-white shadow-md'
-                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
+                ? 'bg-[var(--color-primary)] text-white shadow-md'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
                 }`}
             >
               📈 XP 분석
             </button>
             <button
-              onClick={() => setActiveTab('blocks')}
+              onClick={() => handleTabChange('blocks')}
               className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${activeTab === 'blocks'
-                  ? 'bg-[var(--color-primary)] text-white shadow-md'
-                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
+                ? 'bg-[var(--color-primary)] text-white shadow-md'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
                 }`}
             >
               ⏰ 타임블록
             </button>
             <button
-              onClick={() => setActiveTab('insights')}
+              onClick={() => handleTabChange('insights')}
               className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${activeTab === 'insights'
-                  ? 'bg-[var(--color-primary)] text-white shadow-md'
-                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
+                ? 'bg-[var(--color-primary)] text-white shadow-md'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
                 }`}
             >
               💡 인사이트
@@ -373,18 +530,17 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
                 {/* Filters */}
                 <FilterSection
                   rangeDays={rangeDays}
-                  setRangeDays={setRangeDays}
-                  setTodayOnly={setTodayOnly}
+                  onRangeDaysChange={handleRangeDaysChange}
                   includeWeekends={includeWeekends}
-                  setIncludeWeekends={setIncludeWeekends}
+                  onIncludeWeekendsChange={handleIncludeWeekendsChange}
                   todayOnly={todayOnly}
-                  setTodayOnlyState={setTodayOnly}
+                  onTodayOnlyChange={handleTodayOnlyChange}
                   showLastWeekComparison={showLastWeekComparison}
-                  setShowLastWeekComparison={setShowLastWeekComparison}
+                  onShowLastWeekComparisonChange={handleShowLastWeekComparisonChange}
                   showAdvancedFilters={showAdvancedFilters}
-                  setShowAdvancedFilters={setShowAdvancedFilters}
+                  onShowAdvancedFiltersToggle={handleShowAdvancedFiltersToggle}
                   blockVisibility={blockVisibility}
-                  setBlockVisibility={setBlockVisibility}
+                  onBlockVisibilityChange={handleBlockVisibilityChange}
                 />
 
                 {/* XP Trend Chart */}
@@ -428,18 +584,17 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
                 {/* Filters */}
                 <FilterSection
                   rangeDays={rangeDays}
-                  setRangeDays={setRangeDays}
-                  setTodayOnly={setTodayOnly}
+                  onRangeDaysChange={handleRangeDaysChange}
                   includeWeekends={includeWeekends}
-                  setIncludeWeekends={setIncludeWeekends}
+                  onIncludeWeekendsChange={handleIncludeWeekendsChange}
                   todayOnly={todayOnly}
-                  setTodayOnlyState={setTodayOnly}
+                  onTodayOnlyChange={handleTodayOnlyChange}
                   showLastWeekComparison={showLastWeekComparison}
-                  setShowLastWeekComparison={setShowLastWeekComparison}
+                  onShowLastWeekComparisonChange={handleShowLastWeekComparisonChange}
                   showAdvancedFilters={showAdvancedFilters}
-                  setShowAdvancedFilters={setShowAdvancedFilters}
+                  onShowAdvancedFiltersToggle={handleShowAdvancedFiltersToggle}
                   blockVisibility={blockVisibility}
-                  setBlockVisibility={setBlockVisibility}
+                  onBlockVisibilityChange={handleBlockVisibilityChange}
                 />
 
                 {/* Stacked Block Chart */}
@@ -521,23 +676,55 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
 
             {/* Insights Tab */}
             {activeTab === 'insights' && (
-              <div className="flex flex-col items-center justify-center py-16 space-y-4">
-                <div className="text-6xl">💡</div>
+              <div className="flex flex-col items-center justify-center py-8 space-y-6">
+                <div className="text-6xl animate-bounce">💡</div>
                 <h3 className="text-2xl font-bold">AI 인사이트</h3>
-                <p className="text-sm text-[var(--color-text-secondary)] text-center max-w-md">
-                  AI가 생성한 맞춤 인사이트와 개선 제안이 여기에 표시됩니다.
-                  <br />
-                  (향후 Gemini API를 활용하여 구현 예정)
-                </p>
-                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 max-w-2xl">
-                  <h4 className="font-semibold mb-3">예상 기능</h4>
-                  <ul className="space-y-2 text-sm text-[var(--color-text-secondary)]">
-                    <li>• 가장 생산적인 시간대 분석</li>
-                    <li>• 개선이 필요한 영역 식별</li>
-                    <li>• 맞춤형 작업 흐름 제안</li>
-                    <li>• 목표 달성을 위한 구체적인 조언</li>
-                  </ul>
-                </div>
+
+                {!insight && !isGeneratingInsight && (
+                  <div className="text-center space-y-4 max-w-md">
+                    <p className="text-sm text-[var(--color-text-secondary)]">
+                      최근 활동 데이터를 분석하여<br />
+                      맞춤형 생산성 인사이트와 조언을 제공합니다.
+                    </p>
+                    <button
+                      onClick={generateInsight}
+                      className="px-6 py-3 bg-[var(--color-primary)] text-white rounded-xl font-bold shadow-lg hover:bg-opacity-90 transition transform hover:scale-105"
+                    >
+                      ✨ 인사이트 생성하기
+                    </button>
+                    {insightError && (
+                      <p className="text-sm text-[var(--color-warning)]">{insightError}</p>
+                    )}
+                  </div>
+                )}
+
+                {isGeneratingInsight && (
+                  <div className="text-center space-y-4">
+                    <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p className="text-sm text-[var(--color-text-secondary)]">
+                      데이터를 분석하고 있습니다...<br />
+                      잠시만 기다려주세요.
+                    </p>
+                  </div>
+                )}
+
+                {insight && !isGeneratingInsight && (
+                  <div className="w-full max-w-3xl space-y-4">
+                    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-sm">
+                      <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap leading-relaxed text-[var(--color-text)]">
+                        {insight}
+                      </div>
+                    </div>
+                    <div className="flex justify-center">
+                      <button
+                        onClick={generateInsight}
+                        className="px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition flex items-center gap-2"
+                      >
+                        🔄 다시 생성하기
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -547,37 +734,35 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
   );
 }
 
-// Filter Section Component
+// Filter Section Component (Memoized for performance)
 interface FilterSectionProps {
   rangeDays: 7 | 14 | 30;
-  setRangeDays: (days: 7 | 14 | 30) => void;
-  setTodayOnly: (only: boolean) => void;
+  onRangeDaysChange: (days: 7 | 14 | 30) => void;
   includeWeekends: boolean;
-  setIncludeWeekends: (include: boolean) => void;
+  onIncludeWeekendsChange: (include: boolean) => void;
   todayOnly: boolean;
-  setTodayOnlyState: (only: boolean) => void;
+  onTodayOnlyChange: (only: boolean) => void;
   showLastWeekComparison: boolean;
-  setShowLastWeekComparison: (show: boolean) => void;
+  onShowLastWeekComparisonChange: (show: boolean) => void;
   showAdvancedFilters: boolean;
-  setShowAdvancedFilters: (show: boolean) => void;
+  onShowAdvancedFiltersToggle: () => void;
   blockVisibility: Record<string, boolean>;
-  setBlockVisibility: (visibility: Record<string, boolean> | ((prev: Record<string, boolean>) => Record<string, boolean>)) => void;
+  onBlockVisibilityChange: (blockId: string, visible: boolean) => void;
 }
 
-function FilterSection({
+const FilterSection = memo(function FilterSection({
   rangeDays,
-  setRangeDays,
-  setTodayOnly,
+  onRangeDaysChange,
   includeWeekends,
-  setIncludeWeekends,
+  onIncludeWeekendsChange,
   todayOnly,
-  setTodayOnlyState,
+  onTodayOnlyChange,
   showLastWeekComparison,
-  setShowLastWeekComparison,
+  onShowLastWeekComparisonChange,
   showAdvancedFilters,
-  setShowAdvancedFilters,
+  onShowAdvancedFiltersToggle,
   blockVisibility,
-  setBlockVisibility,
+  onBlockVisibilityChange,
 }: FilterSectionProps) {
   return (
     <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-xs">
@@ -587,10 +772,7 @@ function FilterSection({
           <span className="font-semibold text-[var(--color-text-secondary)]">📅 기간</span>
           <select
             value={rangeDays}
-            onChange={(e) => {
-              setRangeDays(parseInt(e.target.value) as 7 | 14 | 30);
-              setTodayOnly(false);
-            }}
+            onChange={(e) => onRangeDaysChange(parseInt(e.target.value) as 7 | 14 | 30)}
             className="rounded-lg bg-[var(--color-bg-elevated)] px-3 py-1 font-semibold text-[var(--color-text)] border border-[var(--color-border)]"
           >
             <option value="7">최근 7일</option>
@@ -601,7 +783,7 @@ function FilterSection({
 
         {/* Advanced Filters Toggle */}
         <button
-          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          onClick={onShowAdvancedFiltersToggle}
           className="ml-auto rounded-lg bg-[var(--color-bg-elevated)] px-3 py-1 font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition"
         >
           {showAdvancedFilters ? '▲ 고급 필터 숨기기' : '▼ 고급 필터 보기'}
@@ -615,7 +797,7 @@ function FilterSection({
             <input
               type="checkbox"
               checked={includeWeekends}
-              onChange={(e) => setIncludeWeekends(e.target.checked)}
+              onChange={(e) => onIncludeWeekendsChange(e.target.checked)}
             />
             <span>주말 포함</span>
           </label>
@@ -623,7 +805,7 @@ function FilterSection({
             <input
               type="checkbox"
               checked={todayOnly}
-              onChange={(e) => setTodayOnlyState(e.target.checked)}
+              onChange={(e) => onTodayOnlyChange(e.target.checked)}
             />
             <span>오늘만</span>
           </label>
@@ -631,7 +813,7 @@ function FilterSection({
             <input
               type="checkbox"
               checked={showLastWeekComparison}
-              onChange={(e) => setShowLastWeekComparison(e.target.checked)}
+              onChange={(e) => onShowLastWeekComparisonChange(e.target.checked)}
             />
             <span>지난 주와 비교</span>
           </label>
@@ -644,7 +826,7 @@ function FilterSection({
                 <input
                   type="checkbox"
                   checked={blockVisibility[block.id]}
-                  onChange={(e) => setBlockVisibility(prev => ({ ...prev, [block.id]: e.target.checked }))}
+                  onChange={(e) => onBlockVisibilityChange(block.id, e.target.checked)}
                   aria-label={`${block.label} 표시`}
                 />
                 <span>{block.label}</span>
@@ -655,10 +837,10 @@ function FilterSection({
       )}
     </div>
   );
-}
+});
 
-// Summary Card Component
-function SummaryCard({ title, value, accent = false }: { title: string; value: number | string; accent?: boolean }) {
+// Summary Card Component (Memoized)
+const SummaryCard = memo(function SummaryCard({ title, value, accent = false }: { title: string; value: number | string; accent?: boolean }) {
   return (
     <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 shadow-sm">
       <span className="text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-tertiary)]">{title}</span>
@@ -667,10 +849,10 @@ function SummaryCard({ title, value, accent = false }: { title: string; value: n
       </span>
     </div>
   );
-}
+});
 
-// Today Block Progress Component
-function TodayBlockProgress({ blocks }: { blocks: GameState['timeBlockXP'] }) {
+// Today Block Progress Component (Memoized)
+const TodayBlockProgress = memo(function TodayBlockProgress({ blocks }: { blocks: GameState['timeBlockXP'] }) {
   const entries = BLOCKS_WITH_OTHER.map(block => ({
     ...block,
     xp: blocks?.[block.id] ?? 0,
@@ -704,4 +886,4 @@ function TodayBlockProgress({ blocks }: { blocks: GameState['timeBlockXP'] }) {
       </div>
     </div>
   );
-}
+});

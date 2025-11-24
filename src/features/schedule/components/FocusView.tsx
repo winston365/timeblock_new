@@ -30,18 +30,19 @@ export function FocusView({
     onToggleTask,
     onToggleLock
 }: FocusViewProps) {
-    const { setFocusMode, activeTaskId, activeTaskStartTime, startTask, stopTask } = useFocusModeStore();
+    const { setFocusMode, activeTaskId, activeTaskStartTime, startTask, stopTask, isPaused, pauseTask, resumeTask } = useFocusModeStore();
     const [memoText, setMemoText] = useState('');
     const [isBreakTime, setIsBreakTime] = useState(false);
+    const [now, setNow] = useState(Date.now());
 
     const currentEnergy = 50;
 
     const currentBlock = TIME_BLOCKS.find(b => b.id === currentBlockId);
     const blockLabel = currentBlock?.label ?? '블록 외 시간';
 
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
+    const nowDate = new Date(now);
+    const currentHour = nowDate.getHours();
+    const currentMinute = nowDate.getMinutes();
     const slotStart = currentHour;
     const slotEnd = (currentHour + 1) % 24;
     const slotLabel = `${String(slotStart).padStart(2, '0')}:00 - ${String(slotEnd).padStart(2, '0')}:00 · ${String(currentHour).padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
@@ -81,6 +82,49 @@ export function FocusView({
     useEffect(() => {
         setUpcomingTasks(initialUpcomingTasks);
     }, [initialUpcomingTasks]);
+
+    // 타이머 업데이트
+    useEffect(() => {
+        if (!activeTaskId || !activeTaskStartTime || isPaused) return;
+        const interval = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(interval);
+    }, [activeTaskId, activeTaskStartTime, isPaused]);
+
+    // PiP 상태 동기화
+    useEffect(() => {
+        if (!window.electronAPI?.sendPipUpdate || !activeTaskId || !activeTaskStartTime) return;
+
+        const activeTask = currentHourTasks.find(t => t.id === activeTaskId);
+        if (!activeTask) return;
+
+        const elapsedSeconds = Math.floor((now - activeTaskStartTime) / 1000);
+        const totalSeconds = activeTask.baseDuration * 60;
+        const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
+
+        window.electronAPI.sendPipUpdate({
+            remainingTime: remainingSeconds,
+            totalTime: totalSeconds,
+            isRunning: !isPaused,
+            currentTaskTitle: activeTask.text,
+        }).catch(console.error);
+    }, [now, activeTaskId, activeTaskStartTime, currentHourTasks, isPaused]);
+
+    // PiP 액션 핸들러
+    useEffect(() => {
+        if (!window.electronAPI?.onPipAction) return;
+
+        const unsubscribe = window.electronAPI.onPipAction((action: string) => {
+            if (action === 'toggle-pause') {
+                if (isPaused) {
+                    resumeTask();
+                } else {
+                    pauseTask();
+                }
+            }
+        });
+
+        return unsubscribe;
+    }, [isPaused, pauseTask, resumeTask]);
 
     // Progress calculation for current hour tasks only
     const totalTasks = currentHourTasks.length;
@@ -148,7 +192,23 @@ export function FocusView({
                         {slotLabel}
                     </p>
                 </div>
-                <FocusTimer remainingMinutes={remainingMinutes} totalMinutes={60} />
+                <div className="flex items-center gap-4">
+                    {/* PiP 모드 버튼 */}
+                    <button
+                        onClick={() => {
+                            if (!window.electronAPI) {
+                                alert('PiP 모드는 Electron 앱에서만 사용 가능합니다.');
+                                return;
+                            }
+                            window.electronAPI.openPip();
+                        }}
+                        className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-3 text-lg font-bold text-white shadow-lg shadow-purple-500/30 transition-all hover:scale-105 hover:shadow-purple-500/50 active:scale-95"
+                    >
+                        <span className="text-xl">📌</span>
+                        <span>PiP 모드</span>
+                    </button>
+                    <FocusTimer remainingMinutes={remainingMinutes} totalMinutes={60} />
+                </div>
             </div>
 
             {/* Hero Task Section */}

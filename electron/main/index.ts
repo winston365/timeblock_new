@@ -44,6 +44,7 @@ if (!isDev) {
 
 let mainWindow: BrowserWindow | null = null;
 let quickAddWindow: BrowserWindow | null = null;
+let pipWindow: BrowserWindow | null = null;
 
 /**
  * 메인 윈도우 생성
@@ -138,6 +139,56 @@ function createQuickAddWindow(): void {
   // 윈도우 닫힘 이벤트
   quickAddWindow.on('closed', () => {
     quickAddWindow = null;
+  });
+}
+
+/**
+ * PiP 윈도우 생성
+ */
+function createPipWindow(): void {
+  if (pipWindow && !pipWindow.isDestroyed()) {
+    pipWindow.show();
+    pipWindow.focus();
+    return;
+  }
+
+  pipWindow = new BrowserWindow({
+    width: 300,
+    height: 150,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      preload: path.join(__dirname, '../preload/index.cjs'),
+    },
+    icon: path.join(__dirname, '../resources/icon.ico'),
+    show: false,
+    title: 'TimeBlock PiP',
+  });
+
+  pipWindow.once('ready-to-show', () => {
+    pipWindow?.show();
+  });
+
+  if (isDev) {
+    pipWindow.loadURL(`${VITE_DEV_SERVER_URL}?mode=pip`);
+  } else {
+    pipWindow.loadFile(path.join(__dirname, '../../dist/index.html'), {
+      query: { mode: 'pip' }
+    });
+  }
+
+  pipWindow.on('closed', () => {
+    pipWindow = null;
+    // PiP 닫힐 때 메인 윈도우 보이기
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+    }
   });
 }
 
@@ -506,5 +557,42 @@ ipcMain.handle('show-notification', (event, title: string, body: string) => {
   } catch (error: any) {
     console.error('[Notification] Failed to show notification:', error);
     return { success: false, message: error.message };
+  }
+});
+
+// ============================================================================
+// PiP IPC Handlers
+// ============================================================================
+
+ipcMain.handle('open-pip', () => {
+  createPipWindow();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.hide();
+  }
+});
+
+ipcMain.handle('close-pip', () => {
+  if (pipWindow && !pipWindow.isDestroyed()) {
+    pipWindow.close();
+  }
+});
+
+ipcMain.handle('pip-update', (event, data) => {
+  if (pipWindow && !pipWindow.isDestroyed()) {
+    pipWindow.webContents.send('pip-update-msg', data);
+  }
+});
+
+
+ipcMain.handle('pip-action', (event, action, payload) => {
+  if (action === 'toggle-always-on-top') {
+    if (pipWindow && !pipWindow.isDestroyed()) {
+      pipWindow.setAlwaysOnTop(payload);
+    }
+  } else {
+    // 다른 액션은 메인 윈도우로 전달
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('pip-action-msg', action, payload);
+    }
   }
 });

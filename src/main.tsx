@@ -3,14 +3,15 @@
  *
  * @role React 앱을 초기화하고 DOM에 마운트
  * @input 없음
- * @output React 앱 렌더링 (일반 모드 또는 QuickAdd 모드)
- * @dependencies React, ReactDOM, App 컴포넌트, QuickAddTask 컴포넌트, 글로벌 스타일
+ * @output React 앱 렌더링 (일반 모드, QuickAdd 모드, PiP 모드)
+ * @dependencies React, ReactDOM, App 컴포넌트, QuickAddTask 컴포넌트, PipTimer 컴포넌트, 글로벌 스타일
  */
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import QuickAddTask from './features/quickadd/QuickAddTask.tsx'
+import PipTimer from './features/pip/PipTimer.tsx'
 import './styles/tailwind.css'
 import './styles/design-system.css'
 import './styles/globals.css'
@@ -20,12 +21,18 @@ if (savedTheme) {
   document.documentElement.setAttribute('data-theme', savedTheme);
 }
 
-// URL 쿼리 파라미터 확인 (mode=quickadd이면 QuickAddTask 렌더링)
+// URL 쿼리 파라미터 확인 (mode에 따라 다른 컴포넌트 렌더링)
 const urlParams = new URLSearchParams(window.location.search);
 const mode = urlParams.get('mode');
 
+const renderApp = () => {
+  if (mode === 'quickadd') return <QuickAddTask />;
+  if (mode === 'pip') return <PipTimer />;
+  return <App />;
+};
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {mode === 'quickadd' ? <QuickAddTask /> : <App />}
+    {renderApp()}
   </React.StrictMode>,
 )

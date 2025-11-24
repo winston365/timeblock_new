@@ -55,6 +55,26 @@ const electronAPI = {
   fetchWeather: (city?: string): Promise<string> => {
     return ipcRenderer.invoke('fetch-weather', city);
   },
+
+  // PiP 모드 제어
+  openPip: (): Promise<void> => ipcRenderer.invoke('open-pip'),
+  closePip: (): Promise<void> => ipcRenderer.invoke('close-pip'),
+
+  // PiP 상태 동기화 (Main -> PiP)
+  sendPipUpdate: (data: any): Promise<void> => ipcRenderer.invoke('pip-update', data),
+  onPipUpdate: (callback: (data: any) => void) => {
+    const subscription = (_: any, data: any) => callback(data);
+    ipcRenderer.on('pip-update-msg', subscription);
+    return () => ipcRenderer.removeListener('pip-update-msg', subscription);
+  },
+
+  // PiP 액션 (PiP -> Main)
+  sendPipAction: (action: string, payload?: any): Promise<void> => ipcRenderer.invoke('pip-action', action, payload),
+  onPipAction: (callback: (action: string, payload?: any) => void) => {
+    const subscription = (_: any, action: string, payload: any) => callback(action, payload);
+    ipcRenderer.on('pip-action-msg', subscription);
+    return () => ipcRenderer.removeListener('pip-action-msg', subscription);
+  },
 };
 
 // ============================================================================

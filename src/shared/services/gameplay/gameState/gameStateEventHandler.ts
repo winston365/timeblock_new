@@ -118,10 +118,16 @@ export class GameStateEventHandler {
     }
 
     try {
+      const { toast } = await import('react-hot-toast');
+      const { default: XPToast } = await import('@/shared/components/XPToast');
       const { useWaifuCompanionStore } = await import('@/shared/stores/waifuCompanionStore');
       const waifuStore = useWaifuCompanionStore.getState();
 
       waifuStore.show(`🎯 퀘스트 완료: ${event.questTitle}! (+${event.reward} XP)`);
+      toast.custom((t) => XPToast({ xp: event.reward, message: `퀘스트 완료: ${event.questTitle}`, t }), {
+        duration: 3000,
+        position: 'top-right',
+      });
 
       console.log(`[${this.name}] ✅ Quest Completed: ${event.questId}`);
     } catch (error) {

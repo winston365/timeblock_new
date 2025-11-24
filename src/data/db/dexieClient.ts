@@ -16,7 +16,8 @@ import type {
   ChatHistory,
   DailyTokenUsage,
   Task,
-  DailyGoal
+  DailyGoal,
+  AIInsight
 } from '@/shared/types/domain';
 
 export class TimeBlockDB extends Dexie {
@@ -36,6 +37,7 @@ export class TimeBlockDB extends Dexie {
   systemState!: Table<{ key: string; value: any }, string>;
   images!: Table<{ id: string; data: Blob | string }, string>;
   weather!: Table<{ id: string; data: any; timestamp: number; lastUpdatedDate: string }, string>;
+  aiInsights!: Table<AIInsight, string>;
 
   constructor() {
     super('timeblock_db');
@@ -212,6 +214,26 @@ export class TimeBlockDB extends Dexie {
       systemState: 'key',
       images: 'id',
       weather: 'id', // ✅ 날씨 캐시
+    });
+
+    // 스키마 버전 11 - AI 인사이트 추가
+    this.version(11).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      energyLevels: 'id, date, timestamp, hour',
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      globalInbox: 'id, createdAt, completed',
+      completedInbox: 'id, completedAt, createdAt',
+      globalGoals: 'id, createdAt, order',
+      systemState: 'key',
+      images: 'id',
+      weather: 'id',
+      aiInsights: 'date', // ✅ AI 인사이트
     });
   }
 }

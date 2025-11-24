@@ -695,10 +695,18 @@ export async function updateQuestProgress(questType: Quest['type'], amount: numb
 
     await saveGameState(gameState);
 
-    // 완료된 퀘스트들의 보상 XP를 addXP를 통해 지급 (토스트 메시지 표시)
-    for (const quest of completedQuests) {
-      await addXP(quest.reward);
-    }
+      // 완료된 퀘스트들의 보상 XP를 addXP를 통해 지급 (토스트 메시지 및 quest_completed 이벤트 발생)
+      for (const quest of completedQuests) {
+        await addXP(quest.reward);
+        // quest_completed 이벤트를 전달하여 토스트/알림 노출
+        const { gameStateEventHandler } = await import('@/shared/services/gameplay/gameState');
+        await gameStateEventHandler.handleEvents([{
+          type: 'quest_completed',
+          questId: quest.id,
+          questTitle: quest.title,
+          reward: quest.reward,
+        }]);
+      }
 
     return gameState;
   } catch (error) {
