@@ -74,6 +74,7 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
 
   // Time-aware Lighting State
   const [lightingClass, setLightingClass] = useState('');
+  const isNormalMode = waifuMode === 'normal';
 
   // 설정 로드 (와이푸 모드 및 이미지 변경 간격) + 이미지 프리로드
   useEffect(() => {
@@ -208,25 +209,27 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
         changeImage(waifuState.affection, 'auto');
 
         // 대사 변경 (클릭처럼)
-        const newDialogue = getDialogueFromAffection(waifuState.affection, waifuState.tasksCompletedToday);
-        showWaifu(newDialogue.text);
+        if (!isNormalMode) {
+          const newDialogue = getDialogueFromAffection(waifuState.affection, waifuState.tasksCompletedToday);
+          showWaifu(newDialogue.text);
 
-        // 대사 오디오가 있다면 재생
-        if (newDialogue.audio) {
-          audioService.play(newDialogue.audio);
+          // 대사 오디오가 있다면 재생
+          if (newDialogue.audio) {
+            audioService.play(newDialogue.audio);
+          }
         }
       }
     }, 60000); // 1분마다 체크
 
     return () => clearInterval(interval);
-  }, [waifuState, waifuImageChangeInterval, changeImage, showWaifu]);
+  }, [waifuState, waifuImageChangeInterval, changeImage, showWaifu, isNormalMode]);
 
   // 오디오 재생 (일반 대화용)
   useEffect(() => {
-    if (currentAudio && !companionMessage) {
+    if (currentAudio && !companionMessage && !isNormalMode) {
       audioService.play(currentAudio);
     }
-  }, [currentAudio, companionMessage]);
+  }, [currentAudio, companionMessage, isNormalMode]);
 
   // 하트 파티클 효과
   const spawnHeartParticles = (x: number, y: number) => {
@@ -284,12 +287,14 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     changeImage(waifuState.affection, 'manual');
 
     // 2. 매번 클릭 시 대사 변경
-    const newDialogue = getDialogueFromAffection(waifuState.affection, waifuState.tasksCompletedToday);
-    showWaifu(newDialogue.text);
+    if (!isNormalMode) {
+      const newDialogue = getDialogueFromAffection(waifuState.affection, waifuState.tasksCompletedToday);
+      showWaifu(newDialogue.text);
 
-    // 대사 오디오가 있다면 재생 (클릭 사운드와 겹칠 수 있음, 클릭 사운드는 짧은 효과음이라 괜찮음)
-    if (newDialogue.audio) {
-      audioService.play(newDialogue.audio);
+      // 대사 오디오가 있다면 재생 (클릭 사운드와 겹칠 수 있음, 클릭 사운드는 짧은 효과음이라 괜찮음)
+      if (newDialogue.audio) {
+        audioService.play(newDialogue.audio);
+      }
     }
 
     // 3. XP 증가 (+1) - Store Action 사용
@@ -307,7 +312,7 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
       console.error('Failed to sync affection:', error);
     }
 
-  }, [waifuState, changeImage, showWaifu, addXP, onInteract]);
+  }, [waifuState, changeImage, showWaifu, addXP, onInteract, isNormalMode]);
 
   if (loading) {
     return (
@@ -397,26 +402,28 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
             클릭해서 포즈 변경하기
           </div>
 
-          <div
-            role="status"
-            aria-live="polite"
-            className="pointer-events-none absolute inset-x-6 bottom-6"
-          >
-            {/* Speaking Bubble UI */}
-            <div className="relative mx-auto max-w-md rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-6 py-5 text-center shadow-xl">
-              {/* Tail */}
-              <div className="absolute -top-3 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l-2 border-t-2 border-[var(--color-border)] bg-[var(--color-bg-secondary)]"></div>
+          {!isNormalMode && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="pointer-events-none absolute inset-x-6 bottom-6"
+            >
+              {/* Speaking Bubble UI */}
+              <div className="relative mx-auto max-w-md rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-6 py-5 text-center shadow-xl">
+                {/* Tail */}
+                <div className="absolute -top-3 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l-2 border-t-2 border-[var(--color-border)] bg-[var(--color-bg-secondary)]"></div>
 
-              {/* Name Tag */}
-              <div className="absolute -top-3 left-4 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)] shadow-sm">
-                Hye-Eun
+                {/* Name Tag */}
+                <div className="absolute -top-3 left-4 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)] shadow-sm">
+                  Hye-Eun
+                </div>
+
+                <p className="text-sm font-medium leading-relaxed text-[var(--color-text)]">
+                  <Typewriter key={companionMessage || currentDialogue} text={companionMessage || currentDialogue} speed={30} />
+                </p>
               </div>
-
-              <p className="text-sm font-medium leading-relaxed text-[var(--color-text)]">
-                <Typewriter key={companionMessage || currentDialogue} text={companionMessage || currentDialogue} speed={30} />
-              </p>
             </div>
-          </div>
+          )}
         </div>
 
         <div

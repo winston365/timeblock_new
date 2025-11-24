@@ -11,12 +11,12 @@ import { getAffectionColor } from '@/features/waifu/waifuImageUtils';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { getDialogueFromAffection } from '@/data/repositories/waifuRepository';
 import { audioService } from '@/shared/services/media/audioService';
-import { useFocusStore } from '@/shared/stores/focusStore';
 import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
 import { useXPParticleStore } from '@/features/gamification/stores/xpParticleStore';
 import { useEffect, useRef } from 'react';
 import WeatherWidget from '@/features/weather/WeatherWidget';
 import IgnitionButton from '@/features/ignition/components/IgnitionButton';
+import { useSettingsStore } from '@/shared/stores/settingsStore';
 
 interface TopToolbarProps {
   gameState: GameState | null;
@@ -29,11 +29,14 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   const { currentEnergy } = useEnergy();
   const { waifuState, currentMood } = useWaifu();
   const { show } = useWaifuCompanionStore();
-  const { toggleFocusMode } = useFocusStore();
   const { isLoading: aiAnalyzing, cancelBreakdown } = useTaskBreakdownStore();
   const [hovered, setHovered] = useState<string | null>(null);
+  const { settings } = useSettingsStore();
+  const isNormalWaifu = settings?.waifuMode === 'normal';
 
   const handleCallWaifu = () => {
+    if (isNormalWaifu) return;
+
     if (waifuState) {
       const dialogue = getDialogueFromAffection(waifuState.affection, waifuState.tasksCompletedToday);
 
@@ -143,7 +146,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
 
         {waifuState && (
           <div className={`${statItemClass} gap-3`}>
-            <span>와이푸 애정도</span>
+            {!isNormalWaifu && <span>와이푸 애정도</span>}
             <div className="relative h-2 w-16 overflow-hidden rounded-full bg-white/10">
               <div
                 className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
@@ -153,7 +156,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
                 }}
               />
             </div>
-            <span>{waifuState.affection}%</span>
+            {!isNormalWaifu && <span>{waifuState.affection}%</span>}
           </div>
         )}
 
@@ -187,8 +190,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         )}
         {/* 점화 버튼 */}
         <IgnitionButton />
-        {renderCTA('zen', '🧘 집중모드', toggleFocusMode)}
-        {renderCTA('waifu', '💬 와이푸', handleCallWaifu)}
+        {!isNormalWaifu && renderCTA('waifu', '💬 와이푸', handleCallWaifu)}
         {renderCTA('templates', '📋 템플릿', onOpenTemplates)}
         {renderCTA('chat', '✨ AI 채팅', onOpenGeminiChat)}
         {renderCTA('settings', '⚙️ 설정', onOpenSettings)}
