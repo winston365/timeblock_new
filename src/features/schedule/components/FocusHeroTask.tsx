@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Task } from '@/shared/types/domain';
 
 interface FocusHeroTaskProps {
@@ -24,19 +24,38 @@ export function FocusHeroTask({
     onStop
 }: FocusHeroTaskProps) {
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    const [reachedMilestones, setReachedMilestones] = useState<Set<number>>(new Set());
+    const [celebratingMilestone, setCelebratingMilestone] = useState<number | null>(null);
+    const milestonesRef = useRef<Set<number>>(new Set());
 
     useEffect(() => {
         if (!isActive || !startTime) {
             setElapsedSeconds(0);
+            setReachedMilestones(new Set());
+            milestonesRef.current = new Set();
             return;
         }
 
         const interval = setInterval(() => {
-            setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            setElapsedSeconds(elapsed);
+
+            // Check for milestone achievements
+            const totalSeconds = task.baseDuration * 60;
+            const currentProgress = (elapsed / totalSeconds) * 100;
+
+            [25, 50, 75].forEach(milestone => {
+                if (currentProgress >= milestone && !milestonesRef.current.has(milestone)) {
+                    milestonesRef.current.add(milestone);
+                    setReachedMilestones(new Set(milestonesRef.current));
+                    setCelebratingMilestone(milestone);
+                    setTimeout(() => setCelebratingMilestone(null), 2000);
+                }
+            });
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [isActive, startTime]);
+    }, [isActive, startTime, task.baseDuration]);
 
     const totalSeconds = task.baseDuration * 60;
     const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
@@ -119,15 +138,111 @@ export function FocusHeroTask({
                             <span className="text-sm font-medium text-white/60">집중 중...</span>
                             <span className="text-3xl font-bold text-white font-mono">{formatTime(remainingSeconds)}</span>
                         </div>
-                        {/* Progress Bar */}
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+
+                        {/* Celebration Message */}
+                        {celebratingMilestone && (
                             <motion.div
-                                className="h-full bg-gradient-to-r from-orange-500 to-red-500"
-                                initial={{ width: 0 }}
-                                animate={{ width: `${progress}%` }}
-                                transition={{ duration: 0.5 }}
-                            />
+                                initial={{ opacity: 0, scale: 0.8, y: -20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.8, y: -20 }}
+                                className="mb-4 text-center"
+                            >
+                                <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 px-4 py-2 border border-amber-500/30">
+                                    <span className="text-2xl">🎉</span>
+                                    <span className="text-sm font-bold text-amber-300">
+                                        {celebratingMilestone}% 달성!
+                                    </span>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Progress Bar with Milestones */}
+                        <div className="relative w-full mt-6">
+                            {/* Arc indicators above progress bar */}
+                            <svg className="absolute -top-10 left-0 right-0 h-10 w-full" style={{ overflow: 'visible' }}>
+                                {[25, 50, 75, 100].map((milestone) => {
+                                    const xPos = `${milestone}%`;
+                                    const requiredMinutes = Math.ceil((task.baseDuration * milestone) / 100);
+                                    const isReached = progress >= milestone;
+
+                                    return (
+                                        <g key={milestone}>
+                                            {/* Small arc */}
+                                            <path
+                                                d={`M ${milestone - 3}% 36 Q ${milestone}% 26, ${milestone + 3}% 36`}
+                                                stroke={isReached ? '#fbbf24' : '#ffffff40'}
+                                                strokeWidth="1.5"
+                                                fill="none"
+                                                className="transition-all"
+                                            />
+                                            {/* Time label */}
+                                            <text
+                                                x={xPos}
+                                                y="22"
+                                                textAnchor="middle"
+                                                className={`text-[10px] font-medium ${isReached ? 'fill-amber-400' : 'fill-white/40'}`}
+                                            >
+                                                {requiredMinutes}분
+                                            </text>
+                                        </g>
+                                    );
+                                })}
+                            </svg>
+
+                            {/* Progress bar */}
+                            <div className="relative h-2 w-full overflow-hidden rounded-full bg-white/10">
+                                {/* Milestone markers */}
+                                {[25, 50, 75].map(milestone => (
+                                    <div
+                                        key={milestone}
+                                        className="absolute top-0 bottom-0 w-0.5"
+                                        style={{ left: `${milestone}%` }}
+                                    >
+                                        <div className={`h-full transition-all ${reachedMilestones.has(milestone)
+                                                ? 'bg-amber-400 shadow-lg shadow-amber-500/50'
+                                                : 'bg-white/30'
+                                            }`} />
+                                    </div>
+                                ))}
+
+                                {/* Progress fill */}
+                                <motion.div
+                                    className="h-full bg-gradient-to-r from-orange-500 to-red-500"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${progress}%` }}
+                                    transition={{ duration: 0.5 }}
+                                />
+                            </div>
                         </div>
+
+                        {/* Milestone labels */}
+                        <div className="relative mt-2 h-4">
+                            <span
+                                className={`absolute text-xs ${reachedMilestones.has(25) ? 'text-amber-400 font-medium' : 'text-white/40'}`}
+                                style={{ left: '25%', transform: 'translateX(-50%)' }}
+                            >
+                                25%
+                            </span>
+                            <span
+                                className={`absolute text-xs ${reachedMilestones.has(50) ? 'text-amber-400 font-medium' : 'text-white/40'}`}
+                                style={{ left: '50%', transform: 'translateX(-50%)' }}
+                            >
+                                50%
+                            </span>
+                            <span
+                                className={`absolute text-xs ${reachedMilestones.has(75) ? 'text-amber-400 font-medium' : 'text-white/40'}`}
+                                style={{ left: '75%', transform: 'translateX(-50%)' }}
+                            >
+                                75%
+                            </span>
+                            <span
+                                className={`absolute text-xs ${progress >= 100 ? 'text-emerald-400 font-medium' : 'text-white/40'}`}
+                                style={{ left: '100%', transform: 'translateX(-100%)' }}
+                            >
+                                100%
+                            </span>
+                        </div>
+
                         <button
                             onClick={onStop}
                             className="mt-4 w-full rounded-xl bg-white/10 py-3 text-sm font-medium text-white/60 hover:bg-white/20 hover:text-white transition-colors"

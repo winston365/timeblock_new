@@ -49,16 +49,19 @@ export function FocusView({
 
     // Filter tasks to only current hour slot - memoized to prevent infinite loop
     const currentHourTasks = useMemo(() => {
-        return tasks.filter(t => t.hourSlot === currentHour);
+        return tasks
+            .filter(t => t.hourSlot === currentHour)
+            .sort((a, b) => {
+                const orderA = a.order ?? new Date(a.createdAt).getTime();
+                const orderB = b.order ?? new Date(b.createdAt).getTime();
+                return orderA - orderB;
+            });
     }, [tasks, currentHour]);
 
+    // Use the first incomplete task based on order (respects HourBar ordering)
     const recommendedTask = useMemo(() => {
-        return recommendNextTask(currentHourTasks, {
-            currentTime: now,
-            remainingMinutes,
-            currentEnergy
-        });
-    }, [currentHourTasks, remainingMinutes, currentEnergy]);
+        return currentHourTasks.find(t => !t.completed) || null;
+    }, [currentHourTasks]);
 
     const recommendationMessage = recommendedTask
         ? getRecommendationMessage(recommendedTask, currentEnergy)
