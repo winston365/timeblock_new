@@ -17,6 +17,7 @@ import { useEffect, useRef } from 'react';
 import WeatherWidget from '@/features/weather/WeatherWidget';
 import IgnitionButton from '@/features/ignition/components/IgnitionButton';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { StatsModal } from '@/features/stats/StatsModal';
 
 interface TopToolbarProps {
   gameState: GameState | null;
@@ -31,6 +32,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   const { show } = useWaifuCompanionStore();
   const { isLoading: aiAnalyzing, cancelBreakdown } = useTaskBreakdownStore();
   const [hovered, setHovered] = useState<string | null>(null);
+  const [showStats, setShowStats] = useState(false);
   const { settings } = useSettingsStore();
   const isNormalWaifu = settings?.waifuMode === 'normal';
 
@@ -106,12 +108,13 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   };
 
   return (
-    <header
-      className="flex flex-col gap-[var(--spacing-md)] border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-[var(--spacing-lg)] py-[var(--spacing-md)] text-[var(--color-text)] md:flex-row md:items-center"
-      role="banner"
-    >
-      <style>{`@keyframes dance6123 { to { background-position: var(--btn-width); } }`}</style>
-      <h1 className="text-base font-semibold tracking-tight">하루 루틴 컨트롤러</h1>
+    <>
+      <header
+        className="flex flex-col gap-[var(--spacing-md)] border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-[var(--spacing-lg)] py-[var(--spacing-md)] text-[var(--color-text)] md:flex-row md:items-center"
+        role="banner"
+      >
+        <style>{`@keyframes dance6123 { to { background-position: var(--btn-width); } }`}</style>
+        <h1 className="text-base font-semibold tracking-tight">하루 루틴 컨트롤러</h1>
 
       <div className="flex flex-1 flex-wrap items-center gap-[var(--spacing-lg)] text-sm">
         <div className={statItemClass}>
@@ -173,29 +176,32 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         <WeatherWidget />
       </div>
 
-      <div className="flex flex-wrap items-center gap-[var(--spacing-sm)] md:ml-auto">
-        {/* AI 분석 인디케이터 */}
-        {aiAnalyzing && (
-          <div className="flex items-center gap-2 rounded-xl border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-4 py-2 text-sm font-semibold text-[var(--color-primary)] animate-pulse">
-            <span className="animate-spin text-base">🧠</span>
-            <span>AI 분석 중...</span>
-            <button
-              onClick={cancelBreakdown}
-              className="ml-2 rounded-lg bg-[var(--color-primary)]/20 px-2 py-1 text-xs hover:bg-[var(--color-primary)]/30 transition"
-              title="취소"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-        {/* 점화 버튼 */}
-        <IgnitionButton />
-        {!isNormalWaifu && renderCTA('waifu', '💬 와이푸', handleCallWaifu)}
-        {renderCTA('templates', '📋 템플릿', onOpenTemplates)}
-        {renderCTA('chat', '✨ AI 채팅', onOpenGeminiChat)}
-        {renderCTA('settings', '⚙️ 설정', onOpenSettings)}
-      </div>
-    </header>
+        <div className="flex flex-wrap items-center gap-[var(--spacing-sm)] md:ml-auto">
+          {/* AI 분석 인디케이터 */}
+          {aiAnalyzing && (
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-4 py-2 text-sm font-semibold text-[var(--color-primary)] animate-pulse">
+              <span className="animate-spin text-base">🧠</span>
+              <span>AI 분석 중...</span>
+              <button
+                onClick={cancelBreakdown}
+                className="ml-2 rounded-lg bg-[var(--color-primary)]/20 px-2 py-1 text-xs hover:bg-[var(--color-primary)]/30 transition"
+                title="취소"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          {/* 점화 버튼 */}
+          <IgnitionButton />
+          {renderCTA('stats', '📊 통계', () => setShowStats(true))}
+          {!isNormalWaifu && renderCTA('waifu', '💬 와이푸', handleCallWaifu)}
+          {renderCTA('templates', '📋 템플릿', onOpenTemplates)}
+          {renderCTA('chat', '✨ AI 채팅', onOpenGeminiChat)}
+          {renderCTA('settings', '⚙️ 설정', onOpenSettings)}
+        </div>
+      </header>
+      {showStats && <StatsModal open={showStats} onClose={() => setShowStats(false)} />}
+    </>
   );
 }
 

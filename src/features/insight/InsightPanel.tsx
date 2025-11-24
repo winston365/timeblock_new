@@ -18,6 +18,7 @@ import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { callAIWithContext, getInsightPrompt } from '@/shared/services/ai/aiService';
 import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories';
+import { getLocalDate } from '@/shared/lib/utils';
 import confetti from 'canvas-confetti';
 
 // ✅ 인사이트 데이터 구조 정의
@@ -74,6 +75,23 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
   const initialLoadRef = useRef(false);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 저장된 퀵윈 완료 상태 로드
+  useEffect(() => {
+    const loadQuickWinState = async () => {
+      const today = getLocalDate();
+      const stored = await getSystemState<{ date: string; ids: string[] }>(SYSTEM_KEYS.QUICK_WINS_COMPLETED);
+      if (stored?.date === today && Array.isArray(stored.ids)) {
+        setCompletedQuickWins(stored.ids);
+      }
+    };
+    loadQuickWinState();
+  }, []);
+
+  const persistQuickWins = (ids: string[]) => {
+    const today = getLocalDate();
+    setSystemState(SYSTEM_KEYS.QUICK_WINS_COMPLETED, { date: today, ids }).catch(console.error);
+  };
+
   /**
    * JSON 파싱 헬퍼
    */
@@ -91,14 +109,20 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
   /**
    * 퀵 윈 완료 처리
    */
-  const handleQuickWinComplete = (id: string, xp: number) => {
+  const handleQuickWinComplete = async (id: string, xp: number) => {
     if (completedQuickWins.includes(id)) return;
 
-    // 1. 상태 업데이트
-    setCompletedQuickWins(prev => [...prev, id]);
+    // 1. 상태 업데이트 + 영구 저장
+    const next = [...completedQuickWins, id];
+    setCompletedQuickWins(next);
+    persistQuickWins(next);
 
     // 2. XP 지급
-    addXP(xp, '퀵 윈 달성');
+    try {
+      await addXP(xp, '퀵 윈 달성');
+    } catch (error) {
+      console.error('Failed to grant quick win XP', error);
+    }
 
     // 3. 효과 (컨페티)
     confetti({
@@ -152,6 +176,7 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
         setInsightData(parsed);
         setLegacyInsight('');
         setCompletedQuickWins([]); // 새로 생성되면 완료 기록 초기화
+        persistQuickWins([]);
       } else {
         // 파싱 실패 시 텍스트로 저장 (구버전 호환)
         setInsightData(null);

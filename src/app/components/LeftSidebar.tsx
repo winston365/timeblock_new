@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import InboxTab from '@/features/tasks/InboxTab';
 import CompletedTab from '@/features/tasks/CompletedTab';
-import StatsTab from '@/features/stats/StatsTab';
 import EnergyTab from '@/features/energy/EnergyTab';
 import GoalPanel from '@/features/goals/GoalPanel';
 import GoalModal from '@/features/goals/GoalModal';
@@ -9,14 +8,13 @@ import type { DailyGoal } from '@/shared/types/domain';
 import { useGoalStore } from '@/shared/stores/goalStore';
 
 interface LeftSidebarProps {
-  activeTab: 'today' | 'stats' | 'energy' | 'completed' | 'inbox';
-  onTabChange: (tab: 'today' | 'stats' | 'energy' | 'completed' | 'inbox') => void;
+  activeTab: 'today' | 'energy' | 'completed' | 'inbox';
+  onTabChange: (tab: 'today' | 'energy' | 'completed' | 'inbox') => void;
   collapsed?: boolean;
 }
 
 const tabs = [
   { id: 'today' as const, icon: '📋', label: '목표' },
-  { id: 'stats' as const, icon: '📊', label: '통계' },
   { id: 'energy' as const, icon: '⚡️', label: '에너지' },
   { id: 'completed' as const, icon: '✅', label: '완료' },
   { id: 'inbox' as const, icon: '📥', label: '인박스' },
@@ -95,11 +93,6 @@ export default function LeftSidebar({ activeTab, onTabChange, collapsed = false 
         {activeTab === 'completed' && (
           <div role="tabpanel" id="sidebar-panel-completed" aria-labelledby="sidebar-tab-completed" className="h-full">
             <CompletedTab />
-          </div>
-        )}
-        {activeTab === 'stats' && (
-          <div role="tabpanel" id="sidebar-panel-stats" aria-labelledby="sidebar-tab-stats" className="h-full">
-            <StatsTab />
           </div>
         )}
         {activeTab === 'energy' && (

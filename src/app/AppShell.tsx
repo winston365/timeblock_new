@@ -53,7 +53,7 @@ interface SyncErrorToastData {
 export default function AppShell() {
   const { isInitialized: dbInitialized, error: initError } = useAppInitialization();
 
-  const [activeTab, setActiveTab] = useState<'today' | 'stats' | 'energy' | 'completed' | 'inbox'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'energy' | 'completed' | 'inbox'>('today');
   const [rightPanelTab, setRightPanelTab] = useState<'quest' | 'shop' | 'inventory'>('quest');
   const [showGeminiChat, setShowGeminiChat] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
