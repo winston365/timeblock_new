@@ -104,7 +104,18 @@ export function FocusView({
         if (isCompletingActiveTask) {
             stopTask();
             setMemoText('');
+
+            // Start 1-minute break, then auto-start next task
             setIsBreakTime(true);
+            setTimeout(() => {
+                setIsBreakTime(false);
+
+                // Auto-start next incomplete task after break
+                const nextTask = currentHourTasks.find(t => !t.completed && t.id !== taskId);
+                if (nextTask) {
+                    startTask(nextTask.id);
+                }
+            }, 60000); // 1 minute = 60,000ms
         }
     };
 

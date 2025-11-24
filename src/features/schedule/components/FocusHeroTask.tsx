@@ -244,10 +244,13 @@ export function FocusHeroTask({
                         </div>
 
                         <button
-                            onClick={onStop}
-                            className="mt-4 w-full rounded-xl bg-white/10 py-3 text-sm font-medium text-white/60 hover:bg-white/20 hover:text-white transition-colors"
+                            onClick={progress >= 100 ? () => onToggle(task.id) : onStop}
+                            className={`mt-4 w-full rounded-xl py-3 text-sm font-medium transition-colors ${progress >= 100
+                                    ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold hover:from-emerald-600 hover:to-green-700'
+                                    : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                                }`}
                         >
-                            중단하기
+                            {progress >= 100 ? '✓ 완료하기' : '중단하기'}
                         </button>
                     </div>
                 ) : (

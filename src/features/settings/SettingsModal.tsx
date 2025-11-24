@@ -774,10 +774,10 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                                                     setLocalSettings(prev => prev ? ({ ...prev, ignitionInactivityMinutes: clampedValue }) : prev);
                                                 }}
                                             />
-                                                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                                                    마지막 작업 완료 후 이 시간이 지나면 점화 버튼이 나타납니다 (5-180분)
-                                                </small>
-                                            </div>
+                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                마지막 작업 완료 후 이 시간이 지나면 점화 버튼이 나타납니다 (5-180분)
+                                            </small>
+                                        </div>
 
                                         <div className="grid gap-3 sm:grid-cols-3">
                                             <div className={formGroupClass}>
@@ -834,6 +834,63 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                                                 <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">무료 횟수 소진 후 XP로 구매 시 비용</small>
                                             </div>
                                         </div>
+
+                                        <div className="my-4 border-t border-[var(--color-border)]" />
+
+                                        <h3>🎯 통계 목표 설정</h3>
+                                        <p className={sectionDescriptionClass}>
+                                            주간 및 월간 XP 목표를 설정하여 통계 대시보드에서 진행률을 확인할 수 있습니다.
+                                        </p>
+
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            <div className={formGroupClass}>
+                                                <label htmlFor="weekly-xp-goal">주간 XP 목표</label>
+                                                <input
+                                                    id="weekly-xp-goal"
+                                                    type="number"
+                                                    min="0"
+                                                    max="50000"
+                                                    step="100"
+                                                    className={inputClass}
+                                                    placeholder="설정 안 함"
+                                                    value={localSettings?.weeklyXPGoal || ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value === '' ? undefined : parseInt(e.target.value) || 0;
+                                                        setLocalSettings(prev => prev ? ({ ...prev, weeklyXPGoal: value }) : prev);
+                                                    }}
+                                                />
+                                                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                    주간 XP 목표를 설정하면 통계 대시보드에 진행률이 표시됩니다
+                                                </small>
+                                            </div>
+
+                                            <div className={formGroupClass}>
+                                                <label htmlFor="monthly-xp-goal">월간 XP 목표</label>
+                                                <input
+                                                    id="monthly-xp-goal"
+                                                    type="number"
+                                                    min="0"
+                                                    max="200000"
+                                                    step="500"
+                                                    className={inputClass}
+                                                    placeholder="설정 안 함"
+                                                    value={localSettings?.monthlyXPGoal || ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value === '' ? undefined : parseInt(e.target.value) || 0;
+                                                        setLocalSettings(prev => prev ? ({ ...prev, monthlyXPGoal: value }) : prev);
+                                                    }}
+                                                />
+                                                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                    월간 XP 목표를 설정하면 통계 대시보드에 진행률이 표시됩니다
+                                                </small>
+                                            </div>
+                                        </div>
+
+                                        <div className={infoBoxClass}>
+                                            <strong>💡 팁:</strong> 목표는 비워두면 통계에 표시되지 않습니다.
+                                            현실적인 목표를 설정하여 꾸준히 달성하는 습관을 만들어보세요!
+                                        </div>
+
 
                                         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-4">
                                             <div className="mb-2 flex items-center justify-between">

@@ -37,7 +37,7 @@ export const useCompletedTasksStore = create<CompletedTasksStore>((set, get) => 
     loading: false,
     error: null,
 
-    loadData: async (days: number = 20) => {
+    loadData: async (days: number = 30) => {
         set({ loading: true, error: null });
         try {
             const tasks = await getRecentCompletedTasks(days);

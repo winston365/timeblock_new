@@ -14,7 +14,7 @@ export default function CompletedTab() {
   const { completedTasks, loading, loadData, toggleTaskCompletion } = useCompletedTasksStore();
 
   useEffect(() => {
-    loadData(20); // 최근 20일치 로드
+    loadData(30); // 최근 30일치 로드
   }, [loadData]);
 
   const handleToggleTask = async (task: Task) => {
