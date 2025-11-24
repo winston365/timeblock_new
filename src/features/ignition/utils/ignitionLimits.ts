@@ -14,6 +14,11 @@ export interface IgnitionCheckResult {
     requiresXP?: number;
 }
 
+export interface IgnitionConfig {
+    cooldownMinutes?: number;
+    xpCost?: number;
+}
+
 /**
  * 점화 사용 가능 여부 확인
  * 
@@ -23,10 +28,14 @@ export interface IgnitionCheckResult {
  */
 export function checkIgnitionAvailability(
     gameState: GameState | null,
-    isBonus: boolean = false
+    isBonus: boolean = false,
+    config: IgnitionConfig = {}
 ): IgnitionCheckResult {
+    const cooldownSeconds = (config.cooldownMinutes ?? 15) * 60;
+    const xpCost = config.xpCost ?? 50;
+
     if (!gameState) {
-        return { canIgnite: false, reason: 'insufficient_xp' };
+        return { canIgnite: false, reason: 'insufficient_xp', requiresXP: xpCost };
     }
 
     const now = Date.now();
@@ -40,14 +49,14 @@ export function checkIgnitionAvailability(
         };
     }
 
-    // 쿨다운 체크 (15분 = 900초) - 보너스도 적용
+    // 쿨다운 체크 (설정값) - 보너스도 적용
     if (gameState.lastIgnitionTime) {
         const elapsed = (now - gameState.lastIgnitionTime) / 1000;
-        if (elapsed < 900) {
+        if (elapsed < cooldownSeconds) {
             return {
                 canIgnite: false,
                 reason: 'cooldown',
-                cooldownRemaining: Math.ceil(900 - elapsed),
+                cooldownRemaining: Math.ceil(cooldownSeconds - elapsed),
                 freeSpinsRemaining: gameState.dailyFreeIgnitions - gameState.usedIgnitions,
             };
         }
@@ -68,7 +77,6 @@ export function checkIgnitionAvailability(
     }
 
     // XP 구매 필요
-    const xpCost = 50;
     return {
         canIgnite: gameState.availableXP >= xpCost,
         reason: gameState.availableXP < xpCost ? 'insufficient_xp' : undefined,

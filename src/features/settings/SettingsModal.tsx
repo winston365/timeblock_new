@@ -774,9 +774,65 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                                                     setLocalSettings(prev => prev ? ({ ...prev, ignitionInactivityMinutes: clampedValue }) : prev);
                                                 }}
                                             />
-                                            <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                                                마지막 작업 완료 후 이 시간이 지나면 점화 버튼이 나타납니다 (5-180분)
-                                            </small>
+                                                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                                    마지막 작업 완료 후 이 시간이 지나면 점화 버튼이 나타납니다 (5-180분)
+                                                </small>
+                                            </div>
+
+                                        <div className="grid gap-3 sm:grid-cols-3">
+                                            <div className={formGroupClass}>
+                                                <label htmlFor="ignition-duration">점화 길이 (분)</label>
+                                                <input
+                                                    id="ignition-duration"
+                                                    type="number"
+                                                    min="1"
+                                                    max="30"
+                                                    className={inputClass}
+                                                    value={localSettings?.ignitionDurationMinutes ?? 3}
+                                                    onChange={(e) => {
+                                                        const value = parseInt(e.target.value) || 3;
+                                                        const clamped = Math.max(1, Math.min(30, value));
+                                                        setLocalSettings(prev => prev ? ({ ...prev, ignitionDurationMinutes: clamped }) : prev);
+                                                    }}
+                                                />
+                                                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">점화 타이머 기본 길이 (1-30분)</small>
+                                            </div>
+
+                                            <div className={formGroupClass}>
+                                                <label htmlFor="ignition-cooldown">쿨다운 (분)</label>
+                                                <input
+                                                    id="ignition-cooldown"
+                                                    type="number"
+                                                    min="1"
+                                                    max="120"
+                                                    className={inputClass}
+                                                    value={localSettings?.ignitionCooldownMinutes ?? 15}
+                                                    onChange={(e) => {
+                                                        const value = parseInt(e.target.value) || 15;
+                                                        const clamped = Math.max(1, Math.min(120, value));
+                                                        setLocalSettings(prev => prev ? ({ ...prev, ignitionCooldownMinutes: clamped }) : prev);
+                                                    }}
+                                                />
+                                                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">점화 재사용 대기시간 (1-120분)</small>
+                                            </div>
+
+                                            <div className={formGroupClass}>
+                                                <label htmlFor="ignition-xp">XP 비용</label>
+                                                <input
+                                                    id="ignition-xp"
+                                                    type="number"
+                                                    min="0"
+                                                    max="500"
+                                                    className={inputClass}
+                                                    value={localSettings?.ignitionXPCost ?? 50}
+                                                    onChange={(e) => {
+                                                        const value = parseInt(e.target.value) || 0;
+                                                        const clamped = Math.max(0, Math.min(500, value));
+                                                        setLocalSettings(prev => prev ? ({ ...prev, ignitionXPCost: clamped }) : prev);
+                                                    }}
+                                                />
+                                                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">무료 횟수 소진 후 XP로 구매 시 비용</small>
+                                            </div>
                                         </div>
 
                                         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-4">

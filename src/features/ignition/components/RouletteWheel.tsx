@@ -32,6 +32,7 @@ export default function RouletteWheel({ items, onSelect }: RouletteWheelProps) {
     const [isSpinning, setIsSpinning] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const wheelRef = useRef<SVGSVGElement>(null);
+    const lastIndexRef = useRef<number | null>(null);
 
     // 아이템별 색상 결정 (희귀도 우선)
     const getItemColor = (item: RouletteItem): string => {
@@ -95,8 +96,16 @@ export default function RouletteWheel({ items, onSelect }: RouletteWheelProps) {
         setIsSpinning(true);
 
         // 가중치 기반 랜덤 선택
-        const randomIndex = selectWeightedRandom();
+        let randomIndex = selectWeightedRandom();
+        if (items.length > 1) {
+            let attempts = 0;
+            while (lastIndexRef.current === randomIndex && attempts < 5) {
+                randomIndex = selectWeightedRandom();
+                attempts += 1;
+            }
+        }
         setSelectedIndex(randomIndex);
+        lastIndexRef.current = randomIndex;
 
         // 회전 각도 계산
         const degreesPerItem = 360 / items.length;
@@ -222,6 +231,7 @@ export default function RouletteWheel({ items, onSelect }: RouletteWheelProps) {
 
                         return (
                             <g key={item.id}>
+                                <title>{item.text}</title>
                                 {/* 섹션 */}
                                 <path
                                     d={pathData}
@@ -288,6 +298,38 @@ export default function RouletteWheel({ items, onSelect }: RouletteWheelProps) {
                         </div>
                     </motion.div>
                 )}
+            </div>
+
+            {/* 희귀도/난이도 안내 */}
+            <div className="flex flex-wrap justify-center gap-3 text-xs text-white/70">
+                <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                    <span>커먼 휴식권</span>
+                </span>
+                <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-blue-400" />
+                    <span>레어 휴식권</span>
+                </span>
+                <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-purple-400" />
+                    <span>에픽 휴식권</span>
+                </span>
+                <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-amber-400" />
+                    <span>레전더리 휴식권</span>
+                </span>
+                <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-[#06b6d4]" />
+                    <span>쉬움</span>
+                </span>
+                <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-[#6366f1]" />
+                    <span>보통</span>
+                </span>
+                <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-[#8b5cf6]" />
+                    <span>어려움</span>
+                </span>
             </div>
 
             {/* 상태 표시 */}

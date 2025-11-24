@@ -102,6 +102,14 @@ export async function cacheWeather(forecast: DayForecast[], timestamp: number): 
     }
 }
 
+export async function clearWeatherCache(): Promise<void> {
+    try {
+        await db.weather.delete('latest');
+    } catch (error) {
+        console.error('[WeatherService] Dexie cache clear failed:', error);
+    }
+}
+
 type InsightContext = {
     humidity?: number;
     chanceOfRain?: number;

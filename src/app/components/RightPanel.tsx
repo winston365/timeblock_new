@@ -10,6 +10,8 @@
 import QuestsPanel from '@/features/gamification/QuestsPanel';
 import ShopPanel from '@/features/shop/ShopPanel';
 import InventoryPanel from '@/features/inventory/InventoryPanel';
+import { useQuests } from '@/shared/hooks';
+import { useGameStateStore } from '@/shared/stores/gameStateStore';
 
 interface RightPanelProps {
   activeTab: 'quest' | 'shop' | 'inventory';
@@ -24,9 +26,15 @@ export default function RightPanel({
   onShopPurchaseSuccess,
   collapsed = false,
 }: RightPanelProps) {
+  const { quests } = useQuests();
+  const { gameState } = useGameStateStore();
+
+  const pendingQuests = quests.filter(q => !q.completed).length;
+  const inventoryTotal = Object.values(gameState?.inventory || {}).reduce((sum, qty) => sum + (qty || 0), 0);
+
   const tabs = [
-    { id: 'quest' as const, label: '퀘스트', icon: '🗒️' },
-    { id: 'inventory' as const, label: '가방', icon: '🎒' },
+    { id: 'quest' as const, label: '퀘스트', icon: '🗒️', badge: pendingQuests },
+    { id: 'inventory' as const, label: '가방', icon: '🎒', badge: inventoryTotal },
     { id: 'shop' as const, label: '포인트', icon: '🛒' },
   ];
 
@@ -45,7 +53,7 @@ export default function RightPanel({
           return (
             <button
               key={tab.id}
-              className={`right-panel-tab flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-xs font-medium transition-all duration-200 ${isActive
+              className={`right-panel-tab relative flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-xs font-medium transition-all duration-200 ${isActive
                 ? 'bg-[var(--color-bg-elevated)] text-[var(--color-primary)] shadow-sm ring-1 ring-[var(--color-border)]'
                 : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-secondary)]'
                 }`}
@@ -60,6 +68,11 @@ export default function RightPanel({
                 {tab.icon}
               </span>
               {tab.label}
+              {tab.badge && tab.badge > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold leading-none text-white">
+                  {tab.badge}
+                </span>
+              )}
             </button>
           );
         })}

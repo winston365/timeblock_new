@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import InboxTab from '@/features/tasks/InboxTab';
 import CompletedTab from '@/features/tasks/CompletedTab';
 import StatsTab from '@/features/stats/StatsTab';
@@ -6,6 +6,7 @@ import EnergyTab from '@/features/energy/EnergyTab';
 import GoalPanel from '@/features/goals/GoalPanel';
 import GoalModal from '@/features/goals/GoalModal';
 import type { DailyGoal } from '@/shared/types/domain';
+import { useGoalStore } from '@/shared/stores/goalStore';
 
 interface LeftSidebarProps {
   activeTab: 'today' | 'stats' | 'energy' | 'completed' | 'inbox';
@@ -24,6 +25,17 @@ const tabs = [
 export default function LeftSidebar({ activeTab, onTabChange, collapsed = false }: LeftSidebarProps) {
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<DailyGoal | undefined>(undefined);
+  const { goals, loadGoals } = useGoalStore();
+
+  // Load goals once so we can show pending count badge
+  useEffect(() => {
+    loadGoals().catch(console.error);
+  }, [loadGoals]);
+
+  const pendingGoals = useMemo(
+    () => goals.filter(g => g.completedMinutes < g.targetMinutes).length,
+    [goals]
+  );
 
   const handleOpenGoalModal = (goal?: DailyGoal) => {
     setEditingGoal(goal);
@@ -49,7 +61,7 @@ export default function LeftSidebar({ activeTab, onTabChange, collapsed = false 
           return (
             <button
               key={tab.id}
-              className={`sidebar-tab flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-2 text-[11px] font-medium transition-all duration-200 ${isActive
+              className={`sidebar-tab relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-2 text-[11px] font-medium transition-all duration-200 ${isActive
                 ? 'bg-[var(--color-bg-elevated)] text-[var(--color-primary)] shadow-sm ring-1 ring-[var(--color-border)]'
                 : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-secondary)]'
                 }`}
@@ -63,6 +75,11 @@ export default function LeftSidebar({ activeTab, onTabChange, collapsed = false 
             >
               <span className="text-lg leading-none" aria-hidden="true">{tab.icon}</span>
               <span>{tab.label}</span>
+              {tab.id === 'today' && pendingGoals > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold leading-none text-white">
+                  {pendingGoals}
+                </span>
+              )}
             </button>
           );
         })}

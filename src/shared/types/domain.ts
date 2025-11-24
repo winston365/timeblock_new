@@ -428,6 +428,12 @@ export interface Settings {
   dontDoChecklist?: DontDoChecklistItem[]; // 하지않기 체크리스트 항목
   barkApiKey?: string; // Bark 알림 API 키
   ignitionInactivityMinutes?: number; // 점화 버튼 비활동 시간 (분, 기본: 45)
+  ignitionDurationMinutes?: number; // 점화 길이 (분, 기본 3)
+  ignitionCooldownMinutes?: number; // 점화 쿨다운 (분, 기본 15)
+  ignitionXPCost?: number; // 점화 XP 비용 (기본 50 XP)
+  ignitionDurationMinutes?: number; // 점화 길이 (분, 기본 3)
+  ignitionCooldownMinutes?: number; // 점화 쿨다운 (분, 기본 15)
+  ignitionXPCost?: number; // 점화 XP 비용 (기본 50 XP)
   // 단축키 설정
   leftPanelToggleKey?: string; // 좌측 패널 토글 단축키 (기본: 'Ctrl+B')
   rightPanelToggleKey?: string; // 우측 패널 토글 단축키 (기본: 'Ctrl+Shift+B')

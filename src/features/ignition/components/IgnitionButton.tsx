@@ -8,13 +8,18 @@ import { useState, useEffect } from 'react';
 import { useIgnitionStore } from '../stores/useIgnitionStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { checkIgnitionAvailability, formatCooldownTime } from '../utils/ignitionLimits';
+import { useSettingsStore } from '@/shared/stores/settingsStore';
 
 export default function IgnitionButton() {
     const { openIgnitionWithCheck } = useIgnitionStore();
     const { gameState } = useGameStateStore();
+    const { settings } = useSettingsStore();
     const [cooldown, setCooldown] = useState(0);
 
-    const check = checkIgnitionAvailability(gameState, false);
+    const check = checkIgnitionAvailability(gameState, false, {
+        cooldownMinutes: settings?.ignitionCooldownMinutes,
+        xpCost: settings?.ignitionXPCost,
+    });
 
     // 쿨다운 타이머
     useEffect(() => {

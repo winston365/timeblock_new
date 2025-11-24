@@ -6,10 +6,10 @@
 
 import { create } from 'zustand';
 import type { WeatherState } from '@/shared/types/weather';
-import { fetchWeatherFromGoogle } from '../services/weatherService';
+import { fetchWeatherFromGoogle, clearWeatherCache } from '../services/weatherService';
 
 interface WeatherStore extends WeatherState {
-    fetchWeather: (forceRefresh?: boolean) => Promise<void>;
+    fetchWeather: (forceRefresh?: boolean, dayIndex?: number, allowRecovery?: boolean) => Promise<void>;
     setSelectedDay: (day: number) => void;
     shouldRefetch: () => boolean;
 }
@@ -20,12 +20,20 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
     loading: false,
     error: null,
     lastUpdated: null,
+    lastErrorAt: null,
 
     /**
      * 날씨 정보 가져오기
      */
-    fetchWeather: async (forceRefresh = false) => {
+    fetchWeather: async (forceRefresh = false, dayIndex = 0, allowRecovery = true) => {
         try {
+            const { lastErrorAt, error } = get();
+            const now = Date.now();
+            const ERROR_COOLDOWN = 5 * 60 * 1000; // 5분
+            if (!forceRefresh && error && lastErrorAt && now - lastErrorAt < ERROR_COOLDOWN) {
+                return;
+            }
+
             set({ loading: true, error: null });
 
             const { forecast, timestamp } = await fetchWeatherFromGoogle('서울 은평구', forceRefresh);
@@ -36,15 +44,27 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
 
             set({
                 forecast: safeForecast,
-                selectedDay: 0,
+                selectedDay: Math.min(dayIndex, safeForecast.length - 1),
                 loading: false,
                 lastUpdated: timestamp || Date.now(),
+                lastErrorAt: null,
             });
         } catch (error) {
             console.error('[WeatherStore] Failed to fetch weather:', error);
+            if (allowRecovery) {
+                try {
+                    await clearWeatherCache();
+                    // 캐시 삭제 후 한 번 더 시도
+                    await get().fetchWeather(forceRefresh, dayIndex, false);
+                    return;
+                } catch (re) {
+                    console.error('[WeatherStore] Recovery attempt failed:', re);
+                }
+            }
             set({
                 error: '날씨 정보를 불러올 수 없습니다',
                 loading: false,
+                lastErrorAt: Date.now(),
             });
         }
     },

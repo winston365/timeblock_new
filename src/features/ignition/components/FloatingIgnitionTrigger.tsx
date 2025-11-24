@@ -10,6 +10,7 @@ export default function FloatingIgnitionTrigger() {
     const { openIgnitionWithCheck, startSpin, isOpen } = useIgnitionStore();
     const { settings } = useSettingsStore();
     const [isVisible, setIsVisible] = useState(false);
+    const BONUS_STATE_KEY = 'bonus_ignition_state';
 
     // Mouse position tracking
     const mouseX = useMotionValue(0);
@@ -28,17 +29,22 @@ export default function FloatingIgnitionTrigger() {
                 return;
             }
 
-            // 쿨다운 체크 추가
-            const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
-            const { gameState } = useGameStateStore.getState();
-
-            if (gameState?.lastIgnitionTime) {
-                const elapsed = (Date.now() - gameState.lastIgnitionTime) / 1000;
-                if (elapsed < 900) { // 15분 쿨다운
-                    console.log('[FloatingIgnition] Cooldown active:', Math.ceil((900 - elapsed) / 60), 'mins remaining');
-                    setIsVisible(false);
-                    return;
+            // 보너스 전용 독립 쿨다운 (메인 점화와 연동 없음)
+            const bonusStateRaw = localStorage.getItem(BONUS_STATE_KEY);
+            let lastBonusTime = 0;
+            try {
+                if (bonusStateRaw) {
+                    lastBonusTime = JSON.parse(bonusStateRaw).lastTime || 0;
                 }
+            } catch {
+                lastBonusTime = 0;
+            }
+            const bonusCooldownMs = (settings?.ignitionCooldownMinutes ?? 15) * 60 * 1000;
+            const bonusElapsed = Date.now() - lastBonusTime;
+            if (lastBonusTime && bonusElapsed < bonusCooldownMs) {
+                console.log('[FloatingIgnition] Bonus cooldown active:', Math.ceil((bonusCooldownMs - bonusElapsed) / 60000), 'mins remaining');
+                setIsVisible(false);
+                return;
             }
 
             const now = Date.now();
@@ -112,6 +118,7 @@ export default function FloatingIgnitionTrigger() {
                         if (success) {
                             startSpin();
                             setIsVisible(false);
+                            localStorage.setItem(BONUS_STATE_KEY, JSON.stringify({ lastTime: Date.now() }));
                         }
                     }}
                     className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full shadow-lg cursor-pointer pointer-events-auto"

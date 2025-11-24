@@ -45,6 +45,9 @@ const settingsConfig: RepositoryConfig<Settings> = {
     autoEmojiEnabled: false, // 기본값: 자동 이모지 비활성화
     timeSlotTags: DEFAULT_TIME_SLOT_TAGS,
     ignitionInactivityMinutes: 45, // 기본값: 45분
+    ignitionDurationMinutes: 3, // 기본값: 3분
+    ignitionCooldownMinutes: 15, // 기본값: 15분
+    ignitionXPCost: 50, // 기본값: 50 XP
   }),
   sanitize: (data: Settings) => {
     // 기존 사용자를 위한 마이그레이션
@@ -57,6 +60,9 @@ const settingsConfig: RepositoryConfig<Settings> = {
       autoEmojiEnabled: data.autoEmojiEnabled ?? false,
       timeSlotTags: Array.isArray(data.timeSlotTags) ? data.timeSlotTags : DEFAULT_TIME_SLOT_TAGS,
       ignitionInactivityMinutes: data.ignitionInactivityMinutes ?? 45, // 기본값: 45분
+      ignitionDurationMinutes: data.ignitionDurationMinutes ?? 3, // 기본값: 3분
+      ignitionCooldownMinutes: data.ignitionCooldownMinutes ?? 15, // 기본값: 15분
+      ignitionXPCost: data.ignitionXPCost ?? 50, // 기본값: 50 XP
     };
   },
   logPrefix: 'Settings',

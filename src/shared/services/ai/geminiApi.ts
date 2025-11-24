@@ -182,7 +182,11 @@ export async function callGeminiAPIWithTools(
     const candidate = data.candidates[0];
     console.log('[Gemini Tools] Candidate:', JSON.stringify(candidate, null, 2)); // 디버깅용 로그
 
-    const text = candidate.content.parts[0]?.text || '';
+    const parts = candidate?.content?.parts || [];
+    const text = parts.map(p => p?.text || '').join(' ').trim();
+    if (!text) {
+      throw new Error('Gemini 응답이 비어 있습니다 (parts 없음).');
+    }
 
     const tokenUsage = data.usageMetadata
       ? {
@@ -708,7 +712,7 @@ export async function generateMicroStep(
 
 ## 역할
 너는 ADHD 사용자가 "시작의 두려움"을 극복하도록 돕는 코치야.
-사용자가 해야 할 작업이 주어지면, **3분 안에 할 수 있는 가장 사소하고, 부담 없고, 때로는 우스꽝스러울 정도로 쉬운 "마이크로 행동"** 하나를 제안해줘.
+사용자가 해야 할 작업이 주어지면, **3분 안에 할 수 있는 가장 사소하고, 부담 없고, 때로는 우스꽝스러울 정도로 쉬운 "마이크로 행동"**을 3가지 제안해줘.
 
 ## 규칙
 1. **절대 "작업을 시작하세요"라고 하지 마.**
@@ -716,7 +720,9 @@ export async function generateMicroStep(
 3. **과정의 아주 앞부분만 건드려.** (예: "보고서 파일 열고 제목만 쓰기" -> O)
 4. **구체적인 행동 지침이어야 해.**
 5. **친근하고 유머러스한 말투**를 사용해. (해요체)
-6. **길이는 1-2문장**으로 짧게.
+6. **각 제안은 1-2문장**으로 짧게.
+7. **제안 1**은 무조건 "이 작업을 주제로 글쓰기/메모하기" 같은 초간단 글쓰기 행동으로 시작할 것 (작업이 무엇이든 상관없이).
+8. **모든 제안은 30초~1분 안에 끝낼 수 있어야 함.** (시간이 오래 걸릴 여지가 있는 행동은 더 쪼개서 1분 이하로)
 
 ## 예시
 - 작업: "방 청소하기" -> "일단 바닥에 있는 쓰레기 딱 3개만 주워서 쓰레기통에 슛! 해볼까요?"
@@ -726,6 +732,16 @@ export async function generateMicroStep(
 
 ## 입력 작업
 "${taskText}"
+
+## 출력 형식
+1. 제안1
+2. 제안2
+3. 제안3
+
+### 제안 1 템플릿 예시
+- "지금 하는 작업을 주제로 2~3문장만 끄적여봐요. 막 써도 돼요!"
+- "이 작업에 대해 떠오르는 단어 5개만 적어보기. 틀려도 OK!"
+- "작업을 친구한테 설명하듯 메모에 적어보기. 1분만!"
 `;
 
   try {

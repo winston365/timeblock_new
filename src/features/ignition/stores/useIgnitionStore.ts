@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Task } from '@/shared/types/domain';
 import { checkIgnitionAvailability } from '../utils/ignitionLimits';
 import { toast } from 'react-hot-toast';
+import { useSettingsStore } from '@/shared/stores/settingsStore';
 
 interface IgnitionState {
     isOpen: boolean;
@@ -31,19 +32,26 @@ export const useIgnitionStore = create<IgnitionState>((set) => ({
     selectedTask: null,
     microStepText: '',
     timerState: 'idle',
-    timeLeft: 180, // 3 minutes
+    timeLeft: (useSettingsStore.getState().settings?.ignitionDurationMinutes ?? 3) * 60,
     isBonus: false,
 
-    openIgnition: () => set({ isOpen: true, isSpinning: true, timerState: 'idle', timeLeft: 180, microStepText: '', selectedTask: null }),
+    openIgnition: () => {
+        const duration = (useSettingsStore.getState().settings?.ignitionDurationMinutes ?? 3) * 60;
+        set({ isOpen: true, isSpinning: true, timerState: 'idle', timeLeft: duration, microStepText: '', selectedTask: null });
+    },
     closeIgnition: () => set({ isOpen: false, isSpinning: false, timerState: 'idle' }),
 
     openIgnitionWithCheck: async (isBonus = false) => {
         // GameStateStore import
         const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
         const { gameState, spendXP } = useGameStateStore.getState();
+        const { settings } = useSettingsStore.getState();
 
         // 점화 가능 여부 체크
-        const check = checkIgnitionAvailability(gameState, isBonus);
+        const check = checkIgnitionAvailability(gameState, isBonus, {
+            cooldownMinutes: settings?.ignitionCooldownMinutes,
+            xpCost: settings?.ignitionXPCost,
+        });
 
         if (!check.canIgnite) {
             // 쿨다운
@@ -55,7 +63,7 @@ export const useIgnitionStore = create<IgnitionState>((set) => ({
 
             // XP 부족
             if (check.reason === 'insufficient_xp') {
-                toast.error('💰 XP가 부족합니다 (필요: 50 XP)');
+                toast.error(`💰 XP가 부족합니다 (필요: ${check.requiresXP} XP)`);
                 return false;
             }
 
@@ -84,17 +92,18 @@ export const useIgnitionStore = create<IgnitionState>((set) => ({
         }
 
         // 점화 실행
+        const duration = (settings?.ignitionDurationMinutes ?? 3) * 60;
         set({
             isOpen: true,
             isSpinning: true,
             isBonus,
             timerState: 'idle',
-            timeLeft: 180,
+            timeLeft: duration,
             microStepText: '',
             selectedTask: null
         });
 
-        // GameState 업데이트 (보너스도 쿨다운 적용)
+        // GameState 업데이트 (보너스는 메인 쿨다운/횟수에 영향 없음)
         if (gameState) {
             const { updateGameState } = await import('@/data/repositories/gameStateRepository');
             const today = new Date().toISOString().split('T')[0];
@@ -102,12 +111,24 @@ export const useIgnitionStore = create<IgnitionState>((set) => ({
             // 날짜 변경 시 리셋
             const needsReset = gameState.lastIgnitionResetDate !== today;
 
-            // 보너스는 횟수 차감 안 하지만 쿨다운은 적용
-            await updateGameState({
+            const updatePayload: {
+                usedIgnitions: number;
+                lastIgnitionResetDate: string;
+                lastIgnitionTime?: number;
+            } = {
                 usedIgnitions: isBonus ? gameState.usedIgnitions : (needsReset ? 1 : (gameState.usedIgnitions + 1)),
-                lastIgnitionTime: Date.now(), // 보너스도 쿨다운 적용
                 lastIgnitionResetDate: today,
-            });
+            };
+
+            // 보너스는 메인 쿨다운 타임스탬프에 영향을 주지 않는다
+            if (!isBonus) {
+                updatePayload.lastIgnitionTime = Date.now();
+            }
+
+            const updated = await updateGameState(updatePayload);
+
+            // Store 상태도 즉시 갱신해서 다음 클릭에 쿨다운/횟수 적용이 바로 반영되도록 한다
+            useGameStateStore.setState({ gameState: updated });
         }
 
         return true;
@@ -120,7 +141,10 @@ export const useIgnitionStore = create<IgnitionState>((set) => ({
 
     startTimer: () => set({ timerState: 'running' }),
     pauseTimer: () => set({ timerState: 'paused' }),
-    resetTimer: () => set({ timerState: 'idle', timeLeft: 180 }),
+    resetTimer: () => {
+        const duration = (useSettingsStore.getState().settings?.ignitionDurationMinutes ?? 3) * 60;
+        set({ timerState: 'idle', timeLeft: duration });
+    },
 
     tickTimer: () => set((state) => {
         if (state.timerState !== 'running') return {};

@@ -156,7 +156,7 @@ export default function GoalPanel({ onOpenModal }: GoalPanelProps) {
   };
 
   return (
-    <div className="flex h-full flex-col gap-4 overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-[#0d1625] via-[#0c1220] to-[#0a0f1c] p-4 text-[var(--color-text)] shadow-[0_25px_60px_rgba(0,0,0,0.4)]">
+    <div className="flex h-full flex-col gap-4 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-4 text-[var(--color-text)] shadow-[0_25px_60px_rgba(0,0,0,0.35)]">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
