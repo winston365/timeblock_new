@@ -127,7 +127,7 @@ Event-driven UI logic uses `src/shared/lib/eventBus` with `[domain]:[action]` na
 
 ### Handler Pattern - Task Completion Pipeline
 
-Task completion triggers a chain of handlers (`src/shared/services/gameplay/handlers/`):
+Task completion triggers a chain of handlers (`src/shared/services/gameplay/taskCompletion/handlers/`):
 
 ```typescript
 // Pipeline executed in taskCompletionService.ts
