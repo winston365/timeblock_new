@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useSpring, useMotionValue } from 'framer-motion';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
+import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { useIgnitionStore } from '../stores/useIgnitionStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { Flame } from 'lucide-react';
 
 export default function FloatingIgnitionTrigger() {
     const { dailyData } = useDailyDataStore();
+    const { gameState } = useGameStateStore();
     const { openIgnitionWithCheck, isOpen } = useIgnitionStore();
     const { settings } = useSettingsStore();
     const [isVisible, setIsVisible] = useState(false);
-    const BONUS_STATE_KEY = 'bonus_ignition_state';
 
     // Mouse position tracking
     const mouseX = useMotionValue(0);
@@ -24,24 +25,17 @@ export default function FloatingIgnitionTrigger() {
     useEffect(() => {
         // Check inactivity logic
         const checkInactivity = async () => {
-            if (!dailyData) {
-                console.log('[FloatingIgnition] No dailyData');
+            if (!dailyData || !gameState) {
+                console.log('[FloatingIgnition] No dailyData or gameState');
                 return;
             }
 
-            // 보너스 전용 독립 쿨다운 (메인 점화와 연동 없음)
-            const bonusStateRaw = localStorage.getItem(BONUS_STATE_KEY);
-            let lastBonusTime = 0;
-            try {
-                if (bonusStateRaw) {
-                    lastBonusTime = JSON.parse(bonusStateRaw).lastTime || 0;
-                }
-            } catch {
-                lastBonusTime = 0;
-            }
-            const bonusCooldownMs = (settings?.justDoItCooldownMinutes ?? 15) * 60 * 1000;
+            // 보너스 전용 독립 쿨다운 체크 (gameState 기반)
+            const lastBonusTime = gameState.lastBonusIgnitionTime || 0;
+            const bonusCooldownMs = (settings?.justDoItCooldownMinutes ?? 1) * 60 * 1000;
             const bonusElapsed = Date.now() - lastBonusTime;
-            if (lastBonusTime && bonusElapsed < bonusCooldownMs) {
+
+            if (bonusElapsed < bonusCooldownMs) {
                 console.log('[FloatingIgnition] Bonus cooldown active:', Math.ceil((bonusCooldownMs - bonusElapsed) / 60000), 'mins remaining');
                 setIsVisible(false);
                 return;
@@ -99,7 +93,7 @@ export default function FloatingIgnitionTrigger() {
             clearInterval(interval);
             window.removeEventListener('mousemove', handleMouseMove);
         };
-    }, [dailyData, isOpen, mouseX, mouseY, settings]);
+    }, [dailyData, gameState, isOpen, mouseX, mouseY, settings]);
 
     if (!isVisible) return null;
 
@@ -114,10 +108,10 @@ export default function FloatingIgnitionTrigger() {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={async () => {
-                        const success = await openIgnitionWithCheck(true); // 보너스 = true (제한 무시)
+                        const success = await openIgnitionWithCheck(true); // 보너스 = true
                         if (success) {
                             setIsVisible(false);
-                            localStorage.setItem(BONUS_STATE_KEY, JSON.stringify({ lastTime: Date.now() }));
+                            // gameState.lastBonusIgnitionTime은 useIgnitionStore에서 자동 업데이트됨
                         }
                     }}
                     className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full shadow-lg cursor-pointer pointer-events-auto"

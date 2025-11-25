@@ -15,6 +15,7 @@ export default function IgnitionButton() {
     const { gameState } = useGameStateStore();
     const { settings } = useSettingsStore();
     const [cooldown, setCooldown] = useState(0);
+    const [forceUpdate, setForceUpdate] = useState(0);
 
     const check = checkIgnitionAvailability(gameState, false, {
         cooldownMinutes: settings?.ignitionCooldownMinutes,
@@ -30,6 +31,8 @@ export default function IgnitionButton() {
                 setCooldown(prev => {
                     if (prev <= 1) {
                         clearInterval(interval);
+                        // 타이머가 끝나면 forceUpdate를 증가시켜 컴포넌트 재렌더링 → check 재계산
+                        setForceUpdate(f => f + 1);
                         return 0;
                     }
                     return prev - 1;

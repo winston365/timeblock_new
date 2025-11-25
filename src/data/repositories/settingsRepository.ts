@@ -61,7 +61,7 @@ const settingsConfig: RepositoryConfig<Settings> = {
       timeSlotTags: Array.isArray(data.timeSlotTags) ? data.timeSlotTags : DEFAULT_TIME_SLOT_TAGS,
       ignitionInactivityMinutes: data.ignitionInactivityMinutes ?? 45, // 기본값: 45분
       ignitionDurationMinutes: data.ignitionDurationMinutes ?? 3, // 기본값: 3분
-      ignitionCooldownMinutes: data.ignitionCooldownMinutes ?? 15, // 기본값: 15분
+      ignitionCooldownMinutes: data.ignitionCooldownMinutes ?? 5, // 기본값: 5분
       ignitionXPCost: data.ignitionXPCost ?? 50, // 기본값: 50 XP
     };
   },

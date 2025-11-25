@@ -50,7 +50,9 @@ const gameStateConfig: RepositoryConfig<GameState> = {
     dailyFreeIgnitions: 3,
     usedIgnitions: 0,
     lastIgnitionTime: null,
+    lastBonusIgnitionTime: null,
     lastIgnitionResetDate: new Date().toISOString().split('T')[0],
+    ignitionHistory: [],
   }),
   sanitize: (data: GameState) => {
     // 필수 필드 초기화
@@ -68,7 +70,9 @@ const gameStateConfig: RepositoryConfig<GameState> = {
       dailyFreeIgnitions: data.dailyFreeIgnitions ?? 3,
       usedIgnitions: data.usedIgnitions ?? 0,
       lastIgnitionTime: data.lastIgnitionTime ?? null,
+      lastBonusIgnitionTime: data.lastBonusIgnitionTime ?? null,
       lastIgnitionResetDate: data.lastIgnitionResetDate ?? new Date().toISOString().split('T')[0],
+      ignitionHistory: Array.isArray((data as any).ignitionHistory) ? (data as any).ignitionHistory : [],
     };
   },
   logPrefix: 'GameState',

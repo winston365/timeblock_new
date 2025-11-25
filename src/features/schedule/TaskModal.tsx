@@ -27,6 +27,7 @@ interface TaskModalProps {
   onSaveMultiple?: (tasks: Partial<Task>[]) => void;
   onClose: () => void;
   source?: 'schedule' | 'inbox';
+  zIndex?: number; // allow stacking override when opened above other overlays
 }
 
 /**
@@ -67,7 +68,15 @@ function WaifuCommentary({
 /**
  * 작업 추가/수정 모달
  */
-export default function TaskModal({ task, initialBlockId, onSave, onSaveMultiple, onClose, source = 'schedule' }: TaskModalProps) {
+export default function TaskModal({
+  task,
+  initialBlockId,
+  onSave,
+  onSaveMultiple,
+  onClose,
+  source = 'schedule',
+  zIndex = 1000,
+}: TaskModalProps) {
   const [text, setText] = useState('');
   const [memo, setMemo] = useState('');
   const [baseDuration, setBaseDuration] = useState(15);
@@ -284,21 +293,6 @@ export default function TaskModal({ task, initialBlockId, onSave, onSaveMultiple
     if (task?.id && settings?.autoEmojiEnabled && settings?.geminiApiKey) {
       scheduleEmojiSuggestion(task.id, taskData.text);
     }
-
-    // 3. AI 작업 세분화 트리거 조건 체크
-    const aiTrigger = settings?.aiBreakdownTrigger || 'high_difficulty';
-    const shouldTrigger =
-      settings?.geminiApiKey &&
-      (aiTrigger === 'always' || (aiTrigger === 'high_difficulty' && resistance === 'high'));
-
-    if (shouldTrigger) {
-      const tempTask: any = {
-        ...taskData,
-        id: task?.id || 'temp-id', // 기존 ID 또는 임시 ID
-      };
-
-      triggerBreakdown(tempTask, source, settings.geminiApiKey, waifuState?.affection ?? 50);
-    }
   };
 
   const handleOverlayClick = (e: React.MouseEvent) => {
@@ -317,7 +311,8 @@ export default function TaskModal({ task, initialBlockId, onSave, onSaveMultiple
   return (
     <>
       <div
-        className="modal-overlay fixed inset-0 z-[1000] flex items-start justify-center bg-[color:var(--modal-backdrop)] px-4 py-8 backdrop-blur-xl md:items-center"
+        className="modal-overlay fixed inset-0 flex items-start justify-center bg-[color:var(--modal-backdrop)] px-4 py-8 backdrop-blur-xl md:items-center"
+        style={{ zIndex }}
         onClick={handleOverlayClick}
       >
         <div className="modal-content modal-content-wide relative flex w-full max-w-[900px] flex-col overflow-hidden rounded-3xl border border-[var(--modal-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text)] shadow-[var(--modal-shadow)] animate-in zoom-in-95 duration-200 max-h-[90vh]">

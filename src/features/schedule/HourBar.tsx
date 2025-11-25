@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import type { Task, TimeBlockId, TimeSlotTagTemplate } from '@/shared/types/domain';
 import { useToastStore } from '@/shared/stores/toastStore';
 import TaskCard from './TaskCard';
@@ -208,7 +209,7 @@ export default function HourBar({
       const trimmedText = inlineInputValue.trim();
 
       if (trimmedText.length <= 10) {
-        addToast('작업 제목을 10자 이상 입력해주세요.', 'warning', 3000);
+        toast.error('작업 제목을 10자 이상 입력해주세요.');
         return;
       }
 

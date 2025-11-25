@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIgnitionStore } from './stores/useIgnitionStore';
 import { useDailyData } from '@/shared/hooks';
@@ -6,7 +6,6 @@ import { generateMicroStep } from '@/shared/services/ai/geminiApi';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import TaskSpinner from './components/TaskSpinner';
-import { checkIgnitionAvailability, formatCooldownTime } from './utils/ignitionLimits';
 import TaskModal from '@/features/schedule/TaskModal';
 import { toast } from 'react-hot-toast';
 import type { TimeBlockId } from '@/shared/types/domain';
@@ -38,22 +37,15 @@ export default function IgnitionOverlay() {
     const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [pendingSelection, setPendingSelection] = useState<any | null>(null);
+    const [weightedPool, setWeightedPool] = useState<any[]>([]);
+    const [poolComputedAt, setPoolComputedAt] = useState<Date | null>(null);
+    const pendingSelectionRef = useRef<any | null>(null);
+    const [confirmCountdown, setConfirmCountdown] = useState<number | null>(null);
+    const autoConfirmTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const isConfirmingRef = useRef(false);
+    const overlayRef = useRef<HTMLDivElement | null>(null);
 
-    const ignitionStatus = useMemo(
-        () => {
-            const { settings } = useSettingsStore.getState();
-            const cooldownMinutes = isBonus
-                ? (settings?.justDoItCooldownMinutes ?? 1)
-                : (settings?.ignitionCooldownMinutes ?? 30);
 
-            return checkIgnitionAvailability(gameState, isBonus, {
-                cooldownMinutes: cooldownMinutes,
-                xpCost: settings?.ignitionXPCost,
-            });
-        },
-        [gameState, isBonus]
-    );
-    const canSpin = ignitionStatus.canIgnite;
 
 
     // Fetch inbox tasks when opened
@@ -201,61 +193,88 @@ export default function IgnitionOverlay() {
         return pool;
     };
 
-    const handleTaskSelect = (task: any) => {
+    // Recompute weighted pool whenever underlying tasks change while 점화 화면이 열려 있을 때
+    useEffect(() => {
+        if (!isOpen) return;
+        const pool = getAvailableTasks();
+        setWeightedPool(pool);
+        setPoolComputedAt(new Date());
+    }, [isOpen, dailyData, inboxTasks]);
+
+    const handleTaskSelect = useCallback((task: any) => {
         setPendingSelection(task);
+        pendingSelectionRef.current = task;
         stopSpin(task); // 스핀 상태 해제, 선택은 확인 버튼에서 처리
-    };
+    }, [stopSpin]);
 
-    const handleConfirmSelection = (selection: any) => {
+    const handleConfirmSelection = useCallback(async (selection: any) => {
         if (!selection) return;
-
-        // 꽝 처리
-        if (selection.id === 'boom' || selection.text?.includes('꽝')) {
-            toast.error('꽝! 다음에 다시 시도하세요.');
-            setPendingSelection(null);
-            closeIgnition();
-            return;
+        if (isConfirmingRef.current) return;
+        isConfirmingRef.current = true;
+        if (autoConfirmTimerRef.current) {
+            clearTimeout(autoConfirmTimerRef.current);
+            autoConfirmTimerRef.current = null;
         }
 
-        // 휴식권 처리
-        if (selection.isTicket) {
-            addItem(selection.ticketType, 1).then(() => {
-                toast.success(`${selection.text} 획득!`);
-                addToHistory(selection); // 히스토리 추가
-                setPendingSelection(null);
+        try {
+            // 꽝 처리
+            if (selection.id === 'boom' || selection.text?.includes('꽝')) {
+                toast.error('꽝! 다음에 다시 시도하세요.');
+                try {
+                    await addToHistory({ ...selection, rarity: 'common' }, isBonus ? 'bonus' : 'normal');
+                } catch (error) {
+                    console.error('[Ignition] Failed to persist history (boom):', error);
+                }
                 closeIgnition();
+                return;
+            }
+
+            // 휴식권 처리
+            if (selection.isTicket) {
+                try {
+                    await addItem(selection.ticketType, 1);
+                    toast.success(`${selection.text} 획득!`);
+                    await addToHistory(selection, isBonus ? 'bonus' : 'normal'); // 히스토리 추가 (영구 저장)
+                } catch (error) {
+                    console.error('[Ignition] Failed to persist history or add item:', error);
+                    toast.error('보상 지급에 실패했습니다.');
+                }
+                closeIgnition();
+                return;
+            }
+
+            stopSpin(selection);
+            try {
+                await addToHistory(selection, isBonus ? 'bonus' : 'normal'); // 히스토리 추가 (영구 저장)
+            } catch (error) {
+                console.error('[Ignition] Failed to persist history:', error);
+            }
+
+            // Generate micro-step
+            setIsLoadingPrompt(true);
+            const { settings } = useSettingsStore.getState();
+            const promptContext = [
+                `작업: ${selection.text}`,
+                selection.resistance ? `난이도: ${selection.resistance}` : '',
+                selection.memo ? `메모: ${selection.memo}` : '',
+                selection.preparation1 || selection.preparation2 || selection.preparation3
+                    ? `준비사항: ${[selection.preparation1, selection.preparation2, selection.preparation3].filter(Boolean).join(', ')}`
+                    : '',
+            ].filter(Boolean).join('\n');
+
+            generateMicroStep(promptContext, settings?.geminiApiKey || '').then(step => {
+                setMicroStep(step);
+                setIsLoadingPrompt(false);
             }).catch(() => {
-                toast.error('보상 지급에 실패했습니다.');
-                setPendingSelection(null);
-                closeIgnition();
+                setIsLoadingPrompt(false);
             });
-            return;
+        } finally {
+            setPendingSelection(null);
+            pendingSelectionRef.current = null;
+            setConfirmCountdown(null);
+            isConfirmingRef.current = false;
         }
-
-        stopSpin(selection);
-        addToHistory(selection); // 히스토리 추가
-
-        // Generate micro-step
-        setIsLoadingPrompt(true);
-        const { settings } = useSettingsStore.getState();
-        const promptContext = [
-            `작업: ${selection.text}`,
-            selection.resistance ? `난이도: ${selection.resistance}` : '',
-            selection.memo ? `메모: ${selection.memo}` : '',
-            selection.preparation1 || selection.preparation2 || selection.preparation3
-                ? `준비사항: ${[selection.preparation1, selection.preparation2, selection.preparation3].filter(Boolean).join(', ')}`
-                : '',
-        ].filter(Boolean).join('\n');
-
-        generateMicroStep(promptContext, settings?.geminiApiKey || '').then(step => {
-            setMicroStep(step);
-            setIsLoadingPrompt(false);
-        }).catch(() => {
-            setIsLoadingPrompt(false);
-        });
-
-        setPendingSelection(null);
-    };
+    }, [addItem, addToHistory, closeIgnition, isBonus, stopSpin]);
 
     const formatTime = (seconds: number) => {
         const m = Math.floor(seconds / 60);
@@ -280,25 +299,77 @@ export default function IgnitionOverlay() {
     };
 
     // Calculate weights for display
-    const availableTasks = useMemo(() => getAvailableTasks(), [dailyData, inboxTasks]);
-    const totalWeight = useMemo(() => availableTasks.reduce((sum, t) => sum + (t.weight || 0), 0), [availableTasks]);
-    const sortedTasks = useMemo(() => [...availableTasks].sort((a, b) => (b.weight || 0) - (a.weight || 0)), [availableTasks]);
+    const totalWeight = useMemo(() => weightedPool.reduce((sum, t) => sum + (t.weight || 0), 0), [weightedPool]);
+    const sortedTasks = useMemo(() => [...weightedPool].sort((a, b) => (b.weight || 0) - (a.weight || 0)), [weightedPool]);
 
     // Determine modal width
     // Spinner View: max-w-4xl (to fit weights + spinner)
     // Timer View: max-w-xl (1.3x of original md)
     const modalWidthClass = (!selectedTask || isSpinning || pendingSelection) ? 'max-w-4xl' : 'max-w-xl';
 
+    // Enter 단축키로 결과 확인
+    useEffect(() => {
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Enter' && pendingSelectionRef.current) {
+                e.preventDefault();
+                handleConfirmSelection(pendingSelectionRef.current);
+            }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [handleConfirmSelection]);
+
+    // 자동 결과 확인 타이머 (5초 후 자동 확인)
+    useEffect(() => {
+        if (!pendingSelectionRef.current) {
+            setConfirmCountdown(null);
+            if (autoConfirmTimerRef.current) clearTimeout(autoConfirmTimerRef.current);
+            return;
+        }
+
+        setConfirmCountdown(5);
+        if (autoConfirmTimerRef.current) clearTimeout(autoConfirmTimerRef.current);
+
+        const tick = () => {
+            setConfirmCountdown((prev) => {
+                if (!pendingSelectionRef.current) return null;
+                if (prev && prev > 1) {
+                    autoConfirmTimerRef.current = setTimeout(tick, 1000);
+                    return prev - 1;
+                }
+                // 시간 만료 시 자동 확인
+                handleConfirmSelection(pendingSelectionRef.current);
+                return null;
+            });
+        };
+
+        autoConfirmTimerRef.current = setTimeout(tick, 1000);
+
+        return () => {
+            if (autoConfirmTimerRef.current) clearTimeout(autoConfirmTimerRef.current);
+        };
+    }, [pendingSelection, handleConfirmSelection]);
+
     return (
         <AnimatePresence>
             {isOpen && (
                 <motion.div
+                    ref={overlayRef}
                     initial={{ scale: 0.9, opacity: 0, y: 20 }}
                     animate={{ scale: 1, opacity: 1, y: 0 }}
                     exit={{ scale: 0.9, opacity: 0, y: 20 }}
                     className="fixed inset-0 z-[2000] flex items-start justify-center pt-24 px-4"
                 >
-                    <div className={`w-full ${modalWidthClass} overflow-hidden rounded-3xl border border-white/10 bg-[#1a1a1a] shadow-2xl transition-all duration-300`}>
+                    <motion.div
+                        className={`w-full ${modalWidthClass} overflow-hidden rounded-3xl border border-white/10 bg-[#1a1a1a] shadow-2xl transition-all duration-300`}
+                        drag
+                        dragMomentum
+                        dragElastic={0.2}
+                        dragTransition={{ power: 0.3, timeConstant: 80 }}
+                        dragConstraints={overlayRef}
+                        style={{ willChange: 'transform', cursor: 'grab' }}
+                        whileTap={{ cursor: 'grabbing' }}
+                    >
                         {/* Header */}
                         <div className="flex items-center justify-between bg-white/5 px-6 py-4">
                             <div className="flex items-center gap-2 text-amber-500">
@@ -306,21 +377,6 @@ export default function IgnitionOverlay() {
                                 <span className="font-bold">3분 점화</span>
                             </div>
                             <div className="flex items-center gap-2 text-xs">
-                                {typeof ignitionStatus.freeSpinsRemaining === 'number' && (
-                                    <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-1 text-emerald-100">
-                                        무료 {Math.max(0, ignitionStatus.freeSpinsRemaining)}회
-                                    </span>
-                                )}
-                                {ignitionStatus.reason === 'cooldown' && ignitionStatus.cooldownRemaining !== undefined && (
-                                    <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-1 text-amber-100">
-                                        쿨다운 {formatCooldownTime(ignitionStatus.cooldownRemaining)}
-                                    </span>
-                                )}
-                                {ignitionStatus.requiresXP && !ignitionStatus.canIgnite && (
-                                    <span className="rounded-full border border-indigo-400/40 bg-indigo-400/10 px-2 py-1 text-indigo-100">
-                                        {ignitionStatus.requiresXP} XP 필요
-                                    </span>
-                                )}
                                 <button
                                     onClick={closeIgnition}
                                     className="rounded-full p-1 text-white/50 hover:bg-white/10 hover:text-white"
@@ -338,6 +394,10 @@ export default function IgnitionOverlay() {
                                         {/* Left: Weights Panel */}
                                         <div className="w-1/3 flex flex-col gap-3 text-left border-r border-white/10 pr-6">
                                             <h3 className="text-sm font-bold text-white/70 uppercase tracking-wider">확률 분포</h3>
+                                            <div className="text-[10px] text-white/40 flex items-center justify-between pr-1">
+                                                <span>{poolComputedAt ? poolComputedAt.toLocaleTimeString() : '계산 대기'}</span>
+                                                <span>항목 {weightedPool.length} · 총가중치 {totalWeight || 0}</span>
+                                            </div>
                                             <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                                 {sortedTasks.map((task) => {
                                                     const percent = totalWeight > 0 ? ((task.weight || 0) / totalWeight * 100).toFixed(1) : '0';
@@ -354,19 +414,36 @@ export default function IgnitionOverlay() {
                                         {/* Right: Spinner */}
                                         <div className="w-2/3 flex flex-col justify-center">
                                             <TaskSpinner
-                                                tasks={availableTasks as any}
+                                                tasks={weightedPool as any}
                                                 onSelect={handleTaskSelect as any}
                                                 onSpinStart={startSpin}
-                                                disabled={!canSpin || !!pendingSelection}
-                                                statusText={
-                                                    pendingSelection ? '결과 확인 중...' :
-                                                        !canSpin ? (
-                                                            ignitionStatus.reason === 'cooldown' ? '쿨다운 중입니다' :
-                                                                ignitionStatus.reason === 'insufficient_xp' ? 'XP가 부족합니다' :
-                                                                    '사용 불가'
-                                                        ) : undefined
-                                                }
+                                                disabled={!!pendingSelection}
+                                                resultTask={pendingSelection as any}
+                                                statusText={pendingSelection ? `자동 확인 ${confirmCountdown ?? 5}s` : undefined}
                                             />
+                                            {pendingSelection && (
+                                                <div className="mt-4 flex items-center justify-center gap-3">
+                                                    {(pendingSelection as any).rarity && (
+                                                        <span className={`rounded-full border px-3 py-1 text-xs font-semibold text-white/80 ${(pendingSelection as any).rarity === 'legendary'
+                                                            ? 'border-amber-400/60 bg-amber-400/10 text-amber-100'
+                                                            : (pendingSelection as any).rarity === 'epic'
+                                                                ? 'border-purple-400/60 bg-purple-400/10 text-purple-100'
+                                                                : (pendingSelection as any).rarity === 'rare'
+                                                                    ? 'border-blue-400/60 bg-blue-400/10 text-blue-100'
+                                                                    : 'border-emerald-400/60 bg-emerald-400/10 text-emerald-100'
+                                                        }`}>
+                                                            {(pendingSelection as any).rarity}
+                                                        </span>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleConfirmSelection(pendingSelection)}
+                                                        className="rounded-xl bg-emerald-500 px-6 py-3 text-base font-bold text-white shadow-lg hover:bg-emerald-600 hover:shadow-emerald-500/40 transition"
+                                                        title="Enter"
+                                                    >
+                                                        결과 확인 (Enter)
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -379,6 +456,9 @@ export default function IgnitionOverlay() {
                                             ) : (
                                                 history.map((task, idx) => (
                                                     <div key={`${task.id}-${idx}`} className="flex-shrink-0 flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 border border-white/5">
+                                                        <span className="text-[10px] uppercase tracking-wide rounded-full px-2 py-0.5 border border-white/10 text-white/60">
+                                                            {(task as any).source === 'bonus' ? '보너스' : '정상'}
+                                                        </span>
                                                         <span className="text-xs text-white/80 whitespace-nowrap max-w-[150px] truncate">{task.text}</span>
                                                         {(task as any).rarity && (
                                                             <div className={`w-2 h-2 rounded-full ${(task as any).rarity === 'legendary' ? 'bg-amber-400' :
@@ -427,14 +507,14 @@ export default function IgnitionOverlay() {
                                     </div>
 
                                     {/* AI Micro Step Prompt */}
-                                    <div className="relative w-full rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-600/10 p-6 border border-amber-500/20">
+                                    <div className="relative w-full rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-600/10 p-6 border border-amber-500/20 max-h-[360px] overflow-y-auto custom-scrollbar">
                                         {isLoadingPrompt ? (
                                             <div className="flex items-center justify-center gap-2 text-amber-500">
                                                 <span className="animate-spin">⏳</span>
                                                 <span className="text-sm font-medium">혜은이가 아주 쉬운 시작 방법을 찾는 중...</span>
                                             </div>
                                         ) : (
-                                            <p className="text-lg font-medium leading-relaxed text-amber-100 whitespace-pre-line">
+                                            <p className="text-lg font-medium leading-relaxed text-amber-100 whitespace-pre-line leading-[1.45] space-y-1.5">
                                                 "{microStepText}"
                                             </p>
                                         )}
@@ -499,33 +579,8 @@ export default function IgnitionOverlay() {
                                 </div>
                             )}
 
-                            {/* 당첨 결과 확인 */}
-                            {pendingSelection && (
-                                <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 text-left">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm text-white/60">당첨 결과</span>
-                                            <span className="text-lg font-bold text-white">{pendingSelection.text}</span>
-                                        </div>
-                                        {(pendingSelection as any).rarity && (
-                                            <span className="rounded-full border px-3 py-1 text-xs font-semibold text-white/80">
-                                                {(pendingSelection as any).rarity}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="mt-3 flex gap-2 justify-end">
-
-                                        <button
-                                            onClick={() => handleConfirmSelection(pendingSelection)}
-                                            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
-                                        >
-                                            결과 확인
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
                         </div>
-                    </div>
+                    </motion.div>
                 </motion.div>
             )}
             {isTaskModalOpen && selectedTask && !(selectedTask as any).isTicket && (
@@ -552,6 +607,7 @@ export default function IgnitionOverlay() {
                     }}
                     onClose={() => setIsTaskModalOpen(false)}
                     source="schedule"
+                    zIndex={4000}
                 />
             )}
         </AnimatePresence>

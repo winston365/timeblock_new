@@ -14,6 +14,7 @@ import { useDragDropManager } from './hooks/useDragDropManager';
 import { NeonCheckbox } from '@/shared/components/ui/NeonCheckbox';
 import { toast } from 'react-hot-toast';
 import { useXPParticleStore } from '@/features/gamification/stores/xpParticleStore';
+import { useGoalStore } from '@/shared/stores/goalStore';
 
 interface TaskCardProps {
   task: Task;
@@ -67,9 +68,12 @@ export default function TaskCard({
   const [timerIconActive, setTimerIconActive] = useState(false);
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const showMinimal = compact && task.timeBlock === null;
+  const showMinimal = compact && hideMetadata;
 
   const { setDragData } = useDragDropManager();
+  const { goals } = useGoalStore();
+  const linkedGoal = task.goalId ? goals.find(g => g.id === task.goalId) : null;
+
   const xp = calculateTaskXP(task);
   const isPrepared = !!(task.preparation1 && task.preparation2 && task.preparation3);
   const preparationCount = [task.preparation1, task.preparation2, task.preparation3].filter(Boolean).length;
@@ -243,6 +247,19 @@ export default function TaskCard({
                     Prep <span className="tabular-nums">{preparationCount}</span>/3
                   </span>
                 )}
+                {linkedGoal && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors"
+                    style={{
+                      borderColor: linkedGoal.color ? `${linkedGoal.color}40` : 'var(--color-primary)',
+                      backgroundColor: linkedGoal.color ? `${linkedGoal.color}10` : 'var(--color-primary-10)',
+                      color: linkedGoal.color || 'var(--color-primary)',
+                    }}
+                  >
+                    {linkedGoal.icon && <span>{linkedGoal.icon}</span>}
+                    <span>{linkedGoal.title}</span>
+                  </span>
+                )}
               </div>
             </div>
 
@@ -380,6 +397,19 @@ export default function TaskCard({
                   >
                     Prep {preparationCount}/3
                   </span>
+                  {linkedGoal && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors"
+                      style={{
+                        borderColor: linkedGoal.color ? `${linkedGoal.color}40` : 'var(--color-primary)',
+                        backgroundColor: linkedGoal.color ? `${linkedGoal.color}10` : 'var(--color-primary-10)',
+                        color: linkedGoal.color || 'var(--color-primary)',
+                      }}
+                    >
+                      {linkedGoal.icon && <span>{linkedGoal.icon}</span>}
+                      <span>{linkedGoal.title}</span>
+                    </span>
+                  )}
 
                   {showDurationPicker && (
                     <div className="absolute left-0 top-full z-[9999] mt-2 grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 text-xs shadow-xl backdrop-blur-md w-[180px]">

@@ -68,7 +68,7 @@ export default function LeftSidebar({ activeTab, onTabChange, collapsed = false 
               aria-selected={isActive}
               aria-controls={`sidebar-panel-${tab.id}`}
               id={`sidebar-tab-${tab.id}`}
-              tabIndex={isActive ? 0 : -1}
+              tabIndex={collapsed ? -1 : (isActive ? 0 : -1)}
               title={tab.label}
             >
               <span className="text-lg leading-none" aria-hidden="true">{tab.icon}</span>

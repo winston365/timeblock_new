@@ -806,7 +806,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                                                     min="1"
                                                     max="120"
                                                     className={inputClass}
-                                                    value={localSettings?.ignitionCooldownMinutes ?? 15}
+                                                    value={localSettings?.ignitionCooldownMinutes ?? 5}
                                                     onChange={(e) => {
                                                         const value = parseInt(e.target.value) || 15;
                                                         const clamped = Math.max(1, Math.min(120, value));

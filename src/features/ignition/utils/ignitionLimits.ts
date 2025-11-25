@@ -31,7 +31,7 @@ export function checkIgnitionAvailability(
     isBonus: boolean = false,
     config: IgnitionConfig = {}
 ): IgnitionCheckResult {
-    const cooldownSeconds = (config.cooldownMinutes ?? 15) * 60;
+    const cooldownSeconds = (config.cooldownMinutes ?? 5) * 60;
     const xpCost = config.xpCost ?? 50;
 
     if (!gameState) {
@@ -49,9 +49,11 @@ export function checkIgnitionAvailability(
         };
     }
 
-    // 쿨다운 체크 (설정값) - 보너스도 적용
-    if (gameState.lastIgnitionTime) {
-        const elapsed = (now - gameState.lastIgnitionTime) / 1000;
+    // 쿨다운 체크 - isBonus에 따라 다른 타임스탬프 사용
+    const lastTime = isBonus ? gameState.lastBonusIgnitionTime : gameState.lastIgnitionTime;
+
+    if (lastTime) {
+        const elapsed = (now - lastTime) / 1000;
         if (elapsed < cooldownSeconds) {
             return {
                 canIgnite: false,

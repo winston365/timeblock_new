@@ -170,8 +170,10 @@ export interface GameState {
   // 점화 시스템
   dailyFreeIgnitions: number; // 일일 무료 횟수 (기본: 3)
   usedIgnitions: number; // 오늘 사용한 횟수
-  lastIgnitionTime: number | null; // 마지막 점화 시간 (타임스탬프)
+  lastIgnitionTime: number | null; // 마지막 일반 점화 시간 (타임스탬프)
+  lastBonusIgnitionTime: number | null; // 마지막 보너스 점화 시간 (타임스탬프)
   lastIgnitionResetDate: string; // 마지막 리셋 날짜 (YYYY-MM-DD)
+  ignitionHistory: Task[]; // 점화/JustDoIt 룰렛 히스토리 (최근 n개)
 }
 
 // ============================================================================
