@@ -15,7 +15,7 @@ import { useState, useEffect } from 'react';
 import { useGameState } from '@/shared/hooks/useGameState';
 import { useDailyData } from '@/shared/hooks/useDailyData';
 import type { Task } from '@/shared/types/domain';
-import { generateId } from '@/shared/lib/utils';
+import { createInboxTask, createTaskFromPartial, isTaskPrepared, isNewlyPrepared } from '@/shared/utils/taskFactory';
 import TaskCard from '@/features/schedule/TaskCard';
 import TaskModal from '@/features/schedule/TaskModal';
 import { useDragDropManager } from '@/features/schedule/hooks/useDragDropManager';
@@ -66,22 +66,10 @@ export default function InboxTab() {
         return;
       }
       try {
-        const newTask: Task = {
-          id: generateId('task'),
-          text: trimmedText,
-          memo: '',
-          baseDuration: 15, // 기본 15분
+        const newTask = createInboxTask(trimmedText, {
+          baseDuration: 15,
           resistance: 'low',
-          adjustedDuration: 15,
-          timeBlock: null, // 인박스는 항상 null
-          completed: false,
-          actualDuration: 0,
-          createdAt: new Date().toISOString(),
-          completedAt: null,
-          preparation1: '',
-          preparation2: '',
-          preparation3: '',
-        };
+        });
         await addTask(newTask);
         setInlineInputValue('');
       } catch (error) {
@@ -109,34 +97,18 @@ export default function InboxTab() {
         await updateTask(editingTask.id, taskData);
 
         // 수정 후에도 준비된 작업인지 확인 (이전에 준비되지 않았다면 퀘스트 진행)
-        const wasPrepared = !!(editingTask.preparation1 && editingTask.preparation2 && editingTask.preparation3);
-        const isNowPrepared = !!(taskData.preparation1 && taskData.preparation2 && taskData.preparation3);
-
-        if (!wasPrepared && isNowPrepared) {
+        if (isNewlyPrepared(editingTask, taskData)) {
           await updateQuestProgress('prepare_tasks', 1);
         }
       } else {
-        const newTask: Task = {
-          id: generateId('task'),
-          text: taskData.text || '',
-          memo: taskData.memo || '',
-          baseDuration: taskData.baseDuration || 15,
-          resistance: taskData.resistance || 'low',
-          adjustedDuration: taskData.adjustedDuration || 15,
-          timeBlock: null, // 인박스는 항상 null
-          completed: false,
-          actualDuration: 0,
-          createdAt: new Date().toISOString(),
-          completedAt: null,
-          preparation1: taskData.preparation1 || '',
-          preparation2: taskData.preparation2 || '',
-          preparation3: taskData.preparation3 || '',
-        };
+        const newTask = createTaskFromPartial(taskData, {
+          timeBlock: null,
+          baseDuration: 15,
+        });
         await addTask(newTask);
 
         // 준비된 작업이면 퀘스트 진행
-        const isPrepared = !!(taskData.preparation1 && taskData.preparation2 && taskData.preparation3);
-        if (isPrepared) {
+        if (isTaskPrepared(taskData)) {
           await updateQuestProgress('prepare_tasks', 1);
         }
       }
@@ -217,27 +189,14 @@ export default function InboxTab() {
   const handleSaveMultipleTasks = async (tasks: Partial<Task>[]) => {
     try {
       for (const taskData of tasks) {
-        const newTask: Task = {
-          id: generateId('task'),
-          text: taskData.text || '새 작업',
-          memo: taskData.memo || '',
-          baseDuration: taskData.baseDuration || 15,
-          resistance: taskData.resistance || 'low',
-          adjustedDuration: taskData.adjustedDuration || 15,
+        const newTask = createTaskFromPartial(taskData, {
           timeBlock: null,
-          completed: false,
-          actualDuration: 0,
-          createdAt: new Date().toISOString(),
-          completedAt: null,
-          preparation1: taskData.preparation1 || '',
-          preparation2: taskData.preparation2 || '',
-          preparation3: taskData.preparation3 || '',
-        };
+          baseDuration: 15,
+        });
         await addTask(newTask);
 
         // 퀘스트 진행 체크
-        const isPrepared = !!(newTask.preparation1 && newTask.preparation2 && newTask.preparation3);
-        if (isPrepared) {
+        if (isTaskPrepared(newTask)) {
           await updateQuestProgress('prepare_tasks', 1);
         }
       }

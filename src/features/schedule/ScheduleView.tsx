@@ -8,9 +8,9 @@ import { useEffect, useRef, useState } from 'react';
 import { db } from '@/data/db/dexieClient';
 import { useDailyData } from '@/shared/hooks';
 import { useGameState } from '@/shared/hooks/useGameState';
-import { generateId } from '@/shared/lib/utils';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { createNewTask, createTaskFromPartial, isTaskPrepared, isNewlyPrepared } from '@/shared/utils/taskFactory';
 import type { Task, TimeBlockId, WarmupPresetItem } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import TaskModal from './TaskModal';
@@ -235,25 +235,12 @@ export default function ScheduleView() {
       const block = TIME_BLOCKS.find(b => b.id === blockId);
       const targetHour = hourSlot ?? (block ? block.start : undefined);
 
-      const newTask: Task = {
-        id: generateId('task'),
-        text: text.trim(),
-        memo: '',
+      const newTask = createNewTask(text, {
         baseDuration: 15,
         resistance: 'low',
-        adjustedDuration: 15,
-        order: Date.now(),
         timeBlock: blockId,
         hourSlot: targetHour,
-        completed: false,
-        actualDuration: 0,
-        createdAt: new Date().toISOString(),
-        completedAt: null,
-        preparation1: '',
-        preparation2: '',
-        preparation3: '',
-        goalId: null,
-      };
+      });
       await addTask(newTask);
       showWaifu(`"${text.trim()}" 추가했어! 고마워~`);
     } catch (error) {
@@ -286,37 +273,16 @@ export default function ScheduleView() {
     try {
       if (editingTask) {
         await updateTask(editingTask.id, taskData);
-        const wasPrepared = !!(editingTask.preparation1 && editingTask.preparation2 && editingTask.preparation3);
-        const isNowPrepared = !!(taskData.preparation1 && taskData.preparation2 && taskData.preparation3);
-        if (!wasPrepared && isNowPrepared) {
+        if (isNewlyPrepared(editingTask, taskData)) {
           await updateQuestProgress('prepare_tasks', 1);
         }
       } else {
-        const block = TIME_BLOCKS.find(b => b.id === selectedBlockId);
-        const firstHour = block ? block.start : undefined;
-
-        const newTask: Task = {
-          id: generateId('task'),
-          text: taskData.text || '',
-          memo: taskData.memo || '',
-          baseDuration: taskData.baseDuration || 30,
-          resistance: taskData.resistance || 'low',
-          adjustedDuration: taskData.adjustedDuration || 30,
-          order: Date.now(),
+        const newTask = createTaskFromPartial(taskData, {
           timeBlock: selectedBlockId,
-          hourSlot: firstHour,
-          completed: false,
-          actualDuration: 0,
-          createdAt: new Date().toISOString(),
-          completedAt: null,
-          preparation1: taskData.preparation1 || '',
-          preparation2: taskData.preparation2 || '',
-          preparation3: taskData.preparation3 || '',
-          goalId: taskData.goalId || null,
-        };
+          baseDuration: 30,
+        });
         await addTask(newTask);
-        const isPrepared = !!(taskData.preparation1 && taskData.preparation2 && taskData.preparation3);
-        if (isPrepared) {
+        if (isTaskPrepared(taskData)) {
           await updateQuestProgress('prepare_tasks', 1);
         }
       }
@@ -405,30 +371,12 @@ export default function ScheduleView() {
     if (!selectedBlockId) return;
     try {
       for (const taskData of tasks) {
-        const block = TIME_BLOCKS.find(b => b.id === selectedBlockId);
-        const firstHour = block ? block.start : undefined;
-        const newTask: Task = {
-          id: generateId('task'),
-          text: taskData.text || '새 작업',
-          memo: taskData.memo || '',
-          baseDuration: taskData.baseDuration || 15,
-          resistance: taskData.resistance || 'low',
-          adjustedDuration: taskData.adjustedDuration || 15,
-          order: Date.now(),
+        const newTask = createTaskFromPartial(taskData, {
           timeBlock: selectedBlockId,
-          hourSlot: firstHour,
-          completed: false,
-          actualDuration: 0,
-          createdAt: new Date().toISOString(),
-          completedAt: null,
-          preparation1: taskData.preparation1 || '',
-          preparation2: taskData.preparation2 || '',
-          preparation3: taskData.preparation3 || '',
-          goalId: taskData.goalId || null,
-        };
+          baseDuration: 15,
+        });
         await addTask(newTask);
-        const isPrepared = !!(newTask.preparation1 && newTask.preparation2 && newTask.preparation3);
-        if (isPrepared) {
+        if (isTaskPrepared(newTask)) {
           await updateQuestProgress('prepare_tasks', 1);
         }
       }
@@ -445,25 +393,12 @@ export default function ScheduleView() {
     if (!targetBlock || targetHour === undefined) return;
 
     for (const item of preset) {
-      const newTask: Task = {
-        id: generateId('task'),
-        text: item.text,
-        memo: '',
+      const newTask = createNewTask(item.text, {
         baseDuration: item.baseDuration,
         resistance: item.resistance,
-        adjustedDuration: item.baseDuration,
-        order: Date.now(),
         timeBlock: blockId,
         hourSlot: targetHour,
-        completed: false,
-        actualDuration: 0,
-        createdAt: new Date().toISOString(),
-        completedAt: null,
-        preparation1: '',
-        preparation2: '',
-        preparation3: '',
-        goalId: null,
-      };
+      });
       await addTask(newTask);
     }
   };

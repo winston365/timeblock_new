@@ -1,7 +1,7 @@
 /**
  * XP Subscriber
  * 
- * @description XP 관련 이벤트 처리
+ * @description XP 관련 이벤트 처리 (Store 간 순환 의존성 해소)
  */
 
 import { eventBus } from '@/shared/lib/eventBus';
@@ -12,13 +12,29 @@ import { useGameStateStore } from '@/shared/stores/gameStateStore';
  * 앱 시작 시 한 번만 호출
  */
 export function initXpSubscriber(): void {
-    // Task 완료 시 XP 추가
-    eventBus.on('task:completed', async ({ xpEarned, blockId }) => {
+    // XP 획득 이벤트 처리 (통합)
+    eventBus.on('xp:earned', async ({ amount, source, blockId }) => {
         try {
-            await useGameStateStore.getState().addXP(xpEarned, blockId || undefined);
-            console.log(`✅ [XpSubscriber] Added ${xpEarned} XP`);
+            // dont_do_check 소스는 skipEvents=true로 중복 이벤트 방지
+            const skipEvents = source === 'dont_do_check';
+            await useGameStateStore.getState().addXP(amount, blockId, skipEvents);
+            console.log(`✅ [XpSubscriber] Added ${amount} XP from ${source}`);
         } catch (error) {
             console.error('[XpSubscriber] Failed to add XP:', error);
+        }
+    });
+
+    // Task 완료 시 XP 추가 (task:completed는 이미 xpEarned 포함)
+    eventBus.on('task:completed', async ({ xpEarned, blockId }) => {
+        if (xpEarned > 0) {
+            try {
+                // task:completed는 이미 taskCompletionService에서 XP 처리됨
+                // 여기서는 중복 처리 방지를 위해 스킵
+                // await useGameStateStore.getState().addXP(xpEarned, blockId || undefined);
+                console.log(`✅ [XpSubscriber] Task completed with ${xpEarned} XP (already processed)`);
+            } catch (error) {
+                console.error('[XpSubscriber] Failed to add XP:', error);
+            }
         }
     });
 

@@ -55,6 +55,9 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
 
   // storedImagePath가 있으면 즉시 사용 (리마운트 시에도 이미지 유지)
   const [displayImagePath, setDisplayImagePath] = useState<string>(storedImagePath || '');
+  
+  // 초기 로드 완료 여부 추적
+  const initialLoadDone = useRef<boolean>(false);
 
   // useRef로 변경하여 리렌더링 및 의존성 사이클 방지
   const currentImageIndexRef = useRef<number>(-1);
@@ -180,20 +183,41 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     if (imagePath) {
       setDisplayImagePath(imagePath);
       setCurrentImagePath(imagePath);
-    } else if (waifuState) {
-      // storedImagePath가 이미 있고, 호감도 티어가 같으면 재로딩 불필요
-      if (storedImagePath && displayImagePath) {
-        // 이미 이미지가 표시되어 있으면 스킵 (호감도 티어가 변경된 경우에만 업데이트)
-        const currentTier = getAffectionTier(waifuState.affection);
-        const pathIncludesTier = storedImagePath.includes(currentTier.name) ||
-          (currentTier.name === 'interested' && storedImagePath.includes('indifferent'));
-        if (pathIncludesTier) {
-          return; // 같은 티어면 이미지 변경 불필요
-        }
-      }
-      changeImage(waifuState.affection, 'auto');
+      initialLoadDone.current = true;
+      return;
     }
-  }, [expressionOverride?.imagePath, imagePath, waifuState?.affection, changeImage, storedImagePath]);
+    
+    if (!waifuState) return;
+
+    // 일반 모드일 경우 base.png 사용
+    if (waifuMode === 'normal') {
+      setDisplayImagePath(baseImage);
+      setCurrentImagePath(baseImage);
+      initialLoadDone.current = true;
+      return;
+    }
+
+    // 초기 로드가 안 됐거나 이미지가 없으면 무조건 로드
+    if (!initialLoadDone.current || !displayImagePath) {
+      changeImage(waifuState.affection, 'auto');
+      initialLoadDone.current = true;
+      return;
+    }
+
+    // storedImagePath가 이미 있고, 호감도 티어가 같으면 재로딩 불필요
+    if (storedImagePath && displayImagePath) {
+      // 이미 이미지가 표시되어 있으면 스킵 (호감도 티어가 변경된 경우에만 업데이트)
+      const currentTier = getAffectionTier(waifuState.affection);
+      const pathIncludesTier = storedImagePath.includes(currentTier.name) ||
+        (currentTier.name === 'interested' && storedImagePath.includes('indifferent'));
+      if (pathIncludesTier) {
+        return; // 같은 티어면 이미지 변경 불필요
+      }
+    }
+    
+    // 호감도 티어가 변경되었으면 이미지 업데이트
+    changeImage(waifuState.affection, 'auto');
+  }, [expressionOverride?.imagePath, imagePath, waifuState?.affection, waifuMode, changeImage, storedImagePath, displayImagePath, setCurrentImagePath]);
 
   // 설정된 간격마다 자동으로 이미지 및 대사 변경
   useEffect(() => {

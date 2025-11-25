@@ -7,6 +7,7 @@
  * @external_dependencies
  *   - zustand: 전역 상태 관리
  *   - inboxRepository: 데이터 영속성 관리
+ *   - eventBus: Store 간 통신 (순환 의존성 해소)
  */
 
 import { create } from 'zustand';
@@ -21,8 +22,6 @@ import {
 import { scheduleEmojiSuggestion } from '@/shared/services/ai/emojiSuggester';
 import { taskCompletionService } from '@/shared/services/gameplay/taskCompletion';
 import { getLocalDate } from '@/shared/lib/utils';
-import { useGameStateStore } from '@/shared/stores/gameStateStore';
-import { useRealityCheckStore } from '@/shared/stores/realityCheckStore';
 import { eventBus } from '@/shared/lib/eventBus';
 
 interface InboxStore {
@@ -126,16 +125,23 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
                     wasCompleted,
                     date: getLocalDate(),
                 });
-                // 게임 상태 갱신 (XP 반영)
-                await useGameStateStore.getState().refresh();
+                
+                // 🔄 GameState 갱신을 이벤트 버스로 요청 (순환 의존성 해소)
+                eventBus.emit('gameState:refreshRequest', {
+                    reason: 'inbox_task_completion',
+                }, {
+                    source: 'inboxStore.toggleTaskCompletion',
+                });
 
-                // Reality Check 모달 (10분 이상만)
+                // 📊 Reality Check 모달 (10분 이상만) - 이벤트 버스로 요청 (순환 의존성 해소)
                 if (updatedTask.adjustedDuration >= 10) {
-                    useRealityCheckStore.getState().openRealityCheck(
-                        updatedTask.id,
-                        updatedTask.text,
-                        updatedTask.adjustedDuration
-                    );
+                    eventBus.emit('realityCheck:request', {
+                        taskId: updatedTask.id,
+                        taskTitle: updatedTask.text,
+                        estimatedDuration: updatedTask.adjustedDuration,
+                    }, {
+                        source: 'inboxStore.toggleTaskCompletion',
+                    });
                 }
 
                 // 🎉 Event Bus: task:completed 이벤트 발행

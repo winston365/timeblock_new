@@ -127,6 +127,22 @@ export interface WaifuMessageEvent {
 }
 
 /**
+ * Reality Check 도메인 이벤트
+ */
+export interface RealityCheckRequestEvent {
+    taskId: string;
+    taskTitle: string;
+    estimatedDuration: number;
+}
+
+/**
+ * GameState 도메인 이벤트
+ */
+export interface GameStateRefreshRequestEvent {
+    reason?: string;
+}
+
+/**
  * 모든 이벤트 타입 매핑
  */
 export interface EventTypeMap {
@@ -155,6 +171,12 @@ export interface EventTypeMap {
 
     // Waifu events
     'waifu:message': WaifuMessageEvent;
+
+    // Reality Check events
+    'realityCheck:request': RealityCheckRequestEvent;
+
+    // GameState events
+    'gameState:refreshRequest': GameStateRefreshRequestEvent;
 }
 
 /**

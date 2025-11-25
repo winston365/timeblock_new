@@ -93,6 +93,24 @@ export function getCurrentTimeBlock(): TimeBlockId {
 }
 
 /**
+ * 시간(hour)에 해당하는 타임블록 ID 반환
+ * 
+ * @param hour - 시간 (0-23)
+ * @returns 타임블록 ID (예: '5-8', '8-11', ... 또는 'other')
+ * 
+ * @note 23~04시는 'other'로 분류
+ */
+export function getBlockIdFromHour(hour: number): string {
+  if (hour >= 5 && hour < 8) return '5-8';
+  if (hour >= 8 && hour < 11) return '8-11';
+  if (hour >= 11 && hour < 14) return '11-14';
+  if (hour >= 14 && hour < 17) return '14-17';
+  if (hour >= 17 && hour < 20) return '17-20';
+  if (hour >= 20 && hour < 23) return '20-23';
+  return 'other';
+}
+
+/**
  * 타임블록의 진행률 계산 (0-100)
  */
 export function getBlockProgress(blockId: string): number {

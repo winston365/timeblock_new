@@ -29,6 +29,8 @@ export type {
     QuestCompletedEvent,
     GoalProgressChangedEvent,
     WaifuMessageEvent,
+    RealityCheckRequestEvent,
+    GameStateRefreshRequestEvent,
 } from './types';
 
 export {

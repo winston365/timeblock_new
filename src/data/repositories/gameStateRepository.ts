@@ -15,7 +15,7 @@
 
 import { db } from '../db/dexieClient';
 import type { GameState, Quest, Task } from '@/shared/types/domain';
-import { getLocalDate, getLevelFromXP } from '@/shared/lib/utils';
+import { getLocalDate, getLevelFromXP, getBlockIdFromHour } from '@/shared/lib/utils';
 import { generateQuestTarget, calculateQuestReward } from '@/shared/utils/gamification';
 import { gameStateStrategy } from '@/shared/services/sync/firebase/strategies';
 import { loadData, saveData, type RepositoryConfig } from './baseRepository';
@@ -285,7 +285,7 @@ export async function addXP(
     const gameState = await loadGameState();
 
     const now = new Date();
-    const blockFromTime = getTimeBlockIdFromHour(now.getHours());
+    const blockFromTime = getBlockIdFromHour(now.getHours());
 
     // 레벨업 감지를 위해 기존 레벨 저장
     const previousLevel = gameState.level;
@@ -869,18 +869,4 @@ export async function getTimeBlockXPHistory(days: number = 5): Promise<Array<{ d
     console.error('Failed to get timeblock XP history:', error);
     return [];
   }
-}
-
-/**
- * 현재 시각의 시(hour)에 따라 타임블록 ID 반환
- * - 23~04시는 'other'로 분류
- */
-function getTimeBlockIdFromHour(hour: number): string {
-  if (hour >= 5 && hour < 8) return '5-8';
-  if (hour >= 8 && hour < 11) return '8-11';
-  if (hour >= 11 && hour < 14) return '11-14';
-  if (hour >= 14 && hour < 17) return '14-17';
-  if (hour >= 17 && hour < 20) return '17-20';
-  if (hour >= 20 && hour < 23) return '20-23';
-  return 'other';
 }

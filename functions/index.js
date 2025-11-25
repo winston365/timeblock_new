@@ -485,6 +485,13 @@ exports.checkInactivity = onSchedule({
     // 어제 데이터 조회
     const yesterday = new Date(nowKST.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
+    // 비활동 알림 메시지 정의
+    const title = "⏰ TimeBlock 알림";
+    const body = `${Math.floor(inactiveDuration / (60 * 60 * 1000))}시간 동안 활동이 없었습니다. 휴식 후 다시 시작해보세요!`;
+    const group = "Inactivity";
+    const sound = "alarm";
+    const icon = "https://cdn-icons-png.flaticon.com/512/2972/2972531.png"; // 알람 아이콘
+
     const barkUrl = `https://api.day.app/${barkKey}/${encodeURIComponent(title)}/${encodeURIComponent(body)}?group=${group}&sound=${sound}&icon=${encodeURIComponent(icon)}`;
 
     // URL 마스킹하여 로깅 (디버깅용)
@@ -584,17 +591,33 @@ exports.sendRandomMotivation = onSchedule({
 
     const barkUrl = `https://api.day.app/${barkKey}/${encodeURIComponent(title)}/${encodeURIComponent(randomBody)}?group=${group}&sound=${sound}&icon=${encodeURIComponent(icon)}`;
 
-    await fetch(barkUrl);
+    // URL 마스킹하여 로깅 (디버깅용)
+    const maskedUrl = barkUrl.replace(barkKey, "********");
+    logger.info(`🚀 Sending random motivation via Bark`, { maskedUrl, barkKeyLength: barkKey.length });
+
+    const response = await fetch(barkUrl);
+    const responseText = await response.text();
+    
+    logger.info(`📡 Bark API Response:`, { 
+      status: response.status, 
+      statusText: response.statusText,
+      body: responseText 
+    });
+
+    if (!response.ok) {
+      throw new Error(`Bark API failed: ${response.status} ${response.statusText} - ${responseText}`);
+    }
 
     // 6. 상태 업데이트
     await db.ref("users/user/system/lastRandomMotivation").set({
       timestamp: now,
       date: today,
       success: true,
-      message: randomBody
+      message: randomBody,
+      barkResponse: responseText
     });
 
-    logger.info("✅ Random motivation sent successfully.");
+    logger.info("✅ Random motivation sent successfully.", { responseBody: responseText });
 
   } catch (error) {
     logger.error("❌ Error in sendRandomMotivation:", error);

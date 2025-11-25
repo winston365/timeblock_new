@@ -8,6 +8,7 @@
  *   - zustand: 전역 상태 관리 라이브러리
  *   - repositories: 작업, 블록, XP, 퀘스트, 와이푸 데이터 레포지토리
  *   - utils: 날짜 및 XP 계산 유틸리티
+ *   - eventBus: Store 간 통신 (순환 의존성 해소)
  */
 
 import { create } from 'zustand';
@@ -22,8 +23,6 @@ import {
   updateBlockState as updateBlockStateInRepo,
 } from '@/data/repositories';
 import { recalculateGlobalGoalProgress } from '@/data/repositories';
-import { useGameStateStore } from '@/shared/stores/gameStateStore';
-import { useRealityCheckStore } from '@/shared/stores/realityCheckStore';
 import { useGoalStore } from '@/shared/stores/goalStore';
 import { getLocalDate } from '../lib/utils';
 import {
@@ -392,8 +391,12 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
           blockTasks,
         });
 
-        const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
-        await useGameStateStore.getState().refresh();
+        // 🔄 GameState 갱신을 이벤트 버스로 요청 (순환 의존성 해소)
+        eventBus.emit('gameState:refreshRequest', {
+          reason: 'task_completion',
+        }, {
+          source: 'dailyDataStore.toggleTaskCompletion',
+        });
 
         if (taskInDaily && result.isPerfectBlock && updatedTask.timeBlock && blockState) {
           set({
@@ -412,14 +415,16 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
         console.log('[DailyDataStore] Task completion processed:', result);
 
-        // 📊 Reality Check Trigger
+        // 📊 Reality Check Trigger - 이벤트 버스로 요청 (순환 의존성 해소)
         // Only trigger for tasks with a duration > 10 mins to avoid spam
         if (updatedTask.adjustedDuration >= 10) {
-          useRealityCheckStore.getState().openRealityCheck(
-            updatedTask.id,
-            updatedTask.text,
-            updatedTask.adjustedDuration
-          );
+          eventBus.emit('realityCheck:request', {
+            taskId: updatedTask.id,
+            taskTitle: updatedTask.text,
+            estimatedDuration: updatedTask.adjustedDuration,
+          }, {
+            source: 'dailyDataStore.toggleTaskCompletion',
+          });
         }
 
         // 🎉 Event Bus: task:completed 이벤트 발행
@@ -516,8 +521,13 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         // ✅ Optimistic Update
         set(createOptimisticBlockUpdate(dailyData, blockId, { isLocked: false }));
 
-        // ✅ Repository 호출
-        await useGameStateStore.getState().spendXP(40);
+        // ✅ XP 소비를 이벤트 버스로 요청 (순환 의존성 해소)
+        eventBus.emit('block:unlocked', {
+          blockId,
+          xpCost: 40,
+        }, {
+          source: 'dailyDataStore.toggleBlockLock',
+        });
         await updateBlockStateInRepo(blockId, { isLocked: false }, currentDate);
       }
       // 해제 → 잠금 (무료)
@@ -531,7 +541,14 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
 
         // ✅ Repository 호출
         await updateBlockStateInRepo(blockId, { isLocked: true }, currentDate);
-        await useGameStateStore.getState().updateQuestProgress('lock_blocks', 1);
+        
+        // ✅ 블록 잠금 이벤트 발행 (순환 의존성 해소)
+        eventBus.emit('block:locked', {
+          blockId,
+          taskCount: blockTasks.length,
+        }, {
+          source: 'dailyDataStore.toggleBlockLock',
+        });
       }
     } catch (err) {
       console.error('[DailyDataStore] Failed to toggle block lock, rolling back:', err);
@@ -608,8 +625,14 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         nextStatus
       );
 
-      // XP 보상 지급
-      await useGameStateStore.getState().addXP(xpReward, undefined, 'dont_do_check');
+      // XP 보상 지급 - 이벤트 버스로 요청 (순환 의존성 해소)
+      eventBus.emit('xp:earned', {
+        amount: xpReward,
+        source: 'dont_do_check',
+        blockId,
+      }, {
+        source: 'dailyDataStore.toggleDontDoItem',
+      });
       console.log(`[DailyDataStore] Don't-Do item checked, awarded ${xpReward} XP`);
     } catch (err) {
       console.error('[DailyDataStore] Failed to toggle don\'t-do item, rolling back:', err);

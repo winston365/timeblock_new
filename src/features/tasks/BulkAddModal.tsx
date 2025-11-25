@@ -10,8 +10,8 @@
 
 import { useState, useRef, useEffect, useId } from 'react';
 import type { Task, TimeBlockId, Resistance } from '@/shared/types/domain';
-import { TIME_BLOCKS, RESISTANCE_MULTIPLIERS } from '@/shared/types/domain';
-import { generateId } from '@/shared/lib/utils';
+import { TIME_BLOCKS } from '@/shared/types/domain';
+import { createTaskFromPartial } from '@/shared/utils/taskFactory';
 
 interface BulkAddModalProps {
     isOpen: boolean;
@@ -190,22 +190,18 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
             const tasks: Task[] = previewTasks.map((parsed) => {
                 const resistance = parsed.resistance || defaultResistance;
                 const baseDuration = parsed.baseDuration || defaultDuration;
-                const multiplier = RESISTANCE_MULTIPLIERS[resistance];
-                const adjustedDuration = Math.round(baseDuration * multiplier);
 
-                return {
-                    id: generateId('task'),
+                return createTaskFromPartial({
                     text: parsed.text,
                     memo: parsed.memo || '',
                     baseDuration,
                     resistance,
-                    adjustedDuration,
                     timeBlock: parsed.timeBlock || defaultTimeBlock,
-                    completed: false,
-                    actualDuration: 0,
-                    createdAt: new Date().toISOString(),
-                    completedAt: null,
-                };
+                }, {
+                    baseDuration: defaultDuration,
+                    resistance: defaultResistance,
+                    timeBlock: defaultTimeBlock,
+                });
             });
 
             await onAddTasks(tasks);
