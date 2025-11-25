@@ -1,3 +1,11 @@
+/**
+ * Settings Tabs - Barrel Export
+ *
+ * @role Settings 모달 탭 컴포넌트들의 진입점 (barrel export)
+ * @input 없음
+ * @output 탭 컴포넌트, 타입, 스타일 export
+ */
+
 // Settings tab components
 export { AppearanceTab } from './AppearanceTab';
 export { GeminiTab } from './GeminiTab';

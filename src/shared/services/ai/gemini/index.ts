@@ -1,5 +1,5 @@
-﻿/**
- * Gemini API Client Service
+/**
+ * Gemini API Module
  *
  * @role Google Gemini 2.5 Flash API를 사용하여 AI 대화 기능을 제공합니다.
  *       와이푸 페르소나 시스템 프롬프트를 생성하고 대화 컨텍스트를 관리합니다.
@@ -26,24 +26,24 @@ export type {
   DetailedTask,
   PersonaContext,
   TaskBreakdownParams,
-} from './gemini';
+} from './types';
 
 // API Client
 export {
   GEMINI_API_ENDPOINT,
   callGeminiAPI,
   callGeminiAPIWithTools,
-} from './gemini';
+} from './apiClient';
 
 // Persona Prompts
 export {
   SYSTEM_PERSONA_PROMPT,
   generateWaifuPersona,
-} from './gemini';
+} from './personaPrompts';
 
 // Task Features
 export {
   generateTaskBreakdown,
   suggestTaskEmoji,
   generateMicroStep,
-} from './gemini';
+} from './taskFeatures';

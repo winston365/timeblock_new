@@ -1,3 +1,14 @@
+/**
+ * AppearanceTab
+ *
+ * @role 테마 설정, 앱 정보, 와이푸 모드 설정을 담당하는 Settings 탭
+ * @input AppearanceTabProps (localSettings, currentTheme, appVersion 등)
+ * @output 테마 선택, 업데이트 확인, 와이푸 설정 UI 렌더링
+ * @external_dependencies
+ *   - localStorage: 테마 저장
+ *   - document.documentElement: 테마 적용
+ */
+
 import type { AppearanceTabProps } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass, primaryButtonClass } from './styles';
 

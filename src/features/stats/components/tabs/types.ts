@@ -1,3 +1,13 @@
+/**
+ * Stats Tab Types
+ *
+ * @role Stats 모달의 탭 컴포넌트들이 공유하는 타입 정의
+ * @input 없음 (타입 정의 파일)
+ * @output FilterProps, XPHistoryEntry, Tab Props 인터페이스
+ * @external_dependencies
+ *   - GameState: 게임 상태 타입
+ */
+
 import type { GameState } from '@/shared/types/domain';
 
 // Common filter props shared between tabs

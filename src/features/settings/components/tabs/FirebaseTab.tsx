@@ -1,3 +1,12 @@
+/**
+ * FirebaseTab
+ *
+ * @role Firebase 및 Bark API 설정 관리 탭
+ * @input FirebaseTabProps (localSettings, setLocalSettings)
+ * @output Firebase 설정 입력 폼 UI 렌더링
+ * @external_dependencies 없음 (순수 UI 컴포넌트)
+ */
+
 import type { FirebaseTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass } from './styles';
 

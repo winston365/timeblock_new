@@ -1,3 +1,12 @@
+/**
+ * Settings Tab Styles
+ *
+ * @role Settings 탭 컴포넌트들이 공유하는 Tailwind 스타일 상수 및 유틸리티 함수
+ * @input 없음 (상수/유틸리티 정의 파일)
+ * @output CSS 클래스 문자열, 색상 계산 함수, 비용 계산 함수
+ * @external_dependencies 없음
+ */
+
 // Shared style constants for Settings tabs
 export const modalOverlayClass =
     'fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm';

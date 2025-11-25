@@ -10,38 +10,24 @@
  *   - Firebase: 실시간 동기화 (syncToFirebase)
  *   - @/shared/types/domain: DailyData, Task, TimeBlockStates 타입
  * 
- * @refactored 2024-11 - 모듈 분리 (./dailyData/ 폴더)
+ * @refactored 2024-11 - 모듈 분리
  *   - types.ts: 타입 및 헬퍼 함수
  *   - coreOperations.ts: DailyData CRUD
  *   - taskOperations.ts: Task CRUD
  *   - blockOperations.ts: TimeBlockState 관리
  *   - queryHelpers.ts: 조회 전용 함수
- * 
- * 이 파일은 하위 호환성을 위해 모든 함수를 re-export합니다.
  */
 
+// Re-export all from submodules
+export { ensureBaseBlockState, normalizeTimeBlockStates } from './types';
+export { createEmptyDailyData, loadDailyData, saveDailyData, deleteDailyData } from './coreOperations';
+export { addTask, updateTask, deleteTask, toggleTaskCompletion } from './taskOperations';
+export { updateBlockState, toggleBlockLock } from './blockOperations';
 export {
-  // Types & Helpers
-  ensureBaseBlockState,
-  normalizeTimeBlockStates,
-  // Core Operations
-  createEmptyDailyData,
-  loadDailyData,
-  saveDailyData,
-  deleteDailyData,
-  // Task Operations
-  addTask,
-  updateTask,
-  deleteTask,
-  toggleTaskCompletion,
-  // Block Operations
-  updateBlockState,
-  toggleBlockLock,
-  // Query Helpers
   getInboxTasks,
   getCompletedTasks,
   getBlockTasks,
   getRecentDailyData,
   getRecentCompletedTasks,
   getRecentUncompletedInboxTasks,
-} from './dailyData';
+} from './queryHelpers';

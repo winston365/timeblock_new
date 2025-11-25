@@ -1,3 +1,15 @@
+/**
+ * Settings Tab Types
+ *
+ * @role Settings 모달의 탭 컴포넌트들이 공유하는 타입 정의
+ * @input 없음 (타입 정의 파일)
+ * @output Props 인터페이스, 공유 타입
+ * @external_dependencies
+ *   - Settings: 앱 설정 타입
+ *   - SyncLogEntry: Firebase 동기화 로그 타입
+ *   - DailyTokenUsage: 토큰 사용량 타입
+ */
+
 import type { Settings, DontDoChecklistItem, TimeSlotTagTemplate } from '@/shared/types';
 import type { SyncAction, SyncType, SyncLogEntry } from '@/shared/services/firebase/syncLogger';
 import type { DailyTokenUsage } from '@/data/repositories/tokenUsageRepository';

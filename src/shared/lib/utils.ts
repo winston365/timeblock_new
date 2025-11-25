@@ -163,36 +163,6 @@ export function generateId(prefix: string = 'task'): string {
 }
 
 /**
- * Task 객체 생성 헬퍼
- */
-export function createTask(
-  text: string,
-  options: {
-    memo?: string;
-    baseDuration?: number;
-    resistance?: Resistance;
-    timeBlock?: TimeBlockId;
-  } = {}
-): Task {
-  const baseDuration = options.baseDuration ?? 30;
-  const resistance = options.resistance ?? 'low';
-
-  return {
-    id: generateId('task'),
-    text,
-    memo: options.memo ?? '',
-    baseDuration,
-    resistance,
-    adjustedDuration: calculateAdjustedDuration(baseDuration, resistance),
-    timeBlock: options.timeBlock ?? null,
-    completed: false,
-    actualDuration: 0,
-    createdAt: new Date().toISOString(),
-    completedAt: null,
-  };
-}
-
-/**
  * Task가 인박스에 있는지 확인
  */
 export function isInInbox(task: Task): boolean {

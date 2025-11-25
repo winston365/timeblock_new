@@ -1,3 +1,12 @@
+/**
+ * LogsTab
+ *
+ * @role 동기화 로그 및 Gemini 토큰 사용량 모니터링 탭
+ * @input LogsTabProps (logs, tokenUsage, 필터 상태 등)
+ * @output 동기화 로그 목록, 토큰 사용량 테이블 UI 렌더링
+ * @external_dependencies 없음 (순수 UI 컴포넌트)
+ */
+
 import { useState } from 'react';
 import type { LogsTabProps, SyncLogEntry, SyncType, SyncAction, DailyTokenUsage } from './types';
 import { sectionClass, infoBoxClass, calculateTokenCost, formatCost } from './styles';

@@ -1,3 +1,13 @@
+/**
+ * OverviewTab
+ *
+ * @role XP 요약 카드, 목표 진행률, 타임블록 요약을 표시하는 Stats 탭
+ * @input OverviewTabProps (gameState, weeklyProgress, monthlyProgress 등)
+ * @output 요약 대시보드 UI 렌더링
+ * @external_dependencies
+ *   - TIME_BLOCKS: 타임블록 정의 상수
+ */
+
 import { memo } from 'react';
 import type { OverviewTabProps, SummaryCardProps, TodayBlockProgressProps } from './types';
 import { TIME_BLOCKS } from '@/shared/types/domain';

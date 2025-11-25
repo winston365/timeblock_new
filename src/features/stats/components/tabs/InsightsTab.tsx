@@ -1,3 +1,12 @@
+/**
+ * InsightsTab
+ *
+ * @role AI 기반 생산성 인사이트 생성 및 표시 탭
+ * @input InsightsTabProps (insight, isGeneratingInsight, onGenerateInsight 등)
+ * @output AI 인사이트 생성 버튼, 로딩 상태, 결과 표시 UI 렌더링
+ * @external_dependencies 없음 (순수 UI 컴포넌트, AI 호출은 상위에서 처리)
+ */
+
 import type { InsightsTabProps } from './types';
 
 // Insights Tab Component

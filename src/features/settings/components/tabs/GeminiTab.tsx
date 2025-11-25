@@ -1,3 +1,12 @@
+/**
+ * GeminiTab
+ *
+ * @role Gemini AI 설정, 점화 기능 설정, 통계 목표, 시간대 속성 템플릿 관리 탭
+ * @input GeminiTabProps (localSettings, setLocalSettings)
+ * @output AI 키 입력, 점화 설정, XP 목표, 태그 템플릿 관리 UI 렌더링
+ * @external_dependencies 없음 (순수 UI 컴포넌트)
+ */
+
 import type { GeminiTabProps, TimeSlotTagTemplate, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass, primaryButtonClass, getBadgeTextColor } from './styles';
 

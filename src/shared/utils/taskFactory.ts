@@ -134,25 +134,6 @@ export function createInboxTask(
 }
 
 /**
- * 타임블록용 Task 생성
- *
- * @param text - 작업 제목
- * @param timeBlock - 할당할 타임블록 ID
- * @param options - 추가 생성 옵션
- * @returns 타임블록에 배치된 Task 객체
- */
-export function createBlockTask(
-  text: string,
-  timeBlock: TimeBlockId,
-  options: Omit<CreateTaskOptions, 'timeBlock'> = {}
-): Task {
-  return createNewTask(text, {
-    ...options,
-    timeBlock,
-  });
-}
-
-/**
  * Partial<Task> 데이터를 완전한 Task로 변환
  * (모달에서 사용자 입력을 받아 Task 생성 시 사용)
  *

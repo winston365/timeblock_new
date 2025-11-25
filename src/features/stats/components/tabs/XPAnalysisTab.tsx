@@ -1,3 +1,14 @@
+/**
+ * XPAnalysisTab
+ *
+ * @role XP 추이 차트 및 고급 필터 기능을 제공하는 Stats 탭
+ * @input XPAnalysisTabProps (xpHistory, averageXP, 필터 상태 등)
+ * @output XP 바 차트, 필터 섹션 UI 렌더링
+ * @external_dependencies
+ *   - recharts: 차트 라이브러리
+ *   - TIME_BLOCKS: 타임블록 정의 상수
+ */
+
 import { memo } from 'react';
 import {
     Bar,

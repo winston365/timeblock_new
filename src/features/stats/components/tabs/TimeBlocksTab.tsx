@@ -1,3 +1,15 @@
+/**
+ * TimeBlocksTab
+ *
+ * @role 타임블록별 XP 누적 차트 및 분포 파이차트를 제공하는 Stats 탭
+ * @input TimeBlocksTabProps (gameState, stackedBlockData, todayBlockPie 등)
+ * @output 누적 바 차트, 파이 차트, 오늘 요약 UI 렌더링
+ * @external_dependencies
+ *   - recharts: 차트 라이브러리
+ *   - TIME_BLOCKS: 타임블록 정의 상수
+ *   - chartColors: 블록 색상 유틸리티
+ */
+
 import {
     Bar,
     BarChart,

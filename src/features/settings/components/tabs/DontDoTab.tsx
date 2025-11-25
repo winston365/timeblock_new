@@ -1,3 +1,12 @@
+/**
+ * DontDoTab
+ *
+ * @role "하지않기" 체크리스트 항목 관리 탭 (습관 억제 보상 시스템)
+ * @input DontDoTabProps (localSettings, setLocalSettings)
+ * @output 체크리스트 CRUD UI 렌더링
+ * @external_dependencies 없음 (순수 UI 컴포넌트)
+ */
+
 import type { DontDoTabProps, Settings, DontDoChecklistItem } from './types';
 import { sectionClass, infoBoxClass } from './styles';
 

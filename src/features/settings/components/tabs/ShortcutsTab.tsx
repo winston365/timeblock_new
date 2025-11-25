@@ -1,3 +1,12 @@
+/**
+ * ShortcutsTab
+ *
+ * @role 앱 단축키 설정 관리 탭
+ * @input ShortcutsTabProps (localSettings, setLocalSettings)
+ * @output 단축키 입력 폼 UI 렌더링
+ * @external_dependencies 없음 (순수 UI 컴포넌트)
+ */
+
 import type { ShortcutsTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass } from './styles';
 
