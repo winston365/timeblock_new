@@ -21,16 +21,37 @@ import type { Task } from '@/shared/types/domain';
 type SyncOperation = 'create' | 'update' | 'delete';
 
 /**
+ * 동기화 작업을 위한 Operation Queue Entry
+ * 동일한 키에 대한 여러 업데이트를 병합하여 Race Condition 방지
+ */
+interface QueuedOperation {
+    callback: () => Promise<void>;
+    timestamp: number;
+}
+
+/**
  * Unified Sync Engine
  *
  * @role Dexie와 Firebase 간의 자동 동기화를 관리합니다.
  *       Dexie Hook을 사용하여 로컬 변경 사항을 감지하고 Firebase에 자동으로 업로드합니다.
  *       원격 업데이트 시 무한 루프를 방지하는 메커니즘을 포함합니다.
+ * 
+ * @improvement v1.1 - Operation Queue 패턴 도입
+ *   - Race Condition 방지: 동일 키에 대한 작업 직렬화
+ *   - Split-brain 방지: 타임스탬프 기반 충돌 감지
+ *   - 작업 병합: 연속된 동일 키 업데이트를 마지막 값으로 병합
  */
 export class SyncEngine {
     private static instance: SyncEngine;
     private isSyncingFromRemote = false;
     private initialized = false;
+
+    // Operation Queue: Race Condition 방지
+    private operationQueue: Promise<void> = Promise.resolve();
+    private pendingOperations: Map<string, QueuedOperation> = new Map();
+    
+    // Split-brain 감지: 마지막 동기화 타임스탬프 추적
+    private lastSyncTimestamps: Map<string, number> = new Map();
 
     private constructor() { }
 
@@ -140,23 +161,20 @@ export class SyncEngine {
             const data = snapshot.val();
             if (!data) return;
 
-            this.applyRemoteUpdate(async () => {
-                const updates: Promise<any>[] = [];
+            // 각 날짜별로 개별 작업 생성 (Split-brain 방지)
+            Object.entries(data).forEach(([date, syncData]: [string, any]) => {
+                if (syncData.deviceId === deviceId) return;
 
-                Object.entries(data).forEach(([date, syncData]: [string, any]) => {
-                    if (syncData.deviceId === deviceId) return;
-
+                this.applyRemoteUpdate(async () => {
                     if (syncData.data) {
-                        updates.push(db.dailyData.put({
+                        await db.dailyData.put({
                             ...syncData.data,
                             date
-                        }));
+                        });
                     } else if (syncData.data === null) {
-                        updates.push(db.dailyData.delete(date));
+                        await db.dailyData.delete(date);
                     }
-                });
-
-                await Promise.all(updates);
+                }, `dailyData:${date}`);
             });
         });
 
@@ -172,11 +190,11 @@ export class SyncEngine {
                         ...syncData.data,
                         key: 'current'
                     });
-                });
+                }, 'gameState:current');
             } else if (syncData.data === null) {
                 this.applyRemoteUpdate(async () => {
                     await db.gameState.delete('current');
-                });
+                }, 'gameState:current');
             }
         });
 
@@ -190,7 +208,7 @@ export class SyncEngine {
                 this.applyRemoteUpdate(async () => {
                     await db.templates.clear();
                     await db.templates.bulkPut(syncData.data);
-                });
+                }, 'templates:all');
             }
         });
 
@@ -204,7 +222,7 @@ export class SyncEngine {
                 this.applyRemoteUpdate(async () => {
                     await db.shopItems.clear();
                     await db.shopItems.bulkPut(syncData.data);
-                });
+                }, 'shopItems:all');
             }
         });
 
@@ -226,7 +244,7 @@ export class SyncEngine {
             this.applyRemoteUpdate(async () => {
                 await db.globalInbox.clear();
                 await db.globalInbox.bulkPut(payload.data);
-            });
+            }, 'globalInbox:all');
         });
 
         // 5-1. CompletedInbox Listener (date-keyed)
@@ -253,7 +271,7 @@ export class SyncEngine {
                 if (mergedTasks.length > 0) {
                     await db.completedInbox.bulkPut(mergedTasks);
                 }
-            });
+            }, 'completedInbox:all');
         });
 
         // 6. EnergyLevels Listener
@@ -262,32 +280,26 @@ export class SyncEngine {
             const data = snapshot.val();
             if (!data) return;
 
-            this.applyRemoteUpdate(async () => {
-                const updates: Promise<any>[] = [];
+            // 각 날짜별로 개별 작업 생성
+            Object.entries(data).forEach(([date, syncData]: [string, any]) => {
+                if (syncData.deviceId === deviceId) return;
 
-                Object.entries(data).forEach(([date, syncData]: [string, any]) => {
-                    if (syncData.deviceId === deviceId) return;
+                if (Array.isArray(syncData.data)) {
+                    this.applyRemoteUpdate(async () => {
+                        await db.energyLevels.where('date').equals(date).delete();
+                        const levelsWithId = syncData.data.map((level: any) => ({
+                            ...level,
+                            id: `${date}_${level.timestamp}`,
+                            date
+                        }));
 
-                    if (Array.isArray(syncData.data)) {
-                        updates.push(
-                            db.energyLevels.where('date').equals(date).delete().then(() => {
-                                const levelsWithId = syncData.data.map((level: any) => ({
-                                    ...level,
-                                    id: `${date}_${level.timestamp}`,
-                                    date
-                                }));
+                        const uniqueLevels = Array.from(
+                            new Map(levelsWithId.map((item: any) => [item.id, item])).values()
+                        ) as any[];
 
-                                const uniqueLevels = Array.from(
-                                    new Map(levelsWithId.map((item: any) => [item.id, item])).values()
-                                ) as any[];
-
-                                return db.energyLevels.bulkPut(uniqueLevels);
-                            })
-                        );
-                    }
-                });
-
-                await Promise.all(updates);
+                        await db.energyLevels.bulkPut(uniqueLevels);
+                    }, `energyLevels:${date}`);
+                }
             });
         });
 
@@ -297,23 +309,20 @@ export class SyncEngine {
             const data = snapshot.val();
             if (!data) return;
 
-            this.applyRemoteUpdate(async () => {
-                const updates: Promise<any>[] = [];
+            // 각 날짜별로 개별 작업 생성
+            Object.entries(data).forEach(([date, syncData]: [string, any]) => {
+                if (syncData.deviceId === deviceId) return;
 
-                Object.entries(data).forEach(([date, syncData]: [string, any]) => {
-                    if (syncData.deviceId === deviceId) return;
-
+                this.applyRemoteUpdate(async () => {
                     if (syncData.data) {
-                        updates.push(db.dailyTokenUsage.put({
+                        await db.dailyTokenUsage.put({
                             ...syncData.data,
                             date
-                        }));
+                        });
                     } else if (syncData.data === null) {
-                        updates.push(db.dailyTokenUsage.delete(date));
+                        await db.dailyTokenUsage.delete(date);
                     }
-                });
-
-                await Promise.all(updates);
+                }, `tokenUsage:${date}`);
             });
         });
 
@@ -345,7 +354,7 @@ export class SyncEngine {
                         ...mergedSettings,
                         key: 'current'
                     });
-                });
+                }, 'settings:current');
             }
         });
 
@@ -356,20 +365,83 @@ export class SyncEngine {
      * 원격 업데이트를 적용할 때 호출합니다.
      * 이 기간 동안 발생하는 Dexie 변경 사항은 Firebase로 다시 동기화되지 않습니다 (루프 방지).
      *
+     * @improvement v1.1 - Operation Queue 패턴
+     *   - 동일 키에 대한 작업을 직렬화하여 Race Condition 방지
+     *   - 대기 중인 작업이 있으면 병합 (마지막 값 우선)
+     *   - 타임스탬프로 Split-brain 상황 감지
+     *
      * @param callback - 원격 데이터를 로컬 DB에 저장하는 함수
+     * @param operationKey - (선택) 동일 리소스에 대한 작업 병합을 위한 키 (예: 'dailyData:2024-01-15')
      */
-    public async applyRemoteUpdate(callback: () => Promise<void>) {
-        if (this.isSyncingFromRemote) {
-            await callback();
-            return;
+    public async applyRemoteUpdate(
+        callback: () => Promise<void>,
+        operationKey?: string
+    ) {
+        const now = Date.now();
+        
+        // 키가 제공된 경우, 작업 병합 및 직렬화
+        if (operationKey) {
+            // 대기 중인 작업이 있으면 최신 작업으로 교체 (병합)
+            this.pendingOperations.set(operationKey, {
+                callback,
+                timestamp: now
+            });
+            
+            // Split-brain 감지: 마지막 동기화 후 100ms 이내면 경고
+            const lastSync = this.lastSyncTimestamps.get(operationKey);
+            if (lastSync && now - lastSync < 100) {
+                console.warn(`⚠️ SyncEngine: Rapid sync detected for ${operationKey} (${now - lastSync}ms gap). Possible concurrent update.`);
+            }
         }
 
-        try {
-            this.isSyncingFromRemote = true;
-            await callback();
-        } finally {
-            this.isSyncingFromRemote = false;
-        }
+        // 큐에 작업 추가 (직렬화)
+        this.operationQueue = this.operationQueue.then(async () => {
+            // 키가 있는 경우, pendingOperations에서 최신 작업 가져오기
+            const operation = operationKey 
+                ? this.pendingOperations.get(operationKey)
+                : { callback, timestamp: now };
+            
+            if (!operation) return;
+            
+            // 실행된 작업은 대기열에서 제거
+            if (operationKey) {
+                this.pendingOperations.delete(operationKey);
+            }
+
+            // 이미 동기화 중이면 콜백만 실행
+            if (this.isSyncingFromRemote) {
+                await operation.callback();
+                return;
+            }
+
+            try {
+                this.isSyncingFromRemote = true;
+                await operation.callback();
+                
+                // 타임스탬프 기록 (Split-brain 감지용)
+                if (operationKey) {
+                    this.lastSyncTimestamps.set(operationKey, Date.now());
+                }
+            } catch (error) {
+                console.error('❌ SyncEngine: Remote update failed:', error);
+                throw error;
+            } finally {
+                this.isSyncingFromRemote = false;
+            }
+        }).catch(err => {
+            // 큐 체인 끊김 방지
+            console.error('❌ SyncEngine: Operation queue error:', err);
+        });
+
+        // 현재 큐가 완료될 때까지 대기
+        await this.operationQueue;
+    }
+
+    /**
+     * 보류 중인 동기화 작업 수를 반환합니다 (디버깅용)
+     */
+    public getPendingOperationsCount(): number {
+        return this.pendingOperations.size;
     }
 
     /**

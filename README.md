@@ -41,18 +41,25 @@ TimeBlock Planner는 시간 관리 방법론인 타임블로킹(Time-blocking)�
 - **에너지 레벨 추적**: 시간대별 에너지 수준 기록
 - **행동 패턴 추적**: 미루기, 삭제 등 사용자 행동 패턴 분석
 - **QuickAdd 모드**: Ctrl+Shift+Space (macOS: Cmd+Shift+Space)로 빠른 작업 추가
+- **🔥 점화 시스템**: 3분 마이크로 스텝으로 작업 시작 저항 극복
+- **🌤️ 날씨 통합**: Google Search Grounding 기반 실시간 날씨 정보
+- **💡 AI 인사이트**: 생산성 패턴 분석 및 맞춤 조언
+- **📊 통계 대시보드**: XP 추이, 타임블록별 분포, 목표 진행률
 
 ## 🛠 기술 스택
 
 ### Frontend
-- **React 18** - UI 프레임워크
-- **TypeScript** - 타입 안전성
-- **Vite** - 빌드 도구 및 개발 서버
-- **Tailwind CSS** - 스타일링
-- **Zustand** - 상태 관리
+- **React 18.3.1** - UI 프레임워크
+- **TypeScript 5.4.5** - 타입 안전성
+- **Vite 7.2.2** - 빌드 도구 및 개발 서버
+- **Tailwind CSS 3.4** - 스타일링
+- **Zustand 5.0.8** - 상태 관리
+- **Recharts 2.13** - 통계 차트
+- **Framer Motion 12** - 애니메이션
 
 ### Desktop
-- **Electron** - 크로스 플랫폼 데스크톱 앱
+- **Electron 39** - 크로스 플랫폼 데스크톱 앱
+- **electron-updater 6** - 자동 업데이트
 
 ### 데이터 지속성 (3-Tier 폴백 시스템)
 1. **Dexie (IndexedDB)** - 로컬 데이터베이스 (Primary)
@@ -139,8 +146,18 @@ timeblock_new/
 │   │   ├── gamification/     # XP, 퀘스트, 업적
 │   │   ├── goals/            # 글로벌 목표
 │   │   ├── template/         # 작업 템플릿
-│   │   ├── settings/         # 설정 및 동기화 로그
+│   │   ├── settings/         # 설정 및 동기화 로그 (tabs/ 하위 모듈)
+│   │   ├── stats/            # 통계 대시보드 (tabs/ 하위 모듈)
 │   │   ├── shop/             # XP 상점
+│   │   ├── ignition/         # 3분 점화 시스템
+│   │   ├── insight/          # AI 인사이트 패널
+│   │   ├── weather/          # 날씨 정보 통합
+│   │   ├── energy/           # 에너지 레벨 추적
+│   │   ├── focus/            # 포커스 타이머
+│   │   ├── feedback/         # 현실 체크 모달
+│   │   ├── inventory/        # 인벤토리
+│   │   ├── pip/              # Picture-in-Picture
+│   │   ├── quickadd/         # 빠른 작업 추가
 │   │   └── ...
 │   ├── shared/
 │   │   ├── stores/           # Zustand 상태 관리 스토어
@@ -150,8 +167,9 @@ timeblock_new/
 │   │   │   └── ai/          # AI 통합
 │   │   └── utils/            # 공통 유틸리티
 │   ├── data/
-│   │   ├── db/              # Dexie 스키마 및 마이그레이션
+│   │   ├── db/              # Dexie 스키마 및 마이그레이션 (v11)
 │   │   └── repositories/    # 데이터 접근 레이어 (Repository Pattern)
+│   │       └── dailyData/   # DailyData 모듈화 (coreOperations, taskOperations 등)
 │   └── App.tsx              # 루트 컴포넌트
 ├── electron/
 │   ├── main/                # Electron 메인 프로세스
@@ -218,7 +236,7 @@ timeblock_new/
 
 ## 🗄 데이터베이스 스키마
 
-8개의 스키마 버전으로 관리되는 주요 테이블 (`src/data/db/dexieClient.ts`):
+11개의 스키마 버전으로 관리되는 주요 테이블 (`src/data/db/dexieClient.ts`):
 - **dailyData** - 일일 작업 및 블록 (YYYY-MM-DD 키)
 - **gameState** - 플레이어 진행 상황 (싱글톤)
 - **templates** - 재사용 가능한 작업 템플릿
@@ -229,8 +247,12 @@ timeblock_new/
 - **waifuState** - 동반자 호감도 및 상호작용
 - **energyLevels** - 시간대별 에너지 추적
 - **chatHistory** - Gemini AI 대화 기록
+- **dailyTokenUsage** - 일일 Gemini 토큰 사용량
 - **systemState** - 시스템 상태 키-값 저장소 (v6+)
 - **settings** - 앱 설정 및 하지않기 체크리스트 (v8+)
+- **images** - 이미지 저장소 (v9+)
+- **weather** - 날씨 캐시 (v10+)
+- **aiInsights** - AI 인사이트 캐시 (v11+)
 
 ## 🤝 기여하기
 

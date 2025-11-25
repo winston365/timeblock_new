@@ -50,10 +50,12 @@ The app uses a 3-layer data persistence strategy with automatic fallback:
 
 **Critical Pattern**: All data operations go through the **Repository Pattern** (`src/data/repositories/`). Each repository extends `baseRepository.ts` and is the only layer that should touch storage APIs.
 
+Large repositories are modularized (e.g., `dailyData/` folder with coreOperations, taskOperations, blockOperations, queryHelpers, types).
+
 ```typescript
 // Example flow: Update dailyData
 dailyDataStore.updateTask()
-  → dailyDataRepository.update()
+  → dailyDataRepository.update() // or dailyData/taskOperations.ts
     → Dexie (IndexedDB)
     → localStorage (sync)
     → Firebase (async via syncToFirebase())
@@ -90,8 +92,18 @@ features/
   ├── gamification/  # XP, quests, achievements
   ├── goals/         # Global goals panel
   ├── template/      # Task templates
-  ├── settings/      # Settings & sync log modals
+  ├── settings/      # Settings & sync log modals (tabs/ submodule)
+  ├── stats/         # Statistics dashboard (tabs/ submodule)
   ├── shop/          # XP shop
+  ├── ignition/      # 3-minute ignition system (micro-step)
+  ├── insight/       # AI insight panel
+  ├── weather/       # Weather integration (Google Search Grounding)
+  ├── energy/        # Energy level tracking
+  ├── focus/         # Focus timer
+  ├── feedback/      # Reality check modals
+  ├── inventory/     # Inventory system
+  ├── pip/           # Picture-in-Picture mode
+  ├── quickadd/      # Quick task addition
   └── ...
 ```
 
@@ -155,7 +167,7 @@ When adding new task completion side effects, create a new handler implementing 
 
 ### Database Schema (Dexie)
 
-8 schema versions with migrations in `src/data/db/dexieClient.ts`. Core tables:
+11 schema versions with migrations in `src/data/db/dexieClient.ts`. Core tables:
 
 - **dailyData** - Daily tasks and blocks (keyed by date YYYY-MM-DD)
 - **gameState** - Player progression (singleton, key: 'current')
@@ -167,8 +179,12 @@ When adding new task completion side effects, create a new handler implementing 
 - **waifuState** - Companion affection and interactions
 - **energyLevels** - Hourly energy tracking
 - **chatHistory** - Gemini AI conversation history
+- **dailyTokenUsage** - Daily Gemini token usage tracking
 - **systemState** - System state key-value store (v6+)
 - **settings** - App settings including dontDoChecklist (v8+)
+- **images** - Image storage (v9+)
+- **weather** - Weather cache with Google Search Grounding (v10+)
+- **aiInsights** - AI insight cache (v11+)
 
 When adding fields, increment version and add migration. Ensure migrations are idempotent and backfill both IndexedDB and Firebase.
 
@@ -196,12 +212,14 @@ Assets in `src/features/waifu/poses/` and `public/assets/waifu/poses/`, state ma
 ### AI Integration (Gemini)
 
 - **API Key**: Stored in `settingsStore`, synced via Firebase
-- **Features**: Full-screen chat, task breakdown, motivational messages
+- **Features**: Full-screen chat, task breakdown, motivational messages, emoji suggestions
 - **Token Tracking**: Daily usage limits via `dailyTokenUsage` table
 - **Categories**: task-advice, motivation, qa, analysis
 - **Persona Context**: Build persona context using `src/shared/lib/personaUtils` before invoking `geminiApi.ts`
+- **Weather Integration**: `geminiWeather.ts` uses Google Search Grounding for real-time weather
+- **Ignition System**: `taskFeatures.ts` generates micro-steps for 3-minute ignition
 
-Service layer in `src/shared/services/ai/` and `src/features/gemini/`.
+Service layer modularized in `src/shared/services/ai/gemini/` (apiClient, personaPrompts, taskFeatures, types) and `src/features/gemini/`.
 
 ## Electron App Structure
 

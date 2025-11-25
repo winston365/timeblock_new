@@ -38,3 +38,6 @@ release
 *.exe
 *.dmg
 *.AppImage
+
+# Local History (VS Code extension)
+.history
