@@ -1,0 +1,47 @@
+Date : 2025-11-25 13:41:36
+Directory : e:\git\timeblock_new
+Total : 15 files,  -5328 codes, -504 comments, -691 blanks, all -6523 lines
+
+Languages
++----------------+------------+------------+------------+------------+------------+
+| language       | files      | code       | comment    | blank      | total      |
++----------------+------------+------------+------------+------------+------------+
+| TypeScript JSX |          8 |     -1,944 |        -56 |       -208 |     -2,208 |
+| TypeScript     |          7 |     -3,384 |       -448 |       -483 |     -4,315 |
++----------------+------------+------------+------------+------------+------------+
+
+Directories
++----------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                             | files      | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                |         15 |     -5,328 |       -504 |       -691 |     -6,523 |
+| .history                                                                         |         15 |     -5,328 |       -504 |       -691 |     -6,523 |
+| .history\src                                                                     |         15 |     -5,328 |       -504 |       -691 |     -6,523 |
+| .history\src\features                                                            |          8 |     -1,944 |        -56 |       -208 |     -2,208 |
+| .history\src\features\schedule                                                   |          8 |     -1,944 |        -56 |       -208 |     -2,208 |
+| .history\src\shared                                                              |          7 |     -3,384 |       -448 |       -483 |     -4,315 |
+| .history\src\shared\services                                                     |          7 |     -3,384 |       -448 |       -483 |     -4,315 |
+| .history\src\shared\services\ai                                                  |          7 |     -3,384 |       -448 |       -483 |     -4,315 |
++----------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++----------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
+| filename                                                                         | language       | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
+| e:\git\timeblock_new\.history\src\features\schedule\HourBar_20251120190519.tsx   | TypeScript JSX |       -243 |         -7 |        -26 |       -276 |
+| e:\git\timeblock_new\.history\src\features\schedule\HourBar_20251120193441.tsx   | TypeScript JSX |       -243 |         -7 |        -26 |       -276 |
+| e:\git\timeblock_new\.history\src\features\schedule\HourBar_20251120193446.tsx   | TypeScript JSX |       -243 |         -7 |        -26 |       -276 |
+| e:\git\timeblock_new\.history\src\features\schedule\HourBar_20251120193711.tsx   | TypeScript JSX |       -243 |         -7 |        -26 |       -276 |
+| e:\git\timeblock_new\.history\src\features\schedule\HourBar_20251120193713.tsx   | TypeScript JSX |       -243 |         -7 |        -26 |       -276 |
+| e:\git\timeblock_new\.history\src\features\schedule\HourBar_20251120193847.tsx   | TypeScript JSX |       -243 |         -7 |        -26 |       -276 |
+| e:\git\timeblock_new\.history\src\features\schedule\HourBar_20251120193850.tsx   | TypeScript JSX |       -243 |         -7 |        -26 |       -276 |
+| e:\git\timeblock_new\.history\src\features\schedule\HourBar_20251120193851.tsx   | TypeScript JSX |       -243 |         -7 |        -26 |       -276 |
+| e:\git\timeblock_new\.history\src\shared\services\ai\geminiApi_20251120165633.ts | TypeScript     |       -522 |        -64 |        -69 |       -655 |
+| e:\git\timeblock_new\.history\src\shared\services\ai\geminiApi_20251120201807.ts | TypeScript     |       -485 |        -64 |        -69 |       -618 |
+| e:\git\timeblock_new\.history\src\shared\services\ai\geminiApi_20251120201909.ts | TypeScript     |       -485 |        -64 |        -69 |       -618 |
+| e:\git\timeblock_new\.history\src\shared\services\ai\geminiApi_20251120203333.ts | TypeScript     |       -473 |        -64 |        -69 |       -606 |
+| e:\git\timeblock_new\.history\src\shared\services\ai\geminiApi_20251120210202.ts | TypeScript     |       -473 |        -64 |        -69 |       -606 |
+| e:\git\timeblock_new\.history\src\shared\services\ai\geminiApi_20251120210212.ts | TypeScript     |       -473 |        -64 |        -69 |       -606 |
+| e:\git\timeblock_new\.history\src\shared\services\ai\geminiApi_20251120210615.ts | TypeScript     |       -473 |        -64 |        -69 |       -606 |
+| Total                                                                            |                |     -5,328 |       -504 |       -691 |     -6,523 |
++----------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
