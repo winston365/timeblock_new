@@ -134,18 +134,6 @@ export default function TaskCard({
       });
       return;
     }
-    if (task.timeBlock && blockIsLocked === false) {
-      toast('블록을 먼저 잠궈야 작업을 완료할 수 있습니다! (잠금 버튼 🔒 클릭)', {
-        icon: '🔒',
-        style: {
-          borderRadius: '10px',
-          background: '#333',
-          color: '#fff',
-        },
-        id: 'lock-warning',
-      });
-      return;
-    }
 
     // XP Particle Effect Trigger
     const rect = (e.target as HTMLElement).getBoundingClientRect();

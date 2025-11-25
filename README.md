@@ -272,4 +272,42 @@ timeblock_new/
 
 ---
 
+## 📚 Documentation Map
+
+프로젝트 문서 전체 구조입니다. 자세한 내용은 각 링크를 참조하세요.
+
+### 📖 프로젝트 문서
+| 문서 | 설명 |
+|------|------|
+| [README.md](./README.md) | 프로젝트 개요 및 시작 가이드 (현재 문서) |
+| [DEVELOPMENT.md](./DEVELOPMENT.md) | 개발 환경 설정 및 아키텍처 상세 |
+| [CLAUDE.md](./CLAUDE.md) | AI 에이전트용 개발 가이드 |
+| [.github/copilot-instructions.md](./.github/copilot-instructions.md) | GitHub Copilot 지침 |
+
+### 🔧 핵심 모듈 문서
+| 모듈 | 문서 | 설명 |
+|------|------|------|
+| Firebase Sync | [README](./src/shared/services/sync/firebase/README.md) | 동기화 전략, 충돌 해결, 마이그레이션 |
+| EventBus | [README](./src/shared/lib/eventBus/README.md) | Pub/Sub 패턴, 사용 규칙 (DO/DON'T) |
+| Gemini AI | [README](./src/shared/services/ai/gemini/README.md) | API 클라이언트, 페르소나, 작업 분해 |
+| Task Completion | [README](./src/shared/services/gameplay/taskCompletion/README.md) | 핸들러 패턴, 실행 흐름 |
+| DailyData Repository | [README](./src/data/repositories/dailyData/README.md) | 모듈 구조, CRUD 예시 |
+| Dexie (IndexedDB) | [README](./src/data/db/README.md) | 스키마 버전, 마이그레이션 가이드 |
+
+### 📊 분석 문서
+| 문서 | 설명 |
+|------|------|
+| [docs/analysis/INDEX.md](./docs/analysis/INDEX.md) | 코드베이스 분석 인덱스 |
+| [docs/analysis/ANALYSIS_SUMMARY.md](./docs/analysis/ANALYSIS_SUMMARY.md) | 분석 요약 |
+| [docs/analysis/cross_cutting_analysis.md](./docs/analysis/cross_cutting_analysis.md) | 횡단 관심사 분석 |
+| [docs/analysis/refactoring_strategies.md](./docs/analysis/refactoring_strategies.md) | 리팩토링 전략 |
+
+### 🎨 에셋 문서
+| 문서 | 설명 |
+|------|------|
+| [public/assets/waifu/README.md](./public/assets/waifu/README.md) | 와이푸 에셋 구조 |
+| [public/assets/waifu/poses/README.md](./public/assets/waifu/poses/README.md) | 포즈 이미지 가이드 |
+
+---
+
 **Made with ❤️ by winston365**

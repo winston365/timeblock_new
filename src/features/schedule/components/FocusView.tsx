@@ -236,10 +236,7 @@ export function FocusView({
     const handleStartNow = (task: Task) => {
         setFocusMode(true);
         startTask(task.id);
-
-        if (!isLocked && onToggleLock) {
-            onToggleLock();
-        }
+        // 잠금 없이도 포커스 모드 시작 가능
     };
 
     const handleReorder = (newOrder: Task[]) => {
