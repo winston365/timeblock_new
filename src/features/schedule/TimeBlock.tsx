@@ -137,19 +137,7 @@ const TimeBlock = memo(function TimeBlock({
   const handleTaskToggle = (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    if (!task.completed) {
-      if (!state?.isLocked) {
-        toast('타이머를 먼저 시작해야 작업을 완료할 수 있습니다! (타이머 버튼 ⏱️ 클릭)', {
-          icon: '⏱️',
-          style: {
-            borderRadius: '10px',
-            background: '#333',
-            color: '#fff',
-          },
-        });
-        return;
-      }
-    }
+    // 잠금 없이도 작업 완료 가능
     onToggleTask(taskId);
   };
 

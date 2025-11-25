@@ -290,9 +290,14 @@ export async function addXP(
     // 레벨업 감지를 위해 기존 레벨 저장
     const previousLevel = gameState.level;
 
-    gameState.totalXP += amount;
-    gameState.dailyXP += amount;
-    gameState.availableXP += amount;
+    // XP 차감 시 음수 방지
+    const newTotalXP = Math.max(0, gameState.totalXP + amount);
+    const newDailyXP = Math.max(0, gameState.dailyXP + amount);
+    const newAvailableXP = Math.max(0, gameState.availableXP + amount);
+
+    gameState.totalXP = newTotalXP;
+    gameState.dailyXP = newDailyXP;
+    gameState.availableXP = newAvailableXP;
     gameState.level = getLevelFromXP(gameState.totalXP);
 
     // 레벨업 감지
@@ -301,7 +306,8 @@ export async function addXP(
     // 블록별 XP 기록
     const blockKey = blockFromTime || blockId;
     if (blockKey) {
-      gameState.timeBlockXP[blockKey] = (gameState.timeBlockXP[blockKey] || 0) + amount;
+      const currentBlockXP = gameState.timeBlockXP[blockKey] || 0;
+      gameState.timeBlockXP[blockKey] = Math.max(0, currentBlockXP + amount);
     }
 
     await saveGameState(gameState);
@@ -309,7 +315,7 @@ export async function addXP(
     // 이벤트 생성 (UI 로직 분리)
     const events: import('@/shared/services/gameplay/gameState').GameStateEvent[] = [];
 
-    // 0 XP는 이벤트 생성하지 않음 (무의미한 토스트 방지)
+    // XP 변경 이벤트 (양수일 때만)
     if (amount > 0) {
       // XP 획득 이벤트
       events.push({
@@ -318,6 +324,15 @@ export async function addXP(
         reason,
         blockId: blockKey,
       });
+    }
+    // XP 차감 이벤트 (음수일 때)
+    else if (amount < 0) {
+      events.push({
+        type: 'xp_deducted',
+        amount: Math.abs(amount),
+        reason,
+        blockId: blockKey,
+      } as any);
     }
 
     // 레벨업 이벤트

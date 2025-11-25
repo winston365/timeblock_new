@@ -24,7 +24,7 @@ import {
 } from '@/data/repositories';
 import { recalculateGlobalGoalProgress } from '@/data/repositories';
 import { useGoalStore } from '@/shared/stores/goalStore';
-import { getLocalDate } from '../lib/utils';
+import { getLocalDate, calculateTaskXP } from '../lib/utils';
 import {
   sanitizeTaskUpdates,
   createOptimisticTaskUpdate,
@@ -439,6 +439,32 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
           blockId: updatedTask.timeBlock || undefined,
           goalId: updatedTask.goalId || undefined,
           adjustedDuration: updatedTask.adjustedDuration,
+        }, {
+          source: 'dailyDataStore.toggleTaskCompletion',
+        });
+      }
+
+      // 🔄 Task 완료 취소 처리 - XP 회수
+      if (wasCompleted && !updatedTask.completed) {
+        const xpToDeduct = calculateTaskXP(updatedTask);
+        console.log('[DailyDataStore] Task uncompleted, deducting XP:', xpToDeduct);
+
+        // XP 차감 (음수로 addXP 호출)
+        const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
+        await useGameStateStore.getState().addXP(-xpToDeduct, updatedTask.timeBlock || undefined, true);
+
+        // 🔄 GameState 갱신 요청
+        eventBus.emit('gameState:refreshRequest', {
+          reason: 'task_uncomplete',
+        }, {
+          source: 'dailyDataStore.toggleTaskCompletion',
+        });
+
+        // 🎉 Event Bus: task:uncompleted 이벤트 발행
+        eventBus.emit('task:uncompleted', {
+          taskId: updatedTask.id,
+          xpDeducted: xpToDeduct,
+          blockId: updatedTask.timeBlock || undefined,
         }, {
           source: 'dailyDataStore.toggleTaskCompletion',
         });
