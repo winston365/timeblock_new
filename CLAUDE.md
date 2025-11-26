@@ -221,6 +221,25 @@ Assets in `src/features/waifu/poses/` and `public/assets/waifu/poses/`, state ma
 
 Service layer modularized in `src/shared/services/ai/gemini/` (apiClient, personaPrompts, taskFeatures, types) and `src/features/gemini/`.
 
+### RAG (Retrieval-Augmented Generation)
+
+Hybrid RAG system in `src/shared/services/rag/` provides context-aware AI responses by analyzing past task history:
+
+- **HybridRAGService** (`hybridRAGService.ts`) - Main entry point combining structured queries + vector search
+- **QueryParser** (`queryParser.ts`) - Converts natural language to structured queries (dates, status, time blocks)
+- **DirectQueryService** (`directQueryService.ts`) - Fast IndexedDB queries for structured data (date-specific, status queries)
+- **VectorStore** (`vectorStore.ts`) - Orama-based semantic search (in-memory, rebuilt on restart)
+- **AutoTagService** (`autoTagService.ts`) - Suggests tags based on task title history + optional AI enhancement
+
+**Query Flow**: User query → QueryParser → Route to DirectQuery (structured) OR Vector Search (semantic) → AI Context
+
+**Patterns**:
+- date_specific queries ("11월 24일 완료 작업") → DirectQuery (100% accurate, no API cost)
+- semantic queries ("프로그래밍 관련 작업") → Hybrid (DirectQuery + Vector)
+- stats queries ("이번 주 몇 개 완료?") → Aggregation + summary
+
+**Debugging**: `window.hybridRag.generateContext()` and `window.rag.debugGetAllDocs()` in dev console
+
 ## Electron App Structure
 
 - **Main Process**: `electron/main/index.ts` - Window management, IPC, auto-update
