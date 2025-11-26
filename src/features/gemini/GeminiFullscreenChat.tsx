@@ -348,7 +348,9 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
                 <div className="flex flex-col gap-2">
                   {[
                     '오늘 할 일 추천해줘',
-                    '작업 우선순위를 어떻게 정해야 할까?',
+                    '어제 완료한 작업 알려줘',
+                    '이번 주 몇 개 작업 완료했어?',
+                    '최근 5일 작업 패턴 분석해줘',
                     '에너지가 낮을 때 뭐 하면 좋을까?',
                   ].map((example) => (
                     <button

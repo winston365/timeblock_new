@@ -228,6 +228,7 @@ export async function loadTokenUsage(date: string): Promise<DailyTokenUsage | nu
 export async function addTokenUsage(
   promptTokens: number,
   candidatesTokens: number,
+  embeddingTokens: number = 0,
   date: string = getLocalDate()
 ): Promise<void> {
   try {
@@ -237,8 +238,9 @@ export async function addTokenUsage(
       date,
       promptTokens: (existing?.promptTokens || 0) + promptTokens,
       candidatesTokens: (existing?.candidatesTokens || 0) + candidatesTokens,
-      totalTokens: (existing?.totalTokens || 0) + promptTokens + candidatesTokens,
-      messageCount: (existing?.messageCount || 0) + 1,
+      embeddingTokens: (existing?.embeddingTokens || 0) + embeddingTokens,
+      totalTokens: (existing?.totalTokens || 0) + promptTokens + candidatesTokens + embeddingTokens,
+      messageCount: (existing?.messageCount || 0) + (promptTokens > 0 || candidatesTokens > 0 ? 1 : 0),
       updatedAt: Date.now(),
     };
 
@@ -247,6 +249,7 @@ export async function addTokenUsage(
     addSyncLog('dexie', 'save', `Token usage updated for ${date}`, {
       promptTokens: tokenUsage.promptTokens,
       candidatesTokens: tokenUsage.candidatesTokens,
+      embeddingTokens: tokenUsage.embeddingTokens,
       totalTokens: tokenUsage.totalTokens,
     });
 

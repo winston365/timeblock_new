@@ -170,7 +170,7 @@ export function LogsTab({
             {logSubTab === 'tokens' && (
                 <div className="flex flex-col gap-4">
                     <div className={infoBoxClass}>
-                        <strong>💰 예상 비용:</strong> Gemini 2.5 Flash 기준 (Input $2.00/1M, Output $12.00/1M)
+                        <strong>💰 예상 비용:</strong> Gemini 2.5 Flash (Input $2.00/1M, Output $12.00/1M) · Embedding ($0.15/1M)
                     </div>
 
                     <div className="overflow-hidden rounded-2xl border border-[var(--color-border)]">
@@ -187,6 +187,7 @@ export function LogsTab({
                                             <th className="border border-[var(--color-border)] px-3 py-2 text-left">메시지</th>
                                             <th className="border border-[var(--color-border)] px-3 py-2 text-left">입력 토큰</th>
                                             <th className="border border-[var(--color-border)] px-3 py-2 text-left">출력 토큰</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-left">임베딩 토큰</th>
                                             <th className="border border-[var(--color-border)] px-3 py-2 text-left">총 토큰</th>
                                             <th className="border border-[var(--color-border)] px-3 py-2 text-left">예상 비용</th>
                                         </tr>
@@ -195,18 +196,22 @@ export function LogsTab({
                                         {[...tokenUsage]
                                             .sort((a: DailyTokenUsage, b: DailyTokenUsage) => b.date.localeCompare(a.date))
                                             .map((usage: DailyTokenUsage) => {
-                                                const { inputCost, outputCost, totalCost } = calculateTokenCost(usage.promptTokens, usage.candidatesTokens);
+                                                const { inputCost, outputCost, embeddingCost, totalCost } = calculateTokenCost(usage.promptTokens, usage.candidatesTokens, usage.embeddingTokens || 0);
                                                 return (
                                                     <tr key={usage.date} className="border-t border-[var(--color-border)] bg-[var(--color-bg)]">
                                                         <td className="border border-[var(--color-border)] px-3 py-2 font-mono">{usage.date}</td>
                                                         <td className="border border-[var(--color-border)] px-3 py-2">{usage.messageCount.toLocaleString()}개</td>
                                                         <td className="border border-[var(--color-border)] px-3 py-2">{usage.promptTokens.toLocaleString()}</td>
                                                         <td className="border border-[var(--color-border)] px-3 py-2">{usage.candidatesTokens.toLocaleString()}</td>
+                                                        <td className="border border-[var(--color-border)] px-3 py-2 text-sky-500">{usage.embeddingTokens?.toLocaleString() || 0}</td>
                                                         <td className="border border-[var(--color-border)] px-3 py-2 font-semibold text-[var(--color-primary)]">{usage.totalTokens.toLocaleString()}</td>
                                                         <td className="border border-[var(--color-border)] px-3 py-2">
                                                             <div className="flex flex-col text-[var(--color-text-secondary)]">
                                                                 <span>{formatCost(totalCost)}</span>
-                                                                <span className="text-[10px]">입력 {formatCost(inputCost)} · 출력 {formatCost(outputCost)}</span>
+                                                                <span className="text-[10px]">
+                                                                    입력 {formatCost(inputCost)} · 출력 {formatCost(outputCost)}
+                                                                    {embeddingCost > 0 && ` · 임베딩 ${formatCost(embeddingCost)}`}
+                                                                </span>
                                                             </div>
                                                         </td>
                                                     </tr>

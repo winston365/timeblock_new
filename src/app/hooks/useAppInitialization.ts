@@ -8,6 +8,8 @@ import { saveGameState } from '@/data/repositories/gameStateRepository';
 import { syncToFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { dailyDataStrategy, gameStateStrategy } from '@/shared/services/sync/firebase/strategies';
 import { syncEngine } from '@/shared/services/sync/syncEngine';
+import { ragSyncHandler } from '@/shared/services/rag/ragSyncHandler';
+import { ragService } from '@/shared/services/rag/ragService';
 import type { GameState } from '@/shared/types/domain';
 
 /**
@@ -44,6 +46,9 @@ export function useAppInitialization() {
                 // 2. 설정 로드
                 const settings = await loadSettings();
                 console.log('Settings loaded');
+
+                // RAG Sync Handler 초기화 (설정 로드 후 실행하여 API Key 확보)
+                ragSyncHandler.initialize();
 
                 // 3. Firebase 초기화 및 데이터 동기화
                 if (settings.firebaseConfig) {
@@ -239,7 +244,7 @@ export function useAppInitialization() {
                                         templateCategories: firebaseData.settings.templateCategories || currentSettings?.templateCategories,
                                         timeSlotTags: firebaseData.settings.timeSlotTags || currentSettings?.timeSlotTags,
                                     };
-                                    
+
                                     await db.settings.put({
                                         key: 'current',
                                         ...mergedSettings
@@ -287,6 +292,12 @@ export function useAppInitialization() {
                 console.log('All stores loaded');
 
                 setIsInitialized(true);
+
+                // Expose RAG for debugging
+                (window as any).rag = ragService;
+                (window as any).hybridRag = (await import('@/shared/services/rag/hybridRAGService')).hybridRAGService;
+                console.log('🔍 RAG Service exposed as window.rag, window.hybridRag');
+
             } catch (err) {
                 console.error('Application initialization failed:', err);
                 setError(err as Error);

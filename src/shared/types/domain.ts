@@ -145,22 +145,6 @@ export interface Quest {
   target: number; // 목표값
   progress: number; // 현재 진행도
   completed: boolean;
-  reward: number; // 보상 XP
-}
-
-/**
- * 게임 상태 (레벨, XP, 퀘스트 등)
- */
-export interface GameState {
-  level: number; // 플레이어 레벨
-  totalXP: number; // 총 누적 XP
-  dailyXP: number; // 오늘 획득 XP
-  availableXP: number; // 사용 가능 XP
-  streak: number; // 연속 출석일
-  lastLogin: string; // 마지막 로그인 날짜 (YYYY-MM-DD)
-  questBonusClaimed: boolean; // 일일 퀘스트 보너스 수령 여부
-  xpHistory: Array<{ date: string; xp: number }>; // XP 히스토리 (최근 7일)
-  dailyQuests: Quest[]; // 일일 퀘스트 목록
   timeBlockXP: Record<string, number>; // 블록별 XP
   timeBlockXPHistory: Array<{ date: string; blocks: Record<string, number> }>; // 블록별 XP 히스토리
   completedTasksHistory: Task[]; // 완료 작업 히스토리
@@ -347,19 +331,6 @@ export type ChatRole = 'user' | 'model';
  * 채팅 카테고리 (작업 조언, 동기부여, 질답, 분석)
  */
 export type ChatCategory = 'task-advice' | 'motivation' | 'qa' | 'analysis';
-
-/**
- * API 토큰 사용량
- */
-export interface TokenUsage {
-  promptTokens: number;
-  candidatesTokens: number;
-  totalTokens: number;
-}
-
-/**
- * Gemini AI 채팅 메시지
- */
 export interface GeminiChatMessage {
   id: string;
   role: ChatRole;
@@ -377,22 +348,6 @@ export interface ChatHistory {
   messages: GeminiChatMessage[];
   updatedAt: number; // 타임스탬프 (밀리초)
 }
-
-/**
- * 일일 토큰 사용량 통계
- */
-export interface DailyTokenUsage {
-  date: string; // YYYY-MM-DD
-  promptTokens: number; // 입력 토큰 합계
-  candidatesTokens: number; // 출력 토큰 합계
-  totalTokens: number; // 전체 토큰 합계
-  messageCount: number; // 메시지 수
-  updatedAt: number; // 타임스탬프 (밀리초)
-}
-
-// ============================================================================
-// Settings 타입
-// ============================================================================
 
 /**
  * 와이푸 모드 타입

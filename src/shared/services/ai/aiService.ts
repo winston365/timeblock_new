@@ -17,6 +17,7 @@ import { callGeminiAPI, generateWaifuPersona, SYSTEM_PERSONA_PROMPT } from './ge
 import { buildPersonaContext } from '@/shared/lib/personaUtils';
 import type { DailyData, GameState, WaifuState } from '@/shared/types/domain';
 import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
+import { hybridRAGService } from '../rag/hybridRAGService';
 
 /**
  * AI 호출 타입
@@ -123,11 +124,21 @@ export async function callAIWithContext(params: AICallParams): Promise<AICallRes
 
   switch (type) {
     case 'chat':
+      // Hybrid RAG Context Injection (구조화된 쿼리 + 벡터 검색)
+      const ragContext = await hybridRAGService.generateContext(userPrompt);
+      const ragPrompt = ragContext ? `\n\n[참고 가능한 과거 기록]\n${ragContext}` : '';
+
       // 대화가 이어져도 기본 페르소나 컨텍스트를 항상 포함해 맥락이 끊기지 않도록 유지
-      finalPrompt = `${basePersonaPrompt}\n\n${userPrompt}`;
+      finalPrompt = `${basePersonaPrompt}${ragPrompt}\n\n${userPrompt}`;
       break;
 
     case 'insight':
+      // RAG Context Injection for Insight (using recent journals/tasks)
+      // For insight, we might want to search for "recent patterns" or just rely on the dailyData passed in.
+      // But let's add a general search for "insight" or "review" related docs if needed.
+      // For now, let's keep insight simple or maybe search for "weekly review".
+      // Let's skip RAG for insight for now unless we have a specific query.
+
       // 페르소나 + 추가 지시사항
       finalPrompt = `${basePersonaPrompt}\n\n${additionalInstructions}`;
       break;

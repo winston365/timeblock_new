@@ -8,17 +8,17 @@
  *   - utils: 조정된 시간 계산 함수
  */
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import type { Task, Resistance, TimeBlockId, DailyGoal } from '@/shared/types/domain';
 import { calculateAdjustedDuration } from '@/shared/lib/utils';
 import { suggestTaskEmoji } from '@/shared/services/ai/geminiApi';
 import { scheduleEmojiSuggestion } from '@/shared/services/ai/emojiSuggester';
-import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { loadGlobalGoals } from '@/data/repositories';
 import { MemoModal } from './MemoModal';
 import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
+import { suggestTaskContext, type TaskContextSuggestion } from '@/shared/services/rag/autoTagService';
 
 interface TaskModalProps {
   task: Task | null;
@@ -28,41 +28,6 @@ interface TaskModalProps {
   onClose: () => void;
   source?: 'schedule' | 'inbox';
   zIndex?: number; // allow stacking override when opened above other overlays
-}
-
-/**
- * 와이푸 코멘트 컴포넌트
- */
-function WaifuCommentary({
-  resistance,
-  duration,
-  affection
-}: {
-  resistance: Resistance;
-  duration: number;
-  affection: number
-}) {
-  const message = useMemo(() => {
-    if (duration >= 90) return "90분 이상은 꽤 긴 시간이에요. 중간에 스트레칭 잊지 마세요! 🧘‍♀️";
-    if (resistance === 'high') return "어려운 작업이군요! 하지만 해내면 성취감이 엄청날 거예요. 화이팅! 🔥";
-    if (resistance === 'low' && duration <= 15) return "가볍게 처리할 수 있는 작업이네요. 후딱 해치워버리죠! ⚡";
-    if (affection > 80) return "오늘도 열심히 하는 모습이 정말 멋져요! 제가 항상 응원하고 있어요. 🥰";
-    return "준비물을 미리 챙기면 시작하기 훨씬 수월해요. 준비되셨나요? ✨";
-  }, [resistance, duration, affection]);
-
-  return (
-    <div className="flex items-start gap-3 rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 transition-all duration-300">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xl shadow-sm">
-        👩‍💼
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-xs font-bold text-indigo-400">AI Companion</span>
-        <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
-          "{message}"
-        </p>
-      </div>
-    </div>
-  );
 }
 
 /**
@@ -90,10 +55,11 @@ export default function TaskModal({
   const [error, setError] = useState<string | null>(null);
   const [memoRows, setMemoRows] = useState(2);
   const [showMemoModal, setShowMemoModal] = useState(false);
+  const [contextSuggestion, setContextSuggestion] = useState<TaskContextSuggestion | null>(null);
+  const [contextLoading, setContextLoading] = useState(false);
 
   const formRef = useRef<HTMLFormElement>(null);
 
-  const { waifuState } = useWaifu();
   const { settings } = useSettingsStore();
   const { triggerBreakdown } = useTaskBreakdownStore();
 
@@ -227,7 +193,7 @@ export default function TaskModal({
       timeBlock: initialBlockId,
     };
 
-    triggerBreakdown(tempTask, source, settings.geminiApiKey, waifuState?.affection ?? 50);
+    triggerBreakdown(tempTask, source, settings.geminiApiKey, 50);
   };
 
   const handleAutoEmoji = async () => {
@@ -248,6 +214,130 @@ export default function TaskModal({
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // 맥락 추천 - 텍스트 변경 시 자동 조회 (debounced)
+  useEffect(() => {
+    const trimmedText = text.trim();
+    if (trimmedText.length < 5) {
+      setContextSuggestion(null);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setContextLoading(true);
+      try {
+        const result = await suggestTaskContext(trimmedText);
+        setContextSuggestion(result);
+      } catch (err) {
+        console.error('맥락 추천 실패:', err);
+      } finally {
+        setContextLoading(false);
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [text]);
+
+  // 추천 값 적용 핸들러
+  const [appliedFields, setAppliedFields] = useState<Set<string>>(new Set());
+
+  const markApplied = (field: string) => {
+    setAppliedFields(prev => new Set(prev).add(field));
+    setTimeout(() => {
+      setAppliedFields(prev => {
+        const next = new Set(prev);
+        next.delete(field);
+        return next;
+      });
+    }, 1500);
+  };
+
+  const applyContextDuration = () => {
+    if (contextSuggestion?.avgDuration) {
+      const options = [5, 10, 15, 30, 45, 60, 90, 120];
+      const closest = options.reduce((prev, curr) => 
+        Math.abs(curr - contextSuggestion.avgDuration) < Math.abs(prev - contextSuggestion.avgDuration) ? curr : prev
+      );
+      setBaseDuration(closest);
+      markApplied('duration');
+      toast.success(`소요 시간 ${closest}분 적용됨`);
+    }
+  };
+
+  const applyContextResistance = () => {
+    if (contextSuggestion?.commonResistance) {
+      setResistance(contextSuggestion.commonResistance.level);
+      markApplied('resistance');
+      toast.success(`난이도 ${contextSuggestion.commonResistance.label} 적용됨`);
+    }
+  };
+
+  const applyContextPreparation = (prep: string) => {
+    // 빈 슬롯 찾아서 채우기
+    if (!preparation1) {
+      setPreparation1(prep);
+      markApplied('prep1');
+    } else if (!preparation2) {
+      setPreparation2(prep);
+      markApplied('prep2');
+    } else if (!preparation3) {
+      setPreparation3(prep);
+      markApplied('prep3');
+    } else {
+      toast.error('준비물이 모두 채워져 있습니다');
+      return;
+    }
+    toast.success(`준비물 "${prep}" 추가됨`);
+  };
+
+  const applyContextMemo = (snippet: string) => {
+    const newMemo = memo.trim() ? `${memo.trim()}\n${snippet}` : snippet;
+    setMemo(newMemo);
+    markApplied('memo');
+    toast.success('메모에 추가됨');
+  };
+
+  const applyAll = () => {
+    let applied = 0;
+    
+    if (contextSuggestion?.avgDuration) {
+      const options = [5, 10, 15, 30, 45, 60, 90, 120];
+      const closest = options.reduce((prev, curr) => 
+        Math.abs(curr - contextSuggestion.avgDuration) < Math.abs(prev - contextSuggestion.avgDuration) ? curr : prev
+      );
+      setBaseDuration(closest);
+      markApplied('duration');
+      applied++;
+    }
+    
+    if (contextSuggestion?.commonResistance) {
+      setResistance(contextSuggestion.commonResistance.level);
+      markApplied('resistance');
+      applied++;
+    }
+    
+    // 준비물 적용 (빈 슬롯에만)
+    const preps = contextSuggestion?.commonPreparations || [];
+    if (preps.length > 0 && !preparation1) {
+      setPreparation1(preps[0]);
+      markApplied('prep1');
+      applied++;
+    }
+    if (preps.length > 1 && !preparation2) {
+      setPreparation2(preps[1]);
+      markApplied('prep2');
+      applied++;
+    }
+    if (preps.length > 2 && !preparation3) {
+      setPreparation3(preps[2]);
+      markApplied('prep3');
+      applied++;
+    }
+    
+    if (applied > 0) {
+      toast.success(`${applied}개 항목 적용됨`);
     }
   };
 
@@ -305,8 +395,6 @@ export default function TaskModal({
     'w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition-all duration-200 focus:border-[var(--color-primary)] focus:bg-[var(--color-bg-surface)] focus:ring-2 focus:ring-[var(--color-primary)]/20 placeholder:text-[var(--color-text-tertiary)]';
   const selectFieldClasses = `${baseFieldClasses} cursor-pointer appearance-none`;
   const textareaClasses = `${baseFieldClasses} min-h-[80px] max-h-[300px] resize-y cursor-text leading-relaxed`;
-  const preparationInputClasses =
-    'w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition-all duration-200 focus:border-[var(--color-primary)] focus:bg-[var(--color-bg-surface)] focus:ring-2 focus:ring-[var(--color-primary)]/20';
 
   return (
     <>
@@ -466,6 +554,7 @@ export default function TaskModal({
                       전체 화면 ↗
                     </button>
                   </div>
+
                   <textarea
                     id="task-memo"
                     value={memo}
@@ -475,80 +564,191 @@ export default function TaskModal({
                     rows={memoRows}
                     className={textareaClasses}
                   />
+
+                  {/* AI 세분화 버튼 */}
                   <button
                     type="button"
-                    className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-sm font-medium text-indigo-200 transition hover:bg-indigo-500/20 disabled:opacity-50"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-sm font-medium text-indigo-200 transition hover:bg-indigo-500/20 disabled:opacity-50"
                     onClick={handleAIBreakdown}
                     disabled={aiLoading || !text.trim()}
                   >
-                    {aiLoading ? '⏳ AI가 분석 중...' : '🧠 AI로 작업 구체화하기'}
+                    {aiLoading ? '⏳ 분석 중...' : '🧠 AI 세분화'}
                   </button>
                 </div>
               </div>
 
-              {/* Right Column: Prep & Waifu */}
-              <div className="flex-1 flex flex-col gap-6 p-8 bg-[var(--color-bg-surface)]/30">
-                <WaifuCommentary resistance={resistance} duration={baseDuration} affection={waifuState?.affection ?? 50} />
-
-                <div className="flex flex-col gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-6 shadow-sm">
-                  <div className="flex items-center gap-2 pb-2 border-b border-[var(--color-border)]">
-                    <span className="text-lg">🎒</span>
-                    <h4 className="font-semibold text-[var(--color-text)]">작업 준비물 챙기기</h4>
+              {/* Right Column: Context Pattern & Prep */}
+              <div className="flex-1 flex flex-col gap-4 p-6 bg-[var(--color-bg-surface)]/30">
+                
+                {/* 과거 유사 작업 패턴 - 상시 표시 */}
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">📊</span>
+                      <span className="text-sm font-medium text-amber-300">과거 유사 작업 패턴</span>
+                      {contextLoading && <span className="text-xs text-amber-400 animate-pulse">분석 중...</span>}
+                    </div>
+                    {contextSuggestion && contextSuggestion.matchCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={applyAll}
+                        className="text-xs px-2 py-1 rounded-md bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 transition-colors flex items-center gap-1"
+                      >
+                        🪄 모두 적용
+                      </button>
+                    )}
                   </div>
-
-                  <div className="space-y-4 mt-2">
-                    <div className="space-y-2">
-                      <label htmlFor="preparation-1" className="text-xs font-medium text-[var(--color-text-secondary)]">
-                        1. 물리적 준비물 (자료, 물 등)
-                      </label>
-                      <input
-                        id="preparation-1"
-                        type="text"
-                        value={preparation1}
-                        onChange={e => setPreparation1(e.target.value)}
-                        placeholder="예) 참고 자료 펴두기"
-                        className={preparationInputClasses}
-                      />
+                  
+                  {/* 반복 작업 감지 알림 */}
+                  {contextSuggestion?.repeatInfo?.isRepeat && (
+                    <div className="mb-3 p-2 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                      <div className="text-xs text-purple-300 flex items-center gap-1.5">
+                        🔁 <strong>반복 작업 감지!</strong> 
+                        <span className="text-purple-200/80">
+                          {contextSuggestion.repeatInfo.count}회 수행 (최근: {contextSuggestion.repeatInfo.lastDate})
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-purple-400/70 mt-1">
+                        💡 이 작업을 템플릿으로 등록하면 더 빠르게 추가할 수 있어요!
+                      </div>
                     </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="preparation-2" className="text-xs font-medium text-[var(--color-text-secondary)]">
-                        2. 환경 세팅 (조명, 음악)
-                      </label>
-                      <input
-                        id="preparation-2"
-                        type="text"
-                        value={preparation2}
-                        onChange={e => setPreparation2(e.target.value)}
-                        placeholder="예) 집중 플레이리스트 재생"
-                        className={preparationInputClasses}
-                      />
+                  )}
+                  
+                  {contextSuggestion && contextSuggestion.matchCount > 0 ? (
+                    <div className="space-y-2 text-sm">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
+                        {contextSuggestion.preferredTimeBlock && (
+                          <span className="text-[var(--color-text-secondary)]">
+                            ⏰ {contextSuggestion.preferredTimeBlock.label} ({contextSuggestion.preferredTimeBlock.count}회)
+                          </span>
+                        )}
+                        {contextSuggestion.avgDuration > 0 && (
+                          <button
+                            type="button"
+                            onClick={applyContextDuration}
+                            className="text-[var(--color-text-secondary)] hover:text-amber-400 transition-colors flex items-center gap-1"
+                          >
+                            ⏱️ 평균 {contextSuggestion.avgDuration}분 
+                            {appliedFields.has('duration') 
+                              ? <span className="text-emerald-400">✓</span>
+                              : <span className="text-amber-400">[적용]</span>
+                            }
+                          </button>
+                        )}
+                        {contextSuggestion.commonResistance && (
+                          <button
+                            type="button"
+                            onClick={applyContextResistance}
+                            className="text-[var(--color-text-secondary)] hover:text-amber-400 transition-colors flex items-center gap-1"
+                          >
+                            💪 {contextSuggestion.commonResistance.label} 
+                            {appliedFields.has('resistance') 
+                              ? <span className="text-emerald-400">✓</span>
+                              : <span className="text-amber-400">[적용]</span>
+                            }
+                          </button>
+                        )}
+                        {contextSuggestion.completionRate > 0 && (
+                          <span className="text-[var(--color-text-secondary)]">
+                            {contextSuggestion.completionRate >= 80 ? '✅' : '📊'} {contextSuggestion.completionRate}% 완료
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* 과거 메모 스니펫 */}
+                      {contextSuggestion.fullMemos && contextSuggestion.fullMemos.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-amber-500/20">
+                          <span className="text-xs text-[var(--color-text-tertiary)] mr-1">📝</span>
+                          {contextSuggestion.fullMemos.slice(0, 3).map((memoItem, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => applyContextMemo(memoItem.memo)}
+                              title={`"${memoItem.memo}" 메모에 추가 (클릭)`}
+                              className="text-xs px-2 py-0.5 rounded bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:bg-amber-500/20 border border-[var(--color-border)] transition-colors truncate max-w-[120px]"
+                            >
+                              {memoItem.memo.length > 15 ? memoItem.memo.slice(0, 15) + '...' : memoItem.memo}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* 준비물 추천 */}
+                      {contextSuggestion.commonPreparations.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-amber-500/20">
+                          <span className="text-xs text-[var(--color-text-tertiary)] mr-1">🎒</span>
+                          {contextSuggestion.commonPreparations.map((prep, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => applyContextPreparation(prep)}
+                              className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+                                appliedFields.has(`prep:${prep}`)
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                  : 'bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:bg-amber-500/20 border-[var(--color-border)]'
+                              }`}
+                            >
+                              {appliedFields.has(`prep:${prep}`) ? '✓ ' : ''}{prep}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* 유사 작업 미리보기 */}
+                      {contextSuggestion.sampleTasks.length > 0 && (
+                        <div className="text-[10px] text-[var(--color-text-tertiary)] pt-1">
+                          🔍 {contextSuggestion.matchCount}개 유사 작업: {contextSuggestion.sampleTasks.join(' / ')}
+                        </div>
+                      )}
                     </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="preparation-3" className="text-xs font-medium text-[var(--color-text-secondary)]">
-                        3. 시작 의식 (심호흡, 스트레칭)
-                      </label>
-                      <input
-                        id="preparation-3"
-                        type="text"
-                        value={preparation3}
-                        onChange={e => setPreparation3(e.target.value)}
-                        placeholder="예) 가벼운 스트레칭"
-                        className={preparationInputClasses}
-                      />
-                    </div>
-                  </div>
-
-                  {preparation1 && preparation2 && preparation3 && (
-                    <div className="mt-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-sm font-semibold text-emerald-400 animate-bounce-slow">
-                      ✨ 완벽해요! 준비가 다 되었네요.
+                  ) : (
+                    <div className="text-xs text-[var(--color-text-tertiary)]">
+                      {text.trim().length < 5 
+                        ? '작업 제목을 5자 이상 입력하면 과거 패턴을 분석합니다.'
+                        : '유사한 과거 작업을 찾지 못했습니다.'
+                      }
                     </div>
                   )}
                 </div>
 
-                {/* Spacer for scrolling content to not be hidden by footer */}
-                <div className="h-16 lg:hidden"></div>
+                {/* 준비물 - 간소화된 UI */}
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-base">🎒</span>
+                    <span className="text-sm font-medium text-[var(--color-text)]">준비물</span>
+                  </div>
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={preparation1}
+                      onChange={e => setPreparation1(e.target.value)}
+                      placeholder="1. 물리적 준비물"
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
+                    />
+                    <input
+                      type="text"
+                      value={preparation2}
+                      onChange={e => setPreparation2(e.target.value)}
+                      placeholder="2. 환경 세팅"
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
+                    />
+                    <input
+                      type="text"
+                      value={preparation3}
+                      onChange={e => setPreparation3(e.target.value)}
+                      placeholder="3. 시작 의식"
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
+                    />
+                  </div>
+                  {preparation1 && preparation2 && preparation3 && (
+                    <div className="mt-2 text-xs text-center text-emerald-400">
+                      ✨ 준비 완료!
+                    </div>
+                  )}
+                </div>
+
+                {/* Spacer */}
+                <div className="h-8 lg:hidden"></div>
               </div>
             </form>
           </div>

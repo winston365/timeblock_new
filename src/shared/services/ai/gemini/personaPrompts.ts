@@ -71,6 +71,7 @@ export function generateWaifuPersona(context: PersonaContext): string {
     xpHistory,
     timeBlockXPHistory,
     recentBlockPatterns,
+    recentTaskLog,
     mood,
   } = context;
 
@@ -124,6 +125,25 @@ export function generateWaifuPersona(context: PersonaContext): string {
     }).join('\n')}`
     : '';
 
+  // ✅ 최근 10일 작업 상세 로그 생성 (RAG 보완용)
+  const recentTaskLogInfo = recentTaskLog && recentTaskLog.length > 0
+    ? `\n\n📜 최근 10일 작업 기록 (날짜별):\n${recentTaskLog.map(dayLog => {
+      const completedTasks = dayLog.tasks.filter(t => t.completed);
+      const pendingTasks = dayLog.tasks.filter(t => !t.completed);
+      if (dayLog.tasks.length === 0) {
+        return `\n📅 ${dayLog.date}: 작업 없음`;
+      }
+      let dayInfo = `\n📅 ${dayLog.date}: 총 ${dayLog.tasks.length}개 (✅${completedTasks.length}개 완료)`;
+      if (completedTasks.length > 0) {
+        dayInfo += `\n  ✅ 완료: ${completedTasks.slice(0, 10).map(t => t.text).join(', ')}${completedTasks.length > 10 ? ` 외 ${completedTasks.length - 10}개` : ''}`;
+      }
+      if (pendingTasks.length > 0 && pendingTasks.length <= 5) {
+        dayInfo += `\n  ⏳ 미완료: ${pendingTasks.map(t => t.text).join(', ')}`;
+      }
+      return dayInfo;
+    }).join('')}`
+    : '';
+
   // 에너지 정보 생성
   const energyTimeDiff = energyRecordedAt ? Math.floor((Date.now() - energyRecordedAt) / (1000 * 60)) : null;
   const energyInfo = energyTimeDiff !== null
@@ -165,7 +185,7 @@ export function generateWaifuPersona(context: PersonaContext): string {
 **오늘의 성과**:
 - 오늘 획득 XP: ${dailyXP} XP
 - 총 보유 XP: ${totalXP} XP
-- 사용 가능 XP: ${availableXP} XP${timeBlockStats}${xpHistoryInfo}${timeBlockXPHistoryInfo}${inboxInfo}${allBlockTasksInfo}
+- 사용 가능 XP: ${availableXP} XP${timeBlockStats}${xpHistoryInfo}${timeBlockXPHistoryInfo}${inboxInfo}${allBlockTasksInfo}${recentTaskLogInfo}
 
 **에너지 상태**: ${energyInfo} (${energyStatus})
 

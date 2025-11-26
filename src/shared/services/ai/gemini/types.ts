@@ -109,6 +109,17 @@ export interface PersonaContext {
   // 최근 5일 시간대별 완료 작업 패턴
   recentBlockPatterns: Record<string, Array<{ date: string; completedCount: number; tasks: string[] }>>;
 
+  // ✅ 최근 10일 작업 상세 로그 (날짜별 작업 기록)
+  recentTaskLog: Array<{
+    date: string;
+    tasks: Array<{
+      text: string;
+      completed: boolean;
+      timeBlock: string | null;
+      memo: string;
+    }>;
+  }>;
+
   // 기분 (호감도 기반 계산)
   mood: string;
 }

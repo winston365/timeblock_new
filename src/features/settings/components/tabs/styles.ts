@@ -47,13 +47,15 @@ export const getBadgeTextColor = (bg: string) => {
 };
 
 // Token cost calculation
-export const calculateTokenCost = (inputTokens: number, outputTokens: number) => {
-    const inputCost = (inputTokens / 1_000_000) * 2.0;
-    const outputCost = (outputTokens / 1_000_000) * 12.0;
+export const calculateTokenCost = (inputTokens: number, outputTokens: number, embeddingTokens: number = 0) => {
+    const inputCost = (inputTokens / 1_000_000) * 2.0; // Gemini 2.5 Flash Input
+    const outputCost = (outputTokens / 1_000_000) * 12.0; // Gemini 2.5 Flash Output
+    const embeddingCost = (embeddingTokens / 1_000_000) * 0.15; // Gemini Embedding
     return {
         inputCost,
         outputCost,
-        totalCost: inputCost + outputCost,
+        embeddingCost,
+        totalCost: inputCost + outputCost + embeddingCost,
     };
 };
 
