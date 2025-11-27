@@ -200,22 +200,6 @@ export function calculateTaskXP(task: Task): number {
   return finalXP;
 }
 
-/**
- * 레벨에서 총 XP 계산
- */
-export function getLevelFromXP(totalXP: number): number {
-  return Math.floor(totalXP / 100) + 1;
-}
-
-/**
- * 다음 레벨까지 필요한 XP 계산
- */
-export function getXPToNextLevel(totalXP: number): number {
-  const currentLevel = getLevelFromXP(totalXP);
-  const nextLevelXP = currentLevel * 100;
-  return nextLevelXP - totalXP;
-}
-
 // ============================================================================
 // 호감도 계산
 // ============================================================================

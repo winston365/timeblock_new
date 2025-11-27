@@ -134,9 +134,6 @@ export const GAME_STATE_DEFAULTS = {
   /** 일일 무료 점화 횟수 */
   dailyFreeIgnitions: IGNITION_DEFAULTS.dailyFreeIgnitions,
 
-  /** 초기 레벨 */
-  level: 1,
-
   /** 초기 XP */
   totalXP: 0,
   dailyXP: 0,

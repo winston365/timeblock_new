@@ -152,11 +152,10 @@ export interface Quest {
 
 /**
  * 게임 상태 타입
- * XP, 레벨, 퀘스트, 점화 시스템 등 게임화 관련 모든 상태
+ * XP, 퀘스트, 점화 시스템 등 게임화 관련 모든 상태
  */
 export interface GameState {
-  // 레벨 및 XP
-  level: number;
+  // XP
   totalXP: number;
   dailyXP: number;
   availableXP: number;

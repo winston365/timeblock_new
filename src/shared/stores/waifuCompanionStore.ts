@@ -34,7 +34,7 @@ interface WaifuCompanionState {
   /** 현재 와이푸 표시 상태 */
   visibility: WaifuVisibility;
 
-  /** 현재 표시할 메시지 (작업 완료, 레벨업 등) */
+  /** 현재 표시할 메시지 (작업 완료 등) */
   message: string;
 
   /** 현재 재생할 오디오 경로 */

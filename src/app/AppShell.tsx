@@ -37,6 +37,7 @@ import CenterContent from './components/CenterContent';
 import RightPanel from './components/RightPanel';
 import InsightPanel from '@/features/insight/InsightPanel';
 import { TimeBlockXPBar } from './components/TimeBlockXPBar';
+import { DailyXPBar } from './components/DailyXPBar';
 import { WaifuAside } from './components/WaifuAside';
 import { AppToaster } from './components/AppToaster';
 import { LoadingScreen } from './components/LoadingScreen';
@@ -181,11 +182,14 @@ export default function AppShell() {
             onOpenTemplates={modals.openTemplates}
             onOpenSettings={modals.openSettings}
           />
+          <DailyXPBar
+            timeBlockXP={gameState?.timeBlockXP}
+            goalPerBlock={settings?.timeBlockXPGoal ?? 200}
+          />
           <TimeBlockXPBar
             timeBlockXP={gameState?.timeBlockXP}
             goalXP={settings?.timeBlockXPGoal ?? 200}
             availableXP={gameState?.availableXP ?? 0}
-            level={gameState?.level ?? 1}
           />
         </>
       )}

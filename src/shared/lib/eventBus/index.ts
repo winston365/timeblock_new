@@ -24,7 +24,6 @@ export type {
     BlockPerfectEvent,
     XpEarnedEvent,
     XpSpentEvent,
-    LevelUpEvent,
     QuestProgressEvent,
     QuestCompletedEvent,
     GoalProgressChangedEvent,

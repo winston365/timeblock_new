@@ -69,8 +69,8 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   };
 
   const statItemClass =
-    'flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]';
-  const statValueClass = 'font-mono font-bold text-base text-[var(--color-text)]';
+    'flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-text)]';
+  const statValueClass = 'font-mono font-bold text-sm text-[var(--color-text)]';
 
   const gradientString =
     'linear-gradient(to right,' +
@@ -88,7 +88,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
     ' #ef4444 100%)';
 
   const baseButtonClass =
-    'relative inline-flex items-center justify-center rounded-md border-0 px-5 py-3 font-bold text-white shadow transition duration-200 ease-out will-change-transform';
+    'relative inline-flex items-center justify-center rounded-md border-0 px-3.5 py-2 text-xs font-bold text-white shadow transition duration-200 ease-out will-change-transform';
 
   const renderCTA = (id: string, label: string, onClick?: () => void) => {
     const isHover = hovered === id;
@@ -122,13 +122,13 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   return (
     <>
       <header
-        className="flex flex-col gap-[var(--spacing-md)] border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-[var(--spacing-lg)] py-[var(--spacing-md)] text-[var(--color-text)] md:flex-row md:items-center"
+        className="flex flex-col gap-[var(--spacing-sm)] border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-[var(--spacing-lg)] py-[calc(var(--spacing-sm)+2px)] text-[var(--color-text)] md:flex-row md:items-center"
         role="banner"
       >
         <style>{`@keyframes dance6123 { to { background-position: var(--btn-width); } }`}</style>
-        <h1 className="text-base font-semibold tracking-tight">하루 루틴 컨트롤러</h1>
+        <h1 className="text-sm font-semibold tracking-tight">하루 루틴 컨트롤러</h1>
 
-      <div className="flex flex-1 flex-wrap items-center gap-[var(--spacing-lg)] text-sm">
+      <div className="flex flex-1 flex-wrap items-center gap-[var(--spacing-md)] text-[13px]">
         <div className={statItemClass}>
           <span>⚡ 에너지:</span>
           <span className={statValueClass}>{currentEnergy > 0 ? `${currentEnergy}%` : '-'}</span>
@@ -176,9 +176,9 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         )}
 
         {waifuState && currentMood && (
-          <div className={`${statItemClass} gap-3`}>
+          <div className={`${statItemClass} gap-2.5`}>
             <span>분위기:</span>
-            <span className="text-lg" title={currentMood}>
+            <span className="text-base" title={currentMood}>
               {currentMood}
             </span>
           </div>
@@ -188,7 +188,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         <WeatherWidget />
 
         {/* Schedule View 컨트롤 (압축형) */}
-        <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-1.5 py-1">
+        <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-1.5 py-0.5">
           <button
             type="button"
             onClick={openWarmupModal}
@@ -232,15 +232,15 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         </div>
       </div>
 
-        <div className="flex flex-wrap items-center gap-[var(--spacing-sm)] md:ml-auto">
+        <div className="flex flex-wrap items-center gap-[var(--spacing-xs)] md:ml-auto">
           {/* AI 분석 인디케이터 */}
           {aiAnalyzing && (
-            <div className="flex items-center gap-2 rounded-xl border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-4 py-2 text-sm font-semibold text-[var(--color-primary)] animate-pulse">
-              <span className="animate-spin text-base">🧠</span>
+            <div className="flex items-center gap-1.5 rounded-xl border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--color-primary)] animate-pulse">
+              <span className="animate-spin text-sm">🧠</span>
               <span>AI 분석 중...</span>
               <button
                 onClick={cancelBreakdown}
-                className="ml-2 rounded-lg bg-[var(--color-primary)]/20 px-2 py-1 text-xs hover:bg-[var(--color-primary)]/30 transition"
+                className="ml-1.5 rounded-lg bg-[var(--color-primary)]/20 px-1.5 py-0.5 text-[11px] hover:bg-[var(--color-primary)]/30 transition"
                 title="취소"
               >
                 ✕

@@ -15,7 +15,7 @@ db/
 | 테이블 | 키 | 설명 |
 |--------|-----|------|
 | `dailyData` | `date` | 일별 작업 및 블록 상태 |
-| `gameState` | `key` | 게임 상태 (XP, 레벨, 퀘스트) |
+| `gameState` | `key` | 게임 상태 (XP, 퀘스트) |
 | `templates` | `id` | 작업 템플릿 |
 | `shopItems` | `id` | 상점 아이템 |
 | `waifuState` | `key` | 와이푸 상태 (호감도, 포즈) |

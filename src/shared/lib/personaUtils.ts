@@ -196,7 +196,6 @@ export async function buildPersonaContext(
   const context: PersonaContext = {
     // 기본 정보
     affection,
-    level: gameState?.level ?? 1,
     totalXP: gameState?.totalXP ?? 0,
     dailyXP: gameState?.dailyXP ?? 0,
     availableXP: gameState?.availableXP ?? 0,

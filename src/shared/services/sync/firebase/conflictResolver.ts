@@ -68,7 +68,6 @@ export function mergeGameState(
   const mergedTotalXP = Math.max(local.data.totalXP, remote.data.totalXP);
   const mergedDailyXP = Math.max(local.data.dailyXP, remote.data.dailyXP);
   const mergedAvailableXP = Math.max(local.data.availableXP, remote.data.availableXP);
-  const mergedLevel = Math.max(local.data.level, remote.data.level);
 
   // dailyQuests 병합: 각 퀘스트별로 progress 최대값 사용
   const localQuests = Array.isArray(local.data.dailyQuests) ? local.data.dailyQuests : [];
@@ -106,12 +105,12 @@ export function mergeGameState(
 
   // 더 최신 타임스탬프 사용
   const useLocal = local.updatedAt >= remote.updatedAt;
-  const baseData = useLocal ? local.data : remote.data;
+  const { level: _legacyLevel, ...baseData } = (useLocal ? local.data : remote.data) as GameState & { level?: number };
+  void _legacyLevel;
 
   return {
     data: {
       ...baseData,
-      level: mergedLevel,
       totalXP: mergedTotalXP,
       dailyXP: mergedDailyXP,
       availableXP: mergedAvailableXP,

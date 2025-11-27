@@ -85,12 +85,6 @@ export interface XpSpentEvent {
     purpose: string; // 'unlock_block', 'shop_item', etc.
 }
 
-export interface LevelUpEvent {
-    oldLevel: number;
-    newLevel: number;
-    totalXp: number;
-}
-
 /**
  * Quest 도메인 이벤트
  */
@@ -157,10 +151,9 @@ export interface EventTypeMap {
     'block:unlocked': BlockUnlockedEvent;
     'block:perfect': BlockPerfectEvent;
 
-    // XP/Level events
+// XP events
     'xp:earned': XpEarnedEvent;
     'xp:spent': XpSpentEvent;
-    'level:up': LevelUpEvent;
 
     // Quest events
     'quest:progress': QuestProgressEvent;

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
-import type { Task } from '@/shared/types/domain';
+import type { Task, Resistance } from '@/shared/types/domain';
+import { calculateTaskXP } from '@/shared/lib/utils';
 
 interface FocusHeroTaskProps {
     task: Task;
@@ -8,11 +9,30 @@ interface FocusHeroTaskProps {
     isActive: boolean;
     startTime: number | null;
     onEdit: (task: Task) => void;
+    onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
     onToggle: (taskId: string) => void;
     onStartNow: (task: Task) => void;
     onStop: () => void;
     onComplete: () => void;
 }
+
+const RESISTANCE_COLORS: Record<Resistance, string> = {
+    low: 'bg-emerald-500/20 text-emerald-300',
+    medium: 'bg-amber-500/20 text-amber-300',
+    high: 'bg-rose-500/20 text-rose-300',
+};
+
+const RESISTANCE_EMOJI: Record<Resistance, string> = {
+    low: '🟢',
+    medium: '🟠',
+    high: '🔴'
+};
+
+const RESISTANCE_LABEL: Record<Resistance, string> = {
+    low: '쉬움',
+    medium: '보통',
+    high: '어려움'
+};
 
 export function FocusHeroTask({
     task,
@@ -20,6 +40,7 @@ export function FocusHeroTask({
     isActive,
     startTime,
     onEdit,
+    onUpdateTask,
     onToggle,
     onStartNow,
     onStop,
@@ -29,6 +50,10 @@ export function FocusHeroTask({
     const [reachedMilestones, setReachedMilestones] = useState<Set<number>>(new Set());
     const [celebratingMilestone, setCelebratingMilestone] = useState<number | null>(null);
     const milestonesRef = useRef<Set<number>>(new Set());
+
+    const [showDurationPicker, setShowDurationPicker] = useState(false);
+    const [showResistancePicker, setShowResistancePicker] = useState(false);
+    const durationOptions = [5, 10, 15, 30, 45, 60];
 
     useEffect(() => {
         if (!isActive || !startTime) {
@@ -69,15 +94,37 @@ export function FocusHeroTask({
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
 
+    const handleResistanceChange = (resistance: Resistance) => {
+        const multiplier = resistance === 'low' ? 1.0 : resistance === 'medium' ? 1.3 : 1.6;
+        onUpdateTask(task.id, {
+            resistance,
+            adjustedDuration: Math.round(task.baseDuration * multiplier),
+        });
+        setShowResistancePicker(false);
+    };
+
+    const handleDurationChange = (baseDuration: number) => {
+        const multiplier = task.resistance === 'low' ? 1.0 : task.resistance === 'medium' ? 1.3 : 1.6;
+        onUpdateTask(task.id, {
+            baseDuration,
+            adjustedDuration: Math.round(baseDuration * multiplier),
+        });
+        setShowDurationPicker(false);
+    };
+
+    // Calculate XP (Base + Bonus)
+    const baseXP = calculateTaskXP(task);
+    const totalXP = baseXP * 2;
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl shadow-2xl"
+            className="relative overflow-visible rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl shadow-2xl"
         >
             {/* Dynamic Background Gradient */}
             <motion.div
-                className="absolute inset-0 -z-10 opacity-30"
+                className="absolute inset-0 -z-10 opacity-30 rounded-3xl overflow-hidden"
                 animate={{
                     background: isActive
                         ? [
@@ -120,16 +167,63 @@ export function FocusHeroTask({
                         </button>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-3">
-                        <span className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white/80">
-                            ⏱ {task.baseDuration}분
+                    <div className="mt-4 flex flex-wrap gap-3 items-center">
+                        {/* XP Badge */}
+                        <span className="flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm font-bold text-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.2)]">
+                            🪙 +{totalXP} XP (x2 Bonus)
                         </span>
-                        <span className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium ${task.resistance === 'low' ? 'bg-emerald-500/20 text-emerald-300' :
-                                task.resistance === 'medium' ? 'bg-amber-500/20 text-amber-300' :
-                                    'bg-rose-500/20 text-rose-300'
-                            }`}>
-                            {task.resistance === 'low' ? '🟢 쉬움' : task.resistance === 'medium' ? '🟡 보통' : '🔴 어려움'}
-                        </span>
+
+                        {/* Duration Picker */}
+                        <div className="relative">
+                            <button
+                                onClick={() => {
+                                    setShowDurationPicker(!showDurationPicker);
+                                    setShowResistancePicker(false);
+                                }}
+                                className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/20 transition-colors"
+                            >
+                                ⏱ {task.baseDuration}분
+                            </button>
+                            {showDurationPicker && (
+                                <div className="absolute left-0 top-full z-[50] mt-2 grid grid-cols-3 gap-1 rounded-xl border border-white/10 bg-[#2a2a2a] p-2 text-xs shadow-xl backdrop-blur-md w-[180px]">
+                                    {durationOptions.map((duration) => (
+                                        <button
+                                            key={duration}
+                                            className={`rounded-lg px-2 py-1.5 transition ${task.baseDuration === duration ? 'bg-amber-500 text-white' : 'hover:bg-white/5 text-white/70'}`}
+                                            onClick={() => handleDurationChange(duration)}
+                                        >
+                                            {duration}m
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Resistance Picker */}
+                        <div className="relative">
+                            <button
+                                onClick={() => {
+                                    setShowResistancePicker(!showResistancePicker);
+                                    setShowDurationPicker(false);
+                                }}
+                                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium hover:brightness-110 transition-all ${RESISTANCE_COLORS[task.resistance]}`}
+                            >
+                                {RESISTANCE_EMOJI[task.resistance]} {RESISTANCE_LABEL[task.resistance]}
+                            </button>
+                            {showResistancePicker && (
+                                <div className="absolute left-0 top-full z-[50] mt-2 flex min-w-[120px] flex-col gap-1 rounded-xl border border-white/10 bg-[#2a2a2a] p-1.5 text-xs shadow-xl backdrop-blur-md">
+                                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-emerald-200" onClick={() => handleResistanceChange('low')}>
+                                        🟢 쉬움 (x1.0)
+                                    </button>
+                                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-amber-200" onClick={() => handleResistanceChange('medium')}>
+                                        🟠 보통 (x1.3)
+                                    </button>
+                                    <button className="rounded-lg px-2 py-1.5 text-left hover:bg-white/5 text-rose-200" onClick={() => handleResistanceChange('high')}>
+                                        🔴 어려움 (x1.6)
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -192,16 +286,16 @@ export function FocusHeroTask({
                                     const requiredMinutes = Math.ceil((task.baseDuration * milestone) / 100);
                                     const isReached = progress >= milestone;
                                     return (
-                                            <div
-                                                key={milestone}
-                                                className="absolute flex flex-col items-center"
-                                                style={{ left: `${milestone}%`, transform: 'translateX(-50%)' }}
+                                        <div
+                                            key={milestone}
+                                            className="absolute flex flex-col items-center"
+                                            style={{ left: `${milestone}%`, transform: 'translateX(-50%)' }}
+                                        >
+                                            <span
+                                                className={`text-xs font-medium ${isReached ? 'text-amber-400' : 'text-white/40'}`}
                                             >
-                                                <span
-                                                    className={`text-xs font-medium ${isReached ? 'text-amber-400' : 'text-white/40'}`}
-                                                >
-                                                    {requiredMinutes}분
-                                                </span>
+                                                {requiredMinutes}분
+                                            </span>
                                         </div>
                                     );
                                 })}
@@ -217,8 +311,8 @@ export function FocusHeroTask({
                                         style={{ left: `${milestone}%` }}
                                     >
                                         <div className={`h-full transition-all ${reachedMilestones.has(milestone)
-                                                ? 'bg-amber-400 shadow-lg shadow-amber-500/50'
-                                                : 'bg-white/30'
+                                            ? 'bg-amber-400 shadow-lg shadow-amber-500/50'
+                                            : 'bg-white/30'
                                             }`} />
                                     </div>
                                 ))}
@@ -264,9 +358,9 @@ export function FocusHeroTask({
                         <div className="flex gap-3 mt-4">
                             <button
                                 onClick={onComplete}
-                                className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 py-3 text-sm font-bold text-white hover:from-emerald-600 hover:to-green-700 transition-all"
+                                className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 py-3 text-sm font-bold text-white hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg shadow-emerald-500/20"
                             >
-                                ✓ 작업 완료
+                                ✓ 작업 완료 (+{totalXP} XP)
                             </button>
                             <button
                                 onClick={onStop}

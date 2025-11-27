@@ -8,7 +8,6 @@ export { gameStateEventHandler, GameStateEventHandler } from './gameStateEventHa
 export type {
   GameStateEvent,
   XPGainedEvent,
-  LevelUpEvent,
   QuestCompletedEvent,
   GameStateChangeResult,
   XPGainReason,

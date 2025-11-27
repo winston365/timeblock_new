@@ -72,8 +72,8 @@ function GoalProgressCard({ goal, tasks, onEdit, onDelete }: GoalProgressCardPro
 
           <div className="flex items-center gap-2 text-xs text-white/70">
             <span className="font-semibold text-white">{formatTime(goal.completedMinutes)}</span>
-            <span className="text-white/40">/</span>
-            <span className="text-white/60">{formatTime(goal.targetMinutes)}</span>
+            <span className="text-white/50">/</span>
+            <span className="font-semibold text-white/80">{formatTime(goal.targetMinutes)}</span>
           </div>
 
           {/* Dual Progress Bar */}
@@ -94,8 +94,8 @@ function GoalProgressCard({ goal, tasks, onEdit, onDelete }: GoalProgressCardPro
           </div>
 
           {/* Legend / Status Text */}
-          <div className="mt-1 flex justify-between text-[10px] text-white/40">
-            <span>계획: {formatTime(goal.plannedMinutes)}</span>
+          <div className="mt-1 flex justify-between text-[10px] text-white/60">
+            <span className="font-semibold text-white/80">계획: {formatTime(goal.plannedMinutes)}</span>
             {goal.plannedMinutes < goal.targetMinutes && (
               <span className="text-amber-300/80">
                 부족 {formatTime(goal.targetMinutes - goal.plannedMinutes)}

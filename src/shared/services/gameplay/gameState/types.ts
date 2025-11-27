@@ -34,16 +34,6 @@ export interface XPGainedEvent {
 }
 
 /**
- * 레벨업 이벤트
- */
-export interface LevelUpEvent {
-  type: 'level_up';
-  previousLevel: number;
-  newLevel: number;
-  totalXP: number;
-}
-
-/**
  * 퀘스트 완료 이벤트
  */
 export interface QuestCompletedEvent {
@@ -56,7 +46,7 @@ export interface QuestCompletedEvent {
 /**
  * 게임 상태 이벤트 유니온 타입
  */
-export type GameStateEvent = XPGainedEvent | LevelUpEvent | QuestCompletedEvent;
+export type GameStateEvent = XPGainedEvent | QuestCompletedEvent;
 
 /**
  * 게임 상태 변경 결과

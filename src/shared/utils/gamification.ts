@@ -1,9 +1,9 @@
 /**
  * 게임화 시스템 유틸리티
  *
- * @role XP 계산, 레벨업 체크, 퀘스트 목표/보상 계산, 호감도 증가량 계산 등 게임화 관련 모든 계산 로직 제공
- * @input Task 객체, 레벨 정보, 블록 정보, 퀘스트 타입 등
- * @output XP 값, 레벨 값, 보상 값, 히스토리 데이터 등
+ * @role XP 계산, 퀘스트 목표/보상 계산, 호감도 증가량 계산 등 게임화 관련 모든 계산 로직 제공
+ * @input Task 객체, 블록 정보, 퀘스트 타입 등
+ * @output XP 값, 보상 값, 히스토리 데이터 등
  * @dependencies Task, Resistance 타입
  */
 
@@ -43,57 +43,6 @@ export function calculateTaskBaseXP(task: Task): number {
   const resistanceMultiplier = RESISTANCE_XP_MULTIPLIERS[task.resistance] || 1.0;
   const baseXP = task.adjustedDuration * 0.5 * resistanceMultiplier;
   return Math.round(baseXP);
-}
-
-/**
- * 레벨 보너스 계산
- * 5레벨마다 +5 XP
- * @param level - 현재 레벨
- * @returns 레벨 보너스 XP
- */
-export function calculateLevelBonus(level: number): number {
-  return Math.floor(level / 5) * 5;
-}
-
-/**
- * 작업 완료 시 총 XP 계산
- * totalXP = baseXP + levelBonus
- * @param task - 완료된 작업
- * @param level - 현재 레벨
- * @returns 총 XP 값
- */
-export function calculateTaskTotalXP(task: Task, level: number): number {
-  const baseXP = calculateTaskBaseXP(task);
-  const levelBonus = calculateLevelBonus(level);
-  return baseXP + levelBonus;
-}
-
-/**
- * 레벨업에 필요한 XP 계산
- * requiredXP = level * 100
- * @param level - 현재 레벨
- * @returns 다음 레벨까지 필요한 XP
- */
-export function calculateRequiredXP(level: number): number {
-  return level * 100;
-}
-
-/**
- * 레벨업 체크 및 새 레벨 계산
- * @param currentXP - 현재 보유 XP
- * @param currentLevel - 현재 레벨
- * @returns 새 레벨 (레벨업이 없으면 현재 레벨 반환)
- */
-export function checkLevelUp(currentXP: number, currentLevel: number): number {
-  let newLevel = currentLevel;
-  let remainingXP = currentXP;
-
-  while (remainingXP >= calculateRequiredXP(newLevel)) {
-    remainingXP -= calculateRequiredXP(newLevel);
-    newLevel++;
-  }
-
-  return newLevel;
 }
 
 /**

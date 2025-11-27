@@ -147,19 +147,19 @@ function TaskInfo({ task, isTicket, rarity, onOpenTaskModal }: TaskInfoProps) {
       <h2 className="text-2xl font-bold text-white">{task?.text}</h2>
       <div className="flex flex-wrap items-center justify-center gap-2">
         <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">
-          {task?.resistance === 'low' 
-            ? '🟢 쉬움' 
-            : task?.resistance === 'medium' 
-              ? '🟡 보통' 
+          {task?.resistance === 'low'
+            ? '🟢 쉬움'
+            : task?.resistance === 'medium'
+              ? '🟡 보통'
               : '🔴 어려움'}
         </span>
-        
+
         {rarity && (
           <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${getRarityStyle(rarity)}`}>
             휴식권 · {getRarityLabel(rarity)}
           </span>
         )}
-        
+
         {task && !isTicket && (
           <button
             onClick={onOpenTaskModal}

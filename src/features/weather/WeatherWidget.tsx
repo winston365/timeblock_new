@@ -136,20 +136,20 @@ export default function WeatherWidget() {
             {/* 트리거 버튼 */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r ${bgGradient} bg-opacity-20 border border-white/10 backdrop-blur-sm hover:brightness-110 transition-all duration-200 cursor-pointer group shadow-sm`}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r ${bgGradient} bg-opacity-20 border border-white/10 backdrop-blur-sm hover:brightness-110 transition-all duration-200 cursor-pointer group shadow-sm`}
             >
                 {loading ? (
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 ) : (
-                    <span className="text-2xl filter drop-shadow-md group-hover:scale-110 transition-transform">
+                    <span className="text-xl filter drop-shadow-md group-hover:scale-110 transition-transform">
                         {currentForecast?.current.icon}
                     </span>
                 )}
-                <span className="font-light text-lg text-white drop-shadow-sm">
+                <span className="font-light text-base text-white drop-shadow-sm">
                     {currentForecast?.current.temp}°
                 </span>
                 {error && (
-                    <span className="text-[10px] font-semibold text-amber-200 bg-black/20 px-2 py-1 rounded-full">
+                    <span className="text-[9px] font-semibold text-amber-200 bg-black/20 px-1.5 py-0.5 rounded-full">
                         업데이트 실패
                     </span>
                 )}

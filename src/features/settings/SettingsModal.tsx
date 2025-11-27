@@ -148,33 +148,21 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
         try {
             setSaving(true);
 
-            const syncKeys: (keyof Settings)[] = ['dontDoChecklist', 'timeSlotTags', 'templateCategories'];
-            const dualPersistKeys: (keyof Settings)[] = ['timeSlotTags'];
-
+            const secretKeys: (keyof Settings)[] = ['geminiApiKey', 'firebaseConfig', 'barkApiKey'];
             const syncUpdates: Partial<Settings> = {};
-            const localUpdates: Partial<Settings> = {};
+            const secretUpdates: Partial<Settings> = {};
 
             (Object.keys(localSettings) as (keyof Settings)[]).forEach(key => {
                 const value = localSettings[key];
-                if (dualPersistKeys.includes(key)) {
-                    // @ts-ignore
-                    syncUpdates[key] = value;
-                    // @ts-ignore
-                    localUpdates[key] = value;
-                    return;
-                }
-
-                if (syncKeys.includes(key)) {
-                    // @ts-ignore
-                    syncUpdates[key] = value;
+                if (secretKeys.includes(key)) {
+                    secretUpdates[key] = value;
                 } else {
-                    // @ts-ignore
-                    localUpdates[key] = value;
+                    syncUpdates[key] = value;
                 }
             });
 
-            if (Object.keys(localUpdates).length > 0) {
-                await updateLocalSettings(localUpdates);
+            if (Object.keys(secretUpdates).length > 0) {
+                await updateLocalSettings(secretUpdates);
             }
             if (Object.keys(syncUpdates).length > 0) {
                 await updateSettings(syncUpdates);

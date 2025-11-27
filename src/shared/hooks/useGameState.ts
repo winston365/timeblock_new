@@ -1,9 +1,9 @@
 /**
  * GameState 훅
  *
- * @role 게임 상태(XP, 레벨, 퀘스트) 관리 및 전역 동기화
+ * @role 게임 상태(XP, 퀘스트) 관리 및 전역 동기화
  * @input XP 획득/소비, 퀘스트 진행, 일일 초기화
- * @output 게임 상태, XP, 레벨, 퀘스트 목록 및 관리 함수
+ * @output 게임 상태, XP, 퀘스트 목록 및 관리 함수
  * @external_dependencies
  *   - react: useEffect, useRef hooks
  *   - gameStateStore: Zustand 기반 전역 상태 관리 스토어
@@ -16,7 +16,7 @@ import { useGameStateStore } from '../stores/gameStateStore';
  * 게임 상태 관리 훅
  *
  * @returns {object} 게임 상태 및 관리 함수
- * @returns {GameState | null} gameState - 현재 게임 상태 (XP, 레벨, 퀘스트 등)
+ * @returns {GameState | null} gameState - 현재 게임 상태 (XP, 퀘스트 등)
  * @returns {boolean} loading - 로딩 상태
  * @returns {Error | null} error - 에러 상태
  * @returns {() => Promise<void>} refresh - 게임 상태 새로고침

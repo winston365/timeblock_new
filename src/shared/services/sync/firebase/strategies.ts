@@ -45,7 +45,7 @@ export const gameStateStrategy: SyncStrategy<GameState> = {
   collection: 'gameState',
   resolveConflict: mergeGameState,
   getSuccessMessage: (data) =>
-    `GameState synced (Level ${data.level}, XP ${data.totalXP})`,
+    `GameState synced (XP ${data.totalXP})`,
 };
 
 // ============================================================================

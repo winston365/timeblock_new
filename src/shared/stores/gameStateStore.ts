@@ -1,9 +1,9 @@
 /**
  * GameState Zustand Store
  *
- * @role 게임 상태(XP, 레벨, 퀘스트)의 전역 상태 관리 및 자동 일일 초기화
+ * @role 게임 상태(XP, 퀘스트)의 전역 상태 관리 및 자동 일일 초기화
  * @input XP 획득/소비, 퀘스트 진행, 날짜 변경 감지
- * @output 게임 상태, XP, 레벨, 퀘스트 목록 및 관리 함수
+ * @output 게임 상태, XP, 퀘스트 목록 및 관리 함수
  * @external_dependencies
  *   - zustand: 전역 상태 관리 라이브러리
  *   - repositories: 게임 상태, XP, 퀘스트 데이터 레포지토리
@@ -47,7 +47,7 @@ interface GameStateStore {
  * @sideEffects
  *   - localStorage/Firebase에 게임 상태 저장
  *   - 날짜 변경 감지 시 자동 일일 초기화 (dailyXP, 퀘스트 리셋)
- *   - XP 증감 및 레벨 업 처리
+ *   - XP 증감 처리
  *
  * @example
  * ```tsx

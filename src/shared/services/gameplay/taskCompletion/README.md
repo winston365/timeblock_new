@@ -49,7 +49,6 @@ const result = await taskCompletionService.handleTaskCompletion({
 
 if (result.success) {
   console.log(`XP 획득: ${result.xpGained}`);
-  console.log(`레벨업: ${result.levelUp}`);
   console.log(`퍼펙트 블록: ${result.perfectBlock}`);
   
   if (result.waifuMessage) {
@@ -124,10 +123,10 @@ TaskCompletionResult 반환
 interface TaskCompletionResult {
   success: boolean;
   xpGained: number;
-  levelUp: boolean;
-  perfectBlock: boolean;
+  blockBonusXP?: number;
+  isPerfectBlock?: boolean;
   waifuMessage?: string;
-  errors: string[];
+  error?: Error;
 }
 ```
 

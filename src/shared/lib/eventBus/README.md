@@ -54,11 +54,6 @@ eventBus.on('task:completed', async ({ xpEarned }) => {
   await useGameStateStore.getState().addXP(xpEarned);
 });
 
-// 일회성 구독
-eventBus.once('level:up', ({ newLevel }) => {
-  console.log(`Level Up! New level: ${newLevel}`);
-});
-
 // 우선순위 지정 (높을수록 먼저 실행)
 eventBus.on('task:completed', handler, { priority: 10 });
 ```
@@ -92,10 +87,9 @@ eventBus.off('task:completed');
 - `block:unlocked` - 블록 잠금 해제
 - `block:perfect` - Perfect Block 달성
 
-### XP/Level 도메인
+### XP 도메인
 - `xp:earned` - XP 획득
 - `xp:spent` - XP 소비
-- `level:up` - 레벨업
 
 ### Quest 도메인
 - `quest:progress` - 퀘스트 진행

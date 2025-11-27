@@ -63,7 +63,6 @@ export interface DetailedTask {
 export interface PersonaContext {
   // 기본 정보
   affection: number;
-  level: number;
   totalXP: number;
   dailyXP: number;
   availableXP: number;

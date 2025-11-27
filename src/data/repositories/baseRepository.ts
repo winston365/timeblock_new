@@ -196,7 +196,7 @@ export async function saveData<T>(
  * @returns {Promise<T>} 업데이트된 데이터
  *
  * @example
- * const updated = await updateData(gameStateConfig, 'current', { level: 5 });
+ * const updated = await updateData(gameStateConfig, 'current', { availableXP: 50 });
  */
 export async function updateData<T>(
   config: RepositoryConfig<T>,

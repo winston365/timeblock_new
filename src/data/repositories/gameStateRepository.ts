@@ -1,7 +1,7 @@
 /**
  * GameState Repository
  *
- * @role 게임화 시스템 데이터 관리 (XP, 레벨, 퀘스트, 연속 출석 등)
+ * @role 게임화 시스템 데이터 관리 (XP, 퀘스트, 연속 출석 등)
  * @input GameState 객체, XP 값, Quest 타입, Task 객체
  * @output GameState 객체, Quest 배열, XP 히스토리
  * @external_dependencies
@@ -15,7 +15,7 @@
 
 import { db } from '../db/dexieClient';
 import type { GameState, Quest, Task } from '@/shared/types/domain';
-import { getLocalDate, getLevelFromXP, getBlockIdFromHour } from '@/shared/lib/utils';
+import { getLocalDate, getBlockIdFromHour } from '@/shared/lib/utils';
 import { generateQuestTarget, calculateQuestReward } from '@/shared/utils/gamification';
 import { gameStateStrategy } from '@/shared/services/sync/firebase/strategies';
 import { loadData, saveData, type RepositoryConfig } from './baseRepository';
@@ -32,7 +32,6 @@ const gameStateConfig: RepositoryConfig<GameState> = {
   table: db.gameState,
   firebaseStrategy: gameStateStrategy,
   createInitial: () => ({
-    level: 1,
     totalXP: 0,
     dailyXP: 0,
     availableXP: 0,
@@ -50,33 +49,35 @@ const gameStateConfig: RepositoryConfig<GameState> = {
     // 점화 시스템
     dailyFreeIgnitions: GAME_STATE_DEFAULTS.dailyFreeIgnitions,
     usedIgnitions: 0,
-    lastIgnitionTime: null,
-    lastBonusIgnitionTime: null,
-    lastIgnitionResetDate: new Date().toISOString().split('T')[0],
-    ignitionHistory: [],
-  }),
-  sanitize: (data: GameState) => {
-    // 필수 필드 초기화
-    return {
-      ...data,
-      dailyQuests: Array.isArray(data.dailyQuests) ? data.dailyQuests : generateDailyQuests(),
-      xpHistory: Array.isArray(data.xpHistory) ? data.xpHistory : [],
-      timeBlockXPHistory: Array.isArray(data.timeBlockXPHistory) ? data.timeBlockXPHistory : [],
-      completedTasksHistory: Array.isArray(data.completedTasksHistory) ? data.completedTasksHistory : [],
-      timeBlockXP: data.timeBlockXP || {},
-      dailyTimerCount: typeof data.dailyTimerCount === 'number' ? data.dailyTimerCount : 0,
-      inventory: data.inventory || {},
+ lastIgnitionTime: null,
+ lastBonusIgnitionTime: null,
+ lastIgnitionResetDate: new Date().toISOString().split('T')[0],
+  ignitionHistory: [],
+}),
+sanitize: (data: GameState) => {
+  const { level: _legacyLevel, ...rest } = data as GameState & { level?: number };
+  void _legacyLevel;
+  // 필수 필드 초기화
+  return {
+    ...rest,
+    dailyQuests: Array.isArray(rest.dailyQuests) ? rest.dailyQuests : generateDailyQuests(),
+    xpHistory: Array.isArray(rest.xpHistory) ? rest.xpHistory : [],
+    timeBlockXPHistory: Array.isArray(rest.timeBlockXPHistory) ? rest.timeBlockXPHistory : [],
+    completedTasksHistory: Array.isArray(rest.completedTasksHistory) ? rest.completedTasksHistory : [],
+    timeBlockXP: rest.timeBlockXP || {},
+    dailyTimerCount: typeof rest.dailyTimerCount === 'number' ? rest.dailyTimerCount : 0,
+    inventory: rest.inventory || {},
 
-      // 점화 시스템
-      dailyFreeIgnitions: data.dailyFreeIgnitions ?? GAME_STATE_DEFAULTS.dailyFreeIgnitions,
-      usedIgnitions: data.usedIgnitions ?? 0,
-      lastIgnitionTime: data.lastIgnitionTime ?? null,
-      lastBonusIgnitionTime: data.lastBonusIgnitionTime ?? null,
-      lastIgnitionResetDate: data.lastIgnitionResetDate ?? new Date().toISOString().split('T')[0],
-      ignitionHistory: Array.isArray((data as any).ignitionHistory) ? (data as any).ignitionHistory : [],
-    };
-  },
-  logPrefix: 'GameState',
+    // 점화 시스템
+    dailyFreeIgnitions: rest.dailyFreeIgnitions ?? GAME_STATE_DEFAULTS.dailyFreeIgnitions,
+    usedIgnitions: rest.usedIgnitions ?? 0,
+    lastIgnitionTime: rest.lastIgnitionTime ?? null,
+    lastBonusIgnitionTime: rest.lastBonusIgnitionTime ?? null,
+    lastIgnitionResetDate: rest.lastIgnitionResetDate ?? new Date().toISOString().split('T')[0],
+    ignitionHistory: Array.isArray(rest.ignitionHistory) ? rest.ignitionHistory : [],
+  };
+},
+logPrefix: 'GameState',
 };
 
 // ============================================================================
@@ -110,7 +111,7 @@ export function createInitialGameState(): GameState {
 export async function loadGameState(): Promise<GameState> {
   try {
     // BaseRepository를 통한 기본 로드 (3-tier fallback)
-    let data = await loadData(gameStateConfig, 'current');
+    const data = await loadData(gameStateConfig, 'current');
 
     // 날짜 변경 체크 및 일일 초기화
     const today = getLocalDate();
@@ -272,7 +273,6 @@ export async function updateGameState(updates: Partial<GameState>): Promise<Game
  * @throws {Error} 로드 또는 저장 실패 시
  * @sideEffects
  *   - totalXP, dailyXP, availableXP 증가
- *   - 레벨 재계산
  *   - 블록별 XP 기록
  *   - XP 토스트 표시 (브라우저 환경에서)
  *   - saveGameState 호출
@@ -288,9 +288,6 @@ export async function addXP(
     const now = new Date();
     const blockFromTime = getBlockIdFromHour(now.getHours());
 
-    // 레벨업 감지를 위해 기존 레벨 저장
-    const previousLevel = gameState.level;
-
     // XP 차감 시 음수 방지
     const newTotalXP = Math.max(0, gameState.totalXP + amount);
     const newDailyXP = Math.max(0, gameState.dailyXP + amount);
@@ -299,10 +296,6 @@ export async function addXP(
     gameState.totalXP = newTotalXP;
     gameState.dailyXP = newDailyXP;
     gameState.availableXP = newAvailableXP;
-    gameState.level = getLevelFromXP(gameState.totalXP);
-
-    // 레벨업 감지
-    const leveledUp = gameState.level > previousLevel;
 
     // 블록별 XP 기록
     const blockKey = blockFromTime || blockId;
@@ -334,16 +327,6 @@ export async function addXP(
         reason,
         blockId: blockKey,
       } as any);
-    }
-
-    // 레벨업 이벤트
-    if (leveledUp) {
-      events.push({
-        type: 'level_up',
-        previousLevel,
-        newLevel: gameState.level,
-        totalXP: gameState.totalXP,
-      });
     }
 
     return {

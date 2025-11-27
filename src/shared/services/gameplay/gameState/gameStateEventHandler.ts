@@ -4,7 +4,6 @@
  * @role 게임 상태 이벤트를 받아 UI 업데이트를 수행
  * @responsibility
  *   - XP 획득 이벤트 → 토스트 메시지 표시
- *   - 레벨업 이벤트 → 와이푸 축하 메시지 표시
  *   - 퀘스트 완료 이벤트 → 알림 표시
  *
  * @benefits
@@ -13,7 +12,7 @@
  *   - 이벤트 기반 확장 가능
  */
 
-import type { GameStateEvent, XPGainedEvent, LevelUpEvent, QuestCompletedEvent } from './types';
+import type { GameStateEvent, XPGainedEvent, QuestCompletedEvent } from './types';
 import { XP_REASON_MESSAGES } from './types';
 
 /**
@@ -25,8 +24,7 @@ import { XP_REASON_MESSAGES } from './types';
  * ```ts
  * const handler = new GameStateEventHandler();
  * const events = [
- *   { type: 'xp_gained', amount: 15, reason: 'task_complete' },
- *   { type: 'level_up', previousLevel: 5, newLevel: 6, totalXP: 500 }
+ *   { type: 'xp_gained', amount: 15, reason: 'task_complete' }
  * ];
  * await handler.handleEvents(events);
  * ```
@@ -49,11 +47,8 @@ export class GameStateEventHandler {
   async handleEvent(event: GameStateEvent): Promise<void> {
     switch (event.type) {
       case 'xp_gained':
-        await this.handleXPGained(event);
-        break;
-      case 'level_up':
-        await this.handleLevelUp(event);
-        break;
+      await this.handleXPGained(event);
+      break;
       case 'quest_completed':
         await this.handleQuestCompleted(event);
         break;
@@ -84,27 +79,6 @@ export class GameStateEventHandler {
       console.log(`[${this.name}] 🎁 XP Toast: ${event.amount} (${event.reason})`);
     } catch (error) {
       console.error(`[${this.name}] ❌ Failed to show XP toast:`, error);
-    }
-  }
-
-  /**
-   * 레벨업 이벤트 처리
-   * - 와이푸 축하 메시지 표시
-   */
-  private async handleLevelUp(event: LevelUpEvent): Promise<void> {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    try {
-      const { useWaifuCompanionStore } = await import('@/shared/stores/waifuCompanionStore');
-      const waifuStore = useWaifuCompanionStore.getState();
-
-      waifuStore.show(`축하해! 레벨 ${event.newLevel}로 올랐어! 🎊✨`);
-
-      console.log(`[${this.name}] 🎉 Level Up: ${event.previousLevel} → ${event.newLevel}`);
-    } catch (error) {
-      console.error(`[${this.name}] ❌ Failed to show level up message:`, error);
     }
   }
 

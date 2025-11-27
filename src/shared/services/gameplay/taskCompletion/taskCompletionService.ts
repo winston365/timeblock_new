@@ -113,7 +113,7 @@ export class TaskCompletionService {
         waifuStore.show(waifuMessage);
       }
 
-      // 수집된 게임 상태 이벤트 처리 (XP 토스트, 레벨업 등)
+      // 수집된 게임 상태 이벤트 처리 (XP 토스트 등)
       if (allEvents.length > 0) {
         const { gameStateEventHandler } = await import('@/shared/services/gameplay/gameState');
         await gameStateEventHandler.handleEvents(allEvents);

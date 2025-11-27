@@ -257,10 +257,6 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
               <span className="text-[var(--color-text)]">{waifuState?.affection ?? 0}%</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-[0.55rem] uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">레벨</span>
-              <span className="text-[var(--color-text)]">{gameState?.level ?? 1}</span>
-            </div>
-            <div className="flex flex-col">
               <span className="text-[0.55rem] uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">오늘 XP</span>
               <span className="text-[var(--color-text)]">{gameState?.dailyXP ?? 0}</span>
             </div>

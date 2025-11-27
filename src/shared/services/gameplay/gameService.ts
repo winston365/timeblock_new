@@ -12,7 +12,7 @@ import {
  */
 export const gameService = {
     /**
-     * Add XP and handle level-up events
+     * Add XP
      */
     addXP: async (amount: number, blockId?: string) => {
         try {

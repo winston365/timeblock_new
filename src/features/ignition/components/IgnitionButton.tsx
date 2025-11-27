@@ -56,7 +56,7 @@ export default function IgnitionButton() {
             onClick={handleClick}
             disabled={isDisabled}
             className={`
-        relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium
+        relative flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold
         transition-all duration-200
         ${isDisabled
                     ? 'cursor-not-allowed bg-gray-700 text-gray-400'
@@ -71,19 +71,19 @@ export default function IgnitionButton() {
                         : `점화 (남은 무료 횟수: ${check.freeSpinsRemaining})`
             }
         >
-            <span className="text-lg">🔥</span>
+            <span className="text-sm">🔥</span>
             <span>점화</span>
 
             {/* 남은 무료 횟수 배지 */}
             {check.freeSpinsRemaining !== undefined && check.freeSpinsRemaining > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-xs font-bold text-white">
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] font-bold text-white">
                     {check.freeSpinsRemaining}
                 </span>
             )}
 
             {/* 쿨다운 타이머 */}
             {cooldown > 0 && (
-                <span className="absolute -right-1 -top-1 rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                <span className="absolute -right-1 -top-1 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                     {formatCooldownTime(cooldown)}
                 </span>
             )}

@@ -57,7 +57,6 @@ export async function debugFirebaseData(): Promise<void> {
     if (gameStateValue) {
       const gs = gameStateValue.data;
       console.log('  GameState:', {
-        level: gs?.level,
         totalXP: gs?.totalXP,
         dailyXP: gs?.dailyXP,
         lastLogin: gs?.lastLogin,

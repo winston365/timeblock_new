@@ -41,20 +41,6 @@ export function initWaifuSubscriber(): void {
         }
     });
 
-    // Level Up 시 특별 메시지
-    eventBus.on('level:up', ({ newLevel }) => {
-        waifuStore.show(
-            `축하해! 레벨 ${newLevel} 달성! 🎊`,
-            {
-                audioPath: '/audio/levelup.mp3',
-                expression: {
-                    imagePath: '/waifu/excited.png',
-                    durationMs: 5000,
-                },
-            }
-        );
-    });
-
     // Quest 완료 시
     eventBus.on('quest:completed', ({ reward }) => {
         waifuStore.show(`퀘스트 완료! ${reward} XP 획득! 🏆`);

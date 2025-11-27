@@ -231,7 +231,7 @@ export default function IgnitionOverlay() {
       closeIgnition();
     } catch (error) {
       console.error('보상 지급 실패:', error);
-      alert('보상 지급에 실패했습니다.');
+      toast.error('보상 지급에 실패했습니다.');
     }
   };
 
