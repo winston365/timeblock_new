@@ -1,4 +1,5 @@
 import { create, insert, search, remove, type Orama, type Results } from '@orama/orama';
+import { vectorPersistence } from './vectorPersistence';
 
 export interface RAGDocument {
     id: string;
@@ -14,6 +15,7 @@ export class VectorStore {
     private static instance: VectorStore;
     private db: Orama<any> | null = null;
     private initialized = false;
+    private restoredFromCache = false;
 
     private constructor() { }
 
@@ -41,6 +43,51 @@ export class VectorStore {
 
         this.initialized = true;
         console.log('✅ VectorStore: Initialized Orama DB with Vector Schema');
+
+        // 캐시된 문서 복원
+        await this.restoreFromCache();
+    }
+
+    /**
+     * 캐시된 문서를 Orama DB로 복원
+     */
+    private async restoreFromCache(): Promise<void> {
+        if (this.restoredFromCache) return;
+
+        try {
+            const cachedDocs = await vectorPersistence.loadAllDocuments();
+            if (cachedDocs.length > 0) {
+                console.log(`🔄 VectorStore: Restoring ${cachedDocs.length} documents from cache...`);
+                
+                let restored = 0;
+                for (const doc of cachedDocs) {
+                    try {
+                        const docToInsert = {
+                            ...doc,
+                            completed: doc.completed ?? false,
+                            metadata: JSON.stringify(doc.metadata || {})
+                        };
+                        await insert(this.db!, docToInsert);
+                        restored++;
+                    } catch (e) {
+                        // 개별 문서 복원 실패는 무시
+                    }
+                }
+                
+                console.log(`✅ VectorStore: Restored ${restored} documents from cache`);
+            }
+        } catch (error) {
+            console.warn('⚠️ VectorStore: Failed to restore from cache', error);
+        }
+
+        this.restoredFromCache = true;
+    }
+
+    /**
+     * 문서가 변경되지 않았으면 인덱싱 스킵
+     */
+    public async isDocumentUnchanged(id: string, content: string, completed: boolean): Promise<boolean> {
+        return vectorPersistence.isDocumentUnchanged(id, content, completed);
     }
 
     public async addDocument(doc: RAGDocument): Promise<string> {
@@ -71,7 +118,14 @@ export class VectorStore {
         };
 
         // Insert new document (Orama generates a new internal ID)
-        return await insert(this.db!, docToInsert);
+        const result = await insert(this.db!, docToInsert);
+
+        // 영구 저장소에도 저장
+        if (doc.embedding) {
+            await vectorPersistence.saveDocument(doc);
+        }
+
+        return result;
     }
 
     public async addDocuments(docs: RAGDocument[]): Promise<string[]> {
@@ -122,7 +176,25 @@ export class VectorStore {
 
     public async clear(): Promise<void> {
         this.initialized = false;
+        this.restoredFromCache = false;
+        await vectorPersistence.clearAll(); // 영구 저장소도 초기화
         await this.initialize();
+    }
+
+    /**
+     * 캐시된 문서에서 임베딩 가져오기 (재인덱싱 방지용)
+     */
+    public async getCachedEmbedding(id: string): Promise<number[] | null> {
+        const doc = await vectorPersistence.getDocument(id);
+        return doc?.embedding || null;
+    }
+
+    /**
+     * 캐시 통계 조회
+     */
+    public async getCacheStats(): Promise<{ count: number; restoredFromCache: boolean }> {
+        const count = await vectorPersistence.getDocumentCount();
+        return { count, restoredFromCache: this.restoredFromCache };
     }
 
     public async getAllDocs(): Promise<any[]> {

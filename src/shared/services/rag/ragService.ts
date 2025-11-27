@@ -3,6 +3,7 @@ import { embeddingService, TaskType } from './embeddingService';
 
 export class RAGService {
     private static instance: RAGService;
+    private indexingStats = { skipped: 0, indexed: 0 };
 
     private constructor() { }
 
@@ -18,9 +19,20 @@ export class RAGService {
     }
 
     public async indexDocument(doc: Omit<RAGDocument, 'embedding'>): Promise<void> {
-        // Generate embedding for the document content
-        // Use RETRIEVAL_DOCUMENT task type
-        const embedding = await embeddingService.getEmbedding(doc.content, TaskType.RETRIEVAL_DOCUMENT);
+        // 변경되지 않은 문서는 스킵
+        const unchanged = await vectorStore.isDocumentUnchanged(doc.id, doc.content, doc.completed ?? false);
+        if (unchanged) {
+            this.indexingStats.skipped++;
+            return;
+        }
+
+        // 캐시된 임베딩이 있으면 재사용 (완료 상태만 변경된 경우)
+        let embedding = await vectorStore.getCachedEmbedding(doc.id);
+        
+        if (!embedding) {
+            // 캐시된 임베딩이 없으면 새로 생성
+            embedding = await embeddingService.getEmbedding(doc.content, TaskType.RETRIEVAL_DOCUMENT);
+        }
 
         const docWithEmbedding: RAGDocument = {
             ...doc,
@@ -28,6 +40,7 @@ export class RAGService {
         };
 
         await vectorStore.addDocument(docWithEmbedding);
+        this.indexingStats.indexed++;
     }
 
     public async search(query: string, limit: number = 5): Promise<RAGDocument[]> {
@@ -122,6 +135,25 @@ export class RAGService {
 
     public async debugGetAllDocs(): Promise<any[]> {
         return await vectorStore.getAllDocs();
+    }
+
+    /**
+     * 인덱싱 통계 조회 및 초기화
+     */
+    public getIndexingStats(): { skipped: number; indexed: number } {
+        const stats = { ...this.indexingStats };
+        return stats;
+    }
+
+    public resetIndexingStats(): void {
+        this.indexingStats = { skipped: 0, indexed: 0 };
+    }
+
+    /**
+     * 캐시 통계 조회
+     */
+    public async getCacheStats(): Promise<{ count: number; restoredFromCache: boolean }> {
+        return vectorStore.getCacheStats();
     }
 }
 

@@ -36,7 +36,7 @@ import LeftSidebar from './components/LeftSidebar';
 import CenterContent from './components/CenterContent';
 import RightPanel from './components/RightPanel';
 import InsightPanel from '@/features/insight/InsightPanel';
-import { XPProgressBar } from './components/XPProgressBar';
+import { TimeBlockXPBar } from './components/TimeBlockXPBar';
 import { WaifuAside } from './components/WaifuAside';
 import { AppToaster } from './components/AppToaster';
 import { LoadingScreen } from './components/LoadingScreen';
@@ -181,7 +181,12 @@ export default function AppShell() {
             onOpenTemplates={modals.openTemplates}
             onOpenSettings={modals.openSettings}
           />
-          <XPProgressBar availableXP={gameState?.availableXP ?? 0} />
+          <TimeBlockXPBar
+            timeBlockXP={gameState?.timeBlockXP}
+            goalXP={settings?.timeBlockXPGoal ?? 200}
+            availableXP={gameState?.availableXP ?? 0}
+            level={gameState?.level ?? 1}
+          />
         </>
       )}
 

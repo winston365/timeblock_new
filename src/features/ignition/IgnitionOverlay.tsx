@@ -6,7 +6,7 @@ import { generateMicroStep } from '@/shared/services/ai/geminiApi';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import TaskSpinner from './components/TaskSpinner';
-import TaskModal from '@/features/schedule/TaskModal';
+import TaskModalInline from './components/TaskModalInline';
 import { toast } from 'react-hot-toast';
 import type { TimeBlockId } from '@/shared/types/domain';
 
@@ -119,24 +119,24 @@ export default function IgnitionOverlay() {
             };
         });
 
-        // Add Rest Tickets
+        // Add Rest Tickets (30분 20%, 1시간 10%, 2시간 5%)
         const restTickets = [
             {
-                id: 'ticket_10',
-                text: '☕ 10분 휴식권',
-                resistance: 'low',
-                isTicket: true,
-                ticketType: 'rest_ticket_10',
-                weight: 30,
-                rarity: 'common' as const,
-            },
-            {
                 id: 'ticket_30',
-                text: '🛌 30분 휴식권',
+                text: '☕ 30분 휴식권',
                 resistance: 'low',
                 isTicket: true,
                 ticketType: 'rest_ticket_30',
-                weight: 15,
+                weight: 20,
+                rarity: 'common' as const,
+            },
+            {
+                id: 'ticket_60',
+                text: '🛌 1시간 휴식권',
+                resistance: 'low',
+                isTicket: true,
+                ticketType: 'rest_ticket_60',
+                weight: 10,
                 rarity: 'rare' as const,
             },
             {
@@ -145,17 +145,8 @@ export default function IgnitionOverlay() {
                 resistance: 'low',
                 isTicket: true,
                 ticketType: 'rest_ticket_120',
-                weight: 4,
+                weight: 5,
                 rarity: 'epic' as const,
-            },
-            {
-                id: 'ticket_240',
-                text: '🏖️ 4시간 휴식권',
-                resistance: 'low',
-                isTicket: true,
-                ticketType: 'rest_ticket_240',
-                weight: 1,
-                rarity: 'legendary' as const,
             },
         ];
 
@@ -304,8 +295,12 @@ export default function IgnitionOverlay() {
 
     // Determine modal width
     // Spinner View: max-w-4xl (to fit weights + spinner)
-    // Timer View: max-w-xl (1.3x of original md)
-    const modalWidthClass = (!selectedTask || isSpinning || pendingSelection) ? 'max-w-4xl' : 'max-w-xl';
+    // Timer View: max-w-xl (1.3x of original md), or max-w-6xl when TaskModal is open
+    const modalWidthClass = (!selectedTask || isSpinning || pendingSelection) 
+        ? 'max-w-4xl' 
+        : isTaskModalOpen 
+            ? 'max-w-[1400px]' 
+            : 'max-w-xl';
 
     // Enter 단축키로 결과 확인
     useEffect(() => {
@@ -387,7 +382,7 @@ export default function IgnitionOverlay() {
                         </div>
 
                         {/* Content */}
-                        <div className="p-8 text-center">
+                        <div className={`p-8 ${isTaskModalOpen ? 'text-left' : 'text-center'}`}>
                             {(!selectedTask || isSpinning || pendingSelection) ? (
                                 <div className="flex flex-col gap-8">
                                     <div className="flex gap-8">
@@ -474,9 +469,11 @@ export default function IgnitionOverlay() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center gap-6">
+                                <div className={`flex ${isTaskModalOpen ? 'flex-row gap-6' : 'flex-col items-center gap-6'}`}>
+                                    {/* Left Panel: Timer & Micro Step */}
+                                    <div className={`flex flex-col ${isTaskModalOpen ? 'w-1/2 items-center' : 'items-center'} gap-6`}>
                                     {/* Selected Task Info */}
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-center">
                                         <h2 className="text-2xl font-bold text-white">{selectedTask?.text}</h2>
                                         <div className="flex flex-wrap items-center justify-center gap-2">
                                             <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">
@@ -576,39 +573,51 @@ export default function IgnitionOverlay() {
                                             </div>
                                         )}
                                     </div>
+                                    </div>
+
+                                    {/* Right Panel: Task Modal (Inline) */}
+                                    {isTaskModalOpen && selectedTask && !(selectedTask as any).isTicket && (
+                                        <div className="w-1/2 border-l border-white/10 pl-6">
+                                            <TaskModalInline
+                                                key={selectedTask.id}
+                                                task={selectedTask as any}
+                                                initialBlockId={(selectedTask.timeBlock || null) as TimeBlockId}
+                                                onSave={async (taskData) => {
+                                                    try {
+                                                        const mergedTask = {
+                                                            ...selectedTask,
+                                                            ...taskData,
+                                                            timeBlock: taskData.timeBlock ?? selectedTask.timeBlock ?? null,
+                                                            memo: taskData.memo ?? selectedTask.memo ?? '',
+                                                        };
+                                                        
+                                                        // 통합 Task 서비스 사용 (저장소 자동 감지)
+                                                        const { updateAnyTask } = await import('@/shared/services/task/unifiedTaskService');
+                                                        const updated = await updateAnyTask(selectedTask.id, mergedTask);
+                                                        
+                                                        if (updated) {
+                                                            setSelectedTaskInStore(mergedTask as any);
+                                                            setIsTaskModalOpen(false);
+                                                            toast.success('작업이 저장되었습니다.');
+                                                        } else {
+                                                            toast.error('작업을 찾을 수 없습니다.');
+                                                        }
+                                                    } catch (error) {
+                                                        console.error('작업 저장 실패:', error);
+                                                        toast.error('작업 저장에 실패했습니다.');
+                                                    }
+                                                }}
+                                                onClose={() => setIsTaskModalOpen(false)}
+                                                source="schedule"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
                         </div>
                     </motion.div>
                 </motion.div>
-            )}
-            {isTaskModalOpen && selectedTask && !(selectedTask as any).isTicket && (
-                <TaskModal
-                    key={selectedTask.id}
-                    task={selectedTask as any}
-                    initialBlockId={(selectedTask.timeBlock || null) as TimeBlockId}
-                    onSave={async (taskData) => {
-                        try {
-                            const mergedTask = {
-                                ...selectedTask,
-                                ...taskData,
-                                ...taskData,
-                                timeBlock: taskData.timeBlock ?? selectedTask.timeBlock ?? null,
-                                memo: taskData.memo ?? selectedTask.memo ?? '',
-                            };
-                            await updateTask(selectedTask.id, mergedTask);
-                            setSelectedTaskInStore(mergedTask as any);
-                            setIsTaskModalOpen(false);
-                        } catch (error) {
-                            console.error('작업 저장 실패:', error);
-                            alert('작업 저장에 실패했습니다.');
-                        }
-                    }}
-                    onClose={() => setIsTaskModalOpen(false)}
-                    source="schedule"
-                    zIndex={4000}
-                />
             )}
         </AnimatePresence>
     );

@@ -40,13 +40,17 @@ npm run preview               # Preview production build
 
 `src/main.tsx` → `AppShell` is the main entry. Daily reset and template auto-generation runs inside `src/app/AppShell.tsx` + `src/app/hooks/useAppInitialization.ts`.
 
-### Data Persistence - 3-Tier Fallback System
+### Data Persistence - Dexie-Only Local Storage
 
-The app uses a 3-layer data persistence strategy with automatic fallback:
+The app uses a 2-layer data persistence strategy:
 
-1. **IndexedDB** (Primary) - Via Dexie ORM
-2. **localStorage** (Secondary) - Synchronous fallback
-3. **Firebase Realtime Database** (Cloud) - Remote sync and backup
+1. **IndexedDB** (Primary Local) - Via Dexie ORM (ONLY local storage)
+2. **Firebase Realtime Database** (Cloud) - Remote sync and backup
+
+**⚠️ IMPORTANT: localStorage is DEPRECATED and should NOT be used!**
+- Exception: `theme` key only (needed before Dexie initializes at app startup)
+- All other data MUST use Dexie `systemState` table or domain-specific tables
+- See `src/shared/lib/utils.ts` for deprecated localStorage helpers with dev warnings
 
 **Critical Pattern**: All data operations go through the **Repository Pattern** (`src/data/repositories/`). Each repository extends `baseRepository.ts` and is the only layer that should touch storage APIs.
 
@@ -57,8 +61,17 @@ Large repositories are modularized (e.g., `dailyData/` folder with coreOperation
 dailyDataStore.updateTask()
   → dailyDataRepository.update() // or dailyData/taskOperations.ts
     → Dexie (IndexedDB)
-    → localStorage (sync)
     → Firebase (async via syncToFirebase())
+
+// System state storage (NOT localStorage!)
+import { db } from '@/data/db/dexieClient';
+
+// Save
+await db.systemState.put({ key: 'myKey', value: myData });
+
+// Load
+const record = await db.systemState.get('myKey');
+const data = record?.value;
 ```
 
 ### Firebase Synchronization Architecture
@@ -305,3 +318,27 @@ import { someUtil } from '@/shared/utils';
 - Hooks/services: camelCase
 - Feature-first layout
 - Never call Firebase APIs directly from UI or stores - always go through repositories
+
+### Storage Policy (CRITICAL)
+
+**❌ DO NOT USE localStorage** (except for `theme` key):
+```typescript
+// ❌ WRONG - Will show deprecation warning in dev
+localStorage.setItem('myKey', JSON.stringify(data));
+getFromStorage('myKey', defaultValue);  // deprecated utils.ts helper
+
+// ✅ CORRECT - Use Dexie systemState
+import { db } from '@/data/db/dexieClient';
+await db.systemState.put({ key: 'myKey', value: data });
+const record = await db.systemState.get('myKey');
+```
+
+**Why Dexie over localStorage?**
+1. Larger storage capacity (no 5MB limit)
+2. Structured data with indexes
+3. Async API prevents UI blocking
+4. Transaction support for data integrity
+5. Single source of truth for all local data
+
+**Allowed localStorage Usage:**
+- `theme` key ONLY (required before Dexie initializes)

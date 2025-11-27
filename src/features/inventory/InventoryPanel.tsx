@@ -26,10 +26,6 @@ export default function InventoryPanel() {
             return;
         }
 
-        if (!confirm(`${itemMeta.label}을(를) 사용하시겠습니까?`)) {
-            return;
-        }
-
         try {
             await useItem(itemId);
             toast.success(`${itemMeta.label}을(를) 사용했습니다! ${itemMeta.description}`);

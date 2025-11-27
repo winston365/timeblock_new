@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { toast } from 'react-hot-toast';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import { recommendNextTask, getRecommendationMessage } from '../utils/taskRecommendation';
@@ -18,6 +19,8 @@ interface FocusViewProps {
     onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
     onToggleTask: (taskId: string) => void;
     onToggleLock?: () => void;
+    onExitFocusMode: () => void;
+    onCreateTask: (text: string, hour: number) => Promise<void>;
 }
 
 export function FocusView({
@@ -28,7 +31,9 @@ export function FocusView({
     onEditTask,
     onUpdateTask,
     onToggleTask,
-    onToggleLock
+    onToggleLock,
+    onExitFocusMode,
+    onCreateTask
 }: FocusViewProps) {
     const { setFocusMode, activeTaskId, activeTaskStartTime, startTask, stopTask, isPaused, pauseTask, resumeTask } = useFocusModeStore();
     const [memoText, setMemoText] = useState('');
@@ -38,6 +43,38 @@ export function FocusView({
     const [now, setNow] = useState(Date.now());
 
     const currentEnergy = 50;
+
+    // 인라인 작업 추가
+    const [inlineInputValue, setInlineInputValue] = useState('');
+    const inlineInputRef = useRef<HTMLInputElement>(null);
+
+    const handleInlineInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && inlineInputValue.trim()) {
+            e.preventDefault();
+            const trimmedText = inlineInputValue.trim();
+
+            if (trimmedText.length <= 10) {
+                toast.error('작업 제목을 10자 이상 입력해주세요.');
+                return;
+            }
+
+            // 현재 시간대 작업 2개 제한
+            if (currentHourTasks.length >= 2) {
+                toast.error('이 시간대에는 최대 2개의 작업만 추가할 수 있습니다.');
+                return;
+            }
+
+            try {
+                await onCreateTask(trimmedText, currentHour);
+                setInlineInputValue('');
+                inlineInputRef.current?.focus();
+            } catch (err) {
+                console.error('Failed to create task:', err);
+            }
+        } else if (e.key === 'Escape') {
+            setInlineInputValue('');
+        }
+    };
 
     const currentBlock = TIME_BLOCKS.find(b => b.id === currentBlockId);
     const blockLabel = currentBlock?.label ?? '블록 외 시간';
@@ -263,8 +300,17 @@ export function FocusView({
             {/* Header Section */}
             <div className="flex items-center justify-between gap-4">
                 <div className="flex flex-col gap-1">
-                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">🎯 지금 집중</h1>
-                    <div className="flex items-center gap-2 text-[var(--color-text-secondary)]">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={onExitFocusMode}
+                            className="flex items-center gap-1.5 rounded-lg bg-[var(--color-bg-tertiary)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary-hover)] hover:text-[var(--color-text-primary)] transition-colors"
+                        >
+                            <span>←</span>
+                            <span>본 화면</span>
+                        </button>
+                        <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">🎯 지금 집중</h1>
+                    </div>
+                    <div className="flex items-center gap-3">
                         <p className="text-lg">
                             {slotLabel}
                         </p>
@@ -300,6 +346,7 @@ export function FocusView({
                         onToggle={handleToggleTaskWrapper}
                         onStartNow={handleStartNow}
                         onStop={stopTask}
+                        onComplete={() => handleToggleTaskWrapper(recommendedTask.id)}
                     />
 
                     <QuickMemo
@@ -313,6 +360,25 @@ export function FocusView({
                     <div className="text-6xl">🎉</div>
                     <h2 className="mt-4 text-2xl font-bold text-[var(--color-text-primary)]">모든 작업 완료!</h2>
                     <p className="mt-2 text-lg text-[var(--color-text-secondary)]">휴식하거나 다음 블록 작업을 추가해보세요</p>
+                </div>
+            )}
+
+            {/* 인라인 작업 추가 */}
+            {!isLocked && currentHourTasks.length < 2 && (
+                <div className="rounded-2xl bg-[var(--color-bg-surface)] p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium text-[var(--color-text-secondary)]">현재 시간대에 작업 추가</span>
+                        <span className="text-xs text-[var(--color-text-tertiary)]">({currentHourTasks.length}/2)</span>
+                    </div>
+                    <input
+                        ref={inlineInputRef}
+                        type="text"
+                        value={inlineInputValue}
+                        onChange={e => setInlineInputValue(e.target.value)}
+                        onKeyDown={handleInlineInputKeyDown}
+                        placeholder="작업을 입력하고 Enter로 추가하세요 (10자 이상)"
+                        className="w-full rounded-xl border border-dashed border-[var(--color-border)] bg-transparent px-4 py-3 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
+                    />
                 </div>
             )}
 

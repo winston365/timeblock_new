@@ -17,6 +17,7 @@ import TaskModal from './TaskModal';
 import TimeBlock from './TimeBlock';
 import { FocusView } from './components/FocusView';
 import { useFocusModeStore } from './stores/focusModeStore';
+import { useScheduleViewStore } from './stores/scheduleViewStore';
 import { fetchFromFirebase, syncToFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { warmupPresetStrategy } from '@/shared/services/sync/firebase/strategies';
 import IgnitionOverlay from '@/features/ignition/IgnitionOverlay';
@@ -43,12 +44,17 @@ export default function ScheduleView() {
   const { updateQuestProgress } = useGameState();
   const { show: showWaifu } = useWaifuCompanionStore();
   const { isFocusMode, toggleFocusMode, setFocusMode } = useFocusModeStore();
+  const { 
+    showPastBlocks, 
+    setShowPastBlocks, 
+    isWarmupModalOpen, 
+    openWarmupModal, 
+    closeWarmupModal 
+  } = useScheduleViewStore();
   const { settings, loadData: loadSettingsData } = useSettingsStore();
 
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
-  const [showPastBlocks, setShowPastBlocks] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isWarmupModalOpen, setIsWarmupModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<TimeBlockId>(null);
   const [warmupPreset, setWarmupPreset] = useState<WarmupPresetItem[]>(DEFAULT_WARMUP_PRESET);
@@ -413,7 +419,7 @@ export default function ScheduleView() {
     syncToFirebase(warmupPresetStrategy, preset).catch(err =>
       console.error('Failed to sync warmup preset:', err)
     );
-    setIsWarmupModalOpen(false);
+    closeWarmupModal();
   };
 
   const handleApplyWarmupFromModal = (preset: WarmupPresetItem[]) => {
@@ -423,7 +429,7 @@ export default function ScheduleView() {
     syncToFirebase(warmupPresetStrategy, preset).catch(err =>
       console.error('Failed to sync warmup preset:', err)
     );
-    setIsWarmupModalOpen(false);
+    closeWarmupModal();
   };
 
   const getNextWarmupTarget = (hour: number): { blockId: TimeBlockId; hourSlot: number } | null => {
@@ -462,42 +468,6 @@ export default function ScheduleView() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6 pb-24">
-      <div className="mb-6 flex flex-wrap items-center gap-4">
-        <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-text-secondary)]">
-          <span>전체 {dailyData.tasks.length}개</span>
-          <span>인박스 {dailyData.tasks.filter(t => t.timeBlock === null).length}개</span>
-          <span>완료 {dailyData.tasks.filter(t => t.completed).length}개</span>
-          <button
-            type="button"
-            onClick={() => setIsWarmupModalOpen(true)}
-            className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-          >
-            🧊 워밍업 세트
-          </button>
-          <button
-            type="button"
-            onClick={handleToggleFocusMode}
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${isFocusMode
-              ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-              : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-light)] hover:text-[var(--color-text)]'
-              }`}
-          >
-            <span className="text-lg">⏱</span>
-            {isFocusMode ? '지금모드 종료' : '지금모드 보기'}
-            <span className="text-[10px] text-[var(--color-text-tertiary)]">(현재 타임블록)</span>
-          </button>
-          {pastBlocks.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowPastBlocks(prev => !prev)}
-              className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-            >
-              {showPastBlocks ? '지난 블록 숨기기' : `지난 블록 보기 (${pastBlocks.length})`}
-            </button>
-          )}
-        </div>
-      </div>
-
       {isFocusMode && currentBlockId ? (
         <FocusView
           currentBlockId={currentBlockId}
@@ -508,6 +478,8 @@ export default function ScheduleView() {
           onUpdateTask={handleUpdateTask}
           onToggleTask={handleToggleTask}
           onToggleLock={() => handleToggleLock(currentBlockId)}
+          onExitFocusMode={() => setFocusMode(false)}
+          onCreateTask={handleCreateTask}
         />
       ) : (
         <div className="space-y-4">
@@ -570,7 +542,7 @@ export default function ScheduleView() {
       {isWarmupModalOpen && (
         <WarmupPresetModal
           preset={warmupPreset}
-          onClose={() => setIsWarmupModalOpen(false)}
+          onClose={closeWarmupModal}
           onSave={handleSaveWarmupPreset}
           onApply={handleApplyWarmupFromModal}
         />

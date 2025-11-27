@@ -10,6 +10,10 @@
  *   - Firebase: 실시간 동기화 (syncToFirebase)
  *   - @/shared/types/domain: DailyData, Task, TimeBlockStates 타입
  * 
+ * @note Task가 dailyData와 inbox 중 어디에 있는지 모를 때:
+ *       @see {@link @/shared/services/task/unifiedTaskService} - 통합 Task API
+ *       updateAnyTask(), deleteAnyTask(), getAnyTask() 등 사용
+ * 
  * @refactored 2024-11 - 모듈 분리 (./dailyData/ 폴더)
  *   - types.ts: 타입 및 헬퍼 함수
  *   - coreOperations.ts: DailyData CRUD

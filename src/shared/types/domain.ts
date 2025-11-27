@@ -7,6 +7,9 @@
  * @dependencies 없음
  */
 
+// AI 서비스 타입 import
+import type { TokenUsage } from '@/shared/services/ai/gemini/types';
+
 // ============================================================================
 // Task 관련 타입
 // ============================================================================
@@ -173,10 +176,9 @@ export type ItemRarity = 'common' | 'rare' | 'epic' | 'legendary';
  * 인벤토리 아이템 타입
  */
 export type InventoryItemType =
-  | 'rest_ticket_10'
   | 'rest_ticket_30'
-  | 'rest_ticket_120'
-  | 'rest_ticket_240';
+  | 'rest_ticket_60'
+  | 'rest_ticket_120';
 
 /**
  * 인벤토리 아이템 메타데이터
@@ -194,37 +196,29 @@ export interface InventoryItemMeta {
  * 인벤토리 아이템 정의
  */
 export const INVENTORY_ITEMS: Record<InventoryItemType, InventoryItemMeta> = {
-  rest_ticket_10: {
-    id: 'rest_ticket_10',
-    label: '10분 휴식권',
-    description: '10분간 휴식할 수 있는 권리',
-    icon: '☕',
-    rarity: 'common',
-    weight: 30,
-  },
   rest_ticket_30: {
     id: 'rest_ticket_30',
     label: '30분 휴식권',
     description: '30분간 휴식할 수 있는 권리',
+    icon: '☕',
+    rarity: 'common',
+    weight: 20,
+  },
+  rest_ticket_60: {
+    id: 'rest_ticket_60',
+    label: '1시간 휴식권',
+    description: '1시간 동안 자유롭게 휴식',
     icon: '🛌',
     rarity: 'rare',
-    weight: 15,
+    weight: 10,
   },
   rest_ticket_120: {
     id: 'rest_ticket_120',
     label: '2시간 휴식권',
-    description: '2시간 동안 자유롭게 휴식',
+    description: '2시간 동안 완전한 자유',
     icon: '🌴',
     rarity: 'epic',
-    weight: 4,
-  },
-  rest_ticket_240: {
-    id: 'rest_ticket_240',
-    label: '4시간 휴식권',
-    description: '4시간 동안 완전한 자유',
-    icon: '🏖️',
-    rarity: 'legendary',
-    weight: 1,
+    weight: 5,
   },
 };
 
@@ -397,6 +391,9 @@ export interface Settings {
   // 통계 목표 설정
   weeklyXPGoal?: number; // 주간 XP 목표 (기본값 없음)
   monthlyXPGoal?: number; // 월간 XP 목표 (기본값 없음)
+
+  // 타임블록별 XP 목표 설정
+  timeBlockXPGoal?: number; // 타임블록당 XP 목표 (기본값 200)
 }
 
 // ============================================================================

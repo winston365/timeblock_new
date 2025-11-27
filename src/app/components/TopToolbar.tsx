@@ -18,6 +18,9 @@ import WeatherWidget from '@/features/weather/WeatherWidget';
 import IgnitionButton from '@/features/ignition/components/IgnitionButton';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { StatsModal } from '@/features/stats/StatsModal';
+import { useFocusModeStore } from '@/features/schedule/stores/focusModeStore';
+import { useScheduleViewStore } from '@/features/schedule/stores/scheduleViewStore';
+import { TIME_BLOCKS } from '@/shared/types/domain';
 
 interface TopToolbarProps {
   gameState: GameState | null;
@@ -35,6 +38,15 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   const [showStats, setShowStats] = useState(false);
   const { settings } = useSettingsStore();
   const isNormalWaifu = settings?.waifuMode === 'normal';
+
+  // Schedule View 상태 (워밍업, 지금모드, 지난블록)
+  const { isFocusMode, toggleFocusMode } = useFocusModeStore();
+  const { showPastBlocks, toggleShowPastBlocks, openWarmupModal } = useScheduleViewStore();
+  
+  // 현재 시간 기준 타임블록 계산
+  const currentHour = new Date().getHours();
+  const currentBlockId = TIME_BLOCKS.find(b => currentHour >= b.start && currentHour < b.end)?.id ?? null;
+  const pastBlocksCount = TIME_BLOCKS.filter(block => currentHour >= block.end).length;
 
   const handleCallWaifu = () => {
     if (isNormalWaifu) return;
@@ -174,6 +186,50 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
 
         {/* Weather Widget */}
         <WeatherWidget />
+
+        {/* Schedule View 컨트롤 (압축형) */}
+        <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-1.5 py-1">
+          <button
+            type="button"
+            onClick={openWarmupModal}
+            className="rounded px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)] transition"
+            title="워밍업 세트"
+          >
+            🧊
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (!currentBlockId) {
+                alert('현재 진행 중인 타임블록이 있을 때만 켤 수 있어.');
+                return;
+              }
+              toggleFocusMode();
+            }}
+            className={`rounded px-2 py-1 text-xs transition ${
+              isFocusMode
+                ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
+            }`}
+            title={isFocusMode ? '지금모드 종료' : '지금모드 보기'}
+          >
+            ⏱
+          </button>
+          {pastBlocksCount > 0 && (
+            <button
+              type="button"
+              onClick={toggleShowPastBlocks}
+              className={`rounded px-2 py-1 text-xs transition ${
+                showPastBlocks
+                  ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
+              }`}
+              title={showPastBlocks ? '지난 블록 숨기기' : `지난 블록 보기 (${pastBlocksCount})`}
+            >
+              📜{pastBlocksCount}
+            </button>
+          )}
+        </div>
       </div>
 
         <div className="flex flex-wrap items-center gap-[var(--spacing-sm)] md:ml-auto">

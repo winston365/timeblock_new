@@ -284,8 +284,8 @@ export default function HourBar({
   };
 
   const containerClasses = [
-    'rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] transition hover:border-[var(--color-primary)]',
-    isCollapsed ? 'px-3 py-2' : 'p-4'
+    'rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] transition hover:border-[var(--color-primary)]',
+    isCollapsed ? 'px-2 py-1.5' : 'px-3 py-2'
   ].join(' ');
 
   const plannedFill = useMemo(() => {
@@ -318,14 +318,14 @@ export default function HourBar({
       data-hour={hour}
     >
       <div
-        className={`${isCollapsed ? 'mb-1' : 'mb-3'} flex cursor-pointer flex-wrap items-center justify-between gap-3 rounded-lg px-2 py-1 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-tertiary)]/40`}
+        className={`${isCollapsed ? 'mb-0.5' : 'mb-1.5'} flex cursor-pointer flex-wrap items-center justify-between gap-2 rounded-md px-1.5 py-0.5 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-tertiary)]/40`}
         onClick={toggleCollapse}
       >
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={toggleCollapse}
-            className="flex items-center justify-center rounded-md p-1 text-[var(--color-text-tertiary)] transition hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)]"
+            className="flex items-center justify-center rounded p-0.5 text-[var(--color-text-tertiary)] transition hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)]"
             aria-label={isCollapsed ? '펼치기' : '접기'}
           >
             <span className={`transform transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}>
@@ -340,7 +340,7 @@ export default function HourBar({
                 e.stopPropagation();
                 setTagPickerOpen(prev => !prev);
               }}
-              className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-text)] shadow-sm transition hover:border-[var(--color-primary)]"
+              className="inline-flex items-center gap-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-text)] shadow-sm transition hover:border-[var(--color-primary)]"
               style={
                 activeTag
                   ? {
@@ -357,17 +357,17 @@ export default function HourBar({
 
             {tagPickerOpen && (
               <div
-                className="absolute left-0 z-20 mt-2 w-64 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3 shadow-xl"
+                className="absolute left-0 z-20 mt-1 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-2 shadow-xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="mb-2 text-[11px] font-semibold text-[var(--color-text-tertiary)]">최근 사용</div>
-                <div className="mb-3 flex flex-wrap gap-2">
+                <div className="mb-1 text-[10px] font-semibold text-[var(--color-text-tertiary)]">최근 사용</div>
+                <div className="mb-2 flex flex-wrap gap-1.5">
                   {(recentTemplates.length ? recentTemplates : tagTemplates.slice(0, 3)).map(tag => (
                     <button
                       key={`recent-${tag.id}`}
                       type="button"
                       onClick={() => pickTag(tag.id)}
-                      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-sm transition hover:opacity-90"
+                      className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm transition hover:opacity-90"
                       style={{
                         backgroundColor: tag.color,
                         color: getBadgeTextColor(tag.color),
@@ -382,8 +382,8 @@ export default function HourBar({
                   )}
                 </div>
 
-                <div className="mb-2 text-[11px] font-semibold text-[var(--color-text-tertiary)]">전체 템플릿</div>
-                <div className="max-h-48 space-y-1 overflow-auto pr-1">
+                <div className="mb-1 text-[10px] font-semibold text-[var(--color-text-tertiary)]">전체 템플릿</div>
+                <div className="max-h-40 space-y-0.5 overflow-auto pr-1">
                   {tagTemplates.map(tag => (
                     <button
                       key={tag.id}
@@ -443,7 +443,7 @@ export default function HourBar({
         <>
           {!isPastHour && (
             <div
-              className={`relative mb-3 flex h-[12px] overflow-hidden rounded-full bg-black/20 text-xs ${isCurrentHour ? 'ring-2 ring-[var(--color-primary)]/40' : 'opacity-80'
+              className={`relative mb-1.5 flex h-[8px] overflow-hidden rounded-full bg-black/20 text-xs ${isCurrentHour ? 'ring-1 ring-[var(--color-primary)]/40' : 'opacity-80'
                 }`}
             >
               <div className="relative h-full overflow-hidden rounded-full bg-white/10" style={{ width: '83.33%' }}>
@@ -457,14 +457,14 @@ export default function HourBar({
                 {isCurrentHour && (
                   <>
                     <div
-                      className="pointer-events-none absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-white/70"
+                      className="pointer-events-none absolute left-1/2 top-0 h-full w-[1.5px] -translate-x-1/2 bg-white/70"
                       aria-label="목표선 50분"
                       title="목표선 50분"
                     >
-                      <span className="absolute left-1/2 top-[-4px] h-[6px] w-[6px] -translate-x-1/2 rounded-full border border-white/80 bg-black/70 shadow" />
+                      <span className="absolute left-1/2 top-[-2px] h-[4px] w-[4px] -translate-x-1/2 rounded-full border border-white/80 bg-black/70 shadow" />
                     </div>
                     <div
-                      className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2 -translate-x-1/2 rounded-full border border-white/90 bg-[var(--color-primary)] shadow-[0_0_8px_rgba(0,0,0,0.5)] transition-all"
+                      className="pointer-events-none absolute top-1/2 h-2 w-2 -translate-y-1/2 -translate-x-1/2 rounded-full border border-white/90 bg-[var(--color-primary)] shadow-[0_0_6px_rgba(0,0,0,0.5)] transition-all"
                       style={{ left: `${currentMarker}%` }}
                       aria-label="현재 분 진행 위치"
                       title="현재 분 진행 위치"
@@ -485,7 +485,7 @@ export default function HourBar({
             </div>
           )}
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             {sortedTasks.map((task, index) => (
               <div
                 key={task.id}
@@ -506,7 +506,7 @@ export default function HourBar({
             {!isLocked && !isPastHour && (
               <div className="w-full">
                 {tasks.length >= 2 ? (
-                  <div className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-3 py-2 text-sm text-[var(--color-text-tertiary)] text-center">
+                  <div className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-2 py-1 text-xs text-[var(--color-text-tertiary)] text-center">
                     ⚠️ 이 시간대에는 최대 2개까지만 추가할 수 있습니다
                   </div>
                 ) : (
@@ -517,7 +517,7 @@ export default function HourBar({
                     onChange={e => setInlineInputValue(e.target.value)}
                     onKeyDown={handleInlineInputKeyDown}
                     placeholder={`작업을 입력하고 Enter로 추가하세요 (${tasks.length}/2)`}
-                    className="w-full rounded-lg border border-dashed border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
+                    className="w-full rounded-md border border-dashed border-[var(--color-border)] bg-transparent px-2 py-1 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
                   />
                 )}
               </div>

@@ -1,9 +1,9 @@
 /**
  * AppearanceTab
  *
- * @role 테마 설정, 앱 정보, 와이푸 모드 설정을 담당하는 Settings 탭
- * @input AppearanceTabProps (localSettings, currentTheme, appVersion 등)
- * @output 테마 선택, 업데이트 확인, 와이푸 설정 UI 렌더링
+ * @role 테마 설정 및 앱 정보를 담당하는 Settings 탭
+ * @input AppearanceTabProps (currentTheme, appVersion 등)
+ * @output 테마 선택, 업데이트 확인 UI 렌더링
  * @external_dependencies
  *   - localStorage: 테마 저장
  *   - document.documentElement: 테마 적용
@@ -13,8 +13,6 @@ import type { AppearanceTabProps } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass, primaryButtonClass } from './styles';
 
 export function AppearanceTab({
-    localSettings,
-    setLocalSettings,
     currentTheme,
     setCurrentTheme,
     appVersion,
@@ -134,60 +132,6 @@ export function AppearanceTab({
                     <li>네트워크 연결 확인 (GitHub에 접근 가능해야 함)</li>
                     <li>현재 버전이 <code>v{appVersion}</code>이고, 새 릴리스가 더 높은 버전인지 확인</li>
                 </ul>
-            </div>
-
-            <div className="my-6 border-t border-[var(--color-border)]" />
-
-            <h3>👧 와이푸 모드 설정</h3>
-            <p className={sectionDescriptionClass}>
-                와이푸 이미지 표시 방식을 선택할 수 있습니다.
-            </p>
-
-            <div className={formGroupClass}>
-                <label htmlFor="waifu-mode-select">모드 선택</label>
-                <select
-                    id="waifu-mode-select"
-                    className={inputClass}
-                    value={localSettings?.waifuMode || 'characteristic'}
-                    onChange={(e) =>
-                        setLocalSettings(prev => prev ? ({ ...prev, waifuMode: e.target.value as 'characteristic' | 'normal' }) : prev)
-                    }
-                >
-                    <option value="characteristic">특성 모드 (호감도에 따라 변화)</option>
-                    <option value="normal">일반 모드 (기본 이미지 고정)</option>
-                </select>
-                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                    {localSettings?.waifuMode === 'characteristic'
-                        ? '호감도에 따라 다양한 표정의 이미지가 표시됩니다.'
-                        : '호감도와 관계없이 기본 이미지만 표시됩니다.'}
-                </small>
-            </div>
-
-            <div className={formGroupClass}>
-                <label htmlFor="waifu-interval-select">이미지 자동 변경 주기</label>
-                <select
-                    id="waifu-interval-select"
-                    className={inputClass}
-                    value={localSettings?.waifuImageChangeInterval ?? 600000}
-                    onChange={(e) =>
-                        setLocalSettings(prev => prev ? ({ ...prev, waifuImageChangeInterval: parseInt(e.target.value) }) : prev)
-                    }
-                >
-                    <option value="300000">5분마다 변경</option>
-                    <option value="600000">10분마다 변경 (기본)</option>
-                    <option value="900000">15분마다 변경</option>
-                    <option value="1800000">30분마다 변경</option>
-                    <option value="0">자동 변경 안함</option>
-                </select>
-                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                    {localSettings?.waifuImageChangeInterval === 0
-                        ? '이미지가 자동으로 변경되지 않습니다. 클릭할 때만 변경됩니다.'
-                        : `설정한 주기마다 이미지와 대사가 자동으로 변경됩니다.`}
-                </small>
-            </div>
-
-            <div className={infoBoxClass}>
-                <strong>💡 참고:</strong> 설정은 로컬 저장소에 저장되어 페이지를 새로고침해도 유지됩니다.
             </div>
         </div>
     );

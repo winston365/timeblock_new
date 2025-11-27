@@ -24,6 +24,8 @@ import {
 import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier } from '@/features/waifu/waifuImageUtils';
 import baseImage from '@/features/waifu/base.png';
 import type { GeminiChatMessage } from '@/shared/types/domain';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const MAX_HISTORY_MESSAGES = 20;
 
@@ -382,11 +384,32 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
                       className={`flex gap-4 ${isUser ? 'flex-row-reverse' : ''}`}
                       style={{ animationDelay: `${index * 0.1}s` }}
                     >
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-xl shadow-[0_8px_20px_rgba(0,0,0,0.25)]">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-xl shadow-[0_8px_20px_rgba(0,0,0,0.25)]">
                         {isUser ? '👤' : '🤖'}
                       </div>
                       <div className={`animate-[slideInUp_0.4s_ease-out] ${bubbleClasses}`}>
-                        <div className="text-[var(--color-text)]">{msg.text}</div>
+                        {isUser ? (
+                          <div className="text-[var(--color-text)] whitespace-pre-wrap">{msg.text}</div>
+                        ) : (
+                          <div className="prose prose-sm prose-invert max-w-none
+                            prose-headings:text-[var(--color-text)] prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-2
+                            prose-h1:text-lg prose-h2:text-base prose-h3:text-sm
+                            prose-p:text-[var(--color-text)] prose-p:my-2 prose-p:leading-relaxed
+                            prose-strong:text-[var(--color-primary)] prose-strong:font-bold
+                            prose-em:text-[var(--color-text-secondary)] prose-em:italic
+                            prose-ul:my-2 prose-ul:pl-4 prose-ol:my-2 prose-ol:pl-4
+                            prose-li:text-[var(--color-text)] prose-li:my-1
+                            prose-code:text-[var(--color-primary)] prose-code:bg-[var(--color-bg-tertiary)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-mono
+                            prose-pre:bg-[var(--color-bg-tertiary)] prose-pre:border prose-pre:border-[var(--color-border)] prose-pre:rounded-xl prose-pre:p-3 prose-pre:my-2
+                            prose-blockquote:border-l-2 prose-blockquote:border-[var(--color-primary)] prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-[var(--color-text-secondary)]
+                            prose-a:text-[var(--color-primary)] prose-a:underline
+                            prose-hr:border-[var(--color-border)] prose-hr:my-3
+                          ">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {msg.text}
+                            </ReactMarkdown>
+                          </div>
+                        )}
                         <div className="mt-2 text-[0.65rem] text-[var(--color-text-tertiary)]">
                           {new Date(msg.timestamp).toLocaleTimeString('ko-KR', {
                             hour: '2-digit',

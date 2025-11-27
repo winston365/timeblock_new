@@ -110,6 +110,13 @@ export class RAGSyncHandler {
     private async runInitialIndexing() {
         console.log('🔍 RAG: Starting initial indexing...');
 
+        // 캐시 상태 확인
+        const cacheStats = await ragService.getCacheStats();
+        console.log(`📦 RAG: Cache has ${cacheStats.count} documents, restored: ${cacheStats.restoredFromCache}`);
+
+        // 인덱싱 통계 초기화
+        ragService.resetIndexingStats();
+
         // 1. Index recent daily data (e.g., last 30 days)
         const recentData = await getRecentDailyData(30);
         console.log(`🔍 RAG: Found ${recentData.length} days of recent data`);
@@ -118,23 +125,25 @@ export class RAGSyncHandler {
             if (day.tasks) taskCount += day.tasks.length;
             await this.indexDailyData(day, day.date);
         }
-        console.log(`🔍 RAG: Indexed ${taskCount} tasks from daily data`);
+        console.log(`🔍 RAG: Processed ${taskCount} tasks from daily data`);
 
         // 2. Index Inbox
         const inboxTasks = await loadInboxTasks();
-        console.log(`🔍 RAG: Indexed ${inboxTasks.length} inbox tasks`);
+        console.log(`🔍 RAG: Processing ${inboxTasks.length} inbox tasks`);
         for (const task of inboxTasks) {
             await this.indexTask(task, 'inbox');
         }
 
         // 3. Index Completed Inbox
         const completedInboxTasks = await db.completedInbox.toArray();
-        console.log(`🔍 RAG: Indexed ${completedInboxTasks.length} completed inbox tasks`);
+        console.log(`🔍 RAG: Processing ${completedInboxTasks.length} completed inbox tasks`);
         for (const task of completedInboxTasks) {
             await this.indexTask(task, 'completed_inbox');
         }
 
-        console.log('✅ RAG: Initial indexing complete.');
+        // 인덱싱 결과 출력
+        const stats = ragService.getIndexingStats();
+        console.log(`✅ RAG: Initial indexing complete. New: ${stats.indexed}, Skipped (unchanged): ${stats.skipped}`);
     }
 }
 

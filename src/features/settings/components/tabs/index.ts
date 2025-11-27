@@ -13,6 +13,8 @@ export { FirebaseTab } from './FirebaseTab';
 export { DontDoTab } from './DontDoTab';
 export { ShortcutsTab } from './ShortcutsTab';
 export { LogsTab } from './LogsTab';
+export { GameplayTab } from './GameplayTab';
+export { ScheduleTab } from './ScheduleTab';
 
 // Shared types and styles
 export * from './types';

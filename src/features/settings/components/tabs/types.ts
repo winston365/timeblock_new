@@ -23,7 +23,7 @@ export interface BaseTabProps {
     setLocalSettings: SetLocalSettings;
 }
 
-export interface AppearanceTabProps extends BaseTabProps {
+export interface AppearanceTabProps {
     currentTheme: string;
     setCurrentTheme: (theme: string) => void;
     appVersion: string;

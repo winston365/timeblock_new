@@ -6,8 +6,47 @@
  * @input 데이터 객체, userId, collection 이름, key (선택적)
  * @output 해시 문자열, 타임스탬프, 디바이스 ID, Firebase 경로
  * @external_dependencies
- *   - localStorage: 디바이스 ID 저장 및 로드
+ *   - Dexie (systemState): 디바이스 ID 저장 및 로드
+ * @note localStorage 대신 Dexie systemState 테이블 사용 (앱 전체 일관성)
  */
+
+import { db } from '@/data/db/dexieClient';
+
+// ============================================================================
+// Device ID Management (Dexie-based)
+// ============================================================================
+
+const DEVICE_ID_KEY = 'deviceId';
+let cachedDeviceId: string | null = null;
+
+/**
+ * 디바이스 ID 초기화 (앱 시작 시 호출 권장)
+ * Dexie에서 deviceId를 로드하거나 새로 생성합니다.
+ */
+export async function initializeDeviceId(): Promise<string> {
+  if (cachedDeviceId) return cachedDeviceId;
+
+  try {
+    const record = await db.systemState.get(DEVICE_ID_KEY);
+    if (record?.value) {
+      cachedDeviceId = record.value as string;
+      return cachedDeviceId;
+    }
+  } catch (error) {
+    console.warn('Failed to load deviceId from Dexie:', error);
+  }
+
+  // 새 ID 생성 및 저장
+  cachedDeviceId = `device-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  
+  try {
+    await db.systemState.put({ key: DEVICE_ID_KEY, value: cachedDeviceId });
+  } catch (error) {
+    console.warn('Failed to save deviceId to Dexie:', error);
+  }
+
+  return cachedDeviceId;
+}
 
 // ============================================================================
 // Pure Utility Functions
@@ -40,25 +79,25 @@ export function getServerTimestamp(): number {
 }
 
 /**
- * 디바이스 ID를 생성하거나 가져옵니다 (브라우저 fingerprint).
- * localStorage에 저장된 ID가 있으면 반환하고, 없으면 새로 생성합니다.
+ * 디바이스 ID를 가져옵니다 (동기 버전, 캐시된 값 사용).
+ * 초기화되지 않은 경우 임시 ID를 반환하고 비동기로 초기화합니다.
  *
  * @returns {string} 디바이스 고유 ID
  * @throws 없음
  * @sideEffects
- *   - localStorage에서 디바이스 ID 읽기
- *   - 없으면 새 ID를 생성하여 localStorage에 저장
+ *   - 캐시가 없으면 비동기로 Dexie 초기화 시작
+ * @note initializeDeviceId()를 앱 시작 시 먼저 호출하는 것을 권장합니다.
  */
 export function getDeviceId(): string {
-  const DEVICE_ID_KEY = 'deviceId';
-  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+  if (cachedDeviceId) return cachedDeviceId;
 
-  if (!deviceId) {
-    deviceId = `device-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-    localStorage.setItem(DEVICE_ID_KEY, deviceId);
-  }
-
-  return deviceId;
+  // 캐시가 없으면 임시 ID 생성 (비동기 초기화 시작)
+  const tempId = `device-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  
+  // 비동기로 초기화 시도 (fire-and-forget)
+  initializeDeviceId().catch(console.error);
+  
+  return cachedDeviceId || tempId;
 }
 
 /**

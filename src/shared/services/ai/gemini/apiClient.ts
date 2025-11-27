@@ -67,7 +67,7 @@ export async function callGeminiAPI(
           temperature: 1,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 8192,
+          maxOutputTokens: 2000,
         },
       }),
     });
@@ -138,7 +138,7 @@ export async function callGeminiAPIWithTools(
         }],
         generationConfig: {
           temperature: 0.1, // 사실적인 정보를 위해 낮춤
-          maxOutputTokens: 8192,
+          maxOutputTokens: 2000,
         },
       }),
     });

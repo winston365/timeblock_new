@@ -31,6 +31,8 @@ import {
     DontDoTab,
     ShortcutsTab,
     LogsTab,
+    GameplayTab,
+    ScheduleTab,
 } from './components/tabs';
 
 const modalOverlayClass =
@@ -63,7 +65,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
     } = useSettingsStore();
 
     const [saving, setSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'gemini' | 'firebase' | 'appearance' | 'logs' | 'dontdo' | 'shortcuts'>('gemini');
+    const [activeTab, setActiveTab] = useState<'gemini' | 'firebase' | 'appearance' | 'logs' | 'dontdo' | 'shortcuts' | 'gameplay' | 'schedule'>('appearance');
     const [currentTheme, setCurrentTheme] = useState<string>(() => {
         return localStorage.getItem('theme') || '';
     });
@@ -262,6 +264,14 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                             <span className="text-lg">🎨</span>
                             <span>테마</span>
                         </button>
+                        <button className={getTabButtonClass('gameplay')} onClick={() => setActiveTab('gameplay')}>
+                            <span className="text-lg">🎮</span>
+                            <span>게임플레이</span>
+                        </button>
+                        <button className={getTabButtonClass('schedule')} onClick={() => setActiveTab('schedule')}>
+                            <span className="text-lg">📅</span>
+                            <span>스케줄</span>
+                        </button>
                         <button className={getTabButtonClass('gemini')} onClick={() => setActiveTab('gemini')}>
                             <span className="text-lg">🤖</span>
                             <span>Gemini AI</span>
@@ -274,13 +284,13 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                             <span className="text-lg">🚫</span>
                             <span>하지않기</span>
                         </button>
-                        <button className={getTabButtonClass('logs')} onClick={() => setActiveTab('logs')}>
-                            <span className="text-lg">📊</span>
-                            <span>로그</span>
-                        </button>
                         <button className={getTabButtonClass('shortcuts')} onClick={() => setActiveTab('shortcuts')}>
                             <span className="text-lg">⌨️</span>
                             <span>단축키</span>
+                        </button>
+                        <button className={getTabButtonClass('logs')} onClick={() => setActiveTab('logs')}>
+                            <span className="text-lg">📊</span>
+                            <span>로그</span>
                         </button>
                     </nav>
 
@@ -292,14 +302,24 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                             <>
                                 {activeTab === 'appearance' && (
                                     <AppearanceTab
-                                        localSettings={localSettings}
-                                        setLocalSettings={setLocalSettings}
                                         currentTheme={currentTheme}
                                         setCurrentTheme={setCurrentTheme}
                                         appVersion={appVersion}
                                         checkingUpdate={checkingUpdate}
                                         updateStatus={updateStatus}
                                         handleCheckForUpdates={handleCheckForUpdates}
+                                    />
+                                )}
+                                {activeTab === 'gameplay' && (
+                                    <GameplayTab
+                                        localSettings={localSettings}
+                                        setLocalSettings={setLocalSettings}
+                                    />
+                                )}
+                                {activeTab === 'schedule' && (
+                                    <ScheduleTab
+                                        localSettings={localSettings}
+                                        setLocalSettings={setLocalSettings}
                                     />
                                 )}
                                 {activeTab === 'gemini' && (

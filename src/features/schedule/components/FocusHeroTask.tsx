@@ -11,6 +11,7 @@ interface FocusHeroTaskProps {
     onToggle: (taskId: string) => void;
     onStartNow: (task: Task) => void;
     onStop: () => void;
+    onComplete: () => void;
 }
 
 export function FocusHeroTask({
@@ -21,7 +22,8 @@ export function FocusHeroTask({
     onEdit,
     onToggle,
     onStartNow,
-    onStop
+    onStop,
+    onComplete
 }: FocusHeroTaskProps) {
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [reachedMilestones, setReachedMilestones] = useState<Set<number>>(new Set());
@@ -259,15 +261,20 @@ export function FocusHeroTask({
                             </span>
                         </div>
 
-                        <button
-                            onClick={progress >= 100 ? () => onToggle(task.id) : onStop}
-                            className={`mt-4 w-full rounded-xl py-3 text-sm font-medium transition-colors ${progress >= 100
-                                    ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold hover:from-emerald-600 hover:to-green-700'
-                                    : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
-                                }`}
-                        >
-                            {progress >= 100 ? '✓ 완료하기' : '중단하기'}
-                        </button>
+                        <div className="flex gap-3 mt-4">
+                            <button
+                                onClick={onComplete}
+                                className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 py-3 text-sm font-bold text-white hover:from-emerald-600 hover:to-green-700 transition-all"
+                            >
+                                ✓ 작업 완료
+                            </button>
+                            <button
+                                onClick={onStop}
+                                className="flex-1 rounded-xl bg-white/10 py-3 text-sm font-medium text-white/60 hover:bg-white/20 hover:text-white transition-colors"
+                            >
+                                중단하기
+                            </button>
+                        </div>
                     </div>
                 ) : (
                     <motion.button

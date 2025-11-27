@@ -5,13 +5,13 @@
  * @input RepositoryConfig, 데이터 객체, 키
  * @output 저장/로드된 데이터
  * @external_dependencies
- *   - IndexedDB (db): 메인 저장소
- *   - localStorage: 백업 저장소
+ *   - IndexedDB (Dexie): 메인 저장소 (유일한 로컬 저장소)
  *   - Firebase: 실시간 동기화 (syncToFirebase, fetchFromFirebase)
  *   - syncLogger: 동기화 로그
+ * @note localStorage는 더 이상 사용하지 않음 (Dexie가 유일한 로컬 저장소)
+ *       기존 localStorage 데이터는 마이그레이션 로직에서 일회성으로 복구됨
  */
 
-import { saveToStorage, getFromStorage } from '@/shared/lib/utils';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { fetchFromFirebase, syncToFirebase, type SyncStrategy } from '@/shared/services/sync/firebase/syncCore';
@@ -28,7 +28,10 @@ import { fetchFromFirebase, syncToFirebase, type SyncStrategy } from '@/shared/s
 export interface RepositoryConfig<T> {
   /** Dexie 테이블 */
   table: any;
-  /** localStorage 키 (선택: 없으면 localStorage 저장 안 함) */
+  /** 
+   * @deprecated localStorage 키 (더 이상 사용되지 않음, 마이그레이션용으로만 유지)
+   * 새 코드에서는 이 필드를 설정하지 마세요.
+   */
   storageKey?: string;
   /** Firebase 동기화 전략 */
   firebaseStrategy?: SyncStrategy<T>;
@@ -56,7 +59,10 @@ export interface LoadOptions {
 export interface SaveOptions {
   /** Firebase 동기화 여부 (기본값: true) */
   syncFirebase?: boolean;
-  /** localStorage 저장 여부 (기본값: true) */
+  /** 
+   * @deprecated localStorage 저장 여부 (더 이상 사용되지 않음)
+   * Dexie가 유일한 로컬 저장소입니다.
+   */
   saveLocalStorage?: boolean;
   /** 로그 기록 여부 (기본값: true) */
   logSync?: boolean;
@@ -67,7 +73,9 @@ export interface SaveOptions {
 // ============================================================================
 
 /**
- * 데이터 로드 (3-tier fallback: IndexedDB → localStorage → Firebase)
+ * 데이터 로드 (2-tier fallback: IndexedDB → Firebase)
+ * 
+ * @note localStorage fallback은 제거됨 (Dexie가 유일한 로컬 저장소)
  *
  * @template T - 데이터 타입
  * @param {RepositoryConfig<T>} config - Repository 설정
@@ -84,7 +92,7 @@ export async function loadData<T>(
   options: LoadOptions = {}
 ): Promise<T> {
   const { useFirebase = true, saveInitial = true } = options;
-  const { table, storageKey, firebaseStrategy, createInitial, sanitize, logPrefix } = config;
+  const { table, firebaseStrategy, createInitial, sanitize, logPrefix } = config;
   const prefix = logPrefix || table.name;
 
   try {
@@ -97,34 +105,20 @@ export async function loadData<T>(
       return sanitized;
     }
 
-    // 2. localStorage에서 조회 (storageKey가 있을 때만)
-    if (storageKey) {
-      const storageFullKey = typeof key === 'string' ? `${storageKey}${key}` : storageKey;
-      const localData = getFromStorage<T | null>(storageFullKey, null);
-
-      if (localData) {
-        const sanitized = sanitize ? sanitize(localData) : localData;
-        // localStorage 데이터를 IndexedDB에 복원
-        await saveData(config, key, sanitized, { syncFirebase: false, logSync: false });
-        addSyncLog('dexie', 'load', `${prefix} restored from localStorage`, { key });
-        return sanitized;
-      }
-    }
-
-    // 3. Firebase에서 조회 (firebaseStrategy가 있을 때만)
+    // 2. Firebase에서 조회 (firebaseStrategy가 있을 때만)
     if (useFirebase && firebaseStrategy && isFirebaseInitialized()) {
       const firebaseData = await fetchFromFirebase<T>(firebaseStrategy, key.toString());
 
       if (firebaseData) {
         const sanitized = sanitize ? sanitize(firebaseData) : firebaseData;
-        // Firebase 데이터를 IndexedDB와 localStorage에 복원
+        // Firebase 데이터를 IndexedDB에 복원
         await saveData(config, key, sanitized, { syncFirebase: false });
         addSyncLog('firebase', 'load', `${prefix} loaded from Firebase`, { key });
         return sanitized;
       }
     }
 
-    // 4. 초기값 반환
+    // 3. 초기값 반환
     const initial = createInitial();
     if (saveInitial) {
       await saveData(config, key, initial, { syncFirebase: false, logSync: false });
@@ -139,7 +133,9 @@ export async function loadData<T>(
 }
 
 /**
- * 데이터 저장 (3-way sync: IndexedDB + localStorage + Firebase)
+ * 데이터 저장 (2-way sync: IndexedDB + Firebase)
+ * 
+ * @note localStorage 저장은 제거됨 (Dexie가 유일한 로컬 저장소)
  *
  * @template T - 데이터 타입
  * @param {RepositoryConfig<T>} config - Repository 설정
@@ -157,8 +153,8 @@ export async function saveData<T>(
   data: T,
   options: SaveOptions = {}
 ): Promise<void> {
-  const { syncFirebase = true, saveLocalStorage = true, logSync = true } = options;
-  const { table, storageKey, firebaseStrategy, logPrefix } = config;
+  const { syncFirebase = true, logSync = true } = options;
+  const { table, firebaseStrategy, logPrefix } = config;
   const prefix = logPrefix || table.name;
 
   try {
@@ -168,18 +164,12 @@ export async function saveData<T>(
       ...data,
     });
 
-    // 2. localStorage에 저장 (storageKey가 있을 때만)
-    if (saveLocalStorage && storageKey) {
-      const storageFullKey = typeof key === 'string' ? `${storageKey}${key}` : storageKey;
-      saveToStorage(storageFullKey, data);
-    }
-
-    // 3. SyncLog 기록
+    // 2. SyncLog 기록
     if (logSync) {
       addSyncLog('dexie', 'save', `${prefix} saved`, { key });
     }
 
-    // 4. Firebase에 저장 (firebaseStrategy가 있을 때만)
+    // 3. Firebase에 저장 (firebaseStrategy가 있을 때만)
     if (syncFirebase && firebaseStrategy && isFirebaseInitialized()) {
       // 비동기로 실행하여 UI 블로킹 방지
       syncToFirebase(firebaseStrategy, data, key.toString()).catch((err) => {
@@ -246,18 +236,12 @@ export async function deleteData<T>(
   config: RepositoryConfig<T>,
   key: string | number
 ): Promise<void> {
-  const { table, storageKey, logPrefix } = config;
+  const { table, logPrefix } = config;
   const prefix = logPrefix || table.name;
 
   try {
-    // 1. IndexedDB에서 삭제
+    // IndexedDB에서 삭제
     await table.delete(key);
-
-    // 2. localStorage에서 삭제 (storageKey가 있을 때만)
-    if (storageKey) {
-      const storageFullKey = typeof key === 'string' ? `${storageKey}${key}` : storageKey;
-      localStorage.removeItem(storageFullKey);
-    }
 
     addSyncLog('dexie', 'save', `${prefix} deleted`, { key });
   } catch (error) {
@@ -273,6 +257,8 @@ export async function deleteData<T>(
 
 /**
  * 컬렉션 전체 로드 (배열 데이터용)
+ * 
+ * @note localStorage fallback은 제거됨 (Dexie가 유일한 로컬 저장소)
  *
  * @template T - 배열 요소 타입
  * @param {RepositoryConfig<T[]>} config - Repository 설정
@@ -300,27 +286,11 @@ export async function loadCollection<T>(
       return sanitize ? sanitize(items) : items;
     }
 
-    // localStorage fallback (storageKey가 있을 때만)
-    if (config.storageKey) {
-      const localData = getFromStorage<T[] | null>(config.storageKey, null);
-      if (localData && localData.length > 0) {
-        // IndexedDB에 복원
-        await table.bulkPut(localData);
-        addSyncLog('dexie', 'load', `${config.logPrefix || table.name} restored from localStorage`, {
-          count: localData.length,
-        });
-        return sanitize ? sanitize(localData) : localData;
-      }
-    }
-
     // Firebase fallback
     if (options.useFirebase !== false && config.firebaseStrategy && isFirebaseInitialized()) {
       const firebaseData = await fetchFromFirebase<T[]>(config.firebaseStrategy, 'all');
       if (firebaseData && firebaseData.length > 0) {
         await table.bulkPut(firebaseData);
-        if (config.storageKey) {
-          saveToStorage(config.storageKey, firebaseData);
-        }
         addSyncLog('firebase', 'load', `${config.logPrefix || table.name} loaded from Firebase`, {
           count: firebaseData.length,
         });
@@ -338,6 +308,8 @@ export async function loadCollection<T>(
 
 /**
  * 컬렉션 전체 저장 (배열 데이터용)
+ * 
+ * @note localStorage 저장은 제거됨 (Dexie가 유일한 로컬 저장소)
  *
  * @template T - 배열 요소 타입
  * @param {RepositoryConfig<T[]>} config - Repository 설정
@@ -353,8 +325,8 @@ export async function saveCollection<T>(
   items: T[],
   options: SaveOptions = {}
 ): Promise<void> {
-  const { syncFirebase = true, saveLocalStorage = true, logSync = true } = options;
-  const { table, storageKey, firebaseStrategy, logPrefix } = config;
+  const { syncFirebase = true, logSync = true } = options;
+  const { table, firebaseStrategy, logPrefix } = config;
   const prefix = logPrefix || table.name;
 
   try {
@@ -364,25 +336,20 @@ export async function saveCollection<T>(
       await table.bulkPut(items);
     }
 
-    // 2. localStorage에 저장 (storageKey가 있을 때만)
-    if (saveLocalStorage && storageKey) {
-      saveToStorage(storageKey, items);
-    }
-
-    // 3. SyncLog 기록
+    // 2. SyncLog 기록
     if (logSync) {
       addSyncLog('dexie', 'save', `${prefix} collection saved`, { count: items.length });
     }
 
-    // 4. Firebase에 저장 (firebaseStrategy가 있을 때만)
-    if (syncFirebase && config.firebaseStrategy && isFirebaseInitialized()) {
+    // 3. Firebase에 저장 (firebaseStrategy가 있을 때만)
+    if (syncFirebase && firebaseStrategy && isFirebaseInitialized()) {
       console.log(`🔥 [Sync] Syncing ${prefix} collection to Firebase...`);
       // 비동기로 실행하여 UI 블로킹 방지
-      syncToFirebase(config.firebaseStrategy, items, 'all').catch((err) => {
+      syncToFirebase(firebaseStrategy, items, 'all').catch((err) => {
         console.error(`Failed to sync ${prefix} collection to Firebase:`, err);
       });
     } else {
-      console.log(`⚠️ [Sync] Skipping Firebase sync for ${prefix}:`, { syncFirebase, hasStrategy: !!config.firebaseStrategy, initialized: isFirebaseInitialized() });
+      console.log(`⚠️ [Sync] Skipping Firebase sync for ${prefix}:`, { syncFirebase, hasStrategy: !!firebaseStrategy, initialized: isFirebaseInitialized() });
     }
 
 

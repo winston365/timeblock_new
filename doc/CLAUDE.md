@@ -616,6 +616,30 @@ const result = await callAI({
   - Persistent inbox across app sessions
   - Faster inbox queries (no date filtering)
 
+### Unified Task Service ⭐
+- **Location**: `src/shared/services/task/unifiedTaskService.ts`
+- **Purpose**: Task가 dailyData와 globalInbox 중 어디에 저장되었는지 자동 감지
+- **When to use**: 
+  - 점화(Ignition), 통합 검색 등 두 저장소의 작업을 함께 다룰 때
+  - 작업 ID만 알고 저장소 위치를 모를 때
+- **Key Functions**:
+  ```typescript
+  import { updateAnyTask, getAnyTask } from '@/data/repositories';
+  
+  // 저장소 위치 자동 감지하여 업데이트
+  await updateAnyTask(taskId, { text: 'updated' });
+  
+  // 저장소 위치 자동 감지하여 조회
+  const task = await getAnyTask(taskId);
+  ```
+- **Available APIs**:
+  - `updateAnyTask(taskId, updates)` - 작업 업데이트
+  - `deleteAnyTask(taskId)` - 작업 삭제
+  - `toggleAnyTaskCompletion(taskId)` - 완료 토글
+  - `getAnyTask(taskId)` - 작업 조회
+  - `getAllActiveTasks(date?)` - 모든 활성 작업 (dailyData + inbox)
+  - `findTaskLocation(taskId)` - 작업 위치 확인
+
 ### Daily Goals System
 - **Added in v4**: Time-based goal tracking
 - Stored in `dailyData.goals` array (per date)

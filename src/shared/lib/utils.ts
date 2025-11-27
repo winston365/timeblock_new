@@ -262,14 +262,26 @@ export function objectToArray<T>(obj: Record<string, T> | null | undefined): T[]
 }
 
 // ============================================================================
-// 로컬 스토리지 헬퍼
+// 로컬 스토리지 헬퍼 (DEPRECATED - Dexie systemState 사용 권장)
 // ============================================================================
 
 /**
  * localStorage에서 JSON 파싱하여 가져오기
- * @deprecated 도메인 데이터(DailyData, GameState 등)에는 사용하지 마세요. UI 설정(테마, 사이드바 등)에만 사용하세요.
+ * 
+ * @deprecated ⚠️ 이 함수는 사용하지 마세요!
+ * - 도메인 데이터: Repository 패턴 사용 (src/data/repositories/*)
+ * - 시스템 상태: Dexie systemState 테이블 사용 (db.systemState.get/put)
+ * - 테마: 유일하게 허용 (앱 시작 시 Dexie 초기화 전 필요)
+ * 
+ * @see src/data/db/dexieClient.ts - systemState 테이블
+ * @see CLAUDE.md - 저장소 정책 가이드
  */
 export function getFromStorage<T>(key: string, defaultValue: T): T {
+  // 개발 환경에서 경고 (테마 제외)
+  if (import.meta.env.DEV && key !== 'theme') {
+    console.warn(`⚠️ [DEPRECATED] localStorage 사용 감지: "${key}". Dexie systemState를 사용하세요.`);
+  }
+  
   try {
     const item = localStorage.getItem(key);
     return item ? JSON.parse(item) : defaultValue;
@@ -281,9 +293,21 @@ export function getFromStorage<T>(key: string, defaultValue: T): T {
 
 /**
  * localStorage에 JSON 저장
- * @deprecated 도메인 데이터(DailyData, GameState 등)에는 사용하지 마세요. UI 설정(테마, 사이드바 등)에만 사용하세요.
+ * 
+ * @deprecated ⚠️ 이 함수는 사용하지 마세요!
+ * - 도메인 데이터: Repository 패턴 사용 (src/data/repositories/*)
+ * - 시스템 상태: Dexie systemState 테이블 사용 (db.systemState.get/put)
+ * - 테마: 유일하게 허용 (앱 시작 시 Dexie 초기화 전 필요)
+ * 
+ * @see src/data/db/dexieClient.ts - systemState 테이블
+ * @see CLAUDE.md - 저장소 정책 가이드
  */
 export function saveToStorage<T>(key: string, value: T): void {
+  // 개발 환경에서 경고 (테마 제외)
+  if (import.meta.env.DEV && key !== 'theme') {
+    console.warn(`⚠️ [DEPRECATED] localStorage 사용 감지: "${key}". Dexie systemState를 사용하세요.`);
+  }
+  
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
@@ -293,6 +317,9 @@ export function saveToStorage<T>(key: string, value: T): void {
 
 /**
  * localStorage에서 삭제
+ * 
+ * @deprecated ⚠️ 이 함수는 사용하지 마세요!
+ * @see getFromStorage, saveToStorage의 deprecation 안내 참고
  */
 export function removeFromStorage(key: string): void {
   try {

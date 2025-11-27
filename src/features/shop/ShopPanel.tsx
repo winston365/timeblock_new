@@ -131,10 +131,6 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
       return;
     }
 
-    if (!confirm(`${item.name}을(를) 사용하시겠습니까?`)) {
-      return;
-    }
-
     try {
       const result = await useShopItem(item.id);
 

@@ -8,6 +8,10 @@
  *   - IndexedDB: globalInbox 테이블
  *   - Firebase: 실시간 동기화 (syncToFirebase)
  *   - @/shared/types/domain: Task 타입
+ * 
+ * @note Task가 dailyData와 inbox 중 어디에 있는지 모를 때:
+ *       @see {@link @/shared/services/task/unifiedTaskService} - 통합 Task API
+ *       updateAnyTask(), deleteAnyTask(), getAnyTask() 등 사용
  */
 
 import { db } from '../db/dexieClient';

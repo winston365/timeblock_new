@@ -1,14 +1,17 @@
 /**
  * Sync Logger Service
  *
- * @role Dexie 및 Firebase 동기화 이벤트를 추적하고 localStorage에 영구 저장합니다.
+ * @role Dexie 및 Firebase 동기화 이벤트를 추적하고 Dexie(IndexedDB)에 영구 저장합니다.
  *       실시간 로그 구독 기능을 제공하여 UI에서 동기화 상태를 모니터링할 수 있습니다.
  * @input SyncType ('dexie' | 'firebase'), SyncAction ('save' | 'load' | 'sync' | 'error'),
  *        메시지, 데이터, 에러 객체
- * @output SyncLogEntry 배열 (최대 100개 유지, localStorage에 영구 저장)
+ * @output SyncLogEntry 배열 (최대 100개 유지, Dexie에 영구 저장)
  * @external_dependencies
- *   - localStorage: 로그 영구 저장
+ *   - Dexie (systemState): 로그 영구 저장
+ * @note localStorage 대신 Dexie systemState 테이블 사용 (앱 전체 일관성)
  */
+
+import { db } from '@/data/db/dexieClient';
 
 export type SyncType = 'dexie' | 'firebase';
 export type SyncAction = 'save' | 'load' | 'sync' | 'error' | 'retry' | 'info';
@@ -23,41 +26,53 @@ export interface SyncLogEntry {
   error?: string;
 }
 
-// 로컬스토리지 키
+// Dexie systemState 키
 const STORAGE_KEY = 'syncLogs';
 
 // 메모리 내 로그 캐시 (최대 100개)
 const MAX_LOGS = 100;
 let syncLogs: SyncLogEntry[] = [];
 let logListeners: Array<(logs: SyncLogEntry[]) => void> = [];
+let isInitialized = false;
 
 /**
- * localStorage에서 로그 로드
+ * Dexie에서 로그 로드 (비동기)
  */
-function loadLogsFromStorage(): SyncLogEntry[] {
+async function loadLogsFromStorage(): Promise<SyncLogEntry[]> {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
-    return JSON.parse(stored);
+    const record = await db.systemState.get(STORAGE_KEY);
+    if (!record || !record.value) return [];
+    return record.value as SyncLogEntry[];
   } catch (error) {
-    console.error('Failed to load sync logs from localStorage:', error);
+    console.error('Failed to load sync logs from Dexie:', error);
     return [];
   }
 }
 
 /**
- * localStorage에 로그 저장
+ * Dexie에 로그 저장 (비동기, fire-and-forget)
  */
 function saveLogsToStorage(logs: SyncLogEntry[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
-  } catch (error) {
-    console.error('Failed to save sync logs to localStorage:', error);
-  }
+  db.systemState.put({ key: STORAGE_KEY, value: logs }).catch(error => {
+    console.error('Failed to save sync logs to Dexie:', error);
+  });
 }
 
-// 초기 로드
-syncLogs = loadLogsFromStorage();
+/**
+ * 동기 초기화 (메모리 캐시만, 앱 시작 시 Dexie 로드는 별도)
+ */
+async function ensureInitialized(): Promise<void> {
+  if (isInitialized) return;
+  
+  try {
+    syncLogs = await loadLogsFromStorage();
+    isInitialized = true;
+  } catch (error) {
+    console.error('Failed to initialize sync logs:', error);
+    syncLogs = [];
+    isInitialized = true;
+  }
+}
 
 /**
  * 동기화 로그 항목을 추가합니다.
@@ -71,7 +86,7 @@ syncLogs = loadLogsFromStorage();
  * @throws 없음
  * @sideEffects
  *   - syncLogs 배열에 새 항목 추가 (최대 100개 유지)
- *   - localStorage에 저장
+ *   - Dexie systemState에 저장
  *   - 모든 등록된 리스너에게 업데이트 알림
  */
 export function addSyncLog(
@@ -98,7 +113,7 @@ export function addSyncLog(
     syncLogs = syncLogs.slice(0, MAX_LOGS);
   }
 
-  // localStorage에 저장
+  // Dexie에 저장 (비동기, fire-and-forget)
   saveLogsToStorage(syncLogs);
 
   // 리스너 호출
@@ -118,13 +133,21 @@ export function getSyncLogs(): SyncLogEntry[] {
 }
 
 /**
+ * 동기화 로그 시스템을 초기화합니다 (앱 시작 시 호출)
+ * Dexie에서 저장된 로그를 메모리로 로드합니다.
+ */
+export async function initializeSyncLogger(): Promise<void> {
+  await ensureInitialized();
+}
+
+/**
  * 모든 동기화 로그를 삭제합니다.
  *
  * @returns {void} 반환값 없음
  * @throws 없음
  * @sideEffects
  *   - syncLogs 배열 초기화
- *   - localStorage에서 삭제
+ *   - Dexie에서 삭제
  *   - 모든 등록된 리스너에게 업데이트 알림
  */
 export function clearSyncLogs(): void {

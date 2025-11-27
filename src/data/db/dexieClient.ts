@@ -20,6 +20,19 @@ import type {
   AIInsight
 } from '@/shared/types/domain';
 
+// RAG 벡터 문서 타입
+export interface RAGDocumentRecord {
+  id: string;
+  type: 'task' | 'journal' | 'goal' | 'insight';
+  content: string;
+  date: string;
+  completed: boolean;
+  metadata: string; // JSON stringified
+  embedding: number[];
+  contentHash: string; // 변경 감지용 해시
+  indexedAt: number; // 인덱싱 시간
+}
+
 export class TimeBlockDB extends Dexie {
   // 테이블 선언
   dailyData!: Table<DailyData & { date: string }, string>;
@@ -38,6 +51,7 @@ export class TimeBlockDB extends Dexie {
   images!: Table<{ id: string; data: Blob | string }, string>;
   weather!: Table<{ id: string; data: any; timestamp: number; lastUpdatedDate: string }, string>;
   aiInsights!: Table<AIInsight, string>;
+  ragDocuments!: Table<RAGDocumentRecord, string>; // ✅ RAG 벡터 영구 저장
 
   constructor() {
     super('timeblock_db');
@@ -234,6 +248,27 @@ export class TimeBlockDB extends Dexie {
       images: 'id',
       weather: 'id',
       aiInsights: 'date', // ✅ AI 인사이트
+    });
+
+    // 스키마 버전 12 - RAG 벡터 영구 저장소 추가
+    this.version(12).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      energyLevels: 'id, date, timestamp, hour',
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      globalInbox: 'id, createdAt, completed',
+      completedInbox: 'id, completedAt, createdAt',
+      globalGoals: 'id, createdAt, order',
+      systemState: 'key',
+      images: 'id',
+      weather: 'id',
+      aiInsights: 'date',
+      ragDocuments: 'id, type, date, completed, contentHash, indexedAt', // ✅ RAG 벡터 영구 저장
     });
   }
 }
