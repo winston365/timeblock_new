@@ -1,7 +1,7 @@
 /**
  * GameplayTab
  *
- * @role 게임플레이 관련 설정 (점화, 통계 목표, 타임블록 XP, 와이푸) 탭
+ * @role 게임플레이 관련 설정 (점화, 통계 목표, 타임블록 XP, 와이푸, 비활동 집중모드) 탭
  * @input GameplayTabProps (localSettings, setLocalSettings)
  * @output 점화 설정, XP 목표, 와이푸 설정 UI 렌더링
  * @external_dependencies 없음 (순수 UI 컴포넌트)
@@ -9,10 +9,69 @@
 
 import type { BaseTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass } from './styles';
+import { SETTING_DEFAULTS, IDLE_FOCUS_DEFAULTS, IGNITION_DEFAULTS } from '@/shared/constants/defaults';
 
 export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
     return (
         <div className={sectionClass}>
+            {/* ADHD 집중 모드 - 비활동 감지 */}
+            <h3>🎯 비활동 시 집중 모드</h3>
+            <p className={sectionDescriptionClass}>
+                일정 시간 동안 활동이 없으면 자동으로 집중 모드(FocusView)로 전환됩니다.
+                ADHD 사용자를 위해 "지금 해야 할 것"에 집중할 수 있도록 도와줍니다.
+            </p>
+
+            <div className={formGroupClass}>
+                <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={localSettings?.idleFocusModeEnabled ?? IDLE_FOCUS_DEFAULTS.enabled}
+                        onChange={(e) => {
+                            setLocalSettings((prev: Settings | null) => prev ? ({
+                                ...prev,
+                                idleFocusModeEnabled: e.target.checked
+                            }) : prev);
+                        }}
+                        className="h-5 w-5 rounded border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                    />
+                    <span className="text-sm font-medium text-[var(--color-text)]">
+                        비활동 시 집중 모드 자동 전환
+                    </span>
+                </label>
+            </div>
+
+            {localSettings?.idleFocusModeEnabled && (
+                <div className={formGroupClass}>
+                    <label htmlFor="idle-focus-minutes">비활동 감지 시간 (분)</label>
+                    <input
+                        id="idle-focus-minutes"
+                        type="number"
+                        min="1"
+                        max="30"
+                        className={inputClass}
+                        value={localSettings?.idleFocusModeMinutes ?? IDLE_FOCUS_DEFAULTS.minutes}
+                        onChange={(e) => {
+                            const value = parseInt(e.target.value) || 3;
+                            const clamped = Math.max(1, Math.min(30, value));
+                            setLocalSettings((prev: Settings | null) => prev ? ({
+                                ...prev,
+                                idleFocusModeMinutes: clamped
+                            }) : prev);
+                        }}
+                    />
+                    <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                        이 시간 동안 마우스/키보드 활동이 없으면 집중 모드로 전환됩니다 (1-30분)
+                    </small>
+                </div>
+            )}
+
+            <div className={infoBoxClass}>
+                <strong>💡 작동 방식:</strong> 비활동 감지 시 5초 카운트다운 토스트가 표시됩니다.
+                카운트다운 중 마우스를 움직이면 취소됩니다. 이미 집중 모드인 경우 전환되지 않습니다.
+            </div>
+
+            <div className="my-4 border-t border-[var(--color-border)]" />
+
             <h3>🔥 점화 설정</h3>
             <p className={sectionDescriptionClass}>
                 비활동 상태일 때 나타나는 점화 기능의 동작을 설정합니다.
@@ -29,7 +88,7 @@ export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
                     max="180"
                     className={inputClass}
                     placeholder="45"
-                    value={localSettings?.ignitionInactivityMinutes ?? 45}
+                    value={localSettings?.ignitionInactivityMinutes ?? SETTING_DEFAULTS.ignitionInactivityMinutes}
                     onChange={(e) => {
                         const value = parseInt(e.target.value) || 45;
                         const clampedValue = Math.max(5, Math.min(180, value));
@@ -50,7 +109,7 @@ export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
                         min="1"
                         max="30"
                         className={inputClass}
-                        value={localSettings?.ignitionDurationMinutes ?? 3}
+                        value={localSettings?.ignitionDurationMinutes ?? IGNITION_DEFAULTS.durationMinutes}
                         onChange={(e) => {
                             const value = parseInt(e.target.value) || 3;
                             const clamped = Math.max(1, Math.min(30, value));
@@ -68,7 +127,7 @@ export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
                         min="1"
                         max="120"
                         className={inputClass}
-                        value={localSettings?.ignitionCooldownMinutes ?? 5}
+                        value={localSettings?.ignitionCooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes}
                         onChange={(e) => {
                             const value = parseInt(e.target.value) || 15;
                             const clamped = Math.max(1, Math.min(120, value));
@@ -86,7 +145,7 @@ export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
                         min="1"
                         max="120"
                         className={inputClass}
-                        value={localSettings?.justDoItCooldownMinutes ?? 15}
+                        value={localSettings?.justDoItCooldownMinutes ?? SETTING_DEFAULTS.justDoItCooldownMinutes}
                         onChange={(e) => {
                             const value = parseInt(e.target.value) || 15;
                             const clamped = Math.max(1, Math.min(120, value));
@@ -104,7 +163,7 @@ export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
                         min="0"
                         max="500"
                         className={inputClass}
-                        value={localSettings?.ignitionXPCost ?? 50}
+                        value={localSettings?.ignitionXPCost ?? IGNITION_DEFAULTS.xpCost}
                         onChange={(e) => {
                             const value = parseInt(e.target.value) || 0;
                             const clamped = Math.max(0, Math.min(500, value));

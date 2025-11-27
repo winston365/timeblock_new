@@ -148,10 +148,41 @@ export interface Quest {
   target: number; // 목표값
   progress: number; // 현재 진행도
   completed: boolean;
+}
+
+/**
+ * 게임 상태 타입
+ * XP, 레벨, 퀘스트, 점화 시스템 등 게임화 관련 모든 상태
+ */
+export interface GameState {
+  // 레벨 및 XP
+  level: number;
+  totalXP: number;
+  dailyXP: number;
+  availableXP: number;
+  
+  // 연속 출석
+  streak: number;
+  lastLogin: string; // YYYY-MM-DD
+  
+  // 퀘스트 시스템
+  dailyQuests: Quest[];
+  questBonusClaimed: boolean;
+  
+  // XP 히스토리
+  xpHistory: Array<{ date: string; xp: number }>;
+  
+  // 타임블록 XP
   timeBlockXP: Record<string, number>; // 블록별 XP
   timeBlockXPHistory: Array<{ date: string; blocks: Record<string, number> }>; // 블록별 XP 히스토리
-  completedTasksHistory: Task[]; // 완료 작업 히스토리
+  
+  // 완료 작업 히스토리
+  completedTasksHistory: Task[];
+  
+  // 타이머 사용 통계
   dailyTimerCount: number; // 오늘 타이머 사용 횟수 (몰입 작업 수)
+  
+  // 인벤토리
   inventory: Record<string, number>; // 아이템 인벤토리 (itemId -> quantity)
 
   // 점화 시스템
@@ -380,7 +411,7 @@ export interface Settings {
   barkApiKey?: string; // Bark 알림 API 키
   ignitionInactivityMinutes?: number; // 점화 버튼 비활동 시간 (분, 기본: 45)
   ignitionDurationMinutes?: number; // 점화 길이 (분, 기본 3)
-  ignitionCooldownMinutes?: number; // 점화 쿨다운 (분, 기본 15)
+  ignitionCooldownMinutes?: number; // 점화 쿨다운 (분, 기본 5)
   ignitionXPCost?: number; // 점화 XP 비용 (기본 50 XP)
   justDoItCooldownMinutes?: number; // '그냥해보자!' 쿨다운 (분, 기본 15)
   // 단축키 설정
@@ -394,6 +425,10 @@ export interface Settings {
 
   // 타임블록별 XP 목표 설정
   timeBlockXPGoal?: number; // 타임블록당 XP 목표 (기본값 200)
+
+  // 비활동 시 집중 모드 자동 전환 설정
+  idleFocusModeEnabled?: boolean; // 비활동 시 집중 모드 전환 활성화 (기본: false)
+  idleFocusModeMinutes?: number; // 비활동 감지 시간 (분, 기본: 3)
 }
 
 // ============================================================================

@@ -30,6 +30,24 @@ await db.systemState.put({ key: 'myKey', value: data });
 const record = await db.systemState.get('myKey');
 ```
 - 유일한 예외: `theme` 키 (앱 시작 시 Dexie 초기화 전 필요)
+
+## Default Values Policy (중요!)
+```typescript
+// ❌ 금지 - 하드코딩된 fallback 값은 불일치 버그의 원인
+const cooldown = settings?.ignitionCooldownMinutes ?? 5;
+const duration = settings?.ignitionDurationMinutes ?? 3;
+
+// ✅ 올바른 방법 - SETTING_DEFAULTS 사용
+import { SETTING_DEFAULTS, IGNITION_DEFAULTS, IDLE_FOCUS_DEFAULTS, GAME_STATE_DEFAULTS } from '@/shared/constants/defaults';
+
+const cooldown = settings?.ignitionCooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes;
+const duration = settings?.ignitionDurationMinutes ?? IGNITION_DEFAULTS.durationMinutes;
+```
+- 모든 설정 관련 fallback 값은 `src/shared/constants/defaults.ts`에서 import
+- `SETTING_DEFAULTS`: 사용자 설정 fallback (ignitionCooldownMinutes, justDoItCooldownMinutes, ignitionInactivityMinutes 등)
+- `IGNITION_DEFAULTS`: 점화 시스템 (durationMinutes, xpCost, dailyFreeSpins)
+- `IDLE_FOCUS_DEFAULTS`: 비활동 집중모드 (enabled, minutes, countdownSeconds)
+- `GAME_STATE_DEFAULTS`: 게임 상태 초기화 (dailyFreeIgnitions)
 ## Integration Notes
 - Gemini flows sit under `src/shared/services/ai/*` and `src/features/gemini/**`; build persona context (see `personaUtils`) before invoking `geminiApi.ts` to keep responses coherent.
 - Waifu assets in `public/assets/waifu/poses/**` map to affection tiers; state lives in `waifuCompanionStore` + `waifuRepository`, so keep filenames stable if you swap art.

@@ -5,6 +5,7 @@
  */
 
 import type { GameState } from '@/shared/types/domain';
+import { SETTING_DEFAULTS, IGNITION_DEFAULTS } from '@/shared/constants/defaults';
 
 export interface IgnitionCheckResult {
     canIgnite: boolean;
@@ -31,8 +32,8 @@ export function checkIgnitionAvailability(
     isBonus: boolean = false,
     config: IgnitionConfig = {}
 ): IgnitionCheckResult {
-    const cooldownSeconds = (config.cooldownMinutes ?? 5) * 60;
-    const xpCost = config.xpCost ?? 50;
+    const cooldownSeconds = (config.cooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes) * 60;
+    const xpCost = config.xpCost ?? IGNITION_DEFAULTS.xpCost;
 
     if (!gameState) {
         return { canIgnite: false, reason: 'insufficient_xp', requiresXP: xpCost };
@@ -41,25 +42,24 @@ export function checkIgnitionAvailability(
     const now = Date.now();
     const today = new Date().toISOString().split('T')[0];
 
-    // 날짜 변경 시 리셋 (자정)
-    if (gameState.lastIgnitionResetDate !== today) {
-        return {
-            canIgnite: true,
-            freeSpinsRemaining: gameState.dailyFreeIgnitions,
-        };
-    }
+    // 날짜 변경 여부 확인 (무료 횟수 리셋용)
+    const isNewDay = gameState.lastIgnitionResetDate !== today;
 
     // 쿨다운 체크 - isBonus에 따라 다른 타임스탬프 사용
+    // 날짜가 바뀌어도 쿨다운은 여전히 적용됨!
     const lastTime = isBonus ? gameState.lastBonusIgnitionTime : gameState.lastIgnitionTime;
 
     if (lastTime) {
         const elapsed = (now - lastTime) / 1000;
         if (elapsed < cooldownSeconds) {
+            const freeRemaining = isNewDay 
+                ? gameState.dailyFreeIgnitions 
+                : (gameState.dailyFreeIgnitions - gameState.usedIgnitions);
             return {
                 canIgnite: false,
                 reason: 'cooldown',
                 cooldownRemaining: Math.ceil(cooldownSeconds - elapsed),
-                freeSpinsRemaining: gameState.dailyFreeIgnitions - gameState.usedIgnitions,
+                freeSpinsRemaining: freeRemaining,
             };
         }
     }
@@ -69,8 +69,10 @@ export function checkIgnitionAvailability(
         return { canIgnite: true };
     }
 
-    // 무료 횟수 체크
-    const freeRemaining = gameState.dailyFreeIgnitions - gameState.usedIgnitions;
+    // 무료 횟수 체크 (날짜 변경 시 리셋)
+    const usedIgnitions = isNewDay ? 0 : gameState.usedIgnitions;
+    const freeRemaining = gameState.dailyFreeIgnitions - usedIgnitions;
+    
     if (freeRemaining > 0) {
         return {
             canIgnite: true,

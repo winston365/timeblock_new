@@ -19,6 +19,7 @@ import { getLocalDate, getLevelFromXP, getBlockIdFromHour } from '@/shared/lib/u
 import { generateQuestTarget, calculateQuestReward } from '@/shared/utils/gamification';
 import { gameStateStrategy } from '@/shared/services/sync/firebase/strategies';
 import { loadData, saveData, type RepositoryConfig } from './baseRepository';
+import { GAME_STATE_DEFAULTS } from '@/shared/constants/defaults';
 
 // ============================================================================
 // Repository Configuration
@@ -47,7 +48,7 @@ const gameStateConfig: RepositoryConfig<GameState> = {
     inventory: {}, // 아이템 인벤토리 초기화
 
     // 점화 시스템
-    dailyFreeIgnitions: 3,
+    dailyFreeIgnitions: GAME_STATE_DEFAULTS.dailyFreeIgnitions,
     usedIgnitions: 0,
     lastIgnitionTime: null,
     lastBonusIgnitionTime: null,
@@ -67,7 +68,7 @@ const gameStateConfig: RepositoryConfig<GameState> = {
       inventory: data.inventory || {},
 
       // 점화 시스템
-      dailyFreeIgnitions: data.dailyFreeIgnitions ?? 3,
+      dailyFreeIgnitions: data.dailyFreeIgnitions ?? GAME_STATE_DEFAULTS.dailyFreeIgnitions,
       usedIgnitions: data.usedIgnitions ?? 0,
       lastIgnitionTime: data.lastIgnitionTime ?? null,
       lastBonusIgnitionTime: data.lastBonusIgnitionTime ?? null,

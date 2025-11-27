@@ -3,6 +3,7 @@ import type { GameState, Task } from '@/shared/types/domain';
 import { checkIgnitionAvailability } from '../utils/ignitionLimits';
 import { toast } from 'react-hot-toast';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
 
 interface IgnitionState {
     isOpen: boolean;
@@ -50,11 +51,11 @@ export const useIgnitionStore = create<IgnitionState>((set) => {
         selectedTask: null,
         microStepText: '',
         timerState: 'idle',
-        timeLeft: (useSettingsStore.getState().settings?.ignitionDurationMinutes ?? 3) * 60,
+        timeLeft: (useSettingsStore.getState().settings?.ignitionDurationMinutes ?? SETTING_DEFAULTS.ignitionDurationMinutes) * 60,
         isBonus: false,
 
         openIgnition: () => {
-            const duration = (useSettingsStore.getState().settings?.ignitionDurationMinutes ?? 3) * 60;
+            const duration = (useSettingsStore.getState().settings?.ignitionDurationMinutes ?? SETTING_DEFAULTS.ignitionDurationMinutes) * 60;
             set({ isOpen: true, isSpinning: false, timerState: 'idle', timeLeft: duration, microStepText: '', selectedTask: null });
         },
         closeIgnition: () => set({ isOpen: false, isSpinning: false, timerState: 'idle' }),
@@ -65,10 +66,10 @@ export const useIgnitionStore = create<IgnitionState>((set) => {
             const { gameState, spendXP } = useGameStateStore.getState();
             const { settings } = useSettingsStore.getState();
 
-            // 점화 가능 여부 체크
+            // 점화 가능 여부 체크 - 중앙화된 기본값 사용
             const cooldownMinutes = isBonus
-                ? (settings?.justDoItCooldownMinutes ?? 1)
-                : (settings?.ignitionCooldownMinutes ?? 5);
+                ? (settings?.justDoItCooldownMinutes ?? SETTING_DEFAULTS.justDoItCooldownMinutes)
+                : (settings?.ignitionCooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes);
 
             const check = checkIgnitionAvailability(gameState, isBonus, {
                 cooldownMinutes: cooldownMinutes,
@@ -114,7 +115,7 @@ export const useIgnitionStore = create<IgnitionState>((set) => {
             }
 
             // 점화 실행
-            const duration = (settings?.ignitionDurationMinutes ?? 3) * 60;
+            const duration = (settings?.ignitionDurationMinutes ?? SETTING_DEFAULTS.ignitionDurationMinutes) * 60;
             set({
                 isOpen: true,
                 isSpinning: false,
@@ -163,7 +164,7 @@ export const useIgnitionStore = create<IgnitionState>((set) => {
         startTimer: () => set({ timerState: 'running' }),
         pauseTimer: () => set({ timerState: 'paused' }),
         resetTimer: () => {
-            const duration = (useSettingsStore.getState().settings?.ignitionDurationMinutes ?? 3) * 60;
+            const duration = (useSettingsStore.getState().settings?.ignitionDurationMinutes ?? SETTING_DEFAULTS.ignitionDurationMinutes) * 60;
             set({ timerState: 'idle', timeLeft: duration });
         },
 

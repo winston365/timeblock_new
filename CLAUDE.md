@@ -342,3 +342,30 @@ const record = await db.systemState.get('myKey');
 
 **Allowed localStorage Usage:**
 - `theme` key ONLY (required before Dexie initializes)
+
+### Default Values Policy (CRITICAL)
+
+**❌ DO NOT USE hardcoded fallback values**:
+```typescript
+// ❌ WRONG - Hardcoded fallback leads to inconsistency
+const cooldown = settings?.ignitionCooldownMinutes ?? 5;
+const duration = settings?.ignitionDurationMinutes ?? 3;
+
+// ✅ CORRECT - Use centralized SETTING_DEFAULTS
+import { SETTING_DEFAULTS, IGNITION_DEFAULTS, IDLE_FOCUS_DEFAULTS, GAME_STATE_DEFAULTS } from '@/shared/constants/defaults';
+
+const cooldown = settings?.ignitionCooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes;
+const duration = settings?.ignitionDurationMinutes ?? IGNITION_DEFAULTS.durationMinutes;
+```
+
+**Why centralized defaults?**
+1. Single source of truth - changing one location updates everywhere
+2. Prevents bugs from inconsistent fallback values across files
+3. Easy to review and maintain all default values
+4. Prevents "works in one place, fails in another" scenarios
+
+**Default Constants Location**: `src/shared/constants/defaults.ts`
+- `SETTING_DEFAULTS` - User settings fallbacks
+- `IGNITION_DEFAULTS` - Ignition system defaults
+- `IDLE_FOCUS_DEFAULTS` - Idle focus mode defaults
+- `GAME_STATE_DEFAULTS` - Game state initialization defaults

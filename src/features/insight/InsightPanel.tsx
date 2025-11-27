@@ -94,12 +94,110 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
 
   /**
    * JSON 파싱 헬퍼
+   * AI 응답이 잘리거나 불완전할 수 있으므로 여러 방법으로 시도
    */
   const parseInsightResponse = (text: string): InsightData | null => {
     try {
-      // 마크다운 코드블록 제거 (```json ... ```)
-      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(cleanText);
+      // 1. 마크다운 코드블록 제거 (```json ... ``` 또는 ``` ... ```)
+      let cleanText = text
+        .replace(/^```(?:json)?\s*/gm, '')  // 시작 코드블록
+        .replace(/\s*```\s*$/gm, '')        // 끝 코드블록
+        .trim();
+      
+      // 2. 첫 번째 시도: 그대로 파싱
+      try {
+        return JSON.parse(cleanText);
+      } catch {
+        // 파싱 실패 시 복구 시도
+      }
+      
+      // 3. JSON 객체 부분만 추출 시도
+      const jsonStartIndex = cleanText.indexOf('{');
+      if (jsonStartIndex === -1) {
+        console.warn('No JSON object found in response');
+        return null;
+      }
+      cleanText = cleanText.substring(jsonStartIndex);
+      
+      // 4. 불완전한 JSON 복구 시도
+      let fixedText = cleanText;
+      
+      // 열린 따옴표 개수 확인 및 처리
+      const quoteCount = (fixedText.match(/"/g) || []).length;
+      if (quoteCount % 2 !== 0) {
+        // 마지막 불완전한 문자열 찾아서 제거
+        // "key": "incomplete value 형태를 찾아서 해당 키-값 쌍 전체 제거
+        const lastColonQuote = fixedText.lastIndexOf('": "');
+        if (lastColonQuote !== -1) {
+          // 그 앞의 쉼표나 여는 괄호까지 찾기
+          const beforeLastField = fixedText.substring(0, lastColonQuote);
+          const lastComma = beforeLastField.lastIndexOf(',');
+          const lastOpenBrace = beforeLastField.lastIndexOf('{');
+          const lastOpenBracket = beforeLastField.lastIndexOf('[');
+          
+          const cutPoint = Math.max(lastComma, lastOpenBrace, lastOpenBracket);
+          if (cutPoint !== -1) {
+            if (fixedText[cutPoint] === ',') {
+              fixedText = fixedText.substring(0, cutPoint);
+            } else {
+              // { 또는 [ 직후부터 자르기
+              fixedText = fixedText.substring(0, cutPoint + 1);
+            }
+          }
+        }
+      }
+      
+      // 5. 닫히지 않은 괄호들 닫기
+      const openBraces = (fixedText.match(/\{/g) || []).length;
+      const closeBraces = (fixedText.match(/\}/g) || []).length;
+      const openBrackets = (fixedText.match(/\[/g) || []).length;
+      const closeBrackets = (fixedText.match(/\]/g) || []).length;
+      
+      // 배열 먼저 닫고 객체 닫기
+      fixedText += ']'.repeat(Math.max(0, openBrackets - closeBrackets));
+      fixedText += '}'.repeat(Math.max(0, openBraces - closeBraces));
+      
+      try {
+        const parsed = JSON.parse(fixedText);
+        // 최소한 status 필드가 있는지 확인
+        if (parsed && parsed.status) {
+          console.log('[InsightPanel] Recovered truncated JSON successfully');
+          return parsed;
+        }
+      } catch {
+        // 복구 실패
+      }
+      
+      // 6. 최소 필드만이라도 추출 시도
+      try {
+        const statusMatch = cleanText.match(/"status"\s*:\s*\{[^}]+\}/);
+        const actionMatch = cleanText.match(/"action"\s*:\s*\{[^}]+\}/);
+        const motivationMatch = cleanText.match(/"motivation"\s*:\s*"([^"]+)"/);
+        
+        if (statusMatch) {
+          // 최소 status만이라도 있으면 부분 데이터 반환
+          const partialData: Partial<InsightData> = {
+            status: JSON.parse(`{${statusMatch[0]}}`).status,
+          };
+          if (actionMatch) {
+            partialData.action = JSON.parse(`{${actionMatch[0]}}`).action;
+          }
+          if (motivationMatch) {
+            partialData.motivation = motivationMatch[1];
+          }
+          
+          if (partialData.status) {
+            console.log('[InsightPanel] Extracted partial data from truncated response');
+            return partialData as InsightData;
+          }
+        }
+      } catch {
+        // 부분 추출도 실패
+      }
+      
+      // 7. 모든 시도 실패
+      console.warn('Failed to parse insight JSON after all attempts, raw text:', text.substring(0, 200));
+      return null;
     } catch (e) {
       console.warn('Failed to parse insight JSON:', e);
       return null;

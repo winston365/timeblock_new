@@ -144,11 +144,11 @@ npm run preview          # 프로덕션 빌드 미리보기
 │                         DATA PERSISTENCE (3-Tier)                            │
 │                                                                              │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐           │
-│  │    IndexedDB     │  │   localStorage   │  │     Firebase     │           │
-│  │    (Dexie)       │  │                  │  │  Realtime DB     │           │
+│  │    IndexedDB     │  │   systemState    │  │     Firebase     │           │
+│  │    (Dexie)       │  │   (Dexie)        │  │  Realtime DB     │           │
 │  │    ─────────     │  │    ──────────    │  │    ──────────    │           │
-│  │    Primary       │  │    Secondary     │  │    Cloud Sync    │           │
-│  │    고성능 로컬    │  │    동기식 백업    │  │    멀티디바이스   │           │
+│  │    Primary       │  │    Key-Value     │  │    Cloud Sync    │           │
+│  │    고성능 로컬    │  │    시스템 상태    │  │    멀티디바이스   │           │
 │  └──────────────────┘  └──────────────────┘  └──────────────────┘           │
 │           │                     │                     │                      │
 │           └─────────────────────┴─────────────────────┘                      │
@@ -192,8 +192,8 @@ npm run preview          # 프로덕션 빌드 미리보기
 │        │ 3. Persist                           goal, quest)       │
 │        ▼                                                         │
 │   ┌─────────┬─────────┬─────────┐                               │
-│   │ Dexie   │ local   │ Firebase│                               │
-│   │ (IndexDB)│ Storage │ (async) │                               │
+│   │ Dexie   │ system  │ Firebase│                               │
+│   │ (IndexDB)│ State  │ (async) │                               │
 │   └─────────┴─────────┴─────────┘                               │
 │        │                    │                                    │
 │        │ 4. Dexie Hook      │                                    │
@@ -305,6 +305,23 @@ timeblock_new/
   npm run preview      # 웹 빌드 테스트
   npm run electron:prod  # Electron 빌드 테스트
   ```
+
+### 기본값 정책 (Default Values Policy)
+- **하드코딩된 fallback 값 금지** - 불일치 버그의 원인
+- 모든 설정 관련 기본값은 `src/shared/constants/defaults.ts`에서 import:
+  ```typescript
+  // ❌ 금지
+  const cooldown = settings?.ignitionCooldownMinutes ?? 5;
+  
+  // ✅ 올바른 방법
+  import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
+  const cooldown = settings?.ignitionCooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes;
+  ```
+- **상수 종류**:
+  - `SETTING_DEFAULTS`: 사용자 설정 (ignitionCooldownMinutes, justDoItCooldownMinutes 등)
+  - `IGNITION_DEFAULTS`: 점화 시스템 (durationMinutes, xpCost, dailyFreeSpins)
+  - `IDLE_FOCUS_DEFAULTS`: 비활동 집중모드 (enabled, minutes, countdownSeconds)
+  - `GAME_STATE_DEFAULTS`: 게임 상태 초기화 (dailyFreeIgnitions)
 
 ### 스키마 변경 시
 Dexie 스키마 변경 시 3곳 모두 업데이트:

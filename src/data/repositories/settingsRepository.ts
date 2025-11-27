@@ -8,12 +8,14 @@
  *   - IndexedDB (db.settings): 메인 저장소
  *   - localStorage (STORAGE_KEYS.SETTINGS): 백업 저장소
  *   - @/shared/types/domain: Settings 타입
+ *   - @/shared/constants/defaults: 중앙화된 기본값
  *   - BaseRepository: 공통 Repository 패턴
  */
 
 import { db } from '../db/dexieClient';
 import type { Settings, TimeSlotTagTemplate } from '@/shared/types/domain';
 import { STORAGE_KEYS, DEFAULT_AUTO_MESSAGE_INTERVAL } from '@/shared/lib/constants';
+import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
 import { loadData, saveData, updateData, type RepositoryConfig } from './baseRepository';
 import { settingsStrategy } from '@/shared/services/sync/firebase/strategies';
 
@@ -23,6 +25,9 @@ import { settingsStrategy } from '@/shared/services/sync/firebase/strategies';
 
 /**
  * Settings Repository 설정
+ *
+ * ⚠️ 기본값은 SETTING_DEFAULTS에서 가져옵니다.
+ * @see src/shared/constants/defaults.ts
  */
 const DEFAULT_TIME_SLOT_TAGS: TimeSlotTagTemplate[] = [
   { id: 'rest', label: '휴식', color: '#a5f3fc', icon: '🛀' },
@@ -38,31 +43,41 @@ const settingsConfig: RepositoryConfig<Settings> = {
     geminiApiKey: '',
     autoMessageInterval: DEFAULT_AUTO_MESSAGE_INTERVAL,
     autoMessageEnabled: true,
-    waifuMode: 'characteristic', // 기본값: 특성 모드
-    waifuImageChangeInterval: 600000, // 기본값: 10분 (밀리초)
-    templateCategories: ['업무', '건강', '공부', '취미'], // 기본 카테고리
-    aiBreakdownTrigger: 'high_difficulty', // 기본값: 높은 난이도일 때만 자동 실행
-    autoEmojiEnabled: false, // 기본값: 자동 이모지 비활성화
+    waifuMode: 'characteristic',
+    waifuImageChangeInterval: 600000,
+    templateCategories: ['업무', '건강', '공부', '취미'],
+    aiBreakdownTrigger: 'high_difficulty',
+    autoEmojiEnabled: false,
     timeSlotTags: DEFAULT_TIME_SLOT_TAGS,
-    ignitionInactivityMinutes: 45, // 기본값: 45분
-    ignitionDurationMinutes: 3, // 기본값: 3분
-    ignitionCooldownMinutes: 15, // 기본값: 15분
-    ignitionXPCost: 50, // 기본값: 50 XP
+    // 점화 시스템 - 중앙화된 기본값 사용
+    ignitionInactivityMinutes: SETTING_DEFAULTS.ignitionInactivityMinutes,
+    ignitionDurationMinutes: SETTING_DEFAULTS.ignitionDurationMinutes,
+    ignitionCooldownMinutes: SETTING_DEFAULTS.ignitionCooldownMinutes,
+    justDoItCooldownMinutes: SETTING_DEFAULTS.justDoItCooldownMinutes,
+    ignitionXPCost: SETTING_DEFAULTS.ignitionXPCost,
+    // 비활동 집중 모드 - 중앙화된 기본값 사용
+    idleFocusModeEnabled: SETTING_DEFAULTS.idleFocusModeEnabled,
+    idleFocusModeMinutes: SETTING_DEFAULTS.idleFocusModeMinutes,
   }),
   sanitize: (data: Settings) => {
-    // 기존 사용자를 위한 마이그레이션
+    // 기존 사용자를 위한 마이그레이션 - 중앙화된 기본값 사용
     return {
       ...data,
       waifuMode: data.waifuMode || 'characteristic',
-      waifuImageChangeInterval: data.waifuImageChangeInterval ?? 600000, // 기본값: 10분
+      waifuImageChangeInterval: data.waifuImageChangeInterval ?? 600000,
       templateCategories: data.templateCategories || ['업무', '건강', '공부', '취미'],
       aiBreakdownTrigger: data.aiBreakdownTrigger || 'high_difficulty',
       autoEmojiEnabled: data.autoEmojiEnabled ?? false,
       timeSlotTags: Array.isArray(data.timeSlotTags) ? data.timeSlotTags : DEFAULT_TIME_SLOT_TAGS,
-      ignitionInactivityMinutes: data.ignitionInactivityMinutes ?? 45, // 기본값: 45분
-      ignitionDurationMinutes: data.ignitionDurationMinutes ?? 3, // 기본값: 3분
-      ignitionCooldownMinutes: data.ignitionCooldownMinutes ?? 5, // 기본값: 5분
-      ignitionXPCost: data.ignitionXPCost ?? 50, // 기본값: 50 XP
+      // 점화 시스템 - 중앙화된 기본값 사용
+      ignitionInactivityMinutes: data.ignitionInactivityMinutes ?? SETTING_DEFAULTS.ignitionInactivityMinutes,
+      ignitionDurationMinutes: data.ignitionDurationMinutes ?? SETTING_DEFAULTS.ignitionDurationMinutes,
+      ignitionCooldownMinutes: data.ignitionCooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes,
+      justDoItCooldownMinutes: data.justDoItCooldownMinutes ?? SETTING_DEFAULTS.justDoItCooldownMinutes,
+      ignitionXPCost: data.ignitionXPCost ?? SETTING_DEFAULTS.ignitionXPCost,
+      // 비활동 집중 모드 - 중앙화된 기본값 사용
+      idleFocusModeEnabled: data.idleFocusModeEnabled ?? SETTING_DEFAULTS.idleFocusModeEnabled,
+      idleFocusModeMinutes: data.idleFocusModeMinutes ?? SETTING_DEFAULTS.idleFocusModeMinutes,
     };
   },
   logPrefix: 'Settings',

@@ -67,7 +67,7 @@ export async function callGeminiAPI(
           temperature: 1,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 2000,
+          maxOutputTokens: 8096,
         },
       }),
     });
@@ -87,7 +87,15 @@ export async function callGeminiAPI(
     }
 
     const candidate = data.candidates[0];
-    const text = candidate.content.parts[0]?.text || '';
+    
+    // MAX_TOKENS로 잘린 경우에도 가능한 텍스트 추출 시도
+    const parts = candidate?.content?.parts || [];
+    const text = parts.map(p => p?.text || '').join('').trim();
+    
+    // finishReason이 MAX_TOKENS인 경우 경고 로그
+    if (candidate.finishReason === 'MAX_TOKENS') {
+      console.warn('[Gemini API] Response truncated due to MAX_TOKENS. Consider increasing maxOutputTokens.');
+    }
 
     const tokenUsage = data.usageMetadata
       ? {
@@ -119,7 +127,8 @@ export async function callGeminiAPIWithTools(
     throw new Error('Gemini API 키가 설정되지 않았습니다.');
   }
 
-  const modelName = 'gemini-2.5-flash'; // refer 프로젝트와 동일한 모델 사용
+  // Google Search Grounding에는 non-thinking 모델 사용 (2.5는 thinking 모델이라 문제 발생)
+  const modelName = 'gemini-2.5-flash-lite';
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
   try {
@@ -138,7 +147,7 @@ export async function callGeminiAPIWithTools(
         }],
         generationConfig: {
           temperature: 0.1, // 사실적인 정보를 위해 낮춤
-          maxOutputTokens: 2000,
+          maxOutputTokens: 8096,
         },
       }),
     });
@@ -158,10 +167,21 @@ export async function callGeminiAPIWithTools(
     }
 
     const candidate = data.candidates[0];
-    console.log('[Gemini Tools] Candidate:', JSON.stringify(candidate, null, 2)); // 디버깅용 로그
+    
+    // finishReason 체크 - MAX_TOKENS인 경우 로그만 남기고 계속 진행
+    if (candidate.finishReason === 'MAX_TOKENS') {
+      console.warn('[Gemini Tools] Response truncated due to MAX_TOKENS');
+    }
 
     const parts = candidate?.content?.parts || [];
     const text = parts.map(p => p?.text || '').join(' ').trim();
+    
+    // parts가 비어있어도 groundingMetadata에서 검색 결과 확인
+    if (!text && candidate.finishReason === 'MAX_TOKENS') {
+      // MAX_TOKENS로 인해 텍스트가 없는 경우, 재시도 힌트 제공
+      throw new Error('Gemini 응답이 토큰 제한으로 잘렸습니다. 프롬프트를 단순화해 주세요.');
+    }
+    
     if (!text) {
       throw new Error('Gemini 응답이 비어 있습니다 (parts 없음).');
     }
