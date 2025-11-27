@@ -199,22 +199,14 @@ class IdleFocusModeService {
      * 활동 감지 이벤트 리스너 등록
      */
     private attachActivityListeners(): void {
-        document.addEventListener('mousemove', this.handleActivity);
         document.addEventListener('keydown', this.handleActivity);
-        document.addEventListener('click', this.handleActivity);
-        document.addEventListener('scroll', this.handleActivity);
-        document.addEventListener('touchstart', this.handleActivity);
     }
 
     /**
      * 활동 감지 이벤트 리스너 제거
      */
     private detachActivityListeners(): void {
-        document.removeEventListener('mousemove', this.handleActivity);
         document.removeEventListener('keydown', this.handleActivity);
-        document.removeEventListener('click', this.handleActivity);
-        document.removeEventListener('scroll', this.handleActivity);
-        document.removeEventListener('touchstart', this.handleActivity);
     }
 
     /**
