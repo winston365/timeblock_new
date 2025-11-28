@@ -81,6 +81,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
     const [appVersion, setAppVersion] = useState<string>('...');
     const [checkingUpdate, setCheckingUpdate] = useState(false);
     const [updateStatus, setUpdateStatus] = useState<string>('');
+    const [lastUpdateCheckAt, setLastUpdateCheckAt] = useState<number | null>(null);
 
     // 설정 로드 및 로컬 상태 초기화
     useEffect(() => {
@@ -190,6 +191,16 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
     };
 
     const handleCheckForUpdates = async () => {
+        if (checkingUpdate) {
+            return;
+        }
+        const now = Date.now();
+        if (lastUpdateCheckAt && now - lastUpdateCheckAt < 30_000) {
+            setUpdateStatus('⚠️ 잠시 후 다시 시도해주세요 (중복 확인 방지)');
+            return;
+        }
+        setLastUpdateCheckAt(now);
+
         if (!window.electronAPI?.checkForUpdates) {
             setUpdateStatus('❌ Electron 환경이 아닙니다 (웹 버전)');
             return;
