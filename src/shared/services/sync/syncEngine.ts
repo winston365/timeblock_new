@@ -186,6 +186,17 @@ export class SyncEngine {
 
             if (syncData.data) {
                 this.applyRemoteUpdate(async () => {
+                    // ✅ 충돌 해결: totalXP가 더 높은 쪽 유지 (새로고침 시 XP 초기화 방지)
+                    const localGameState = await db.gameState.get('current');
+                    const localTotalXP = localGameState?.totalXP ?? 0;
+                    const remoteTotalXP = syncData.data.totalXP ?? 0;
+
+                    // 로컬 XP가 더 높으면 원격 데이터 무시 (FocusView bonusXP 보호)
+                    if (localTotalXP > remoteTotalXP) {
+                        console.log(`[SyncEngine] 🛡️ Skipping remote GameState (local XP: ${localTotalXP} > remote XP: ${remoteTotalXP})`);
+                        return;
+                    }
+
                     await db.gameState.put({
                         ...syncData.data,
                         key: 'current'

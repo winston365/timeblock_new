@@ -136,13 +136,12 @@ export function FocusView({
             await onToggleTask(taskId);
 
             // 집중 모드에서 활성 작업을 완료했을 때: 추가 XP 보너스 지급 (x2 total)
-            if (isCompletingActiveTask && task) {
+            // ✅ 완료 취소 시에는 bonusXP 지급하지 않음
+            if (isCompletingActiveTask && task && !task.completed) {
                 const bonusXP = calculateTaskXP(task);
                 const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
                 const gameStateStore = useGameStateStore.getState();
                 await gameStateStore.addXP(bonusXP, task.timeBlock || undefined);
-                // 즉시 동기화하여 새로고침 시 사라지는 문제 방지
-                await gameStateStore.refresh();
             }
 
             if (isCompletingActiveTask) {
