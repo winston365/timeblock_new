@@ -12,6 +12,8 @@ import TaskCard from './TaskCard';
 import { useDragDropManager } from './hooks/useDragDropManager';
 import { db } from '@/data/db/dexieClient';
 
+const MAX_TASKS_PER_HOUR = 3;
+
 interface HourBarProps {
   hour: number;
   blockId: TimeBlockId;
@@ -213,9 +215,9 @@ export default function HourBar({
         return;
       }
 
-      // 2개 제한 검증
-      if (tasks.length >= 2) {
-        addToast('이 시간대에는 최대 2개의 작업만 추가할 수 있습니다.', 'warning', 3000);
+      // 최대 개수 제한 검증
+      if (tasks.length >= MAX_TASKS_PER_HOUR) {
+        addToast(`이 시간대에는 최대 ${MAX_TASKS_PER_HOUR}개의 작업만 추가할 수 있습니다.`, 'warning', 3000);
         return;
       }
 
@@ -249,8 +251,8 @@ export default function HourBar({
     const isDifferentLocation = !isSameLocation(dragData, blockId, hour);
 
     // 다른 위치에서 옮겨오는 경우 제한 체크
-    if (isDifferentLocation && tasks.length >= 2) {
-      addToast('이 시간대에는 최대 2개의 작업만 추가할 수 있습니다.', 'warning', 3000);
+    if (isDifferentLocation && tasks.length >= MAX_TASKS_PER_HOUR) {
+      addToast(`이 시간대에는 최대 ${MAX_TASKS_PER_HOUR}개의 작업만 추가할 수 있습니다.`, 'warning', 3000);
       return;
     }
 
@@ -270,8 +272,8 @@ export default function HourBar({
 
     // 다른 위치에서 옮겨오는 경우 제한 체크
     const isDifferentLocation = !isSameLocation(dragData, blockId, hour);
-    if (isDifferentLocation && tasks.length >= 2) {
-      addToast('이 시간대에는 최대 2개의 작업만 추가할 수 있습니다.', 'warning', 3000);
+    if (isDifferentLocation && tasks.length >= MAX_TASKS_PER_HOUR) {
+      addToast(`이 시간대에는 최대 ${MAX_TASKS_PER_HOUR}개의 작업만 추가할 수 있습니다.`, 'warning', 3000);
       return;
     }
 
@@ -505,9 +507,9 @@ export default function HourBar({
 
             {!isLocked && !isPastHour && (
               <div className="w-full">
-                {tasks.length >= 2 ? (
+                {tasks.length >= MAX_TASKS_PER_HOUR ? (
                   <div className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-2 py-1 text-xs text-[var(--color-text-tertiary)] text-center">
-                    ⚠️ 이 시간대에는 최대 2개까지만 추가할 수 있습니다
+                    ⚠️ 이 시간대에는 최대 {MAX_TASKS_PER_HOUR}개까지만 추가할 수 있습니다
                   </div>
                 ) : (
                   <input
@@ -516,7 +518,7 @@ export default function HourBar({
                     value={inlineInputValue}
                     onChange={e => setInlineInputValue(e.target.value)}
                     onKeyDown={handleInlineInputKeyDown}
-                    placeholder={`작업을 입력하고 Enter로 추가하세요 (${tasks.length}/2)`}
+                    placeholder={`작업을 입력하고 Enter로 추가하세요 (${tasks.length}/${MAX_TASKS_PER_HOUR})`}
                     className="w-full rounded-md border border-dashed border-[var(--color-border)] bg-transparent px-2 py-1 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
                   />
                 )}

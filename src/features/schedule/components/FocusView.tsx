@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
+import { calculateTaskXP } from '@/shared/lib/utils';
 import { recommendNextTask, getRecommendationMessage } from '../utils/taskRecommendation';
 import { useFocusModeStore } from '../stores/focusModeStore';
 import { FocusTimer } from './FocusTimer';
@@ -124,17 +125,33 @@ export function FocusView({
         setPendingNextTaskId(nextTask?.id ?? null);
     }, [currentHourTasks]);
 
-    const handleToggleTaskWrapper = useCallback((taskId: string) => {
+    const handleToggleTaskWrapper = useCallback(async (taskId: string) => {
         const isCompletingActiveTask = taskId === activeTaskId;
+        const task =
+            currentHourTasks.find(t => t.id === taskId) ||
+            allDailyTasks.find(t => t.id === taskId) ||
+            null;
 
-        onToggleTask(taskId);
+        try {
+            await onToggleTask(taskId);
 
-        if (isCompletingActiveTask) {
-            stopTask();
-            setMemoText('');
-            startBreakForNextTask(taskId);
+            // 집중 모드에서 활성 작업을 완료했을 때: 추가 XP 보너스 지급 (x2 total)
+            if (isCompletingActiveTask && task) {
+                const bonusXP = calculateTaskXP(task);
+                const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
+                await useGameStateStore.getState().addXP(bonusXP, task.timeBlock || undefined);
+            }
+
+            if (isCompletingActiveTask) {
+                stopTask();
+                setMemoText('');
+                startBreakForNextTask(taskId);
+            }
+        } catch (error) {
+            console.error('[FocusView] Failed to toggle task:', error);
+            toast.error('작업 완료 처리 중 문제가 발생했습니다.');
         }
-    }, [activeTaskId, onToggleTask, startBreakForNextTask, stopTask]);
+    }, [activeTaskId, onToggleTask, startBreakForNextTask, stopTask, currentHourTasks, allDailyTasks]);
 
     // Sync state when props change
     useEffect(() => {
