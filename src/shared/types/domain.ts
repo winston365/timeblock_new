@@ -404,7 +404,7 @@ export interface Settings {
   waifuImageChangeInterval?: number; // 와이푸 이미지 자동 변경 간격 (밀리초, 0=비활성화)
   templateCategories?: string[]; // 템플릿 카테고리 목록
   aiBreakdownTrigger: AIBreakdownTrigger; // AI 작업 세분화 트리거 조건
-  autoEmojiEnabled?: boolean; // 작업 제목 기반 이모지 자동 추천 사용 여부
+ autoEmojiEnabled?: boolean; // 작업 제목 기반 이모지 자동 추천 사용 여부
   timeSlotTags?: TimeSlotTagTemplate[]; // 시간대 속성 템플릿
   dontDoChecklist?: DontDoChecklistItem[]; // 하지않기 체크리스트 항목
   barkApiKey?: string; // Bark 알림 API 키
@@ -428,6 +428,10 @@ export interface Settings {
   // 비활동 시 집중 모드 자동 전환 설정
   idleFocusModeEnabled?: boolean; // 비활동 시 집중 모드 전환 활성화 (기본: false)
   idleFocusModeMinutes?: number; // 비활동 감지 시간 (분, 기본: 3)
+
+  // 메타데이터 (동기화 충돌 해결용)
+  updatedAt?: number;
+  updatedByDevice?: string;
 }
 
 // ============================================================================

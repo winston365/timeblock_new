@@ -18,6 +18,13 @@ import { STORAGE_KEYS, DEFAULT_AUTO_MESSAGE_INTERVAL } from '@/shared/lib/consta
 import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
 import { loadData, saveData, updateData, type RepositoryConfig } from './baseRepository';
 import { settingsStrategy } from '@/shared/services/sync/firebase/strategies';
+import { getDeviceId } from '@/shared/services/sync/firebase/syncUtils';
+
+const stampSettings = (data: Partial<Settings>): Partial<Settings> => ({
+  ...data,
+  updatedAt: Date.now(),
+  updatedByDevice: getDeviceId(),
+});
 
 // ============================================================================
 // Repository Configuration
@@ -58,6 +65,8 @@ const settingsConfig: RepositoryConfig<Settings> = {
     // 비활동 집중 모드 - 중앙화된 기본값 사용
     idleFocusModeEnabled: SETTING_DEFAULTS.idleFocusModeEnabled,
     idleFocusModeMinutes: SETTING_DEFAULTS.idleFocusModeMinutes,
+    updatedAt: Date.now(),
+    updatedByDevice: getDeviceId(),
   }),
   sanitize: (data: Settings) => {
     // 기존 사용자를 위한 마이그레이션 - 중앙화된 기본값 사용
@@ -123,7 +132,7 @@ export async function loadSettings(): Promise<Settings> {
  *   - localStorage에 백업
  */
 export async function saveSettings(settings: Settings): Promise<void> {
-  await saveData(settingsConfig, 'current', settings);
+  await saveData(settingsConfig, 'current', stampSettings(settings));
 }
 
 /**
@@ -137,7 +146,7 @@ export async function saveSettings(settings: Settings): Promise<void> {
  *   - localStorage에 백업
  */
 export async function updateSettings(updates: Partial<Settings>): Promise<Settings> {
-  return updateData(settingsConfig, 'current', updates);
+  return updateData(settingsConfig, 'current', stampSettings(updates));
 }
 
 /**
@@ -152,7 +161,7 @@ export async function updateSettings(updates: Partial<Settings>): Promise<Settin
  *   - Firebase 동기화 건너뜀
  */
 export async function updateLocalSettings(updates: Partial<Settings>): Promise<Settings> {
-  return updateData(settingsConfig, 'current', updates, { syncFirebase: false });
+  return updateData(settingsConfig, 'current', stampSettings(updates), { syncFirebase: false });
 }
 
 /**

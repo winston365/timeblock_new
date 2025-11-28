@@ -229,21 +229,16 @@ export function useAppInitialization() {
                                     }
                                 }
 
-                                // 3.10 Settings 저장 (병합)
+                                // 3.10 Settings 저장 (병합 - 최신 updatedAt 우선)
                                 if (firebaseData.settings) {
                                     const currentSettings = await db.settings.get('current');
-                                    // 현재 로컬 설정(Firebase Config 포함)을 유지하면서 원격 설정 병합
-                                    // 단, firebaseConfig는 로컬 값을 우선 (현재 연결된 설정이므로)
-                                    const mergedSettings = {
-                                        ...firebaseData.settings,
-                                        ...currentSettings,
-                                        firebaseConfig: currentSettings?.firebaseConfig || firebaseData.settings.firebaseConfig,
-                                        // 원격의 중요 설정들은 덮어쓰기 (로컬이 초기값일 수 있으므로)
-                                        dontDoChecklist: firebaseData.settings.dontDoChecklist || currentSettings?.dontDoChecklist,
-                                        waifuMode: firebaseData.settings.waifuMode || currentSettings?.waifuMode,
-                                        templateCategories: firebaseData.settings.templateCategories || currentSettings?.templateCategories,
-                                        timeSlotTags: firebaseData.settings.timeSlotTags || currentSettings?.timeSlotTags,
-                                    };
+                                    const remoteUpdatedAt = firebaseData.settings.updatedAt ?? 0;
+                                    const localUpdatedAt = currentSettings?.updatedAt ?? 0;
+
+                                    const takeRemote = remoteUpdatedAt > localUpdatedAt && firebaseData.settings;
+                                    const mergedSettings = takeRemote
+                                        ? { ...currentSettings, ...firebaseData.settings, firebaseConfig: currentSettings?.firebaseConfig || firebaseData.settings.firebaseConfig }
+                                        : { ...firebaseData.settings, ...currentSettings };
 
                                     await db.settings.put({
                                         key: 'current',

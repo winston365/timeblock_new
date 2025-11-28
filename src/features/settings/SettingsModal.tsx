@@ -123,20 +123,12 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
         if (!isOpen || activeTab !== 'logs') return;
 
         const allLogs = getSyncLogs();
-        const filteredLogs = allLogs.filter(log =>
-            !log.message.toLowerCase().includes('settings') &&
-            !log.message.toLowerCase().includes('설정')
-        );
-        setLogs(filteredLogs);
+        setLogs(allLogs);
 
         loadAllTokenUsage().then(setTokenUsage).catch(console.error);
 
         const unsubscribe = subscribeSyncLogs((newLogs) => {
-            const filtered = newLogs.filter(log =>
-                !log.message.toLowerCase().includes('settings') &&
-                !log.message.toLowerCase().includes('설정')
-            );
-            setLogs(filtered);
+            setLogs(newLogs);
         });
 
         return unsubscribe;
@@ -168,6 +160,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
             if (Object.keys(syncUpdates).length > 0) {
                 await updateSettings(syncUpdates);
             }
+            await loadData(); // 저장 후 재로드하여 로컬 상태 확정
 
             if (localSettings.firebaseConfig) {
                 initializeFirebase(localSettings.firebaseConfig);

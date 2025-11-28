@@ -139,7 +139,10 @@ export function FocusView({
             if (isCompletingActiveTask && task) {
                 const bonusXP = calculateTaskXP(task);
                 const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
-                await useGameStateStore.getState().addXP(bonusXP, task.timeBlock || undefined);
+                const gameStateStore = useGameStateStore.getState();
+                await gameStateStore.addXP(bonusXP, task.timeBlock || undefined);
+                // 즉시 동기화하여 새로고침 시 사라지는 문제 방지
+                await gameStateStore.refresh();
             }
 
             if (isCompletingActiveTask) {
