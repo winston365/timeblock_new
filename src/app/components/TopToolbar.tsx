@@ -99,7 +99,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   const baseButtonClass =
     'relative inline-flex items-center justify-center rounded-md border-0 px-3.5 py-2 text-xs font-bold text-white shadow transition duration-200 ease-out will-change-transform';
 
-  const bingoCells = settings?.bingoCells ?? DEFAULT_BINGO_CELLS;
+  const bingoCells = Array.isArray(settings?.bingoCells) && settings.bingoCells.length === 9 ? settings.bingoCells : DEFAULT_BINGO_CELLS;
   const bingoMaxLines = settings?.bingoMaxLines ?? SETTING_DEFAULTS.bingoMaxLines;
   const bingoLineRewardXP = settings?.bingoLineRewardXP ?? SETTING_DEFAULTS.bingoLineRewardXP;
   const today = getLocalDate();

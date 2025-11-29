@@ -62,6 +62,45 @@ export function FocusView({
     const [isMusicLoading, setIsMusicLoading] = useState(false);
     const [isMusicPlaying, setIsMusicPlaying] = useState(false);
     const [loopMode, setLoopMode] = useState<'track' | 'folder'>('folder');
+    const lastSavedMemoRef = useRef<{ taskId: string | null; memo: string }>({ taskId: null, memo: '' });
+
+    // 활성 작업 변경 시 메모 동기화
+    useEffect(() => {
+        if (!activeTaskId) {
+            setMemoText('');
+            lastSavedMemoRef.current = { taskId: null, memo: '' };
+            return;
+        }
+        const activeTask =
+            currentHourTasks.find(t => t.id === activeTaskId) ||
+            allDailyTasks.find(t => t.id === activeTaskId) ||
+            null;
+        const nextMemo = activeTask?.memo ?? '';
+        setMemoText(nextMemo);
+        lastSavedMemoRef.current = { taskId: activeTaskId, memo: nextMemo };
+    }, [activeTaskId, currentHourTasks, allDailyTasks]);
+
+    // 메모 자동 저장 (3초 딜레이)
+    useEffect(() => {
+        if (!activeTaskId) return;
+        const saveTimer = setTimeout(async () => {
+            const activeTask =
+                currentHourTasks.find(t => t.id === activeTaskId) ||
+                allDailyTasks.find(t => t.id === activeTaskId) ||
+                null;
+            if (!activeTask) return;
+            const currentMemo = activeTask.memo ?? '';
+            if (memoText === currentMemo) return;
+            try {
+                await onUpdateTask(activeTaskId, { memo: memoText });
+                lastSavedMemoRef.current = { taskId: activeTaskId, memo: memoText };
+            } catch (err) {
+                console.error('[FocusView] 메모 자동 저장 실패:', err);
+            }
+        }, 3000);
+
+        return () => clearTimeout(saveTimer);
+    }, [memoText, activeTaskId, currentHourTasks, allDailyTasks, onUpdateTask]);
 
     // 인라인 작업 추가
     const [inlineInputValue, setInlineInputValue] = useState('');
@@ -270,6 +309,8 @@ export function FocusView({
 
     const [upcomingTasks, setUpcomingTasks] = useState(initialUpcomingTasks);
 
+    type ToggleOptions = { skipBonus?: boolean; bonusReason?: 'autoTimer' };
+
     const startBreakForNextTask = useCallback((completedTaskId: string | null) => {
         const nextTask = currentHourTasks.find(t => !t.completed && t.id !== completedTaskId);
         setIsBreakTime(true);
@@ -277,7 +318,7 @@ export function FocusView({
         setPendingNextTaskId(nextTask?.id ?? null);
     }, [currentHourTasks]);
 
-    const handleToggleTaskWrapper = useCallback(async (taskId: string, options?: { skipBonus?: boolean }) => {
+    const handleToggleTaskWrapper = useCallback(async (taskId: string, options?: ToggleOptions) => {
         const isCompletingActiveTask = taskId === activeTaskId;
         const task =
             currentHourTasks.find(t => t.id === taskId) ||
@@ -287,11 +328,11 @@ export function FocusView({
         try {
             await onToggleTask(taskId);
 
-            // 집중 모드에서 활성 작업을 완료했을 때: 추가 XP 보너스 지급 (x3 total)
-            // ✅ 완료 취소 시에는 bonusXP 지급하지 않음
-            if (isCompletingActiveTask && task && !task.completed && !options?.skipBonus) {
-                // 기본 XP는 다른 경로로 지급되므로, 여기서 2배 추가해 총 3배가 되도록 한다.
-                const bonusXP = calculateTaskXP(task) * 2;
+            // 집중 모드에서 자동(타이머 만료) 완료 시에만 추가 XP 보너스 지급 (총 4배)
+            // ✅ 수동 완료/토글 시에는 보너스를 지급하지 않는다.
+            if (isCompletingActiveTask && task && !task.completed && options?.bonusReason === 'autoTimer' && !options?.skipBonus) {
+                // 기본 XP는 다른 경로로 지급되므로, 여기서 3배 추가해 총 4배가 되도록 한다.
+                const bonusXP = calculateTaskXP(task) * 3;
                 const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
                 const gameStateStore = useGameStateStore.getState();
                 await gameStateStore.addXP(bonusXP, task.timeBlock || undefined);
@@ -332,7 +373,7 @@ export function FocusView({
         const elapsedSeconds = Math.floor((now - activeTaskStartTime) / 1000);
         const totalSeconds = (activeTask.baseDuration || 0) * 60;
         if (totalSeconds > 0 && elapsedSeconds >= totalSeconds) {
-            handleToggleTaskWrapper(activeTaskId);
+            handleToggleTaskWrapper(activeTaskId, { bonusReason: 'autoTimer' });
         }
     }, [now, activeTaskId, activeTaskStartTime, isPaused, isBreakTime, currentHourTasks, allDailyTasks, handleToggleTaskWrapper]);
 

@@ -49,7 +49,7 @@ const seededShuffle = (list: BingoCellConfig[], seedStr: string) => {
 export function BingoModal({ open, onClose, cells, maxLines = SETTING_DEFAULTS.bingoMaxLines, lineRewardXP = SETTING_DEFAULTS.bingoLineRewardXP, onProgressChange }: BingoModalProps) {
     const baseCells = useMemo(() => (cells && cells.length === 9 ? cells : DEFAULT_BINGO_CELLS), [cells]);
     const today = getLocalDate();
-    const displayCells = useMemo(() => seededShuffle(baseCells, today), [baseCells, today]);
+    const displayCells = useMemo(() => (baseCells && baseCells.length === 9 ? seededShuffle(baseCells, today) : []), [baseCells, today]);
     const addXP = useGameStateStore(state => state.addXP);
 
     const [progress, setProgress] = useState<BingoProgress>({
