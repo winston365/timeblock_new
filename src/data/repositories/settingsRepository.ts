@@ -48,6 +48,7 @@ const settingsConfig: RepositoryConfig<Settings> = {
   firebaseStrategy: settingsStrategy,
   createInitial: () => ({
     geminiApiKey: '',
+    githubToken: '',
     autoMessageInterval: DEFAULT_AUTO_MESSAGE_INTERVAL,
     autoMessageEnabled: true,
     waifuMode: 'characteristic',
@@ -95,6 +96,7 @@ const settingsConfig: RepositoryConfig<Settings> = {
       // 비활동 집중 모드 - 중앙화된 기본값 사용
       idleFocusModeEnabled: data.idleFocusModeEnabled ?? SETTING_DEFAULTS.idleFocusModeEnabled,
       idleFocusModeMinutes: data.idleFocusModeMinutes ?? SETTING_DEFAULTS.idleFocusModeMinutes,
+      githubToken: data.githubToken ?? '',
     };
   },
   logPrefix: 'Settings',

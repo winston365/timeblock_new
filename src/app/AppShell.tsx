@@ -258,7 +258,7 @@ export default function AppShell() {
       <RealityCheckModal />
       <GlobalTaskBreakdown />
       <XPParticleOverlay />
-      <FloatingIgnitionTrigger />
+      {!isFocusMode && <FloatingIgnitionTrigger />}
     </div>
   );
 }

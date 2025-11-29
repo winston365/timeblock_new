@@ -419,6 +419,7 @@ export type AIBreakdownTrigger = 'always' | 'high_difficulty' | 'manual';
 export interface Settings {
   geminiApiKey: string;
   geminiModel?: string; // Gemini 모델명 (기본: gemini-3-pro-preview)
+  githubToken?: string; // GitHub API 호출용 토큰 (로컬 저장)
   firebaseConfig?: {
     apiKey: string;
     authDomain: string;

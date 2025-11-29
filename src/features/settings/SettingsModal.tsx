@@ -141,7 +141,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
         try {
             setSaving(true);
 
-            const secretKeys: (keyof Settings)[] = ['geminiApiKey', 'firebaseConfig', 'barkApiKey'];
+            const secretKeys: (keyof Settings)[] = ['geminiApiKey', 'firebaseConfig', 'barkApiKey', 'githubToken'];
             const syncUpdates: Partial<Settings> = {};
             const secretUpdates: Partial<Settings> = {};
 

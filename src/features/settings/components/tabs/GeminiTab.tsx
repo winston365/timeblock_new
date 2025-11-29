@@ -62,14 +62,33 @@ export function GeminiTab({ localSettings, setLocalSettings }: GeminiTabProps) {
                 </small>
             </div>
 
-            <div className={`${formGroupClass} flex-row items-center gap-3`}>
+            <div className={formGroupClass}>
+                <label htmlFor="github-token">
+                    GitHub 토큰 (폴더 음원 목록 불러오기용)
+                </label>
+                <input
+                    id="github-token"
+                    type="password"
+                    className={inputClass}
+                    placeholder="ghp_... (옵션, 없으면 60req/h 제한)"
+                    value={localSettings?.githubToken || ''}
+                    onChange={(e) =>
+                        setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, githubToken: e.target.value }) : prev)
+                    }
+                />
+                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                    공개 리포만 쓴다면 비워도 됩니다. 토큰은 로컬에만 저장되어 동기화되지 않습니다.
+                </small>
+            </div>
+
+            <div className={`${formGroupClass} flex-col items-start gap-2`}>
                 <div className="flex flex-col gap-1">
-                    <span className="text-sm font-semibold text-[var(--color-text)]">^작업 자동 이모지</span>
+                    <span className="text-sm font-semibold text-[var(--color-text)]">작업 자동 이모지</span>
                     <span className="text-[0.8rem] text-[var(--color-text-tertiary)]">
                         제목 기반 추천 이모지를 접두로 붙입니다 (비용 절약을 위해 기본 OFF)
                     </span>
                 </div>
-                <label className="relative ml-auto inline-flex items-center cursor-pointer select-none">
+                <label className="inline-flex items-center cursor-pointer select-none">
                     <input
                         type="checkbox"
                         className="sr-only peer"
@@ -78,9 +97,9 @@ export function GeminiTab({ localSettings, setLocalSettings }: GeminiTabProps) {
                             setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, autoEmojiEnabled: e.target.checked }) : prev)
                         }
                     />
-                    <div className="group h-12 w-24 rounded-full border border-gray-600 bg-gradient-to-tr from-rose-100 via-rose-400 to-rose-500 shadow-md shadow-gray-900 transition duration-300 peer-checked:bg-gradient-to-tr peer-checked:from-green-100 peer-checked:via-lime-400 peer-checked:to-lime-500">
-                        <span className="absolute left-1 top-1 flex h-10 w-10 items-center justify-center rounded-full border border-gray-600 bg-gray-50 text-lg transition-all duration-300 -rotate-180 peer-checked:translate-x-12 peer-checked:rotate-0 peer-hover:scale-95">
-                            {localSettings?.autoEmojiEnabled ? '✔️' : '✖️'}
+                    <div className="flex h-9 w-16 items-center rounded-full border border-white/10 bg-[var(--color-bg-tertiary)] transition peer-checked:bg-[var(--color-primary)] peer-checked:border-[var(--color-primary)] shadow-sm">
+                        <span className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-white text-[var(--color-text-primary)] text-sm font-bold transition-all duration-200 peer-checked:translate-x-6 peer-checked:text-[var(--color-primary-dark)]">
+                            {localSettings?.autoEmojiEnabled ? 'ON' : 'OFF'}
                         </span>
                     </div>
                 </label>
