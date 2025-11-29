@@ -114,7 +114,7 @@ export function FocusHeroTask({
 
     // Calculate XP (Base + Bonus)
     const baseXP = calculateTaskXP(task);
-    const totalXP = baseXP * 2;
+    const totalXP = baseXP * 3;
 
     return (
         <motion.div
@@ -170,7 +170,7 @@ export function FocusHeroTask({
                     <div className="mt-4 flex flex-wrap gap-3 items-center">
                         {/* XP Badge */}
                         <span className="flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm font-bold text-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.2)]">
-                            🪙 +{totalXP} XP (x2 Bonus)
+                            🪙 +{totalXP} XP (x3 Bonus)
                         </span>
 
                         {/* Duration Picker */}

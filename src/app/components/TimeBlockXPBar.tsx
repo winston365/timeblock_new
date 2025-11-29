@@ -55,23 +55,23 @@ function TimeBlockXPBarComponent({
   if (progress.isNightTime) {
     return (
       <div className="px-[var(--spacing-lg)] py-0.5">
-        <div className="flex items-center gap-1.5 rounded-xl border border-white/5 bg-white/5 px-2 py-1 text-[9px] shadow-[0_4px_10px_rgba(0,0,0,0.16)] backdrop-blur-md">
-          {/* 휴식 시간 표시 */}
-          <div className="flex flex-1 items-center gap-2 min-w-0">
-            <span className="text-lg">🌙</span>
-            <span className="text-[var(--color-text-secondary)]">휴식 시간</span>
-            <span className="text-[8px] text-[var(--color-text-tertiary)]">
-              (05:00부터 다시 시작)
-            </span>
-          </div>
+      <div className="flex items-center gap-1.5 rounded-xl border border-white/5 bg-white/5 px-2 py-1 text-[14px] shadow-[0_4px_10px_rgba(0,0,0,0.16)] backdrop-blur-md">
+        {/* 휴식 시간 표시 */}
+        <div className="flex flex-1 items-center gap-2 min-w-0">
+          <span className="text-lg">🌙</span>
+          <span className="text-[var(--color-text-secondary)]">휴식 시간</span>
+          <span className="text-[12px] text-[var(--color-text-tertiary)]">
+            (05:00부터 다시 시작)
+          </span>
+        </div>
 
-          {/* 총 XP 표시 */}
-          <div className="whitespace-nowrap text-[9px] font-semibold text-[var(--color-text)]">
-            {availableXP} XP
-          </div>
+        {/* 총 XP 표시 */}
+        <div className="whitespace-nowrap text-[14px] font-semibold text-[var(--color-text)]">
+          {availableXP} XP
         </div>
       </div>
-    );
+    </div>
+  );
   }
 
   // 진행률 색상 결정
@@ -87,8 +87,8 @@ function TimeBlockXPBarComponent({
   const marks = [50, 100, 150]; // 중간 목표 마크 (50, 100, 150 XP)
 
   return (
-    <div className="px-[var(--spacing-lg)] py-0.5">
-      <div className={`flex items-center gap-1.5 rounded-xl border px-2 py-1 text-[9px] shadow-[0_4px_10px_rgba(0,0,0,0.16)] backdrop-blur-md transition-all duration-300 ${
+    <div className="px-[var(--spacing-lg)] py-1">
+      <div className={`flex items-center gap-1.5 rounded-xl border px-2 py-1.5 text-[14px] shadow-[0_4px_10px_rgba(0,0,0,0.16)] backdrop-blur-md transition-all duration-300 ${
         isGoalMet 
           ? 'border-emerald-500/30 bg-emerald-500/10' 
           : 'border-white/5 bg-white/5'
@@ -96,12 +96,12 @@ function TimeBlockXPBarComponent({
         {/* XP 프로그레스 바 */}
         <div className="flex flex-1 items-center gap-1.5 min-w-0">
           {/* 타임블록 라벨 */}
-          <span className="whitespace-nowrap text-[8px] text-[var(--color-text-secondary)]">
+          <span className="whitespace-nowrap text-[12px] text-[var(--color-text-secondary)]">
             {progress.currentBlockLabel.split(' - ')[0]}
           </span>
 
           {/* 프로그레스 바 */}
-          <div className="relative h-2 flex-1 overflow-visible rounded-full border border-white/10 bg-white/10">
+          <div className="relative h-4 flex-1 overflow-visible rounded-full border border-white/10 bg-white/10">
             {/* 중간 마크 */}
             {marks.map(mark => {
               const markPercent = (mark / goalXP) * 100;
@@ -112,7 +112,7 @@ function TimeBlockXPBarComponent({
                   className="absolute top-0 h-full w-[2px] bg-white/35"
                   style={{ left: `${markPercent}%` }}
                 >
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[7px] text-white/70">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] text-white/70">
                     {mark}
                   </span>
                 </div>
@@ -134,7 +134,7 @@ function TimeBlockXPBarComponent({
           </div>
 
           {/* 현재 XP / 목표 XP */}
-          <span className={`whitespace-nowrap tabular-nums text-[9px] font-semibold ${
+          <span className={`whitespace-nowrap tabular-nums text-[14px] font-semibold ${
             isGoalMet ? 'text-emerald-400' : 'text-[var(--color-text)]'
           }`}>
             {progress.currentXP} / {goalXP}
@@ -142,7 +142,7 @@ function TimeBlockXPBarComponent({
         </div>
 
         {/* 총 XP 표시 */}
-        <div className="whitespace-nowrap text-[9px] font-semibold text-[var(--color-text)]">
+        <div className="whitespace-nowrap text-[14px] font-semibold text-[var(--color-text)]">
           {isGoalMet && <span className="mr-1">🎉</span>}
           {availableXP} XP
         </div>
