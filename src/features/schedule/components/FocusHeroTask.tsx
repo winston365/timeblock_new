@@ -360,7 +360,7 @@ export function FocusHeroTask({
                                 onClick={onComplete}
                                 className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 py-3 text-sm font-bold text-white hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg shadow-emerald-500/20"
                             >
-                                ✓ 작업 완료 (+{totalXP} XP)
+                                ✓ 일찍 끝내기 (+{baseXP} XP)
                             </button>
                             <button
                                 onClick={onStop}

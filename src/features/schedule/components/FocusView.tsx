@@ -21,7 +21,7 @@ interface FocusViewProps {
     onToggleTask: (taskId: string) => void;
     onToggleLock?: () => void;
     onExitFocusMode: () => void;
-    onCreateTask: (text: string, hour: number) => Promise<void>;
+    onCreateTask: (text: string, blockId: TimeBlockId, hourSlot?: number) => Promise<void>;
 }
 
 export function FocusView({
@@ -66,7 +66,7 @@ export function FocusView({
             }
 
             try {
-                await onCreateTask(trimmedText, currentHour);
+                await onCreateTask(trimmedText, currentBlockId, currentHour);
                 setInlineInputValue('');
                 inlineInputRef.current?.focus();
             } catch (err) {
@@ -125,7 +125,7 @@ export function FocusView({
         setPendingNextTaskId(nextTask?.id ?? null);
     }, [currentHourTasks]);
 
-    const handleToggleTaskWrapper = useCallback(async (taskId: string) => {
+    const handleToggleTaskWrapper = useCallback(async (taskId: string, options?: { skipBonus?: boolean }) => {
         const isCompletingActiveTask = taskId === activeTaskId;
         const task =
             currentHourTasks.find(t => t.id === taskId) ||
@@ -137,7 +137,7 @@ export function FocusView({
 
             // 집중 모드에서 활성 작업을 완료했을 때: 추가 XP 보너스 지급 (x2 total)
             // ✅ 완료 취소 시에는 bonusXP 지급하지 않음
-            if (isCompletingActiveTask && task && !task.completed) {
+            if (isCompletingActiveTask && task && !task.completed && !options?.skipBonus) {
                 const bonusXP = calculateTaskXP(task);
                 const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
                 const gameStateStore = useGameStateStore.getState();
@@ -166,6 +166,22 @@ export function FocusView({
         const interval = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(interval);
     }, [activeTaskId, activeTaskStartTime, isPaused, isBreakTime]);
+
+    // 작업 시간 경과 시 자동 완료 (보너스 XP 적용)
+    useEffect(() => {
+        if (!activeTaskId || !activeTaskStartTime || isPaused || isBreakTime) return;
+        const activeTask =
+            currentHourTasks.find(t => t.id === activeTaskId) ||
+            allDailyTasks.find(t => t.id === activeTaskId) ||
+            null;
+        if (!activeTask || activeTask.completed) return;
+
+        const elapsedSeconds = Math.floor((now - activeTaskStartTime) / 1000);
+        const totalSeconds = (activeTask.baseDuration || 0) * 60;
+        if (totalSeconds > 0 && elapsedSeconds >= totalSeconds) {
+            handleToggleTaskWrapper(activeTaskId);
+        }
+    }, [now, activeTaskId, activeTaskStartTime, isPaused, isBreakTime, currentHourTasks, allDailyTasks, handleToggleTaskWrapper]);
 
     // 휴식 타이머 관리
     useEffect(() => {
@@ -362,10 +378,11 @@ export function FocusView({
                         isActive={activeTaskId === recommendedTask.id}
                         startTime={activeTaskStartTime}
                         onEdit={onEditTask}
+                        onUpdateTask={onUpdateTask}
                         onToggle={handleToggleTaskWrapper}
                         onStartNow={handleStartNow}
                         onStop={stopTask}
-                        onComplete={() => handleToggleTaskWrapper(recommendedTask.id)}
+                        onComplete={() => handleToggleTaskWrapper(recommendedTask.id, { skipBonus: true })}
                     />
 
                     <QuickMemo

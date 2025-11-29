@@ -25,6 +25,7 @@ import type {
   ShopItem,
   WarmupPresetItem,
   Settings,
+  BingoProgress,
 } from '@/shared/types/domain';
 
 // ============================================================================
@@ -161,4 +162,13 @@ export const settingsStrategy: SyncStrategy<Settings> = {
     const { geminiApiKey, firebaseConfig, ...rest } = data;
     return rest;
   },
+};
+
+// ============================================================================
+// Bingo Progress 전략 (Last-Write-Wins)
+// ============================================================================
+
+export const bingoProgressStrategy: SyncStrategy<BingoProgress> = {
+  collection: 'bingoProgress',
+  getSuccessMessage: (_, key) => `Bingo progress synced (${key || 'today'})`,
 };

@@ -21,6 +21,13 @@ import { StatsModal } from '@/features/stats/StatsModal';
 import { useFocusModeStore } from '@/features/schedule/stores/focusModeStore';
 import { useScheduleViewStore } from '@/features/schedule/stores/scheduleViewStore';
 import { TIME_BLOCKS } from '@/shared/types/domain';
+import { BingoModal, BINGO_PROGRESS_STORAGE_KEY } from '@/features/gamification/BingoModal';
+import { DEFAULT_BINGO_CELLS, SETTING_DEFAULTS } from '@/shared/constants/defaults';
+import { fetchFromFirebase, listenToFirebase } from '@/shared/services/sync/firebase/syncCore';
+import { bingoProgressStrategy } from '@/shared/services/sync/firebase/strategies';
+import { getLocalDate } from '@/shared/lib/utils';
+import { db } from '@/data/db/dexieClient';
+import type { BingoProgress } from '@/shared/types/domain';
 
 interface TopToolbarProps {
   gameState: GameState | null;
@@ -36,6 +43,8 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   const { isLoading: aiAnalyzing, cancelBreakdown } = useTaskBreakdownStore();
   const [hovered, setHovered] = useState<string | null>(null);
   const [showStats, setShowStats] = useState(false);
+  const [showBingo, setShowBingo] = useState(false);
+  const [bingoCompletedCells, setBingoCompletedCells] = useState(0);
   const { settings } = useSettingsStore();
   const isNormalWaifu = settings?.waifuMode === 'normal';
 
@@ -90,7 +99,56 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   const baseButtonClass =
     'relative inline-flex items-center justify-center rounded-md border-0 px-3.5 py-2 text-xs font-bold text-white shadow transition duration-200 ease-out will-change-transform';
 
-  const renderCTA = (id: string, label: string, onClick?: () => void) => {
+  const bingoCells = settings?.bingoCells ?? DEFAULT_BINGO_CELLS;
+  const bingoMaxLines = settings?.bingoMaxLines ?? SETTING_DEFAULTS.bingoMaxLines;
+  const bingoLineRewardXP = settings?.bingoLineRewardXP ?? SETTING_DEFAULTS.bingoLineRewardXP;
+  const today = getLocalDate();
+
+  // Load bingo progress summary (completed cells) and keep synced
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const remote = await fetchFromFirebase(bingoProgressStrategy, today);
+        if (mounted && remote?.date === today) {
+          setBingoCompletedCells(remote.completedCells.length);
+          // 캐시
+          await db.systemState.put({ key: `${BINGO_PROGRESS_STORAGE_KEY}:${today}`, value: remote as BingoProgress });
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to fetch bingo summary:', error);
+      }
+      try {
+        const stored = await db.systemState.get(`${BINGO_PROGRESS_STORAGE_KEY}:${today}`);
+        const value = stored?.value as BingoProgress | undefined;
+        if (mounted && value && value.date === today && Array.isArray(value.completedCells)) {
+          setBingoCompletedCells(value.completedCells.length);
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to read local bingo summary (Dexie):', error);
+      }
+      if (mounted) {
+        setBingoCompletedCells(0);
+      }
+    };
+
+    load();
+    const unsubscribe = listenToFirebase(bingoProgressStrategy, (remote) => {
+      if (remote?.date === today) {
+        setBingoCompletedCells(remote.completedCells.length);
+        db.systemState.put({ key: `${BINGO_PROGRESS_STORAGE_KEY}:${today}`, value: remote as BingoProgress }).catch(() => { });
+      }
+    }, today);
+
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
+  }, [today]);
+
+  const renderCTA = (id: string, label: string, onClick?: () => void, badge?: string | number) => {
     const isHover = hovered === id;
     return (
       <button
@@ -101,11 +159,11 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         onMouseLeave={() => setHovered(null)}
         onClick={onClick}
         style={
-          {
-            ['--btn-width' as string]: '150px',
-            ['--timing' as string]: '2s',
-            background: isHover ? undefined : 'var(--color-primary)',
-            backgroundImage: isHover ? gradientString : undefined,
+        {
+          ['--btn-width' as string]: '150px',
+          ['--timing' as string]: '2s',
+          background: isHover ? undefined : 'var(--color-primary)',
+          backgroundImage: isHover ? gradientString : undefined,
             animation: isHover ? 'dance6123 var(--timing) linear infinite' : undefined,
             transform: isHover ? 'scale(1.08) translateY(-1px)' : undefined,
             boxShadow: isHover
@@ -115,6 +173,11 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         }
       >
         <span className="relative z-10 text-sm uppercase tracking-[0.06em]">{label}</span>
+        {badge !== undefined && badge !== null && badge !== '' && (
+          <span className="absolute -right-1 -top-1 z-20 flex h-5 min-w-[32px] items-center justify-center rounded-full bg-emerald-500 px-2 text-[10px] font-bold leading-none text-white shadow">
+            {badge}
+          </span>
+        )}
       </button>
     );
   };
@@ -250,6 +313,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
           {/* 점화 버튼 */}
           <IgnitionButton />
           {renderCTA('stats', '📊 통계', () => setShowStats(true))}
+          {renderCTA('bingo', '🟦 빙고', () => setShowBingo(true), `🟦 ${bingoCompletedCells}/9`)}
           {!isNormalWaifu && renderCTA('waifu', '💬 와이푸', handleCallWaifu)}
           {renderCTA('templates', '📋 템플릿', onOpenTemplates)}
           {renderCTA('chat', '✨ AI 채팅', onOpenGeminiChat)}
@@ -257,6 +321,16 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         </div>
       </header>
       {showStats && <StatsModal open={showStats} onClose={() => setShowStats(false)} />}
+      {showBingo && (
+        <BingoModal
+          open={showBingo}
+          onClose={() => setShowBingo(false)}
+          cells={bingoCells}
+          maxLines={bingoMaxLines}
+          lineRewardXP={bingoLineRewardXP}
+          onProgressChange={(p) => setBingoCompletedCells(p.completedCells.length)}
+        />
+      )}
     </>
   );
 }

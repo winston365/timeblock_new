@@ -4,18 +4,16 @@
  * @role 퀘스트와 포인트 관련 기능을 한 눈에 제공하는 우측 패널 컴포넌트
  * @input activeTab: 현재 활성화된 탭, onTabChange: 탭 전환 핸들러, onShopPurchaseSuccess: 상점 구매 성공 시 콜백
  * @output 퀘스트/포인트 UI
- * @dependencies QuestsPanel, ShopPanel
+ * @dependencies ShopPanel, InventoryPanel
  */
 
-import QuestsPanel from '@/features/gamification/QuestsPanel';
 import ShopPanel from '@/features/shop/ShopPanel';
 import InventoryPanel from '@/features/inventory/InventoryPanel';
-import { useQuests } from '@/shared/hooks';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 
 interface RightPanelProps {
-  activeTab: 'quest' | 'shop' | 'inventory';
-  onTabChange: (tab: 'quest' | 'shop' | 'inventory') => void;
+  activeTab: 'shop' | 'inventory';
+  onTabChange: (tab: 'shop' | 'inventory') => void;
   onShopPurchaseSuccess?: (message: string, waifuMessage?: string) => void;
   collapsed?: boolean;
 }
@@ -26,14 +24,11 @@ export default function RightPanel({
   onShopPurchaseSuccess,
   collapsed = false,
 }: RightPanelProps) {
-  const { quests } = useQuests();
   const { gameState } = useGameStateStore();
 
-  const pendingQuests = quests.filter(q => !q.completed).length;
   const inventoryTotal = Object.values(gameState?.inventory || {}).reduce((sum, qty) => sum + (qty || 0), 0);
 
   const tabs = [
-    { id: 'quest' as const, label: '퀘스트', icon: '🗒️', badge: pendingQuests },
     { id: 'inventory' as const, label: '가방', icon: '🎒', badge: inventoryTotal },
     { id: 'shop' as const, label: '포인트', icon: '🛒' },
   ];
@@ -80,17 +75,6 @@ export default function RightPanel({
 
       {/* 콘텐츠 영역 (스크롤 가능) */}
       <div className="right-panel-content flex-1 min-h-0 overflow-y-auto bg-[var(--color-bg-base)]">
-        {activeTab === 'quest' && (
-          <div
-            role="tabpanel"
-            id="right-panel-quest"
-            aria-labelledby="right-panel-tab-quest"
-            className="h-full"
-          >
-            <QuestsPanel />
-          </div>
-        )}
-
         {activeTab === 'shop' && (
           <div
             role="tabpanel"

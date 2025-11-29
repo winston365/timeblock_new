@@ -65,6 +65,10 @@ export const IDLE_FOCUS_DEFAULTS = {
 export const GAMEPLAY_DEFAULTS = {
   /** 타임블록당 XP 목표 */
   timeBlockXPGoal: 100,
+  /** 빙고 라인당 보상 XP */
+  bingoLineRewardXP: 100,
+  /** 인정 가능한 최대 빙고 라인 수 */
+  bingoMaxLines: 4,
 } as const;
 
 // ============================================================================
@@ -116,6 +120,8 @@ export const SETTING_DEFAULTS = {
 
   // 게임플레이
   timeBlockXPGoal: GAMEPLAY_DEFAULTS.timeBlockXPGoal,
+  bingoLineRewardXP: GAMEPLAY_DEFAULTS.bingoLineRewardXP,
+  bingoMaxLines: GAMEPLAY_DEFAULTS.bingoMaxLines,
 
   // 와이푸
   waifuVisible: WAIFU_DEFAULTS.visible,
@@ -142,6 +148,22 @@ export const GAME_STATE_DEFAULTS = {
   /** 연속 출석 */
   streak: 0,
 } as const;
+
+// ============================================================================
+// Bingo 기본값
+// ============================================================================
+
+export const DEFAULT_BINGO_CELLS = [
+  { id: 'b1', text: '물 한 컵 마시기', xp: 10 },
+  { id: 'b2', text: '5분 스트레칭', xp: 10 },
+  { id: 'b3', text: '할 일 1개 정리', xp: 10 },
+  { id: 'b4', text: '깊은 호흡 5회', xp: 10 },
+  { id: 'b5', text: '책상 정리 3분', xp: 10 },
+  { id: 'b6', text: '눈 운동 1분', xp: 10 },
+  { id: 'b7', text: '가벼운 산책 3분', xp: 10 },
+  { id: 'b8', text: '감사 1가지 적기', xp: 10 },
+  { id: 'b9', text: '알림 끄기', xp: 10 },
+] as const;
 
 // ============================================================================
 // 타입 유틸리티

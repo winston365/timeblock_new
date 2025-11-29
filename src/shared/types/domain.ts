@@ -373,6 +373,22 @@ export interface ChatHistory {
   updatedAt: number; // 타임스탬프 (밀리초)
 }
 
+// ============================================================================
+// Bingo
+// ============================================================================
+
+export interface BingoCellConfig {
+  id: string;
+  text: string;
+  xp: number;
+}
+
+export interface BingoProgress {
+  date: string; // YYYY-MM-DD
+  completedCells: string[];
+  completedLines: number[];
+}
+
 /**
  * 와이푸 모드 타입
  */
@@ -413,6 +429,11 @@ export interface Settings {
   ignitionCooldownMinutes?: number; // 점화 쿨다운 (분, 기본 5)
   ignitionXPCost?: number; // 점화 XP 비용 (기본 50 XP)
   justDoItCooldownMinutes?: number; // '그냥해보자!' 쿨다운 (분, 기본 15)
+
+  // 빙고 설정
+  bingoCells?: BingoCellConfig[]; // 3x3 빙고 셀 설정
+  bingoMaxLines?: number; // 최대 인정 빙고 라인 수 (기본 4)
+  bingoLineRewardXP?: number; // 라인당 XP 보상 (기본 100)
   // 단축키 설정
   leftPanelToggleKey?: string; // 좌측 패널 토글 단축키 (기본: 'Ctrl+B')
   rightPanelToggleKey?: string; // 우측 패널 토글 단축키 (기본: 'Ctrl+Shift+B')

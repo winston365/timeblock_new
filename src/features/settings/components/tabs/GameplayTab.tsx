@@ -9,9 +9,24 @@
 
 import type { BaseTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass } from './styles';
-import { SETTING_DEFAULTS, IDLE_FOCUS_DEFAULTS, IGNITION_DEFAULTS } from '@/shared/constants/defaults';
+import { SETTING_DEFAULTS, IDLE_FOCUS_DEFAULTS, IGNITION_DEFAULTS, DEFAULT_BINGO_CELLS } from '@/shared/constants/defaults';
 
 export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
+    const bingoCells = (localSettings?.bingoCells && localSettings.bingoCells.length === 9 ? localSettings.bingoCells : DEFAULT_BINGO_CELLS).map(cell => ({ ...cell }));
+    const bingoMaxLines = localSettings?.bingoMaxLines ?? SETTING_DEFAULTS.bingoMaxLines;
+    const bingoLineRewardXP = localSettings?.bingoLineRewardXP ?? SETTING_DEFAULTS.bingoLineRewardXP;
+
+    const updateBingoCell = (index: number, key: 'text' | 'xp', value: string | number) => {
+        setLocalSettings((prev: Settings | null) => {
+            if (!prev) return prev;
+            const next = prev.bingoCells && prev.bingoCells.length === 9 ? [...prev.bingoCells] : DEFAULT_BINGO_CELLS.map(cell => ({ ...cell }));
+            const target = next[index];
+            if (!target) return prev;
+            next[index] = { ...target, [key]: value };
+            return { ...prev, bingoCells: next };
+        });
+    };
+
     return (
         <div className={sectionClass}>
             {/* ADHD 집중 모드 - 비활동 감지 */}
@@ -68,6 +83,43 @@ export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
             <div className={infoBoxClass}>
                 <strong>💡 작동 방식:</strong> 비활동 감지 시 5초 카운트다운 토스트가 표시됩니다.
                 카운트다운 중 마우스를 움직이면 취소됩니다. 이미 집중 모드인 경우 전환되지 않습니다.
+            </div>
+
+            <div className="my-4 border-t border-[var(--color-border)]" />
+
+            <h3>🟦 데일리 빙고</h3>
+            <p className={sectionDescriptionClass}>
+                툴바의 빙고 버튼으로 여는 3x3 빙고판을 설정합니다. 셀을 완수하면 셀별 XP를 받고, 빙고 1줄마다 {bingoLineRewardXP} XP(최대 {bingoMaxLines}줄) 보상!
+            </p>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+                {bingoCells.map((cell, idx) => (
+                    <div key={cell.id || idx} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3">
+                        <div className="text-[11px] font-semibold text-[var(--color-text-tertiary)] mb-1">칸 #{idx + 1}</div>
+                        <input
+                            type="text"
+                            className={`${inputClass} mb-2`}
+                            value={cell.text}
+                            onChange={(e) => updateBingoCell(idx, 'text', e.target.value)}
+                            placeholder="예: 물 한 컵 마시기"
+                        />
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="number"
+                                min={0}
+                                max={500}
+                                className={`${inputClass} flex-1`}
+                                value={cell.xp}
+                                onChange={(e) => updateBingoCell(idx, 'xp', parseInt(e.target.value) || 0)}
+                            />
+                            <span className="text-xs text-[var(--color-text-secondary)]">XP</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className={infoBoxClass}>
+                <strong>제한:</strong> 하루에 최대 {bingoMaxLines} 빙고만 인정됩니다. 줄을 완성하면 자동으로 +{bingoLineRewardXP} XP를 지급합니다.
             </div>
 
             <div className="my-4 border-t border-[var(--color-border)]" />

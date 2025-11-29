@@ -114,7 +114,7 @@ export default function AppShell() {
   // 탭 상태
   // ============================================================================
   const [activeTab, setActiveTab] = useState<'today' | 'energy' | 'completed' | 'inbox'>('today');
-  const [rightPanelTab, setRightPanelTab] = useState<'quest' | 'shop' | 'inventory'>('quest');
+  const [rightPanelTab, setRightPanelTab] = useState<'shop' | 'inventory'>('shop');
 
   // ============================================================================
   // 이벤트 핸들러
