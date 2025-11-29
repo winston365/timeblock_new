@@ -110,8 +110,7 @@ function createWindow(): void {
   });
 
   // 최소화/닫기 시 작업표시줄 대신 트레이로 이동
-  mainWindow.on('minimize', (event) => {
-    event.preventDefault();
+  mainWindow.on('minimize', () => {
     hideMainWindowToTray();
   });
 
