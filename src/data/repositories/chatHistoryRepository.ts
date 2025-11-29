@@ -225,6 +225,8 @@ export async function loadTokenUsage(date: string): Promise<DailyTokenUsage | nu
  *   - Firebase에 비동기 동기화
  *   - syncLogger에 로그 기록
  */
+const safeNumber = (value: number | undefined | null) => Number.isFinite(value) ? value as number : 0;
+
 export async function addTokenUsage(
   promptTokens: number,
   candidatesTokens: number,
@@ -233,14 +235,22 @@ export async function addTokenUsage(
 ): Promise<void> {
   try {
     const existing = await loadTokenUsage(date);
+    const safePrompt = safeNumber(promptTokens);
+    const safeCandidates = safeNumber(candidatesTokens);
+    const safeEmbedding = safeNumber(embeddingTokens);
+    const safeExistingPrompt = safeNumber(existing?.promptTokens);
+    const safeExistingCandidates = safeNumber(existing?.candidatesTokens);
+    const safeExistingEmbedding = safeNumber(existing?.embeddingTokens);
+    const safeExistingTotal = safeNumber(existing?.totalTokens);
+    const safeExistingMessages = safeNumber(existing?.messageCount);
 
     const tokenUsage: DailyTokenUsage = {
       date,
-      promptTokens: (existing?.promptTokens || 0) + promptTokens,
-      candidatesTokens: (existing?.candidatesTokens || 0) + candidatesTokens,
-      embeddingTokens: (existing?.embeddingTokens || 0) + embeddingTokens,
-      totalTokens: (existing?.totalTokens || 0) + promptTokens + candidatesTokens + embeddingTokens,
-      messageCount: (existing?.messageCount || 0) + (promptTokens > 0 || candidatesTokens > 0 ? 1 : 0),
+      promptTokens: safeExistingPrompt + safePrompt,
+      candidatesTokens: safeExistingCandidates + safeCandidates,
+      embeddingTokens: safeExistingEmbedding + safeEmbedding,
+      totalTokens: safeExistingTotal + safePrompt + safeCandidates + safeEmbedding,
+      messageCount: safeExistingMessages + (safePrompt > 0 || safeCandidates > 0 || safeEmbedding > 0 ? 1 : 0),
       updatedAt: Date.now(),
     };
 

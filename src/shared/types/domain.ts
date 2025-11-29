@@ -389,6 +389,20 @@ export interface BingoProgress {
   completedLines: number[];
 }
 
+// ============================================================================
+// Token Usage
+// ============================================================================
+
+export interface DailyTokenUsage {
+  date: string; // YYYY-MM-DD
+  promptTokens: number;
+  candidatesTokens: number;
+  embeddingTokens: number;
+  totalTokens: number;
+  messageCount: number;
+  updatedAt: number;
+}
+
 /**
  * 와이푸 모드 타입
  */

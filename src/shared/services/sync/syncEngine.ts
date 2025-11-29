@@ -16,7 +16,7 @@ import { getFirebaseDatabase } from './firebase/firebaseClient';
 import { ref, onValue, off } from 'firebase/database';
 import { getDeviceId } from './firebase/syncUtils';
 import { useToastStore } from '@/shared/stores/toastStore';
-import type { Task } from '@/shared/types/domain';
+import type { Task, DailyTokenUsage } from '@/shared/types/domain';
 
 type SyncOperation = 'create' | 'update' | 'delete';
 
@@ -53,6 +53,44 @@ export class SyncEngine {
     // Split-brain 감지: 마지막 동기화 타임스탬프 추적
     private lastSyncTimestamps: Map<string, number> = new Map();
 
+    private sanitizeTokenUsage(usage: DailyTokenUsage): DailyTokenUsage {
+        const safe = (v: any) => Number.isFinite(v) ? v : 0;
+        const prompt = safe(usage.promptTokens);
+        const candidates = safe(usage.candidatesTokens);
+        const embedding = safe(usage.embeddingTokens);
+        const total = safe(usage.totalTokens) || prompt + candidates + embedding;
+        const messageCount = safe(usage.messageCount);
+        return {
+            ...usage,
+            promptTokens: prompt,
+            candidatesTokens: candidates,
+            embeddingTokens: embedding,
+            totalTokens: total,
+            messageCount,
+        };
+    }
+
+    private async repairTokenUsage() {
+        try {
+            const rows = await db.dailyTokenUsage.toArray();
+            const repairs = rows.map(async (row) => {
+                const sanitized = this.sanitizeTokenUsage(row as DailyTokenUsage);
+                if (
+                    sanitized.promptTokens !== row.promptTokens ||
+                    sanitized.candidatesTokens !== row.candidatesTokens ||
+                    sanitized.embeddingTokens !== row.embeddingTokens ||
+                    sanitized.totalTokens !== row.totalTokens ||
+                    sanitized.messageCount !== row.messageCount
+                ) {
+                    await db.dailyTokenUsage.put(sanitized as any);
+                }
+            });
+            await Promise.all(repairs);
+        } catch (error) {
+            console.error('Failed to repair token usage records:', error);
+        }
+    }
+
     private constructor() { }
 
     public static getInstance(): SyncEngine {
@@ -70,6 +108,9 @@ export class SyncEngine {
         this.initialized = true;
 
         console.log('🔄 SyncEngine: Initializing hooks...');
+
+        // 기존 토큰 사용량에 NaN이 있으면 정정
+        this.repairTokenUsage().catch(console.error);
 
         // 1. DailyData (Key-based sync)
         this.registerHooks(db.dailyData, async (primKey, obj, op) => {
@@ -131,7 +172,8 @@ export class SyncEngine {
             if (op === 'delete') {
                 await syncToFirebase(tokenUsageStrategy, null as any, primKey as string);
             } else {
-                await syncToFirebase(tokenUsageStrategy, obj, primKey as string);
+                const sanitized = this.sanitizeTokenUsage(obj as DailyTokenUsage);
+                await syncToFirebase(tokenUsageStrategy, sanitized, primKey as string);
             }
         });
 
@@ -326,8 +368,9 @@ export class SyncEngine {
 
                 this.applyRemoteUpdate(async () => {
                     if (syncData.data) {
+                        const sanitized = this.sanitizeTokenUsage(syncData.data as DailyTokenUsage);
                         await db.dailyTokenUsage.put({
-                            ...syncData.data,
+                            ...sanitized,
                             date
                         });
                     } else if (syncData.data === null) {

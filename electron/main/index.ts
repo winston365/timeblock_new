@@ -10,7 +10,7 @@
  *   - path: 경로 처리
  */
 
-import { app, BrowserWindow, dialog, ipcMain, globalShortcut, Notification } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, globalShortcut, Notification, Tray, Menu } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import path from 'path';
 
@@ -45,6 +45,25 @@ if (!isDev) {
 let mainWindow: BrowserWindow | null = null;
 let quickAddWindow: BrowserWindow | null = null;
 let pipWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let isQuitting = false;
+
+function showMainWindow(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setSkipTaskbar(false);
+    mainWindow.show();
+    mainWindow.focus();
+    return;
+  }
+  createWindow();
+}
+
+function hideMainWindowToTray(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setSkipTaskbar(true);
+    mainWindow.hide();
+  }
+}
 
 /**
  * 메인 윈도우 생성
@@ -88,6 +107,20 @@ function createWindow(): void {
   // 윈도우 닫힘 이벤트
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  // 최소화/닫기 시 작업표시줄 대신 트레이로 이동
+  mainWindow.on('minimize', (event) => {
+    event.preventDefault();
+    hideMainWindowToTray();
+  });
+
+  mainWindow.on('close', (event) => {
+    if (isQuitting) {
+      return;
+    }
+    event.preventDefault();
+    hideMainWindowToTray();
   });
 }
 
@@ -193,6 +226,34 @@ function createPipWindow(): void {
 }
 
 /**
+ * 트레이 아이콘 생성
+ */
+function createTray(): void {
+  if (tray) return;
+
+  const iconPath = path.join(__dirname, '../resources/icon.ico');
+  tray = new Tray(iconPath);
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: '열기',
+      click: () => showMainWindow(),
+    },
+    {
+      label: '종료',
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      },
+    },
+  ]);
+
+  tray.setToolTip('TimeBlock');
+  tray.setContextMenu(contextMenu);
+  tray.on('click', () => showMainWindow());
+}
+
+/**
  * 글로벌 단축키 설정
  */
 function setupGlobalShortcuts(): void {
@@ -220,6 +281,7 @@ function setupGlobalShortcuts(): void {
  */
 app.whenReady().then(() => {
   createWindow();
+  createTray();
   setupAutoUpdater(); // 자동 업데이트 초기화
   setupGlobalShortcuts(); // 글로벌 단축키 설정
 
@@ -228,6 +290,7 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
+    showMainWindow();
   });
 });
 
@@ -239,6 +302,13 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+/**
+ * 종료 플래그 설정 (트레이에서 종료 시 정상 종료 허용)
+ */
+app.on('before-quit', () => {
+  isQuitting = true;
 });
 
 /**
