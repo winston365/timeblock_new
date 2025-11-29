@@ -143,9 +143,9 @@ export function FocusView({
                 return;
             }
 
-            // 현재 시간대 작업 2개 제한
-            if (currentHourTasks.length >= 2) {
-                toast.error('이 시간대에는 최대 2개의 작업만 추가할 수 있습니다.');
+            // 현재 시간대 작업 3개 제한
+            if (currentHourTasks.length >= 3) {
+                toast.error('이 시간대에는 최대 3개의 작업만 추가할 수 있습니다.');
                 return;
             }
 
@@ -508,6 +508,19 @@ export function FocusView({
         });
     };
 
+    const handlePromoteTask = (taskToPromote: Task) => {
+        if (!recommendedTask) return;
+
+        const currentHeroOrder = recommendedTask.order ?? new Date(recommendedTask.createdAt).getTime();
+        const targetOrder = taskToPromote.order ?? new Date(taskToPromote.createdAt).getTime();
+
+        // Swap orders
+        onUpdateTask(recommendedTask.id, { order: targetOrder });
+        onUpdateTask(taskToPromote.id, { order: currentHeroOrder });
+
+        toast.success('작업 순서를 변경했습니다.');
+    };
+
     if (isBreakTime) {
         return (
             <div className="mx-auto max-w-4xl p-6 flex items-center justify-center min-h-[600px]">
@@ -571,18 +584,17 @@ export function FocusView({
                             </div>
 
                             <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <button
-                            onClick={handleTogglePlay}
-                            className={`rounded-xl px-3 py-2 text-sm font-semibold shadow-sm disabled:opacity-60 ${
-                                isMusicPlaying
-                                    ? 'bg-emerald-500 text-white hover:opacity-90'
-                                    : 'bg-[var(--color-primary)] text-white hover:opacity-90'
-                            }`}
-                            disabled={isMusicLoading || !musicTracks.length}
-                            aria-pressed={isMusicPlaying}
-                        >
-                            {isMusicPlaying ? '⏸︎ 일시정지 (재생 중)' : '▶️ 재생'}
-                        </button>
+                                <button
+                                    onClick={handleTogglePlay}
+                                    className={`rounded-xl px-3 py-2 text-sm font-semibold shadow-sm disabled:opacity-60 ${isMusicPlaying
+                                            ? 'bg-emerald-500 text-white hover:opacity-90'
+                                            : 'bg-[var(--color-primary)] text-white hover:opacity-90'
+                                        }`}
+                                    disabled={isMusicLoading || !musicTracks.length}
+                                    aria-pressed={isMusicPlaying}
+                                >
+                                    {isMusicPlaying ? '⏸︎ 일시정지 (재생 중)' : '▶️ 재생'}
+                                </button>
                                 <button
                                     onClick={() => handleNextRandom(true)}
                                     className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-bg-tertiary-hover)] disabled:opacity-60"
@@ -591,29 +603,27 @@ export function FocusView({
                                     🔀 랜덤 다음
                                 </button>
                                 <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => handleLoopModeChange('track')}
-                                className={`rounded-xl border px-3 py-2 text-sm transition ${
-                                    loopMode === 'track'
-                                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-sm'
-                                        : 'border-[var(--color-border)] bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary-hover)]'
-                                }`}
-                                aria-pressed={loopMode === 'track'}
-                            >
-                                🔂 한 곡 반복
-                            </button>
-                            <button
-                                onClick={() => handleLoopModeChange('folder')}
-                                className={`rounded-xl border px-3 py-2 text-sm transition ${
-                                    loopMode === 'folder'
-                                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-sm'
-                                        : 'border-[var(--color-border)] bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary-hover)]'
-                                }`}
-                                aria-pressed={loopMode === 'folder'}
-                            >
-                                🔁 폴더 반복
-                            </button>
-                        </div>
+                                    <button
+                                        onClick={() => handleLoopModeChange('track')}
+                                        className={`rounded-xl border px-3 py-2 text-sm transition ${loopMode === 'track'
+                                                ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-sm'
+                                                : 'border-[var(--color-border)] bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary-hover)]'
+                                            }`}
+                                        aria-pressed={loopMode === 'track'}
+                                    >
+                                        🔂 한 곡 반복
+                                    </button>
+                                    <button
+                                        onClick={() => handleLoopModeChange('folder')}
+                                        className={`rounded-xl border px-3 py-2 text-sm transition ${loopMode === 'folder'
+                                                ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-sm'
+                                                : 'border-[var(--color-border)] bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary-hover)]'
+                                            }`}
+                                        aria-pressed={loopMode === 'folder'}
+                                    >
+                                        🔁 폴더 반복
+                                    </button>
+                                </div>
                                 <div className="ml-auto text-xs text-[var(--color-text-tertiary)]">
                                     {isMusicLoading && '불러오는 중...'}
                                     {!isMusicLoading && currentTrackIndex !== null && musicTracks[currentTrackIndex] && (
@@ -661,11 +671,11 @@ export function FocusView({
             )}
 
             {/* 인라인 작업 추가 */}
-            {!isLocked && currentHourTasks.length < 2 && (
+            {!isLocked && currentHourTasks.length < 3 && (
                 <div className="rounded-2xl bg-[var(--color-bg-surface)] p-4">
                     <div className="flex items-center gap-2 mb-2">
                         <span className="text-sm font-medium text-[var(--color-text-secondary)]">현재 시간대에 작업 추가</span>
-                        <span className="text-xs text-[var(--color-text-tertiary)]">({currentHourTasks.length}/2)</span>
+                        <span className="text-xs text-[var(--color-text-tertiary)]">({currentHourTasks.length}/3)</span>
                     </div>
                     <input
                         ref={inlineInputRef}
@@ -685,6 +695,7 @@ export function FocusView({
                     tasks={upcomingTasks}
                     onReorder={handleReorder}
                     onEdit={onEditTask}
+                    onPromote={handlePromoteTask}
                 />
             )}
 
