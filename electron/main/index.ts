@@ -12,6 +12,7 @@
 
 import { app, BrowserWindow, dialog, ipcMain, globalShortcut, Notification, Tray, Menu } from 'electron';
 import { autoUpdater } from 'electron-updater';
+import fs from 'fs';
 import path from 'path';
 
 // ============================================================================
@@ -20,6 +21,20 @@ import path from 'path';
 
 const isDev = process.env.NODE_ENV === 'development';
 const VITE_DEV_SERVER_URL = 'http://localhost:5173';
+
+// 런타임 에셋 경로 (개발/프로덕션 대응)
+function getAssetPath(fileName: string): string {
+  const prodPath = path.join(process.resourcesPath, fileName);
+  if (!isDev && fs.existsSync(prodPath)) {
+    return prodPath;
+  }
+  const devPath = path.join(__dirname, '../resources', fileName);
+  if (fs.existsSync(devPath)) {
+    return devPath;
+  }
+  // 최악의 경우 생산 경로 반환 (존재하지 않더라도 기본값)
+  return prodPath;
+}
 
 // AutoUpdater 설정
 autoUpdater.autoDownload = false; // 사용자 확인 후 다운로드
@@ -83,7 +98,7 @@ function createWindow(): void {
       preload: path.join(__dirname, '../preload/index.cjs'),
     },
     // UI 설정
-    icon: path.join(__dirname, '../resources/icon.ico'),  // 앱 아이콘
+    icon: getAssetPath('icon.ico'),  // 앱 아이콘
     backgroundColor: '#0a0e1a',      // Dark mode 배경
     show: false,                     // 준비될 때까지 숨김
     autoHideMenuBar: !isDev,         // 개발 모드에서만 메뉴바 표시
@@ -147,7 +162,7 @@ function createQuickAddWindow(): void {
       sandbox: true,
       preload: path.join(__dirname, '../preload/index.cjs'),
     },
-    icon: path.join(__dirname, '../resources/icon.ico'),  // 앱 아이콘
+    icon: getAssetPath('icon.ico'),  // 앱 아이콘
     backgroundColor: '#0a0e1a',
     show: false,
     title: '빠른 작업 추가',
@@ -198,7 +213,7 @@ function createPipWindow(): void {
       sandbox: true,
       preload: path.join(__dirname, '../preload/index.cjs'),
     },
-    icon: path.join(__dirname, '../resources/icon.ico'),
+    icon: getAssetPath('icon.ico'),
     show: false,
     title: 'TimeBlock PiP',
   });
@@ -230,7 +245,7 @@ function createPipWindow(): void {
 function createTray(): void {
   if (tray) return;
 
-  const iconPath = path.join(__dirname, '../resources/icon.ico');
+  const iconPath = getAssetPath('icon.ico');
   tray = new Tray(iconPath);
 
   const contextMenu = Menu.buildFromTemplate([
@@ -612,9 +627,9 @@ ipcMain.handle('show-notification', (event, title: string, body: string) => {
   try {
     if (Notification.isSupported()) {
       const notification = new Notification({
-        title,
-        body,
-        icon: path.join(__dirname, '../resources/icon.ico'), // 앱 아이콘 사용
+      title,
+      body,
+      icon: getAssetPath('icon.ico'), // 앱 아이콘 사용
       });
       notification.show();
       console.log(`[Notification] Shown: ${title} - ${body}`);
