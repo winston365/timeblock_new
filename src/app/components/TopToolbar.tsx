@@ -110,7 +110,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
     const load = async () => {
       try {
         const remote = await fetchFromFirebase(bingoProgressStrategy, today);
-        if (mounted && remote?.date === today) {
+        if (mounted && remote?.date === today && Array.isArray(remote.completedCells)) {
           setBingoCompletedCells(remote.completedCells.length);
           // 캐시
           await db.systemState.put({ key: `${BINGO_PROGRESS_STORAGE_KEY}:${today}`, value: remote as BingoProgress });

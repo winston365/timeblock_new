@@ -63,6 +63,33 @@ export function FocusView({
     const [isMusicPlaying, setIsMusicPlaying] = useState(false);
     const [loopMode, setLoopMode] = useState<'track' | 'folder'>('folder');
     const lastSavedMemoRef = useRef<{ taskId: string | null; memo: string }>({ taskId: null, memo: '' });
+    // 시간/작업 계산 (상단에서 정의하여 TDZ 회피)
+    const nowDate = useMemo(() => new Date(now), [now]);
+    const currentHour = nowDate.getHours();
+    const currentMinute = nowDate.getMinutes();
+    const slotStart = currentHour;
+    const slotEnd = (currentHour + 1) % 24;
+    const slotLabel = `${String(slotStart).padStart(2, '0')}:00 - ${String(slotEnd).padStart(2, '0')}:00 · ${String(currentHour).padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+    const remainingMinutes = Math.max(0, (slotEnd === 0 ? 24 : slotEnd) * 60 - slotStart * 60 - currentMinute);
+    const currentHourTasks = useMemo(() => {
+        return tasks
+            .filter(t => t.hourSlot === currentHour)
+            .sort((a, b) => {
+                const orderA = a.order ?? new Date(a.createdAt).getTime();
+                const orderB = b.order ?? new Date(b.createdAt).getTime();
+                return orderA - orderB;
+            });
+    }, [tasks, currentHour]);
+    const recommendedTask = useMemo(() => {
+        return currentHourTasks.find(t => !t.completed) || null;
+    }, [currentHourTasks]);
+    const recommendationMessage = recommendedTask
+        ? getRecommendationMessage(recommendedTask, currentEnergy)
+        : '';
+    const initialUpcomingTasks = useMemo(() => {
+        return currentHourTasks.filter(t => !t.completed && t.id !== recommendedTask?.id);
+    }, [currentHourTasks, recommendedTask]);
+    const [upcomingTasks, setUpcomingTasks] = useState(initialUpcomingTasks);
 
     // 활성 작업 변경 시 메모 동기화
     useEffect(() => {
@@ -271,43 +298,8 @@ export function FocusView({
     const currentBlock = TIME_BLOCKS.find(b => b.id === currentBlockId);
     const blockLabel = currentBlock?.label ?? '블록 외 시간';
 
-    const nowDate = new Date(now);
-    const currentHour = nowDate.getHours();
-    const currentMinute = nowDate.getMinutes();
-    const slotStart = currentHour;
-    const slotEnd = (currentHour + 1) % 24;
-    const slotLabel = `${String(slotStart).padStart(2, '0')}:00 - ${String(slotEnd).padStart(2, '0')}:00 · ${String(currentHour).padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
-    const remainingMinutes = Math.max(0, (slotEnd === 0 ? 24 : slotEnd) * 60 - slotStart * 60 - currentMinute);
-
-    // Filter tasks to only current hour slot - memoized to prevent infinite loop
-    const currentHourTasks = useMemo(() => {
-        return tasks
-            .filter(t => t.hourSlot === currentHour)
-            .sort((a, b) => {
-                const orderA = a.order ?? new Date(a.createdAt).getTime();
-                const orderB = b.order ?? new Date(b.createdAt).getTime();
-                return orderA - orderB;
-            });
-    }, [tasks, currentHour]);
-
-    // Use the first incomplete task based on order (respects HourBar ordering)
-    const recommendedTask = useMemo(() => {
-        return currentHourTasks.find(t => !t.completed) || null;
-    }, [currentHourTasks]);
-
-    const recommendationMessage = recommendedTask
-        ? getRecommendationMessage(recommendedTask, currentEnergy)
-        : '';
-
     // All completed tasks from the entire day
     const allCompletedTasks = allDailyTasks.filter(t => t.completed);
-
-    // Filter upcoming tasks from current hour only (exclude completed and recommended)
-    const initialUpcomingTasks = useMemo(() => {
-        return currentHourTasks.filter(t => !t.completed && t.id !== recommendedTask?.id);
-    }, [currentHourTasks, recommendedTask]);
-
-    const [upcomingTasks, setUpcomingTasks] = useState(initialUpcomingTasks);
 
     type ToggleOptions = { skipBonus?: boolean; bonusReason?: 'autoTimer' };
 
