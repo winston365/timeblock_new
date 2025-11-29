@@ -136,7 +136,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
 
     load();
     const unsubscribe = listenToFirebase(bingoProgressStrategy, (remote) => {
-      if (remote?.date === today) {
+      if (remote?.date === today && Array.isArray(remote.completedCells)) {
         setBingoCompletedCells(remote.completedCells.length);
         db.systemState.put({ key: `${BINGO_PROGRESS_STORAGE_KEY}:${today}`, value: remote as BingoProgress }).catch(() => { });
       }

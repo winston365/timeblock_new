@@ -61,6 +61,11 @@ export function BingoModal({ open, onClose, cells, maxLines = SETTING_DEFAULTS.b
     const [loaded, setLoaded] = useState(false);
 
     const storageKey = `${BINGO_PROGRESS_STORAGE_KEY}:${today}`;
+    const isValidProgress = (p: any): p is BingoProgress =>
+        p &&
+        p.date === today &&
+        Array.isArray(p.completedCells) &&
+        Array.isArray(p.completedLines);
 
     // Load saved progress (daily) + fetch from Firebase
     useEffect(() => {
@@ -69,7 +74,7 @@ export function BingoModal({ open, onClose, cells, maxLines = SETTING_DEFAULTS.b
         (async () => {
             try {
                 const remote = await fetchFromFirebase<BingoProgress>(bingoProgressStrategy, today);
-                if (mounted && remote && remote.date === today) {
+                if (mounted && isValidProgress(remote)) {
                     setProgress(remote);
                     return;
                 }
@@ -79,7 +84,7 @@ export function BingoModal({ open, onClose, cells, maxLines = SETTING_DEFAULTS.b
             try {
                 const stored = await db.systemState.get(storageKey);
                 const value = stored?.value as BingoProgress | undefined;
-                if (mounted && value && value.date === today) {
+                if (mounted && isValidProgress(value)) {
                     setProgress(value);
                     return;
                 }
@@ -96,7 +101,7 @@ export function BingoModal({ open, onClose, cells, maxLines = SETTING_DEFAULTS.b
 
         // Live updates from Firebase while open
         const unsubscribe = listenToFirebase<BingoProgress>(bingoProgressStrategy, (remote) => {
-            if (remote?.date === today) {
+            if (isValidProgress(remote)) {
                 setProgress(remote);
                 setLoaded(true);
             }
@@ -107,6 +112,18 @@ export function BingoModal({ open, onClose, cells, maxLines = SETTING_DEFAULTS.b
             unsubscribe?.();
         };
     }, [open, today, storageKey]);
+
+    // ESC로 모달 닫기
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [open, onClose]);
 
     // Persist progress
     useEffect(() => {
