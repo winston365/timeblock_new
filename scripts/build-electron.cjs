@@ -61,6 +61,13 @@ try {
   renameJsToCjs(path.join(distElectron, 'main'));
   renameJsToCjs(path.join(distElectron, 'preload'));
 
+  // 리소스(아이콘 등) 복사
+  const resourcesSource = path.join(__dirname, '../electron/resources');
+  const resourcesDest = path.join(distElectron, 'resources');
+  if (fs.existsSync(resourcesSource)) {
+    fs.cpSync(resourcesSource, resourcesDest, { recursive: true });
+  }
+
   console.log('✅ Electron build completed');
 } catch (error) {
   console.error('❌ Electron build failed:', error.message);

@@ -29,11 +29,13 @@ export interface SyncLogEntry {
 // Dexie systemState 키
 const STORAGE_KEY = 'syncLogs';
 
-// 메모리 내 로그 캐시 (최대 100개)
-const MAX_LOGS = 100;
+// 메모리 내 로그 캐시 (최대 10,000개)
+const MAX_LOGS = 10_000;
 let syncLogs: SyncLogEntry[] = [];
+let pendingLogs: SyncLogEntry[] = [];
 let logListeners: Array<(logs: SyncLogEntry[]) => void> = [];
 let isInitialized = false;
+let initPromise: Promise<void> | null = null;
 
 /**
  * Dexie에서 로그 로드 (비동기)
@@ -63,15 +65,29 @@ function saveLogsToStorage(logs: SyncLogEntry[]): void {
  */
 async function ensureInitialized(): Promise<void> {
   if (isInitialized) return;
-  
-  try {
-    syncLogs = await loadLogsFromStorage();
-    isInitialized = true;
-  } catch (error) {
-    console.error('Failed to initialize sync logs:', error);
-    syncLogs = [];
-    isInitialized = true;
-  }
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
+    try {
+      const stored = await loadLogsFromStorage();
+
+      if (pendingLogs.length > 0) {
+        syncLogs = [...pendingLogs, ...stored].slice(0, MAX_LOGS);
+        pendingLogs = [];
+      } else {
+        syncLogs = stored;
+      }
+    } catch (error) {
+      console.error('Failed to initialize sync logs:', error);
+      syncLogs = [];
+    } finally {
+      isInitialized = true;
+      saveLogsToStorage(syncLogs);
+      notifyListeners();
+    }
+  })();
+
+  return initPromise;
 }
 
 /**
@@ -96,6 +112,25 @@ export function addSyncLog(
   data?: unknown,
   error?: Error
 ): void {
+  if (!isInitialized) {
+    // 초기화 이전에는 메모리에 적재 후 병합 시 저장
+    const entry: SyncLogEntry = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: Date.now(),
+      type,
+      action,
+      message,
+      data: data ? JSON.stringify(data).substring(0, 200) : undefined,
+      error: error?.message,
+    };
+    pendingLogs.unshift(entry);
+    if (pendingLogs.length > MAX_LOGS) {
+      pendingLogs = pendingLogs.slice(0, MAX_LOGS);
+    }
+    ensureInitialized(); // kick off async load/merge
+    return;
+  }
+
   const entry: SyncLogEntry = {
     id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     timestamp: Date.now(),
@@ -129,7 +164,9 @@ export function addSyncLog(
  *   - 없음: 읽기 전용 작업
  */
 export function getSyncLogs(): SyncLogEntry[] {
-  return [...syncLogs];
+  // 트리거해 두고 현재까지의 스냅샷 제공
+  ensureInitialized();
+  return [...pendingLogs, ...syncLogs].slice(0, MAX_LOGS);
 }
 
 /**
@@ -152,6 +189,7 @@ export async function initializeSyncLogger(): Promise<void> {
  */
 export function clearSyncLogs(): void {
   syncLogs = [];
+  pendingLogs = [];
   saveLogsToStorage(syncLogs);
   notifyListeners();
 }
@@ -166,6 +204,9 @@ export function clearSyncLogs(): void {
  *   - logListeners 배열에 콜백 추가
  */
 export function subscribeSyncLogs(callback: (logs: SyncLogEntry[]) => void): () => void {
+  // 보관된 로그를 즉시 전달
+  callback(getSyncLogs());
+  ensureInitialized().catch(console.error);
   logListeners.push(callback);
 
   // 구독 해제 함수 반환

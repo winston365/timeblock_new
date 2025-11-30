@@ -280,7 +280,9 @@ export function useAppInitialization() {
                 }
 
                 // 4. 스토어 데이터 로드 (IndexedDB -> Store)
+                //    ⚠️ Settings는 초기 로드 이후 Firebase 병합 결과를 반영하기 위해 다시 로드한다.
                 await Promise.all([
+                    loadSettings(), // refresh settings so Firebase-merged values (e.g., bingo config) reach the UI
                     loadDailyData(),
                     loadGameState(),
                 ]);

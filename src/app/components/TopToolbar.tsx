@@ -44,14 +44,14 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   const [hovered, setHovered] = useState<string | null>(null);
   const [showStats, setShowStats] = useState(false);
   const [showBingo, setShowBingo] = useState(false);
-  const [bingoCompletedCells, setBingoCompletedCells] = useState(0);
+  const [bingoProgress, setBingoProgress] = useState<BingoProgress | null>(null);
   const { settings } = useSettingsStore();
   const isNormalWaifu = settings?.waifuMode === 'normal';
 
   // Schedule View 상태 (워밍업, 지금모드, 지난블록)
   const { isFocusMode, toggleFocusMode } = useFocusModeStore();
   const { showPastBlocks, toggleShowPastBlocks, openWarmupModal } = useScheduleViewStore();
-  
+
   // 현재 시간 기준 타임블록 계산
   const currentHour = new Date().getHours();
   const currentBlockId = TIME_BLOCKS.find(b => currentHour >= b.start && currentHour < b.end)?.id ?? null;
@@ -107,39 +107,68 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   // Load bingo progress summary (completed cells) and keep synced
   useEffect(() => {
     let mounted = true;
+    const storageKey = `${BINGO_PROGRESS_STORAGE_KEY}:${today}`;
+    const isValidProgress = (p: any): p is BingoProgress =>
+      p && p.date === today && Array.isArray(p.completedCells) && Array.isArray(p.completedLines);
+    const mergeProgress = (a?: BingoProgress | null, b?: BingoProgress | null): BingoProgress | null => {
+      const valid = [a, b].filter(isValidProgress) as BingoProgress[];
+      if (valid.length === 0) return null;
+      return {
+        date: today,
+        completedCells: Array.from(new Set(valid.flatMap(p => p.completedCells))),
+        completedLines: Array.from(new Set(valid.flatMap(p => p.completedLines))),
+      };
+    };
+    const cacheProgress = async (value: BingoProgress) => {
+      try {
+        await db.systemState.put({ key: storageKey, value });
+      } catch (error) {
+        console.error('Failed to cache bingo progress (Dexie):', error);
+      }
+    };
+
     const load = async () => {
       try {
-        const remote = await fetchFromFirebase(bingoProgressStrategy, today);
-        if (mounted && remote?.date === today && Array.isArray(remote.completedCells)) {
-          setBingoCompletedCells(remote.completedCells.length);
-          // 캐시
-          await db.systemState.put({ key: `${BINGO_PROGRESS_STORAGE_KEY}:${today}`, value: remote as BingoProgress });
-          return;
+        const [remote, stored] = await Promise.all([
+          fetchFromFirebase(bingoProgressStrategy, today),
+          db.systemState.get(storageKey).catch(error => {
+            console.error('Failed to read local bingo summary (Dexie):', error);
+            return undefined;
+          }),
+        ]);
+
+        const merged = mergeProgress(remote, stored?.value as BingoProgress | undefined);
+        if (!mounted) return;
+
+        if (merged) {
+          setBingoProgress(merged);
+          await cacheProgress(merged);
+        } else {
+          setBingoProgress(null);
         }
       } catch (error) {
         console.error('Failed to fetch bingo summary:', error);
-      }
-      try {
-        const stored = await db.systemState.get(`${BINGO_PROGRESS_STORAGE_KEY}:${today}`);
-        const value = stored?.value as BingoProgress | undefined;
-        if (mounted && value && value.date === today && Array.isArray(value.completedCells)) {
-          setBingoCompletedCells(value.completedCells.length);
-          return;
+        if (mounted) {
+          setBingoProgress(null);
         }
-      } catch (error) {
-        console.error('Failed to read local bingo summary (Dexie):', error);
-      }
-      if (mounted) {
-        setBingoCompletedCells(0);
       }
     };
 
     load();
     const unsubscribe = listenToFirebase(bingoProgressStrategy, (remote) => {
-      if (remote?.date === today && Array.isArray(remote.completedCells)) {
-        setBingoCompletedCells(remote.completedCells.length);
-        db.systemState.put({ key: `${BINGO_PROGRESS_STORAGE_KEY}:${today}`, value: remote as BingoProgress }).catch(() => { });
-      }
+      if (!mounted || !isValidProgress(remote)) return;
+      db.systemState
+        .get(storageKey)
+        .then(stored => mergeProgress(remote as BingoProgress, stored?.value as BingoProgress | undefined))
+        .then(merged => {
+          if (!mounted || !merged) return;
+          setBingoProgress(merged);
+          cacheProgress(merged).catch(() => { });
+        })
+        .catch(() => {
+          setBingoProgress(remote as BingoProgress);
+          cacheProgress(remote as BingoProgress).catch(() => { });
+        });
     }, today);
 
     return () => {
@@ -159,11 +188,11 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         onMouseLeave={() => setHovered(null)}
         onClick={onClick}
         style={
-        {
-          ['--btn-width' as string]: '150px',
-          ['--timing' as string]: '2s',
-          background: isHover ? undefined : 'var(--color-primary)',
-          backgroundImage: isHover ? gradientString : undefined,
+          {
+            ['--btn-width' as string]: '150px',
+            ['--timing' as string]: '2s',
+            background: isHover ? undefined : 'var(--color-primary)',
+            backgroundImage: isHover ? gradientString : undefined,
             animation: isHover ? 'dance6123 var(--timing) linear infinite' : undefined,
             transform: isHover ? 'scale(1.08) translateY(-1px)' : undefined,
             boxShadow: isHover
@@ -191,109 +220,106 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         <style>{`@keyframes dance6123 { to { background-position: var(--btn-width); } }`}</style>
         <h1 className="text-sm font-semibold tracking-tight">하루 루틴 컨트롤러</h1>
 
-      <div className="flex flex-1 flex-wrap items-center gap-[var(--spacing-md)] text-[13px]">
-        <div className={statItemClass}>
-          <span>⚡ 에너지:</span>
-          <span className={statValueClass}>{currentEnergy > 0 ? `${currentEnergy}%` : '-'}</span>
-        </div>
-        <div className={statItemClass}>
-          <span>⭐ 오늘 XP:</span>
-          <span
-            ref={(el) => {
-              if (el) {
-                const rect = el.getBoundingClientRect();
-                // Update target position only if it changes significantly to avoid loops
-                // But for now, just setting it on mount/resize is enough.
-                // We'll use a useEffect for cleaner logic.
-              }
-            }}
-            className={statValueClass}
-          >
-            {gameState?.dailyXP ?? 0}
-          </span>
-          <XPPositionRegistrar />
-        </div>
-        <div className={statItemClass}>
-          <span>⭐ 사용 가능:</span>
-          <span className={statValueClass}>{gameState?.availableXP ?? 0}</span>
-        </div>
-        <div className={statItemClass}>
-          <span>✅ 세션:</span>
-          <span className={statValueClass}>{gameState?.dailyTimerCount ?? 0}회</span>
-        </div>
-
-        {waifuState && (
-          <div className={`${statItemClass} gap-3`}>
-            {!isNormalWaifu && <span>와이푸 애정도</span>}
-            <div className="relative h-2 w-16 overflow-hidden rounded-full bg-white/10">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
-                style={{
-                  width: `${waifuState.affection}%`,
-                  backgroundColor: getAffectionColor(waifuState.affection),
-                }}
-              />
-            </div>
-            {!isNormalWaifu && <span>{waifuState.affection}%</span>}
+        <div className="flex flex-1 flex-wrap items-center gap-[var(--spacing-md)] text-[13px]">
+          <div className={statItemClass}>
+            <span>⚡ 에너지:</span>
+            <span className={statValueClass}>{currentEnergy > 0 ? `${currentEnergy}%` : '-'}</span>
           </div>
-        )}
-
-        {waifuState && currentMood && (
-          <div className={`${statItemClass} gap-2.5`}>
-            <span>분위기:</span>
-            <span className="text-base" title={currentMood}>
-              {currentMood}
+          <div className={statItemClass}>
+            <span>⭐ 오늘 XP:</span>
+            <span
+              ref={(el) => {
+                if (el) {
+                  // Update target position only if it changes significantly to avoid loops
+                  // But for now, just setting it on mount/resize is enough.
+                  // We'll use a useEffect for cleaner logic.
+                }
+              }}
+              className={statValueClass}
+            >
+              {gameState?.dailyXP ?? 0}
             </span>
+            <XPPositionRegistrar />
           </div>
-        )}
+          <div className={statItemClass}>
+            <span>⭐ 사용 가능:</span>
+            <span className={statValueClass}>{gameState?.availableXP ?? 0}</span>
+          </div>
+          <div className={statItemClass}>
+            <span>✅ 세션:</span>
+            <span className={statValueClass}>{gameState?.dailyTimerCount ?? 0}회</span>
+          </div>
 
-        {/* Weather Widget */}
-        <WeatherWidget />
+          {waifuState && (
+            <div className={`${statItemClass} gap-3`}>
+              {!isNormalWaifu && <span>와이푸 애정도</span>}
+              <div className="relative h-2 w-16 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${waifuState.affection}%`,
+                    backgroundColor: getAffectionColor(waifuState.affection),
+                  }}
+                />
+              </div>
+              {!isNormalWaifu && <span>{waifuState.affection}%</span>}
+            </div>
+          )}
 
-        {/* Schedule View 컨트롤 (압축형) */}
-        <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-1.5 py-0.5">
-          <button
-            type="button"
-            onClick={openWarmupModal}
-            className="rounded px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)] transition"
-            title="워밍업 세트"
-          >
-            🧊
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (!currentBlockId) {
-                alert('현재 진행 중인 타임블록이 있을 때만 켤 수 있어.');
-                return;
-              }
-              toggleFocusMode();
-            }}
-            className={`rounded px-2 py-1 text-xs transition ${
-              isFocusMode
-                ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
-                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
-            }`}
-            title={isFocusMode ? '지금모드 종료' : '지금모드 보기'}
-          >
-            ⏱
-          </button>
-          {pastBlocksCount > 0 && (
+          {waifuState && currentMood && (
+            <div className={`${statItemClass} gap-2.5`}>
+              <span>분위기:</span>
+              <span className="text-base" title={currentMood}>
+                {currentMood}
+              </span>
+            </div>
+          )}
+
+          {/* Weather Widget */}
+          <WeatherWidget />
+
+          {/* Schedule View 컨트롤 (압축형) */}
+          <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-1.5 py-0.5">
             <button
               type="button"
-              onClick={toggleShowPastBlocks}
-              className={`rounded px-2 py-1 text-xs transition ${
-                showPastBlocks
+              onClick={openWarmupModal}
+              className="rounded px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)] transition"
+              title="워밍업 세트"
+            >
+              🧊
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!currentBlockId) {
+                  alert('현재 진행 중인 타임블록이 있을 때만 켤 수 있어.');
+                  return;
+                }
+                toggleFocusMode();
+              }}
+              className={`rounded px-2 py-1 text-xs transition ${isFocusMode
+                ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
+                }`}
+              title={isFocusMode ? '지금모드 종료' : '지금모드 보기'}
+            >
+              ⏱
+            </button>
+            {pastBlocksCount > 0 && (
+              <button
+                type="button"
+                onClick={toggleShowPastBlocks}
+                className={`rounded px-2 py-1 text-xs transition ${showPastBlocks
                   ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
                   : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
-              }`}
-              title={showPastBlocks ? '지난 블록 숨기기' : `지난 블록 보기 (${pastBlocksCount})`}
-            >
-              📜{pastBlocksCount}
-            </button>
-          )}
+                  }`}
+                title={showPastBlocks ? '지난 블록 숨기기' : `지난 블록 보기 (${pastBlocksCount})`}
+              >
+                📜{pastBlocksCount}
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
         <div className="flex flex-wrap items-center gap-[var(--spacing-xs)] md:ml-auto">
           {/* AI 분석 인디케이터 */}
@@ -313,7 +339,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
           {/* 점화 버튼 */}
           <IgnitionButton />
           {renderCTA('stats', '📊 통계', () => setShowStats(true))}
-          {renderCTA('bingo', '🟦 빙고', () => setShowBingo(true), `🟦 ${bingoCompletedCells}/9`)}
+          {renderCTA('bingo', '🟦 빙고', () => setShowBingo(true), `🟦 ${bingoProgress?.completedCells.length ?? 0}/9`)}
           {!isNormalWaifu && renderCTA('waifu', '💬 와이푸', handleCallWaifu)}
           {renderCTA('templates', '📋 템플릿', onOpenTemplates)}
           {renderCTA('chat', '✨ AI 채팅', onOpenGeminiChat)}
@@ -328,7 +354,8 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
           cells={bingoCells}
           maxLines={bingoMaxLines}
           lineRewardXP={bingoLineRewardXP}
-          onProgressChange={(p) => setBingoCompletedCells(p.completedCells.length)}
+          initialProgress={bingoProgress}
+          onProgressChange={(p) => setBingoProgress(p)}
         />
       )}
     </>

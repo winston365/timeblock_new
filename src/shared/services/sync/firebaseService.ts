@@ -41,6 +41,7 @@ import type { DailyData, GameState, ChatHistory, DailyTokenUsage, Task, DailyGoa
 import { getFirebaseDatabase } from './firebase/firebaseClient';
 import { ref, onValue, off } from 'firebase/database';
 import { getDeviceId } from './firebase/syncUtils';
+import { addSyncLog } from './syncLogger';
 
 // ============================================================================
 // Legacy Function Wrappers - 하위 호환성 유지
@@ -322,9 +323,22 @@ export async function fetchDataFromFirebase(): Promise<{
       settings: !!settings,
     });
 
+    addSyncLog('firebase', 'load', 'Fetched initial data from Firebase', {
+      dailyData: Object.keys(dailyData).length,
+      globalInbox: globalInbox?.length || 0,
+      completedInbox: Object.keys(completedInbox).length,
+      energyLevels: Object.keys(energyLevels).length,
+      shopItems: shopItems?.length || 0,
+      templates: templates?.length || 0,
+      tokenUsage: Object.keys(tokenUsage).length,
+      globalGoals: globalGoals?.length || 0,
+      settings: !!settings,
+    });
+
     return { dailyData, gameState, globalInbox, completedInbox, energyLevels, shopItems, waifuState, templates, tokenUsage, globalGoals, settings };
   } catch (error) {
     console.error('Failed to fetch data from Firebase:', error);
+    addSyncLog('firebase', 'error', 'Failed to fetch initial data from Firebase', undefined, error as Error);
     throw error;
   }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { DEFAULT_BINGO_CELLS, SETTING_DEFAULTS } from '@/shared/constants/defaults';
 import type { BingoCellConfig, BingoProgress } from '@/shared/types/domain';
@@ -11,9 +11,10 @@ import { db } from '@/data/db/dexieClient';
 interface BingoModalProps {
     open: boolean;
     onClose: () => void;
-    cells?: BingoCellConfig[];
+    cells?: readonly BingoCellConfig[];
     maxLines?: number;
     lineRewardXP?: number;
+    initialProgress?: BingoProgress | null;
     onProgressChange?: (progress: BingoProgress) => void;
 }
 
@@ -31,7 +32,7 @@ const LINE_INDEXES: number[][] = [
 
 const LINE_LABELS = ['Row 1', 'Row 2', 'Row 3', 'Col 1', 'Col 2', 'Col 3', 'Diag ↘', 'Diag ↙'];
 
-const seededShuffle = (list: BingoCellConfig[], seedStr: string) => {
+const seededShuffle = (list: readonly BingoCellConfig[], seedStr: string) => {
     let seed = 0;
     for (let i = 0; i < seedStr.length; i++) {
         seed = (seed << 5) - seed + seedStr.charCodeAt(i);
@@ -46,19 +47,19 @@ const seededShuffle = (list: BingoCellConfig[], seedStr: string) => {
     return arr;
 };
 
-export function BingoModal({ open, onClose, cells, maxLines = SETTING_DEFAULTS.bingoMaxLines, lineRewardXP = SETTING_DEFAULTS.bingoLineRewardXP, onProgressChange }: BingoModalProps) {
+export function BingoModal({ open, onClose, cells, maxLines = SETTING_DEFAULTS.bingoMaxLines, lineRewardXP = SETTING_DEFAULTS.bingoLineRewardXP, initialProgress, onProgressChange }: BingoModalProps) {
     const baseCells = useMemo(() => (cells && cells.length === 9 ? cells : DEFAULT_BINGO_CELLS), [cells]);
     const today = getLocalDate();
     const displayCells = useMemo(() => (baseCells && baseCells.length === 9 ? seededShuffle(baseCells, today) : []), [baseCells, today]);
     const addXP = useGameStateStore(state => state.addXP);
 
-    const [progress, setProgress] = useState<BingoProgress>({
+    const [progress, setProgress] = useState<BingoProgress>(() => initialProgress ?? {
         date: today,
         completedCells: [],
         completedLines: [],
     });
     const [recentLines, setRecentLines] = useState<number[]>([]);
-    const [loaded, setLoaded] = useState(false);
+    const [loaded, setLoaded] = useState(!!initialProgress);
 
     const storageKey = `${BINGO_PROGRESS_STORAGE_KEY}:${today}`;
     const isValidProgress = (p: any): p is BingoProgress =>
@@ -67,51 +68,87 @@ export function BingoModal({ open, onClose, cells, maxLines = SETTING_DEFAULTS.b
         Array.isArray(p.completedCells) &&
         Array.isArray(p.completedLines);
 
+    const mergeProgress = useCallback(
+        (a?: BingoProgress | null, b?: BingoProgress | null): BingoProgress | null => {
+            const valid = [a, b].filter(isValidProgress) as BingoProgress[];
+            if (valid.length === 0) return null;
+
+            const mergedCells = Array.from(new Set(valid.flatMap(p => p.completedCells)));
+            const derivedLines =
+                displayCells.length === 9
+                    ? LINE_INDEXES
+                        .map((indexes, idx) => ({ indexes, idx }))
+                        .filter(line => line.indexes.every(i => displayCells[i]?.id && mergedCells.includes(displayCells[i].id)))
+                        .map(line => line.idx)
+                    : [];
+            const mergedLines = Array.from(
+                new Set([
+                    ...valid.flatMap(p => p.completedLines),
+                    ...derivedLines,
+                ]),
+            );
+
+            return {
+                date: today,
+                completedCells: mergedCells,
+                completedLines: mergedLines,
+            };
+        },
+        [displayCells, today],
+    );
+
     // Load saved progress (daily) + fetch from Firebase
     useEffect(() => {
-        if (!open) return;
+        if (!open || loaded) return;
         let mounted = true;
+
+        const applyProgress = (value: BingoProgress) => {
+            if (!mounted) return;
+            setProgress(prev => {
+                // If user interacted before load completed, merge their changes
+                if (prev.completedCells.length > 0) {
+                    return mergeProgress(value, prev) ?? value;
+                }
+                return value;
+            });
+            setLoaded(true);
+        };
+
         (async () => {
             try {
-                const remote = await fetchFromFirebase<BingoProgress>(bingoProgressStrategy, today);
-                if (mounted && isValidProgress(remote)) {
-                    setProgress(remote);
-                    return;
-                }
+                const [remote, stored] = await Promise.all([
+                    fetchFromFirebase<BingoProgress>(bingoProgressStrategy, today),
+                    db.systemState.get(storageKey).catch(error => {
+                        console.error('Failed to load bingo progress from Dexie:', error);
+                        return undefined;
+                    }),
+                ]);
+
+                const localValue = stored?.value as BingoProgress | undefined;
+                const merged = mergeProgress(remote, localValue);
+                applyProgress(merged ?? { date: today, completedCells: [], completedLines: [] });
             } catch (error) {
                 console.error('Failed to fetch bingo progress:', error);
-            }
-            try {
-                const stored = await db.systemState.get(storageKey);
-                const value = stored?.value as BingoProgress | undefined;
-                if (mounted && isValidProgress(value)) {
-                    setProgress(value);
-                    return;
-                }
-            } catch (error) {
-                console.error('Failed to load bingo progress from Dexie:', error);
-            }
-            if (mounted) {
-                setProgress({ date: today, completedCells: [], completedLines: [] });
-            }
-            if (mounted) {
-                setLoaded(true);
+                applyProgress({ date: today, completedCells: [], completedLines: [] });
             }
         })();
 
         // Live updates from Firebase while open
-        const unsubscribe = listenToFirebase<BingoProgress>(bingoProgressStrategy, (remote) => {
-            if (isValidProgress(remote)) {
-                setProgress(remote);
+        const unsubscribe = listenToFirebase<BingoProgress>(
+            bingoProgressStrategy,
+            (remote) => {
+                if (!mounted || !isValidProgress(remote)) return;
+                setProgress(prev => mergeProgress(remote, prev) ?? prev);
                 setLoaded(true);
-            }
-        }, today);
+            },
+            today,
+        );
 
         return () => {
             mounted = false;
             unsubscribe?.();
         };
-    }, [open, today, storageKey]);
+    }, [open, loaded, today, storageKey, mergeProgress]);
 
     // ESC로 모달 닫기
     useEffect(() => {

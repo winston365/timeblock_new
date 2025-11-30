@@ -62,6 +62,9 @@ export function FocusView({
     const [isMusicLoading, setIsMusicLoading] = useState(false);
     const [isMusicPlaying, setIsMusicPlaying] = useState(false);
     const [loopMode, setLoopMode] = useState<'track' | 'folder'>('folder');
+    const [musicVolume, setMusicVolume] = useState(0.6);
+    const musicVolumeRef = useRef(musicVolume);
+    const loopModeRef = useRef<'track' | 'folder'>(loopMode);
     const lastSavedMemoRef = useRef<{ taskId: string | null; memo: string }>({ taskId: null, memo: '' });
     // 시간/작업 계산 (상단에서 정의하여 TDZ 회피)
     const nowDate = useMemo(() => new Date(now), [now]);
@@ -242,9 +245,10 @@ export function FocusView({
             const audio = audioRef.current || new Audio();
             audioRef.current = audio;
             audio.src = musicTracks[nextIndex].url;
-            audio.loop = loopMode === 'track';
+            audio.volume = musicVolumeRef.current;
+            audio.loop = loopModeRef.current === 'track';
             audio.onended = () => {
-                if (loopMode === 'folder') {
+                if (loopModeRef.current === 'folder') {
                     handleNextRandom();
                 }
             };
@@ -256,7 +260,7 @@ export function FocusView({
                     toast.error('음악을 재생할 수 없습니다.');
                 });
         },
-        [currentTrackIndex, loopMode, musicTracks]
+        [currentTrackIndex, musicTracks]
     );
 
     const handleTogglePlay = useCallback(() => {
@@ -271,6 +275,8 @@ export function FocusView({
             return;
         }
         if (audio && currentTrackIndex !== null) {
+            audio.volume = musicVolumeRef.current;
+            audio.loop = loopModeRef.current === 'track';
             audio.play().then(() => setIsMusicPlaying(true)).catch(() => toast.error('음악을 재생할 수 없습니다.'));
         } else {
             handleNextRandom(false);
@@ -279,10 +285,26 @@ export function FocusView({
 
     const handleLoopModeChange = useCallback((mode: 'track' | 'folder') => {
         setLoopMode(mode);
-        if (audioRef.current) {
-            audioRef.current.loop = mode === 'track';
-        }
     }, []);
+
+    useEffect(() => {
+        loopModeRef.current = loopMode;
+        if (audioRef.current) {
+            audioRef.current.loop = loopMode === 'track';
+            audioRef.current.onended = () => {
+                if (loopModeRef.current === 'folder') {
+                    handleNextRandom();
+                }
+            };
+        }
+    }, [loopMode, handleNextRandom]);
+
+    useEffect(() => {
+        musicVolumeRef.current = musicVolume;
+        if (audioRef.current) {
+            audioRef.current.volume = musicVolume;
+        }
+    }, [musicVolume]);
 
     useEffect(() => {
         stopMusic();
@@ -623,6 +645,23 @@ export function FocusView({
                                     >
                                         🔁 폴더 반복
                                     </button>
+                                </div>
+                                <div className="flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2">
+                                    <span className="text-xs text-[var(--color-text-tertiary)]">🔊 볼륨</span>
+                                    <input
+                                        type="range"
+                                        min={0}
+                                        max={1}
+                                        step={0.01}
+                                        value={musicVolume}
+                                        onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                                        className="h-2 w-32 cursor-pointer appearance-none rounded-full bg-gradient-to-r from-emerald-400 via-sky-400 to-indigo-500"
+                                        style={{
+                                            accentColor: 'var(--color-primary)',
+                                        }}
+                                        aria-label="음악 볼륨"
+                                    />
+                                    <span className="text-xs font-medium text-[var(--color-text-secondary)] w-10 text-right">{Math.round(musicVolume * 100)}%</span>
                                 </div>
                                 <div className="ml-auto text-xs text-[var(--color-text-tertiary)]">
                                     {isMusicLoading && '불러오는 중...'}

@@ -22,6 +22,13 @@ import path from 'path';
 const isDev = process.env.NODE_ENV === 'development';
 const VITE_DEV_SERVER_URL = 'http://localhost:5173';
 
+// 개발용 별도 userData 경로 (캐시/IndexedDB 충돌 방지)
+if (isDev) {
+  const devUserDataPath = path.join(app.getPath('appData'), 'timeblockplanner-dev');
+  app.setPath('userData', devUserDataPath);
+  console.log('[Paths] userData set to', devUserDataPath);
+}
+
 // 런타임 에셋 경로 (개발/프로덕션 대응)
 function getAssetPath(fileName: string): string {
   const prodPath = path.join(process.resourcesPath, fileName);
@@ -31,6 +38,11 @@ function getAssetPath(fileName: string): string {
   const devPath = path.join(__dirname, '../resources', fileName);
   if (fs.existsSync(devPath)) {
     return devPath;
+  }
+  // 개발 환경에서 dist-electron/resources가 없을 때를 대비한 프로젝트 경로 폴백
+  const projectPath = path.join(process.cwd(), 'electron', 'resources', fileName);
+  if (fs.existsSync(projectPath)) {
+    return projectPath;
   }
   // 최악의 경우 생산 경로 반환 (존재하지 않더라도 기본값)
   return prodPath;

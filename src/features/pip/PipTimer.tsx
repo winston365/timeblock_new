@@ -77,6 +77,7 @@ export default function PipTimer() {
                 : '';
 
     const isLongTitle = (state.currentTaskTitle?.length ?? 0) > 18;
+    const marqueeFadeClass = isDarkTheme ? 'from-black/70 via-black/30' : 'from-white via-white/70';
     const expectedEndLabel = formatClock(state.expectedEndTime);
     const nextTaskLabel = state.status === 'ready' ? '다음 작업 없음' : (state.nextTaskTitle || '다음 작업 없음');
     const breakSeconds = state.breakRemainingSeconds ?? (status === 'break' ? state.remainingTime : null);
@@ -152,14 +153,23 @@ export default function PipTimer() {
                         <div className="flex flex-col items-center gap-1 text-white">
                             <div className="text-[10px] uppercase tracking-[0.08em] text-white/70">현재 작업</div>
                             {state.currentTaskTitle && (
-                                <div className="max-w-full overflow-hidden text-center text-[15px] font-extrabold drop-shadow-sm" title={state.currentTaskTitle}>
-                                    <div
-                                        className={`flex items-center justify-center gap-3 whitespace-nowrap ${isLongTitle ? 'animate-[pip-marquee_10s_linear_infinite]' : 'truncate'}`}
-                                    >
-                                        <span>{state.currentTaskTitle}</span>
-                                        {isLongTitle && <span>{state.currentTaskTitle}</span>}
-                                    </div>
-                                </div>
+                                <>
+                                    {!isLongTitle && (
+                                        <div className="max-w-full truncate text-center text-[15px] font-extrabold drop-shadow-sm" title={state.currentTaskTitle}>
+                                            {state.currentTaskTitle}
+                                        </div>
+                                    )}
+                                    {isLongTitle && (
+                                        <div className="relative w-full max-w-full overflow-hidden text-center text-[15px] font-extrabold drop-shadow-sm" title={state.currentTaskTitle}>
+                                            <div className={`pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r to-transparent ${marqueeFadeClass}`} />
+                                            <div className={`pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l to-transparent ${marqueeFadeClass}`} />
+                                            <div className="flex w-max animate-[pip-marquee_12s_linear_infinite] whitespace-nowrap">
+                                                <span className="flex flex-none items-center justify-center px-4">{state.currentTaskTitle}</span>
+                                                <span className="flex flex-none items-center justify-center px-4">{state.currentTaskTitle}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                         <div
@@ -240,27 +250,11 @@ export default function PipTimer() {
                         </div>
 
                         {/* 시간 및 상태 */}
-                        <div className="flex flex-col items-start overflow-hidden">
+                        <div className="flex w-full flex-col items-start overflow-hidden">
                             <div className="text-[54px] font-black leading-none tracking-tight text-white drop-shadow-sm tabular-nums" aria-live="polite">
                                 {formatTime(state.remainingTime)}
                             </div>
-                            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-white/85">
-                                <span
-                                    className={`rounded-full px-2 py-1 ${status === 'running'
-                                        ? 'bg-teal-500/20 text-teal-100'
-                                        : status === 'break'
-                                            ? 'bg-amber-400/25 text-amber-50'
-                                            : status === 'ready'
-                                                ? 'bg-blue-400/25 text-blue-50'
-                                                : 'bg-slate-400/25 text-slate-100'
-                                        }`}
-                                >
-                                    {status === 'running' && '집중 중'}
-                                    {status === 'paused' && '일시정지'}
-                                    {status === 'break' && '휴식 중'}
-                                    {status === 'ready' && '시작 대기'}
-                                    {status === 'idle' && '대기'}
-                                </span>
+                            <div className="mt-2 flex w-full items-center gap-2 text-[11px] font-semibold text-white/85 whitespace-nowrap">
                                 {expectedEndLabel && (
                                     <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-semibold text-white/80">
                                         예상 종료 {expectedEndLabel}

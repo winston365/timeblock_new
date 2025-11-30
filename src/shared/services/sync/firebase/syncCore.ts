@@ -245,9 +245,18 @@ export async function fetchFromFirebase<T>(
     const snapshot = await get(dataRef);
     const syncData = snapshot.val() as SyncData<T> | null;
 
-    return syncData ? syncData.data : null;
+    const data = syncData ? syncData.data : null;
+    if (data !== null && data !== undefined) {
+      addSyncLog('firebase', 'load', `${strategy.collection} fetched${key ? ` (${key})` : ''}`, {
+        key: key || 'root',
+        collection: strategy.collection,
+      });
+    }
+
+    return data;
   } catch (error) {
     console.error(`Failed to fetch ${strategy.collection} from Firebase:`, error);
+    addSyncLog('firebase', 'error', `Failed to fetch ${strategy.collection}`, { key }, error as Error);
     return null;
   }
 }
