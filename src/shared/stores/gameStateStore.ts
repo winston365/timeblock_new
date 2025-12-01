@@ -2,11 +2,14 @@
  * GameState Zustand Store
  *
  * @role 게임 상태(XP, 퀘스트)의 전역 상태 관리 및 자동 일일 초기화
- * @input XP 획득/소비, 퀘스트 진행, 날짜 변경 감지
- * @output 게임 상태, XP, 퀘스트 목록 및 관리 함수
- * @external_dependencies
+ * @responsibilities
+ *   - 게임 상태 로드 (자동 날짜 변경 감지 및 일일 초기화)
+ *   - XP 획득/소비 관리
+ *   - 퀘스트 진행도 업데이트
+ *   - 인벤토리 아이템 추가/사용
+ * @key_dependencies
  *   - zustand: 전역 상태 관리 라이브러리
- *   - repositories: 게임 상태, XP, 퀘스트 데이터 레포지토리
+ *   - gameStateRepository: 게임 상태 데이터 영속성 관리
  *   - utils: 날짜 유틸리티
  */
 
@@ -62,26 +65,42 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
   loading: false,
   error: null,
 
-  // 데이터 로드 (자동 날짜 확인)
+  /**
+   * 게임 상태 데이터 로드 (자동 날짜 확인)
+   *
+   * @returns {Promise<void>}
+   * @throws {Error} 로드 실패 시
+   * @sideEffects
+   *   - 날짜가 변경되었으면 자동으로 일일 초기화 수행
+   *   - 상태 업데이트
+   */
   loadData: async () => {
     try {
       set({ loading: true, error: null });
-      let data = await loadGameState();
+      let gameStateData = await loadGameState();
 
       // 날짜가 바뀌었는지 확인
       const today = getLocalDate();
-      if (data.lastLogin !== today) {
-        data = await initializeNewDayInRepo();
+      if (gameStateData.lastLogin !== today) {
+        gameStateData = await initializeNewDayInRepo();
       }
 
-      set({ gameState: data, loading: false });
+      set({ gameState: gameStateData, loading: false });
     } catch (err) {
       console.error('[GameStateStore] Failed to load game state:', err);
       set({ error: err as Error, loading: false });
     }
   },
 
-  // XP 추가
+  /**
+   * XP 추가
+   *
+   * @param {number} amount - 추가할 XP 양 (음수 가능)
+   * @param {string} [blockId] - 관련 블록 ID (선택)
+   * @param {boolean} [skipEvents] - 이벤트 처리 건너뛰기 여부 (중복 방지)
+   * @returns {Promise<void>}
+   * @throws {Error} XP 추가 실패 시
+   */
   addXP: async (amount: number, blockId?: string, skipEvents?: boolean) => {
     try {
       const result = await addXPToRepo(amount, blockId);
@@ -99,7 +118,13 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
     }
   },
 
-  // XP 소비
+  /**
+   * XP 소비
+   *
+   * @param {number} amount - 소비할 XP 양
+   * @returns {Promise<void>}
+   * @throws {Error} XP 부족 또는 소비 실패 시
+   */
   spendXP: async (amount: number) => {
     try {
       const updatedState = await spendXPFromRepo(amount);
@@ -111,7 +136,12 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
     }
   },
 
-  // 일일 초기화
+  /**
+   * 일일 초기화 (dailyXP 리셋, 퀘스트 리셋)
+   *
+   * @returns {Promise<void>}
+   * @throws {Error} 초기화 실패 시
+   */
   initializeNewDay: async () => {
     try {
       const updatedState = await initializeNewDayInRepo();
@@ -123,7 +153,14 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
     }
   },
 
-  // 퀘스트 진행도 업데이트
+  /**
+   * 퀘스트 진행도 업데이트
+   *
+   * @param {string} questType - 퀘스트 유형
+   * @param {number} [amount=1] - 증가량
+   * @returns {Promise<void>}
+   * @throws {Error} 업데이트 실패 시
+   */
   updateQuestProgress: async (questType: 'complete_tasks' | 'earn_xp' | 'lock_blocks' | 'perfect_blocks' | 'prepare_tasks' | 'use_timer', amount: number = 1) => {
     try {
       const updatedState = await updateQuestProgressInRepo(questType, amount);
@@ -135,7 +172,13 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
     }
   },
 
-  // 아이템 추가
+  /**
+   * 인벤토리 아이템 추가
+   *
+   * @param {string} itemId - 아이템 ID
+   * @param {number} [amount=1] - 추가 수량
+   * @returns {Promise<void>}
+   */
   addItem: async (itemId: string, amount: number = 1) => {
     try {
       const { gameState } = get();
@@ -161,7 +204,13 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
     }
   },
 
-  // 아이템 사용
+  /**
+   * 인벤토리 아이템 사용
+   *
+   * @param {string} itemId - 아이템 ID
+   * @returns {Promise<void>}
+   * @throws {Error} 아이템 없음 또는 사용 실패 시
+   */
   useItem: async (itemId: string) => {
     try {
       const { gameState } = get();
@@ -191,12 +240,20 @@ export const useGameStateStore = create<GameStateStore>((set, get) => ({
     }
   },
 
-  // 수동 갱신 (강제 리로드)
+  /**
+   * 수동 갱신 (강제 리로드)
+   *
+   * @returns {Promise<void>}
+   */
   refresh: async () => {
     await get().loadData();
   },
 
-  // 상태 초기화
+  /**
+   * 상태 초기화
+   *
+   * @returns {void}
+   */
   reset: () => {
     set({
       gameState: null,

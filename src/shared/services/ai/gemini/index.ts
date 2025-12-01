@@ -1,21 +1,19 @@
 /**
- * Gemini API Module
+ * index.ts
  *
- * @role Google Gemini 2.5 Flash API를 사용하여 AI 대화 기능을 제공합니다.
- *       와이푸 페르소나 시스템 프롬프트를 생성하고 대화 컨텍스트를 관리합니다.
- * @input 사용자 프롬프트, 대화 히스토리, API 키, PersonaContext (게임 상태 정보)
- * @output Gemini API 응답 텍스트, 토큰 사용량 정보, 와이푸 페르소나 시스템 프롬프트
- * @external_dependencies
- *   - Google Gemini API: generativelanguage.googleapis.com (gemini-2.5-flash-preview-05-20 모델)
- *   - Fetch API: HTTP 요청 전송
- * 
+ * @fileoverview Gemini API 모듈 진입점 (Barrel Export)
+ *
+ * @role Gemini 서비스의 공개 API를 단일 진입점으로 제공
+ * @responsibilities
+ *   - 하위 모듈의 타입, 함수, 상수를 re-export
+ *   - 하위 호환성 유지를 위한 통합 인터페이스 제공
+ * @dependencies
+ *   - ./types: 타입 정의
+ *   - ./apiClient: API 호출 함수
+ *   - ./personaPrompts: 페르소나 프롬프트 생성
+ *   - ./taskFeatures: 작업 관련 AI 기능
+ *
  * @refactored 2024-11 - 모듈 분리 (./gemini/ 폴더)
- *   - types.ts: 타입 정의
- *   - apiClient.ts: API 호출 함수
- *   - personaPrompts.ts: 페르소나 프롬프트 생성
- *   - taskFeatures.ts: 작업 관련 AI 기능
- * 
- * 이 파일은 하위 호환성을 위해 모든 export를 re-export합니다.
  */
 
 // Types

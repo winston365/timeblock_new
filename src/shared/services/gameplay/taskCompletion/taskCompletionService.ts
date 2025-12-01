@@ -1,17 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * Task Completion Service
- *
- * @role 작업 완료 시 발생하는 모든 부수효과를 통합 관리
- * @responsibility
+ * @file taskCompletionService.ts
+ * @role 작업 완료 시 발생하는 모든 부수효과를 통합 관리하는 서비스
+ * @responsibilities
  *   - 작업 완료 시 필요한 모든 핸들러를 순차적으로 실행
  *   - 각 핸들러의 실행 결과를 집계하여 반환
  *   - 에러 처리 및 로깅
- *
- * @benefits
- *   - 단일 책임 원칙(SRP) 준수: 각 핸들러가 하나의 책임만 담당
- *   - 테스트 용이성: 각 핸들러를 독립적으로 테스트 가능
- *   - 확장성: 새로운 핸들러 추가가 쉬움
- *   - 유지보수성: 각 기능이 분리되어 있어 버그 수정 범위 최소화
+ * @key-dependencies
+ *   - GoalProgressHandler: 목표 진행률 업데이트
+ *   - XPRewardHandler: XP 지급
+ *   - QuestProgressHandler: 퀘스트 업데이트
+ *   - WaifuAffectionHandler: 와이푸 호감도 변경
+ *   - BlockCompletionHandler: 퍼펙트 블록 판정
  */
 
 import type {
@@ -87,8 +87,6 @@ export class TaskCompletionService {
         };
       }
 
-      console.log(`[TaskCompletionService] 🎯 Processing completion for: ${task.text}`);
-
       // 모든 핸들러 순차 실행하고 이벤트 수집
       const allEvents: import('@/shared/services/gameplay/gameState').GameStateEvent[] = [];
       for (const handler of this.handlers) {
@@ -126,8 +124,6 @@ export class TaskCompletionService {
         isPerfectBlock,
         waifuMessage,
       };
-
-      console.log(`[TaskCompletionService] ✅ Completion processed successfully:`, result);
 
       return result;
     } catch (error) {

@@ -1,10 +1,18 @@
 /**
- * waifuImageUtils
+ * @file waifuImageUtils.ts
  *
- * @role 호감도 값에 따라 적절한 와이푸 이미지를 선택하고 관리하는 유틸리티 모듈
- * @input 없음 (유틸리티 함수들만 export)
- * @output 호감도별 이미지 경로, 색상, 레이블 등을 반환하는 함수들
- * @external_dependencies
+ * @description 호감도 값에 따라 적절한 와이푸 이미지를 선택하고 관리하는 유틸리티 모듈
+ *
+ * @role 와이푸 이미지 경로 및 호감도 관리 유틸리티
+ *
+ * @responsibilities
+ *   - 호감도 값을 6단계 티어로 분류 (hostile ~ loving)
+ *   - 호감도 티어별 랜덤 이미지 선택
+ *   - 이미지 존재 여부 확인 및 캐시 관리
+ *   - 폴백 이미지 경로 제공
+ *   - 호감도별 색상/레이블 유틸리티
+ *
+ * @dependencies
  *   - Image API: 이미지 로드 가능 여부 확인
  *   - /assets/waifu/poses/: 호감도별 이미지 파일 경로
  */
@@ -116,7 +124,7 @@ export const DEFAULT_IMAGE = 'assets/waifu/default.png';
  * 호감도 값에 따라 적절한 구간을 반환합니다.
  *
  * @param affection - 호감도 (0-100)
- * @returns 호감도 구간 객체
+ * @returns 호감도 구간 객체 (min, max, name, label, mood 포함)
  */
 export function getAffectionTier(affection: number) {
   if (affection < AFFECTION_TIERS.WARY.min) return AFFECTION_TIERS.HOSTILE;
@@ -236,6 +244,8 @@ export async function checkImageExists(imagePath: string): Promise<boolean> {
 /**
  * 이미지 존재 여부를 수동으로 캐시에 설정합니다.
  * (Preloader 등에서 사용)
+ * @param imagePath - 이미지 경로
+ * @param exists - 존재 여부
  */
 export function markImageAsExisting(imagePath: string, exists: boolean) {
   existenceCache.set(imagePath, exists);
@@ -244,6 +254,7 @@ export function markImageAsExisting(imagePath: string, exists: boolean) {
 /**
  * 모든 와이푸 이미지 경로 목록을 반환합니다.
  * (Preloader 최적화용)
+ * @returns 모든 이미지 경로 배열
  */
 export function getAllWaifuImagePaths(): string[] {
   const paths: string[] = [];

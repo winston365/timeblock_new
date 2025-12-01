@@ -1,7 +1,17 @@
 /**
- * Gemini API - Persona Prompts
- * 
- * @role 와이푸 페르소나 시스템 프롬프트 생성
+ * personaPrompts.ts
+ *
+ * @fileoverview 와이푸 상담사 페르소나 프롬프트 생성
+ *
+ * @role Gemini AI의 페르소나 시스템 프롬프트 생성 담당
+ * @responsibilities
+ *   - 고정 페르소나 프롬프트(SYSTEM_PERSONA_PROMPT) 제공
+ *   - 동적 컨텍스트 기반 페르소나 생성 (호감도, XP, 작업, 에너지 등)
+ *   - 시간대별 평가 기준 및 응답 지침 구성
+ *   - 자동메시지 지침 포함
+ * @dependencies
+ *   - TIME_BLOCKS: 시간대 블록 상수
+ *   - ./types: PersonaContext 타입 정의
  */
 
 import { TIME_BLOCKS } from '@/shared/types/domain';

@@ -18,6 +18,7 @@ import { TIME_BLOCKS } from '@/shared/types/domain';
 import TaskModal from './TaskModal';
 import TimeBlock from './TimeBlock';
 import { FocusView } from './components/FocusView';
+import { WarmupPresetModal } from './components/WarmupPresetModal';
 import { useFocusModeStore } from './stores/focusModeStore';
 import { useScheduleViewStore } from './stores/scheduleViewStore';
 import { fetchFromFirebase, syncToFirebase } from '@/shared/services/sync/firebase/syncCore';
@@ -35,7 +36,7 @@ const DEFAULT_WARMUP_PRESET: WarmupPresetItem[] = [
  * 스케줄 뷰 메인 컴포넌트
  * 하루의 타임블록을 보여주고 작업 관리 기능을 제공합니다.
  *
- * @returns {JSX.Element} 스케줄 뷰 UI
+ * @returns 스케줄 뷰 UI (타임블록 목록, 작업 모달, 집중 모드, 점화 오버레이 포함)
  */
 export default function ScheduleView() {
   const {
@@ -56,7 +57,6 @@ export default function ScheduleView() {
     showPastBlocks, 
     setShowPastBlocks, 
     isWarmupModalOpen, 
-    openWarmupModal, 
     closeWarmupModal 
   } = useScheduleViewStore();
   const { settings, loadData: loadSettingsData } = useSettingsStore();
@@ -141,6 +141,7 @@ export default function ScheduleView() {
     }, 30 * 1000);
 
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dailyData, warmupPreset]);
 
   const getCurrentBlockId = (): TimeBlockId => {
@@ -347,7 +348,8 @@ export default function ScheduleView() {
     }
   };
 
-  const handleToggleFocusMode = () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _handleToggleFocusMode = () => {
     if (!currentBlockId) {
       alert('현재 진행 중인 타임블록이 있을 때만 켤 수 있어.');
       return;
@@ -406,10 +408,10 @@ export default function ScheduleView() {
     const targetHour = hourSlot ?? targetBlock?.start;
     if (!targetBlock || targetHour === undefined) return;
 
-    for (const item of preset) {
-      const newTask = createNewTask(item.text, {
-        baseDuration: item.baseDuration,
-        resistance: item.resistance,
+    for (const warmupItem of preset) {
+      const newTask = createNewTask(warmupItem.text, {
+        baseDuration: warmupItem.baseDuration,
+        resistance: warmupItem.resistance,
         timeBlock: blockId,
         hourSlot: targetHour,
       });
@@ -417,7 +419,8 @@ export default function ScheduleView() {
     }
   };
 
-  const handleManualWarmup = () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _handleManualWarmup = () => {
     const target = getNextWarmupTarget(currentHour);
     if (!target) return;
     insertWarmupTasks(target.blockId, target.hourSlot);
@@ -567,141 +570,6 @@ export default function ScheduleView() {
       >
         🔥
       </button>
-    </div>
-  );
-}
-
-interface WarmupPresetModalProps {
-  preset: WarmupPresetItem[];
-  onSave: (preset: WarmupPresetItem[]) => void;
-  onApply: (preset: WarmupPresetItem[]) => void;
-  onClose: () => void;
-}
-
-function WarmupPresetModal({ preset, onSave, onApply, onClose }: WarmupPresetModalProps) {
-  const [draft, setDraft] = useState<WarmupPresetItem[]>(preset);
-
-  const handleChange = (index: number, field: keyof WarmupPresetItem, value: string) => {
-    setDraft(prev =>
-      prev.map((item, i) =>
-        i === index
-          ? {
-            ...item,
-            [field]: field === 'baseDuration' ? Math.max(1, Number(value) || 1) : value,
-          }
-          : item,
-      ),
-    );
-  };
-
-  const handleAddRow = () => {
-    setDraft(prev => [...prev, { text: '', baseDuration: 5, resistance: 'low' }]);
-  };
-
-  const handleRemoveRow = (index: number) => {
-    setDraft(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSave = () => onSave(draft.filter(item => item.text.trim()));
-  const handleApply = () => onApply(draft.filter(item => item.text.trim()));
-
-  return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 px-4 py-8">
-      <div className="w-full max-w-xl rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-xl">
-        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
-          <div>
-            <h3 className="text-lg font-semibold text-[var(--color-text)]">워밍업 세트 설정</h3>
-            <p className="text-xs text-[var(--color-text-tertiary)]">
-              자주 쓸 3개 내외의 짧은 작업을 정리해두고 필요할 때 바로 넣어.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-9 w-9 rounded-full text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
-          <div className="flex flex-col gap-3">
-            {draft.map((item, index) => (
-              <div
-                key={index}
-                className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2"
-              >
-                <span className="text-xs text-[var(--color-text-tertiary)]">#{index + 1}</span>
-                <input
-                  type="text"
-                  value={item.text}
-                  onChange={e => handleChange(index, 'text', e.target.value)}
-                  placeholder="예: 책상 정리"
-                  className="min-w-[140px] flex-1 rounded-lg border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm text-[var(--color-text)] focus:border-[var(--color-primary)]"
-                />
-                <select
-                  value={item.baseDuration}
-                  onChange={e => handleChange(index, 'baseDuration', e.target.value)}
-                  className="rounded-lg border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm text-[var(--color-text)] focus:border-[var(--color-primary)]"
-                >
-                  {[5, 10, 15, 20, 25, 30].map(min => (
-                    <option key={min} value={min}>
-                      {min}분
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={item.resistance}
-                  onChange={e => handleChange(index, 'resistance', e.target.value)}
-                  className="rounded-lg border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm text-[var(--color-text)] focus:border-[var(--color-primary)]"
-                >
-                  <option value="low">저항 낮음</option>
-                  <option value="medium">중간</option>
-                  <option value="high">높음</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveRow(index)}
-                  className="rounded-full px-2 py-1 text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]"
-                >
-                  삭제
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={handleAddRow}
-              className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-            >
-              + 행 추가
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-2 border-t border-[var(--color-border)] bg-[var(--color-bg-surface)] px-5 py-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-text)]"
-          >
-            닫기
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-          >
-            저장
-          </button>
-          <button
-            type="button"
-            onClick={handleApply}
-            className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(0,0,0,0.25)] hover:opacity-90"
-          >
-            다음 블록에 적용
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

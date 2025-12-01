@@ -1,7 +1,23 @@
+/**
+ * @file StatsTab.tsx
+ * @role 통계 탭 컴포넌트 - XP 및 타임블록별 성과 시각화
+ * @responsibilities
+ *   - 최근 5일 XP 히스토리 바 차트 렌더링
+ *   - 5일간 타임블록별 XP 추이 테이블 렌더링
+ *   - 오늘 타임블록별 XP 프로그레스 바 렌더링
+ *   - 게임 상태 요약 카드 렌더링
+ * @dependencies useGameState 훅, TIME_BLOCKS 상수
+ */
+
 import { useGameState } from '@/shared/hooks';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import { getLocalDate } from '@/shared/lib/utils';
 
+/**
+ * 통계 탭 메인 컴포넌트
+ * 사용자의 XP 흐름과 타임블록별 성과를 시각화합니다.
+ * @returns {JSX.Element} 통계 탭 UI
+ */
 export default function StatsTab() {
   const { gameState, loading } = useGameState();
 

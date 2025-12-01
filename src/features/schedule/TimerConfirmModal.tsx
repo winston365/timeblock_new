@@ -13,6 +13,13 @@ interface TimerConfirmModalProps {
   onConfirm: (timerUsed: boolean) => void;
 }
 
+/**
+ * 타이머 사용 여부를 확인하는 모달 컴포넌트
+ * @param props - 모달 프로퍼티
+ * @param props.taskName - 완료한 작업의 이름
+ * @param props.onConfirm - 타이머 사용 여부를 전달하는 콜백 함수
+ * @returns 타이머 사용 확인 모달 UI
+ */
 export function TimerConfirmModal({ taskName, onConfirm }: TimerConfirmModalProps) {
   const handleOverlayClick = () => {
     onConfirm(false);

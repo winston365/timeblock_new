@@ -1,3 +1,13 @@
+/**
+ * @file BreakView.tsx
+ * @role 집중 세션 사이의 휴식 시간을 관리하는 뷰 컴포넌트
+ * @responsibilities
+ *   - 휴식 타이머 카운트다운 표시
+ *   - 원형 프로그레스 애니메이션 렌더링
+ *   - 휴식 건너뛰기 기능 제공
+ * @dependencies react, framer-motion
+ */
+
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
@@ -6,6 +16,13 @@ interface BreakViewProps {
     onFinish: () => void;
 }
 
+/**
+ * 집중 세션 사이의 휴식 시간을 관리하는 뷰 컴포넌트
+ * @param props - 뷰 프로퍼티
+ * @param props.duration - 휴식 시간(초), 기본값 60초
+ * @param props.onFinish - 휴식 완료 시 호출되는 콜백 함수
+ * @returns 휴식 타이머 UI
+ */
 export function BreakView({ duration = 60, onFinish }: BreakViewProps) {
     const [timeLeft, setTimeLeft] = useState(duration);
 
@@ -21,8 +38,6 @@ export function BreakView({ duration = 60, onFinish }: BreakViewProps) {
 
         return () => clearInterval(timer);
     }, [timeLeft, onFinish]);
-
-    const progress = ((duration - timeLeft) / duration) * 100;
 
     return (
         <motion.div

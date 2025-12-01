@@ -1,13 +1,18 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Inbox Zustand Store
  *
- * @role 인박스 작업 상태 관리
- * @input 인박스 작업 CRUD 요청
- * @output 인박스 작업 상태 및 관리 함수
- * @external_dependencies
- *   - zustand: 전역 상태 관리
- *   - inboxRepository: 데이터 영속성 관리
+ * @role 인박스(Global Inbox) 작업 상태 관리
+ * @responsibilities
+ *   - 인박스 작업 로드/저장
+ *   - 인박스 작업 CRUD (추가, 수정, 삭제)
+ *   - 인박스 작업 완료 토글 (XP/퀘스트 파이프라인 연동)
+ *   - TimeBlock 설정 시 dailyData로 자동 이동
+ * @key_dependencies
+ *   - zustand: 전역 상태 관리 라이브러리
+ *   - inboxRepository: 인박스 데이터 영속성 관리
  *   - eventBus: Store 간 통신 (순환 의존성 해소)
+ *   - taskCompletionService: 작업 완료 파이프라인
  */
 
 import { create } from 'zustand';
@@ -41,13 +46,31 @@ interface InboxStore {
 }
 
 /**
- * 인박스 상태 스토어
+ * 인박스 상태 Zustand 스토어
+ *
+ * @returns {InboxStore} 인박스 상태 및 관리 함수
+ * @sideEffects
+ *   - IndexedDB에 인박스 작업 저장
+ *   - 작업 완료 시 XP, 퀘스트, 와이푸 호감도 업데이트
+ *
+ * @example
+ * ```tsx
+ * const { inboxTasks, addTask, toggleTaskCompletion } = useInboxStore();
+ * await addTask({ id: '1', text: '작업', completed: false });
+ * await toggleTaskCompletion('1');
+ * ```
  */
 export const useInboxStore = create<InboxStore>((set, get) => ({
     inboxTasks: [],
     loading: false,
     error: null,
 
+    /**
+     * 인박스 작업 데이터 로드
+     *
+     * @returns {Promise<void>}
+     * @throws {Error} 로드 실패 시
+     */
     loadData: async () => {
         set({ loading: true, error: null });
         try {
@@ -61,6 +84,13 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
         }
     },
 
+    /**
+     * 인박스에 작업 추가
+     *
+     * @param {Task} task - 추가할 작업
+     * @returns {Promise<void>}
+     * @throws {Error} 추가 실패 시
+     */
     addTask: async (task: Task) => {
         set({ loading: true, error: null });
         try {
@@ -76,6 +106,16 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
         }
     },
 
+    /**
+     * 인박스 작업 업데이트
+     *
+     * @param {string} taskId - 업데이트할 작업 ID
+     * @param {Partial<Task>} updates - 업데이트할 필드
+     * @returns {Promise<void>}
+     * @throws {Error} 업데이트 실패 시
+     * @sideEffects
+     *   - timeBlock 설정 시 dailyData로 자동 이동
+     */
     updateTask: async (taskId: string, updates: Partial<Task>) => {
         set({ loading: true, error: null });
         try {
@@ -97,6 +137,13 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
         }
     },
 
+    /**
+     * 인박스 작업 삭제
+     *
+     * @param {string} taskId - 삭제할 작업 ID
+     * @returns {Promise<void>}
+     * @throws {Error} 삭제 실패 시
+     */
     deleteTask: async (taskId: string) => {
         set({ loading: true, error: null });
         try {
@@ -109,6 +156,16 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
         }
     },
 
+    /**
+     * 인박스 작업 완료 토글
+     *
+     * @param {string} taskId - 토글할 작업 ID
+     * @returns {Promise<void>}
+     * @throws {Error} 토글 실패 시
+     * @sideEffects
+     *   - 완료 시 XP/퀘스트/와이푸 호감도 업데이트
+     *   - 완료된 작업은 completedInbox로 이동
+     */
     toggleTaskCompletion: async (taskId: string) => {
         set({ loading: true, error: null });
         try {
@@ -145,10 +202,6 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
                 }
 
                 // 🎉 Event Bus: task:completed 이벤트 발행
-                console.log('[InboxStore] Emitting task:completed event:', {
-                    taskId: updatedTask.id,
-                    xpEarned: result?.xpEarned || 0,
-                });
                 eventBus.emit('task:completed', {
                     taskId: updatedTask.id,
                     xpEarned: result?.xpEarned || 0,
@@ -180,10 +233,20 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
         }
     },
 
+    /**
+     * 수동 갱신 (강제 리로드)
+     *
+     * @returns {Promise<void>}
+     */
     refresh: async () => {
         await get().loadData();
     },
 
+    /**
+     * 상태 초기화
+     *
+     * @returns {void}
+     */
     reset: () => {
         set({ inboxTasks: [], loading: false, error: null });
     },

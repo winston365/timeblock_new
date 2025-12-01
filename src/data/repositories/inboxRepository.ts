@@ -211,6 +211,9 @@ export async function toggleInboxTaskCompletion(taskId: string): Promise<Task> {
       wasInGlobalInbox = false;
     }
 
+    // wasInGlobalInbox는 향후 로직에서 활용 가능 (현재는 미사용)
+    void wasInGlobalInbox;
+
     if (!task) {
       throw new Error(`Inbox task not found: ${taskId}`);
     }

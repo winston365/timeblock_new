@@ -1,15 +1,26 @@
 /**
  * @file breakdownStore.ts
- * @role AI 작업 세분화 상태 관리 Zustand 스토어
- * @input 작업 데이터, API 키, 호감도
- * @output 세분화 모달 상태 (isOpen, isLoading, breakdownText), 트리거 함수
- * @dependencies zustand, generateTaskBreakdown
+ * 
+ * Role: AI 작업 세분화 상태를 관리하는 Zustand 스토어
+ * 
+ * Responsibilities:
+ * - 세분화 모달의 열림/닫힘 상태 관리
+ * - AI 세분화 요청 트리거 및 로딩 상태 관리
+ * - AbortController를 통한 요청 취소 지원
+ * - 세분화 결과 텍스트 저장
+ * 
+ * Key Dependencies:
+ * - zustand: 상태 관리 라이브러리
+ * - generateTaskBreakdown: AI 세분화 API 호출 함수
  */
 
 import { create } from 'zustand';
 import { Task } from '@/shared/types/domain';
 import { generateTaskBreakdown } from '@/shared/services/ai/geminiApi';
 
+/**
+ * AI 작업 세분화 스토어 상태 인터페이스
+ */
 interface BreakdownState {
     isOpen: boolean;
     isLoading: boolean;
@@ -25,6 +36,12 @@ interface BreakdownState {
     setBreakdownText: (text: string) => void;
 }
 
+/**
+ * AI 작업 세분화 상태 관리 훅
+ * 세분화 모달의 상태 및 AI 요청을 관리합니다.
+ * 
+ * @returns {BreakdownState} 세분화 상태 및 액션 함수들
+ */
 export const useTaskBreakdownStore = create<BreakdownState>((set, get) => ({
     isOpen: false,
     isLoading: false,

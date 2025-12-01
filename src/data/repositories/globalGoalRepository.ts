@@ -34,11 +34,11 @@ import { generateId } from '@/shared/lib/utils';
 export async function loadGlobalGoals(): Promise<DailyGoal[]> {
   try {
     // 1. IndexedDB에서 조회
-    const goals = await db.globalGoals.orderBy('order').toArray();
+    const loadedGoals = await db.globalGoals.orderBy('order').toArray();
 
-    if (goals.length > 0) {
-      addSyncLog('dexie', 'load', `Loaded ${goals.length} global goals`);
-      return goals;
+    if (loadedGoals.length > 0) {
+      addSyncLog('dexie', 'load', `Loaded ${loadedGoals.length} global goals`);
+      return loadedGoals;
     }
 
     // 2. Firebase에서 조회 (초기 로드 또는 IndexedDB가 비어있을 때만)
@@ -179,11 +179,11 @@ export async function deleteGlobalGoal(goalId: string): Promise<void> {
     // 모든 dailyData에서 연결된 작업들의 goalId를 null로 설정
     const allDailyData = await db.dailyData.toArray();
     for (const dayData of allDailyData) {
-      const updatedTasks = dayData.tasks.map(t =>
-        t.goalId === goalId ? { ...t, goalId: null } : t
+      const updatedTasks = dayData.tasks.map(task =>
+        task.goalId === goalId ? { ...task, goalId: null } : task
       );
 
-      if (updatedTasks.some((t, i) => t.goalId !== dayData.tasks[i].goalId)) {
+      if (updatedTasks.some((task, index) => task.goalId !== dayData.tasks[index].goalId)) {
         await db.dailyData.update(dayData.date, { tasks: updatedTasks });
       }
     }
@@ -216,21 +216,21 @@ export async function recalculateGlobalGoalProgress(goalId: string, date: string
   }
 
   // 해당 날짜의 연결된 작업들
-  const linkedTasks = dailyData.tasks.filter(t => t.goalId === goalId);
+  const linkedTasks = dailyData.tasks.filter(task => task.goalId === goalId);
 
   // inbox의 연결된 작업들도 포함
   const inboxTasks = await db.globalInbox.toArray();
-  const linkedInboxTasks = inboxTasks.filter(t => t.goalId === goalId);
+  const linkedInboxTasks = inboxTasks.filter(task => task.goalId === goalId);
 
   const allLinkedTasks = [...linkedTasks, ...linkedInboxTasks];
 
   // 계획한 시간 = 모든 연결된 할일의 adjustedDuration 합계
-  const plannedMinutes = allLinkedTasks.reduce((sum, t) => sum + t.adjustedDuration, 0);
+  const plannedMinutes = allLinkedTasks.reduce((sum, task) => sum + task.adjustedDuration, 0);
 
   // 달성한 시간 = 완료된 할일의 actualDuration (없으면 adjustedDuration) 합계
   const completedMinutes = allLinkedTasks
-    .filter(t => t.completed)
-    .reduce((sum, t) => sum + (t.actualDuration || t.adjustedDuration), 0);
+    .filter(task => task.completed)
+    .reduce((sum, task) => sum + (task.actualDuration || task.adjustedDuration), 0);
 
   return updateGlobalGoal(goalId, { plannedMinutes, completedMinutes });
 }

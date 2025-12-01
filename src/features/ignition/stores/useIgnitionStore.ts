@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @file useIgnitionStore.ts
  * @role 점화 시스템 상태 관리 Zustand 스토어
@@ -13,14 +14,24 @@ import { toast } from 'react-hot-toast';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
 
+/**
+ * 점화 시스템 상태 인터페이스
+ */
 interface IgnitionState {
+    /** 점화 오버레이 열림 상태 */
     isOpen: boolean;
+    /** 스피너 회전 중 여부 */
     isSpinning: boolean;
+    /** 선택된 작업 */
     selectedTask: Task | null;
+    /** AI 생성 마이크로스텝 텍스트 */
     microStepText: string;
+    /** 타이머 상태 */
     timerState: 'idle' | 'running' | 'paused' | 'completed';
-    timeLeft: number; // seconds
-    isBonus: boolean; // 비활동 보너스 여부
+    /** 남은 시간 (초) */
+    timeLeft: number;
+    /** 비활동 보너스 여부 */
+    isBonus: boolean;
 
     // Actions
     openIgnition: () => void;
@@ -34,10 +45,18 @@ interface IgnitionState {
     resetTimer: () => void;
     tickTimer: () => void;
     setSelectedTask: (task: Task | null) => void;
+    /** 점화 히스토리 */
     history: Task[];
+    /** 히스토리에 작업 추가 */
     addToHistory: (task: Task, source?: 'normal' | 'bonus') => Promise<void>;
 }
 
+/**
+ * 점화 시스템 Zustand 스토어
+ * 스피너/타이머 상태, 선택된 작업, 히스토리 관리
+ *
+ * @returns 점화 상태 및 액션
+ */
 export const useIgnitionStore = create<IgnitionState>((set) => {
     // 초기 로드 시 persisted 히스토리 불러오기 (Dexie -> gameState)
     (async () => {

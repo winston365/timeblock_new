@@ -118,10 +118,8 @@ export default function QuickAddTask() {
 
     const initDB = async () => {
       try {
-        console.log('[QuickAdd] Initializing database...');
         await initializeDatabase();
         if (mounted) {
-          console.log('[QuickAdd] Database initialized successfully');
           setDbInitialized(true);
         }
       } catch (error) {
@@ -196,7 +194,6 @@ export default function QuickAddTask() {
 
       // 작업 저장
       await addTask(newTask);
-      console.log('✅ Task added successfully:', newTask.text);
 
       // 데스크탑 알림 (Electron API 사용)
       if (window.electronAPI) {

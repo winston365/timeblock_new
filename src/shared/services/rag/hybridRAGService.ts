@@ -1,10 +1,19 @@
 /**
  * HybridRAGService - 하이브리드 RAG 서비스
  * 
- * @role 구조화된 쿼리와 벡터 검색을 결합한 하이브리드 RAG
- *       1. 먼저 쿼리를 파싱하여 구조화된 조건 추출
- *       2. 구조화된 조건이 있으면 DirectQuery 우선 실행
- *       3. 의미 기반 검색이 필요하면 벡터 검색 보조 사용
+ * @fileoverview
+ * Role: 구조화된 쿼리와 벡터 검색을 결합한 하이브리드 RAG 검색 엔진
+ * 
+ * Responsibilities:
+ *   - 쿼리를 파싱하여 구조화된 조건 추출
+ *   - 구조화된 조건이 있으면 DirectQuery 우선 실행
+ *   - 의미 기반 검색이 필요하면 벡터 검색 보조 사용
+ *   - 검색 결과를 컨텍스트 문자열로 포맷팅
+ * 
+ * Key Dependencies:
+ *   - queryParser: 자연어 쿼리 파싱
+ *   - directQueryService: DB 직접 쿼리 실행
+ *   - ragService: 벡터 기반 의미 검색
  * 
  * @benefits
  *   - 정확한 날짜/상태 쿼리: DB 직접 조회 (100% 정확)
@@ -17,6 +26,13 @@ import { parseQuery, type ParsedQuery } from './queryParser';
 import { executeDirectQuery, executeStatsQuery, formatTasksAsContext, type QueryResult } from './directQueryService';
 import { ragService } from './ragService';
 
+/**
+ * 하이브리드 RAG 검색 결과
+ * @property context - 검색된 컨텍스트 문자열
+ * @property queryType - 쿼리 유형 (날짜, 상태, 의미 검색 등)
+ * @property source - 결과 소스 (직접 쿼리, 벡터 검색, 하이브리드)
+ * @property stats - 선택적 통계 정보
+ */
 export interface HybridRAGResult {
     context: string;
     queryType: ParsedQuery['queryType'];
@@ -41,13 +57,12 @@ class HybridRAGService {
 
     /**
      * 쿼리를 분석하고 최적의 검색 방법으로 컨텍스트 생성
+     * @param query - 사용자의 자연어 쿼리
+     * @returns 검색된 컨텍스트 문자열
      */
     public async generateContext(query: string): Promise<string> {
-        console.log(`🔍 HybridRAG: Processing query: "${query}"`);
-
         // 1. 쿼리 파싱
         const parsed = parseQuery(query);
-        console.log(`🔍 HybridRAG: Query type: ${parsed.queryType}`, parsed);
 
         // 2. 쿼리 유형에 따른 처리
         let result: HybridRAGResult;
@@ -59,7 +74,7 @@ class HybridRAGService {
                 result = await this.executeStructuredQuery(parsed);
                 break;
 
-            case 'stats_query':
+            case 'stats_query': {
                 // 통계 쿼리 → 통계 생성
                 const statsContext = await executeStatsQuery(parsed);
                 result = {
@@ -68,6 +83,7 @@ class HybridRAGService {
                     source: 'direct_query',
                 };
                 break;
+            }
 
             case 'semantic_search':
             default:
@@ -76,13 +92,13 @@ class HybridRAGService {
                 break;
         }
 
-        console.log(`🔍 HybridRAG: Result source: ${result.source}, context length: ${result.context.length}`);
-
         return result.context;
     }
 
     /**
      * 구조화된 쿼리 실행 (날짜, 상태 기반)
+     * @param parsed - 파싱된 쿼리 객체
+     * @returns 하이브리드 RAG 결과
      */
     private async executeStructuredQuery(parsed: ParsedQuery): Promise<HybridRAGResult> {
         const queryResult = await executeDirectQuery(parsed);
@@ -117,6 +133,9 @@ class HybridRAGService {
 
     /**
      * 하이브리드 검색 (직접 쿼리 + 벡터 검색 결합)
+     * @param parsed - 파싱된 쿼리 객체
+     * @param originalQuery - 원본 쿼리 문자열 (벡터 검색용)
+     * @returns 하이브리드 RAG 결과
      */
     private async executeHybridSearch(parsed: ParsedQuery, originalQuery: string): Promise<HybridRAGResult> {
         // 1. 먼저 직접 쿼리 시도 (키워드 매칭)
@@ -198,6 +217,8 @@ class HybridRAGService {
 
     /**
      * 쿼리 파싱 결과 반환 (디버깅용)
+     * @param query - 자연어 쿼리 문자열
+     * @returns 파싱된 쿼리 객체
      */
     public parseQuery(query: string): ParsedQuery {
         return parseQuery(query);
@@ -205,6 +226,8 @@ class HybridRAGService {
 
     /**
      * 직접 쿼리 실행 (디버깅용)
+     * @param parsed - 파싱된 쿼리 객체
+     * @returns 쿼리 결과
      */
     public async executeDirectQuery(parsed: ParsedQuery): Promise<QueryResult> {
         return executeDirectQuery(parsed);

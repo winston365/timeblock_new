@@ -1,7 +1,17 @@
 /**
- * Gemini API - Task AI Features
- * 
- * @role 작업 관련 AI 기능 (세분화, 이모지 추천, 마이크로 스텝)
+ * taskFeatures.ts
+ *
+ * @fileoverview 작업 관련 AI 기능 (세분화, 이모지 추천, 마이크로 스텝)
+ *
+ * @role Gemini API를 활용한 작업 지원 기능 제공
+ * @responsibilities
+ *   - 작업 세분화: 하나의 작업을 5단계 세부할일로 분할
+ *   - 이모지 추천: 작업 제목에 어울리는 이모지 제안
+ *   - 마이크로 스텝: 3분 점화(Ignition)를 위한 소행동 생성
+ *   - 토큰 사용량 추적 및 기록
+ * @dependencies
+ *   - ./apiClient: callGeminiAPI 함수
+ *   - chatHistoryRepository: addTokenUsage 토큰 로깅
  */
 
 import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
@@ -17,6 +27,7 @@ import type { TaskBreakdownParams } from './types';
  *
  * @param {TaskBreakdownParams} params - 작업 정보 (제목, 메모, 시간, 난이도, 준비상황)
  * @param {string} apiKey - Gemini API 키
+ * @param {string} model - Gemini 모델명 (선택)
  * @returns {Promise<string>} 마크다운 형식의 5단계 세부할일 목록
  * @throws {Error} API 호출 실패 시
  */
@@ -116,14 +127,15 @@ export async function generateTaskBreakdown(
  *
  * @param {string} taskText - 작업 제목
  * @param {string} apiKey - Gemini API 키
- * @returns {Promise<string>} 추천된 이모지 (1개)
+ * @param {string} [model] - Gemini 모델명 (선택, 기본값: gemini-2.5-flash)
+ * @returns {Promise<{emoji: string; tokenUsage?: TokenUsage}>} 추천된 이모지와 토큰 사용량
  */
 export async function suggestTaskEmoji(
   taskText: string,
   apiKey: string,
   model?: string
 ): Promise<{ emoji: string; tokenUsage?: { promptTokens: number; candidatesTokens: number; totalTokens: number } }> {
-  const prompt = `
+  const emojiPrompt = `
     다음 작업 제목에 가장 잘 어울리는 이모지 1개만 추천해줘.
     작업: "${taskText}"
     
@@ -134,7 +146,7 @@ export async function suggestTaskEmoji(
   `;
 
   try {
-    const { text, tokenUsage } = await callGeminiAPI(prompt, [], apiKey, model);
+    const { text, tokenUsage } = await callGeminiAPI(emojiPrompt, [], apiKey, model);
     // 이모지만 추출 (정규식 등으로 필터링 가능하지만, Gemini가 잘 따를 것으로 가정)
     return { emoji: text.trim().substring(0, 2), tokenUsage };
   } catch (error) {
@@ -149,9 +161,10 @@ export async function suggestTaskEmoji(
 
 /**
  * 3분 점화(Ignition)를 위한 마이크로 스텝 생성
- * 
+ *
  * @param {string} taskText - 작업 제목
  * @param {string} apiKey - Gemini API 키
+ * @param {string} [model] - Gemini 모델명 (선택, 기본값: gemini-2.5-flash)
  * @returns {Promise<string>} 3분 안에 할 수 있는 아주 사소한 행동 지침
  */
 export async function generateMicroStep(

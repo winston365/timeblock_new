@@ -9,7 +9,15 @@
 
 import type { InsightsTabProps } from './types';
 
-// Insights Tab Component
+/**
+ * AI 기반 생산성 인사이트 생성 및 표시 탭
+ * @param props - InsightsTabProps
+ * @param props.insight - 생성된 인사이트 텍스트
+ * @param props.isGeneratingInsight - 인사이트 생성 중 여부
+ * @param props.insightError - 에러 메시지
+ * @param props.onGenerateInsight - 인사이트 생성 핸들러
+ * @returns AI 인사이트 UI 엘리먼트
+ */
 export function InsightsTab({
     insight,
     isGeneratingInsight,

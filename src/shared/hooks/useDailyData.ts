@@ -45,6 +45,7 @@ export function useDailyData(date: string = getLocalDate()) {
     } else if (!dailyData && !loading) {
       store.loadData(date);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]); // date만 의존성으로 유지
 
   return {
@@ -62,5 +63,3 @@ export function useDailyData(date: string = getLocalDate()) {
     setHourSlotTag: store.setHourSlotTag,
   };
 }
-
-

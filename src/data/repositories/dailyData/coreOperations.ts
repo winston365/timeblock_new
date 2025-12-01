@@ -2,6 +2,15 @@
  * DailyData Repository - Core CRUD Operations
  * 
  * @role 일일 데이터(DailyData) 생성, 조회, 저장, 삭제
+ * @responsibilities
+ *   - DailyData 생성 (createEmptyDailyData)
+ *   - DailyData 로드 (loadDailyData) - IndexedDB → Firebase fallback
+ *   - DailyData 저장 (saveDailyData)
+ *   - DailyData 삭제 (deleteDailyData)
+ * @key_dependencies
+ *   - db.dailyData: Dexie IndexedDB 테이블
+ *   - Firebase: 실시간 동기화 (fetchFromFirebase)
+ *   - syncLogger: 동기화 로그
  */
 
 import { db } from '../../db/dexieClient';
@@ -53,21 +62,21 @@ export function createEmptyDailyData(): DailyData {
 export async function loadDailyData(date: string = getLocalDate()): Promise<DailyData> {
   try {
     // 1. IndexedDB에서 먼저 조회
-    const data = await db.dailyData.get(date);
+    const dailyRecord = await db.dailyData.get(date);
 
-    if (data) {
-      const { states: normalizedStates, mutated } = normalizeTimeBlockStates(data);
+    if (dailyRecord) {
+      const { states: normalizedStates, mutated } = normalizeTimeBlockStates(dailyRecord);
 
       // 데이터 유효성 검사
-      const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+      const tasks = Array.isArray(dailyRecord.tasks) ? dailyRecord.tasks : [];
       const timeBlockStates = normalizedStates || {};
-      const goals = data.goals || [];
-      const hourSlotTags = data.hourSlotTags || {};
-      const timeBlockDontDoStatus = data.timeBlockDontDoStatus || {};
+      const goals = dailyRecord.goals || [];
+      const hourSlotTags = dailyRecord.hourSlotTags || {};
+      const timeBlockDontDoStatus = dailyRecord.timeBlockDontDoStatus || {};
 
       if (mutated) {
         await db.dailyData.put({
-          ...data,
+          ...dailyRecord,
           timeBlockStates,
         });
       }
@@ -80,7 +89,7 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
         timeBlockStates,
         hourSlotTags,
         timeBlockDontDoStatus,
-        updatedAt: data.updatedAt,
+        updatedAt: dailyRecord.updatedAt,
       };
     }
 
@@ -122,7 +131,6 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
 
     // ✅ 오늘 날짜의 데이터가 처음 생성되는 경우라면, 목표 진행률 초기화
     if (date === getLocalDate()) {
-      console.log('[DailyDataRepository] New day detected, resetting goal progress...');
       // 순환 참조 방지를 위해 동적 import 사용
       const { resetDailyGoalProgress } = await import('../globalGoalRepository');
       await resetDailyGoalProgress();
@@ -153,10 +161,10 @@ export async function saveDailyData(
   const updatedAt = Date.now();
 
   // 기존 goals 유지
-  const existing = await db.dailyData.get(date);
-  const goals = existing?.goals || [];
-  const resolvedHourSlotTags = hourSlotTags ?? existing?.hourSlotTags ?? {};
-  const resolvedDontDoStatus = timeBlockDontDoStatus ?? existing?.timeBlockDontDoStatus ?? {};
+  const existingRecord = await db.dailyData.get(date);
+  const goals = existingRecord?.goals || [];
+  const resolvedHourSlotTags = hourSlotTags ?? existingRecord?.hourSlotTags ?? {};
+  const resolvedDontDoStatus = timeBlockDontDoStatus ?? existingRecord?.timeBlockDontDoStatus ?? {};
 
   // Firebase는 undefined를 허용하지 않으므로, 모든 undefined 값을 적절한 기본값으로 변환
   const sanitizedTasks = tasks.map(task => {

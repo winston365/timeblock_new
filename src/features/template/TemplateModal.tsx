@@ -1,20 +1,24 @@
 ﻿/**
- * TemplateModal
+ * @file TemplateModal.tsx
+ * @description 템플릿 추가/편집 3페이지 모달 컴포넌트
  *
- * @role 템플릿을 추가하거나 편집하는 모달 컴포넌트 (3페이지 구조)
- * @input template (Template | null), onClose (function)
- * @output 템플릿 정보 입력 필드 및 저장 버튼을 포함한 3페이지 모달 UI
- * @external_dependencies
+ * @role 반복 작업 템플릿의 생성 및 수정을 위한 다단계 입력 폼 제공
+ * @responsibilities
+ *   - 템플릿 기본 정보 입력 (이름, 메모, 소요시간, 저항감, 시간대, 카테고리)
+ *   - 방해물 대처 전략 설정 (preparation 필드)
+ *   - 반복 주기 설정 (daily, weekly, interval)
+ *   - 템플릿 저장 및 업데이트 처리
+ * @dependencies
  *   - createTemplate, updateTemplate: 템플릿 Repository
- *   - TIME_BLOCKS, RESISTANCE_LABELS: 도메인 타입 및 상수
+ *   - getTemplateCategories, addTemplateCategory: 설정 Repository
+ *   - TIME_BLOCKS: 시간대 상수
  */
 
 import { useState, useEffect } from 'react';
 import type { Template, Resistance, TimeBlockId, RecurrenceType } from '@/shared/types/domain';
 import { createTemplate, updateTemplate } from '@/data/repositories';
-import { TIME_BLOCKS, RESISTANCE_LABELS } from '@/shared/types/domain';
+import { TIME_BLOCKS } from '@/shared/types/domain';
 import { getTemplateCategories, addTemplateCategory } from '@/data/repositories/settingsRepository';
-import { MemoModal } from '@/features/schedule/MemoModal';
 
 interface TemplateModalProps {
   template: Template | null; // null이면 신규 생성
@@ -23,6 +27,11 @@ interface TemplateModalProps {
 
 /**
  * 템플릿 추가/편집 모달 컴포넌트 (3페이지 구조)
+ *
+ * @param props - 컴포넌트 속성
+ * @param props.template - 편집할 템플릿 (null이면 신규 생성)
+ * @param props.onClose - 모달 닫기 콜백 (saved: boolean)
+ * @returns 3페이지 구조의 템플릿 입력 폼 모달 UI
  */
 export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,7 +54,6 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const [newCategory, setNewCategory] = useState('');
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showMemoModal, setShowMemoModal] = useState(false);
 
   // 카테고리 목록 로드
   useEffect(() => {
@@ -80,13 +88,12 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
 
   // ESC 키로 모달 닫기
   useEffect(() => {
-    const handleKeyboard = (e: KeyboardEvent) => {
-      if (showMemoModal) return;
-      if (e.key === 'Escape') onClose(false);
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose(false);
     };
-    window.addEventListener('keydown', handleKeyboard);
-    return () => window.removeEventListener('keydown', handleKeyboard);
-  }, [onClose, showMemoModal]);
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

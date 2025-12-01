@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Firebase Synchronization Service - Facade
  *
@@ -308,20 +309,6 @@ export async function fetchDataFromFirebase(): Promise<{
 
     const settingsValue = settingsSnapshot.val();
     const settings = settingsValue?.data || null;
-
-    console.log('📊 Fetched from Firebase:', {
-      dailyData: Object.keys(dailyData).length,
-      gameState: !!gameState,
-      globalInbox: globalInbox?.length || 0,
-      completedInbox: Object.keys(completedInbox).length,
-      energyLevels: Object.keys(energyLevels).length,
-      shopItems: shopItems?.length || 0,
-      waifuState: !!waifuState,
-      templates: templates?.length || 0,
-      tokenUsage: Object.keys(tokenUsage).length,
-      globalGoals: globalGoals?.length || 0,
-      settings: !!settings,
-    });
 
     addSyncLog('firebase', 'load', 'Fetched initial data from Firebase', {
       dailyData: Object.keys(dailyData).length,

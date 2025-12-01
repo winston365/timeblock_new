@@ -1,3 +1,16 @@
+/**
+ * SyncLogModal
+ *
+ * @role Firebase/Dexie 동기화 로그 및 Gemini 토큰 사용량을 확인하는 모달
+ * @responsibilities
+ *   - 동기화 로그 필터링 (출처, 액션별)
+ *   - 토큰 사용량 집계 및 비용 계산
+ *   - 로그 초기화 기능
+ * @dependencies
+ *   - syncLogger: 동기화 로그 CRUD
+ *   - chatHistoryRepository: 토큰 사용량 조회
+ */
+
 import { useState, useEffect } from 'react';
 import {
   getSyncLogs,
@@ -27,6 +40,12 @@ const secondaryButtonClass =
 const dangerButtonClass =
   'inline-flex items-center justify-center rounded-full border border-[var(--color-danger)] px-4 py-2 text-sm font-semibold text-[var(--color-danger)] transition hover:bg-[var(--color-danger)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]/30';
 
+/**
+ * 토큰 사용량을 기반으로 예상 비용을 계산합니다.
+ * @param promptTokens - 입력 토큰 수
+ * @param candidatesTokens - 출력 토큰 수
+ * @returns 입력/출력/총 비용 객체
+ */
 function calculateTokenCost(promptTokens: number, candidatesTokens: number) {
   const inputCost = (promptTokens / 1_000_000) * PRICE_PER_MILLION_INPUT;
   const outputCost = (candidatesTokens / 1_000_000) * PRICE_PER_MILLION_OUTPUT;
@@ -34,10 +53,20 @@ function calculateTokenCost(promptTokens: number, candidatesTokens: number) {
   return { inputCost, outputCost, totalCost };
 }
 
+/**
+ * 비용을 포맷팅된 문자열로 변환합니다.
+ * @param cost - 달러 단위 비용
+ * @returns 포맷팅된 비용 문자열 (예: "$0.0012" 또는 "$1.23")
+ */
 function formatCost(cost: number) {
   return cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
 }
 
+/**
+ * 동기화 액션 타입에 해당하는 이모지 아이콘을 반환합니다.
+ * @param action - 동기화 액션 타입
+ * @returns 해당 액션의 이모지 아이콘
+ */
 const getActionIcon = (action: SyncAction) => {
   switch (action) {
     case 'save':
@@ -53,6 +82,11 @@ const getActionIcon = (action: SyncAction) => {
   }
 };
 
+/**
+ * 동기화 타입에 따른 배지 스타일 클래스를 반환합니다.
+ * @param type - 동기화 타입 (dexie 또는 firebase)
+ * @returns Tailwind CSS 클래스 문자열
+ */
 const getTypeBadgeClass = (type: SyncType) =>
   type === 'dexie'
     ? 'bg-[rgba(34,197,94,0.15)] text-[var(--color-success,#22c55e)]'
@@ -63,6 +97,13 @@ interface SyncLogModalProps {
   onClose: () => void;
 }
 
+/**
+ * 동기화 로그 및 토큰 사용량을 표시하는 모달 컴포넌트입니다.
+ * @param props - 모달 props
+ * @param props.isOpen - 모달 표시 여부
+ * @param props.onClose - 모달 닫기 콜백
+ * @returns 동기화 로그/토큰 사용량 탭이 있는 모달 UI
+ */
 export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
   const [activeTab, setActiveTab] = useState<'sync' | 'tokens'>('sync');
   const [logs, setLogs] = useState<SyncLogEntry[]>([]);

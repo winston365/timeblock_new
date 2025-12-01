@@ -1,13 +1,40 @@
+/**
+ * @file SyncErrorToast.tsx
+ * 
+ * @description
+ * Role: Firebase 동기화 실패 시 표시되는 에러 토스트 컴포넌트
+ * 
+ * Responsibilities:
+ * - 동기화 실패 메시지를 시각적으로 표시
+ * - 5초 후 자동으로 사라지는 애니메이션 처리
+ * - 재시도 및 닫기 버튼 제공
+ * 
+ * Key Dependencies:
+ * - React useState/useEffect: 가시성 및 타이머 관리
+ */
+
 import { useEffect, useState } from 'react';
 
+/** SyncErrorToast 컴포넌트의 props 인터페이스 */
 interface SyncErrorToastProps {
+  /** 표시할 에러 메시지 */
   message: string;
+  /** 토스트 닫기 콜백 */
   onClose: () => void;
+  /** 재시도 콜백 (선택) */
   onRetry?: () => void;
 }
 
 /**
- * Toast shown when Firebase sync fails. Slides out automatically after five seconds.
+ * Firebase 동기화 실패 시 표시되는 에러 토스트
+ * 
+ * 5초 후 자동으로 슬라이드 아웃되며, 재시도 및 닫기 버튼을 제공한다.
+ * 
+ * @param props - SyncErrorToast 컴포넌트 props
+ * @param props.message - 표시할 에러 메시지
+ * @param props.onClose - 토스트 닫기 콜백
+ * @param props.onRetry - 재시도 콜백 (선택)
+ * @returns 동기화 에러 토스트 React 엘리먼트
  */
 export default function SyncErrorToast({ message, onClose, onRetry }: SyncErrorToastProps) {
   const [isVisible, setIsVisible] = useState(true);

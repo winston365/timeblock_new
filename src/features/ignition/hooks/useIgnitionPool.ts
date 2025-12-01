@@ -161,6 +161,10 @@ function calculateTaskWeight(task: Task, currentBlockId: string | undefined): nu
 
 /**
  * 작업 목록에서 가중치 풀 생성
+ *
+ * @param dailyTasks - 오늘 일정의 작업 목록
+ * @param inboxTasks - 인박스 작업 목록
+ * @returns 가중치가 적용된 작업 풀 (휴식권, 꽝 포함)
  */
 export function buildWeightedPool(
   dailyTasks: Task[],
@@ -181,7 +185,7 @@ export function buildWeightedPool(
 
   // 3. 휴식권 추가
   const restTotalWeight = REST_TICKETS.reduce((sum, t) => sum + t.weight, 0);
-  let pool: WeightedTask[] = [...tasksWithWeights, ...REST_TICKETS];
+  const pool: WeightedTask[] = [...tasksWithWeights, ...REST_TICKETS];
 
   // 4. 보상 확률 30% 상한 조정 (꽝 추가)
   const taskTotalWeight = tasksWithWeights.reduce((sum, t) => sum + t.weight, 0);
@@ -212,6 +216,12 @@ export function buildWeightedPool(
 // Hook
 // ============================================================================
 
+/**
+ * 점화 스피너용 작업 풀 관리 훅
+ *
+ * @param isOpen - 점화 오버레이 열림 상태
+ * @returns 가중치 풀, 총 가중치, 정렬된 작업 목록, 새로고침 함수
+ */
 export function useIgnitionPool(isOpen: boolean): IgnitionPoolResult {
   const { dailyData } = useDailyData();
   const [inboxTasks, setInboxTasks] = useState<Task[]>([]);
@@ -234,7 +244,7 @@ export function useIgnitionPool(isOpen: boolean): IgnitionPoolResult {
     const pool = buildWeightedPool(dailyData?.tasks || [], inboxTasks);
     setPoolComputedAt(new Date());
     return pool;
-  }, [isOpen, dailyData, inboxTasks, refreshTrigger]);
+  }, [isOpen, dailyData, inboxTasks]);
 
   // 총 가중치
   const totalWeight = useMemo(() => 

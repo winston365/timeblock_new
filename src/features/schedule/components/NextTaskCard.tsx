@@ -1,12 +1,25 @@
 /**
- * NextTaskCard - Large focused task card
- * 
- * @role Display recommended task prominently with "Start Now" button
+ * @file NextTaskCard.tsx
+ * @role 다음 추천 작업 카드 컴포넌트
+ * @responsibilities
+ *   - 추천 작업을 대형 카드로 표시
+ *   - "지금 시작" 버튼 제공
+ *   - 작업 메타데이터 (소요시간, 난이도 등) 표시
+ * @dependencies
+ *   - NeonCheckbox: 체크박스 컴포넌트
  */
 
 import type { Task } from '@/shared/types/domain';
 import { NeonCheckbox } from '@/shared/components/ui/NeonCheckbox';
 
+/**
+ * NextTaskCard 컴포넌트 Props
+ * @param task - 표시할 작업 객체
+ * @param recommendationMessage - AI 추천 메시지
+ * @param onEdit - 작업 수정 핸들러
+ * @param onToggle - 작업 완료 토글 핸들러
+ * @param onStartNow - 작업 시작 핸들러
+ */
 interface NextTaskCardProps {
     task: Task;
     recommendationMessage: string;
@@ -15,6 +28,11 @@ interface NextTaskCardProps {
     onStartNow: (task: Task) => void;
 }
 
+/**
+ * 다음 추천 작업 카드 컴포넌트
+ * @param props - NextTaskCardProps
+ * @returns 추천 작업 카드 UI
+ */
 export function NextTaskCard({
     task,
     recommendationMessage,

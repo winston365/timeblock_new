@@ -1,4 +1,21 @@
-﻿import { useEffect, useState } from 'react';
+﻿/**
+ * GoalPanel.tsx
+ *
+ * @file 목표 패널 컴포넌트
+ * @description
+ *   - Role: 오늘의 목표 목록과 진행 상황을 표시하는 사이드 패널
+ *   - Responsibilities:
+ *     - 목표 목록 로드 및 표시
+ *     - 각 목표의 계획/완료 시간 진행률 시각화
+ *     - 목표와 연결된 작업 드릴다운 표시
+ *     - 목표 추가/수정/삭제 액션 제공
+ *   - Key Dependencies:
+ *     - useGoalStore: 목표 상태 관리
+ *     - useDailyDataStore: 일일 데이터(작업) 접근
+ *     - framer-motion: 애니메이션 효과
+ */
+
+import { useEffect, useState } from 'react';
 import { useGoalStore } from '@/shared/stores/goalStore';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import type { DailyGoal, Task } from '@/shared/types/domain';
@@ -15,6 +32,16 @@ interface GoalProgressCardProps {
   onDelete: () => void;
 }
 
+/**
+ * 개별 목표 진행 상황 카드 컴포넌트
+ *
+ * @param {GoalProgressCardProps} props - 카드 속성
+ * @param {DailyGoal} props.goal - 표시할 목표
+ * @param {Task[]} props.tasks - 목표와 연결된 작업 목록
+ * @param {() => void} props.onEdit - 수정 버튼 클릭 콜백
+ * @param {() => void} props.onDelete - 삭제 버튼 클릭 콜백
+ * @returns {JSX.Element} 목표 진행 카드 컴포넌트
+ */
 function GoalProgressCard({ goal, tasks, onEdit, onDelete }: GoalProgressCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -30,11 +57,11 @@ function GoalProgressCard({ goal, tasks, onEdit, onDelete }: GoalProgressCardPro
   const isCompleted = goal.completedMinutes >= goal.targetMinutes;
 
   const formatTime = (minutes: number) => {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    if (h > 0 && m > 0) return `${h}시간 ${m}분`;
-    if (h > 0) return `${h}시간`;
-    return `${m}분`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (hours > 0 && remainingMinutes > 0) return `${hours}시간 ${remainingMinutes}분`;
+    if (hours > 0) return `${hours}시간`;
+    return `${remainingMinutes}분`;
   };
 
   const accent = goal.color || '#60a5fa';
@@ -183,6 +210,13 @@ function GoalProgressCard({ goal, tasks, onEdit, onDelete }: GoalProgressCardPro
   );
 }
 
+/**
+ * 목표 패널 컴포넌트
+ *
+ * @param {GoalPanelProps} props - 패널 속성
+ * @param {(goal?: DailyGoal) => void} [props.onOpenModal] - 목표 모달 열기 콜백 (goal 전달 시 수정 모드)
+ * @returns {JSX.Element} 목표 패널 컴포넌트
+ */
 export default function GoalPanel({ onOpenModal }: GoalPanelProps) {
   const { goals, loading, loadGoals, deleteGoal } = useGoalStore();
   const { dailyData } = useDailyDataStore();
@@ -238,10 +272,8 @@ export default function GoalPanel({ onOpenModal }: GoalPanelProps) {
       ) : (
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
           {goals.map((goal) => {
-            // Debugging: Check for goalId mismatch
-            const relatedTasks = dailyData?.tasks.filter(t => {
-              // Loose comparison just in case, though types should be string
-              return String(t.goalId) === String(goal.id);
+            const relatedTasks = dailyData?.tasks.filter(task => {
+              return String(task.goalId) === String(goal.id);
             }) || [];
 
             return (

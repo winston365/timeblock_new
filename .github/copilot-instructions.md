@@ -8,7 +8,8 @@
 ## Critical Policies
 
 ### ⛔ localStorage 금지
-```typescript
+```typescript```typescript
+
 // ❌ 금지 (개발 환경에서 경고 발생)
 localStorage.setItem('key', value);
 

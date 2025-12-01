@@ -1,14 +1,20 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * DailyData Zustand Store
  *
  * @role 일일 데이터(작업, 블록 상태)의 전역 상태 관리 및 동기화 중복 방지
- * @input 날짜, 작업 CRUD 요청, 블록 상태 업데이트 요청
- * @output 일일 데이터 상태, CRUD 함수, 로딩/에러 상태
- * @external_dependencies
+ * @responsibilities
+ *   - 날짜별 일일 데이터 로드/저장 (중복 로드 방지)
+ *   - Task CRUD 및 완료 토글 (Optimistic Update 패턴)
+ *   - TimeBlock 상태 관리 (잠금/퍼펙트 블록)
+ *   - 시간대 속성 태그 및 하지않기 체크리스트 관리
+ *   - Task 완료 시 XP/퀘스트/와이푸 호감도 파이프라인 연동
+ * @key_dependencies
  *   - zustand: 전역 상태 관리 라이브러리
  *   - repositories: 작업, 블록, XP, 퀘스트, 와이푸 데이터 레포지토리
  *   - utils: 날짜 및 XP 계산 유틸리티
  *   - eventBus: Store 간 통신 (순환 의존성 해소)
+ *   - taskCompletionService: 작업 완료 파이프라인
  */
 
 import { create } from 'zustand';
@@ -22,7 +28,6 @@ import {
   toggleTaskCompletion as toggleTaskInRepo,
   updateBlockState as updateBlockStateInRepo,
 } from '@/data/repositories';
-import { recalculateGlobalGoalProgress } from '@/data/repositories';
 import { useGoalStore } from '@/shared/stores/goalStore';
 import { getLocalDate, calculateTaskXP } from '../lib/utils';
 import {
@@ -243,12 +248,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     if (!isInboxToBlockMove && !isBlockToInboxMove) {
       const optimisticTasks = updateTaskInArray(dailyData.tasks, taskId, sanitizedUpdates);
       set(createOptimisticTaskUpdate(dailyData, optimisticTasks));
-    } else {
-      console.log('[DailyDataStore] Skipping Optimistic Update for inbox ↔ timeBlock move', {
-        taskId,
-        isInboxToBlockMove,
-        isBlockToInboxMove,
-      });
     }
 
     const shouldTrackBehavior =
@@ -413,8 +412,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
           });
         }
 
-        console.log('[DailyDataStore] Task completion processed:', result);
-
         // 📊 Reality Check Trigger - 이벤트 버스로 요청 (순환 의존성 해소)
         // Only trigger for tasks with a duration > 10 mins to avoid spam
         if (updatedTask.adjustedDuration >= 10) {
@@ -428,10 +425,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         }
 
         // 🎉 Event Bus: task:completed 이벤트 발행
-        console.log('[DailyDataStore] About to emit task:completed event:', {
-          taskId: updatedTask.id,
-          xpEarned: result?.xpEarned || 0,
-        });
         eventBus.emit('task:completed', {
           taskId: updatedTask.id,
           xpEarned: result?.xpEarned || 0,
@@ -447,7 +440,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       // 🔄 Task 완료 취소 처리 - XP 회수
       if (wasCompleted && !updatedTask.completed) {
         const xpToDeduct = calculateTaskXP(updatedTask);
-        console.log('[DailyDataStore] Task uncompleted, deducting XP:', xpToDeduct);
 
         // XP 차감 (음수로 addXP 호출)
         const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
@@ -626,7 +618,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     try {
       // 이미 체크된 경우 무시 (한번만 보상)
       if (wasChecked) {
-        console.log('[DailyDataStore] Don\'t-Do item already checked, skipping');
         return;
       }
 
@@ -659,7 +650,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       }, {
         source: 'dailyDataStore.toggleDontDoItem',
       });
-      console.log(`[DailyDataStore] Don't-Do item checked, awarded ${xpReward} XP`);
     } catch (err) {
       console.error('[DailyDataStore] Failed to toggle don\'t-do item, rolling back:', err);
       // Rollback

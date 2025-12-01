@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Electron Main Process
  *
@@ -26,7 +27,6 @@ const VITE_DEV_SERVER_URL = 'http://localhost:5173';
 if (isDev) {
   const devUserDataPath = path.join(app.getPath('appData'), 'timeblockplanner-dev');
   app.setPath('userData', devUserDataPath);
-  console.log('[Paths] userData set to', devUserDataPath);
 }
 
 // 런타임 에셋 경로 (개발/프로덕션 대응)
@@ -62,7 +62,6 @@ if (!isDev) {
     owner: 'winston365',
     repo: 'timeblock_new',
   });
-  console.log('[AutoUpdater] Feed URL set to GitHub releases: winston365/timeblock_new');
 }
 
 // ============================================================================
@@ -75,6 +74,10 @@ let pipWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
 
+/**
+ * 메인 윈도우를 표시하거나 생성
+ * @returns void
+ */
 function showMainWindow(): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.setSkipTaskbar(false);
@@ -85,6 +88,10 @@ function showMainWindow(): void {
   createWindow();
 }
 
+/**
+ * 메인 윈도우를 시스템 트레이로 숨김
+ * @returns void
+ */
 function hideMainWindowToTray(): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.setSkipTaskbar(true);
@@ -94,6 +101,7 @@ function hideMainWindowToTray(): void {
 
 /**
  * 메인 윈도우 생성
+ * @returns void
  */
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -152,6 +160,7 @@ function createWindow(): void {
 
 /**
  * 퀵 애드 윈도우 생성 (글로벌 단축키용)
+ * @returns void
  */
 function createQuickAddWindow(): void {
   // 이미 윈도우가 열려있으면 포커스
@@ -203,6 +212,7 @@ function createQuickAddWindow(): void {
 
 /**
  * PiP 윈도우 생성
+ * @returns void
  */
 function createPipWindow(): void {
   if (pipWindow && !pipWindow.isDestroyed()) {
@@ -253,6 +263,7 @@ function createPipWindow(): void {
 
 /**
  * 트레이 아이콘 생성
+ * @returns void
  */
 function createTray(): void {
   if (tray) return;
@@ -281,19 +292,17 @@ function createTray(): void {
 
 /**
  * 글로벌 단축키 설정
+ * @returns void
  */
 function setupGlobalShortcuts(): void {
   // Cmd+Shift+Space (macOS) / Ctrl+Shift+Space (Windows/Linux)
   const shortcut = process.platform === 'darwin' ? 'Cmd+Shift+Space' : 'Ctrl+Shift+Space';
 
-  const registered = globalShortcut.register(shortcut, () => {
-    console.log(`[GlobalShortcut] ${shortcut} pressed - Opening Quick Add window`);
+  const isRegistered = globalShortcut.register(shortcut, () => {
     createQuickAddWindow();
   });
 
-  if (registered) {
-    console.log(`[GlobalShortcut] ${shortcut} registered successfully`);
-  } else {
+  if (!isRegistered) {
     console.error(`[GlobalShortcut] Failed to register ${shortcut}`);
   }
 }
@@ -342,7 +351,6 @@ app.on('before-quit', () => {
  */
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
-  console.log('[GlobalShortcut] All shortcuts unregistered');
 });
 
 // ============================================================================
@@ -360,7 +368,6 @@ app.on('will-quit', () => {
 function setupAutoUpdater(): void {
   // 개발 모드에서는 업데이트 비활성화
   if (isDev) {
-    console.log('[AutoUpdater] Disabled in development mode');
     return;
   }
 
@@ -369,24 +376,22 @@ function setupAutoUpdater(): void {
 
   // 업데이트 확인 가능 시
   autoUpdater.on('checking-for-update', () => {
-    console.log('[AutoUpdater] Checking for updates...');
+    // 업데이트 확인 중
   });
 
   // 업데이트 발견 시
-  autoUpdater.on('update-available', (info) => {
-    console.log('[AutoUpdater] Update available:', info.version);
+  autoUpdater.on('update-available', (updateInfo) => {
 
     dialog.showMessageBox(mainWindow!, {
       type: 'info',
       title: '업데이트 발견',
-      message: `새로운 버전(v${info.version})이 있습니다.`,
+      message: `새로운 버전(v${updateInfo.version})이 있습니다.`,
       detail: '지금 다운로드하시겠습니까?\n\n다운로드 완료 후 앱 재시작 시 자동으로 설치됩니다.',
       buttons: ['다운로드', '나중에'],
       defaultId: 0,
       cancelId: 1,
-    }).then((result) => {
-      if (result.response === 0) {
-        console.log('[AutoUpdater] Starting download...');
+    }).then((dialogResult) => {
+      if (dialogResult.response === 0) {
 
         // 다운로드 진행률 알림 카운터 리셋
         lastNotifiedPercent = 0;
@@ -411,56 +416,50 @@ function setupAutoUpdater(): void {
   });
 
   // 업데이트 없음
-  autoUpdater.on('update-not-available', (info) => {
-    console.log('[AutoUpdater] No updates available. Current version:', info.version);
+  autoUpdater.on('update-not-available', () => {
+    // 최신 버전 사용 중
   });
 
   // 다운로드 진행 중
-  autoUpdater.on('download-progress', (progressObj) => {
-    const percent = Math.round(progressObj.percent);
-    const speedMB = (progressObj.bytesPerSecond / 1024 / 1024).toFixed(2);
-    const transferredMB = (progressObj.transferred / 1024 / 1024).toFixed(2);
-    const totalMB = (progressObj.total / 1024 / 1024).toFixed(2);
-
-    const logMessage = `Download speed: ${speedMB} MB/s - Downloaded ${percent}% (${transferredMB}/${totalMB} MB)`;
-    console.log('[AutoUpdater]', logMessage);
+  autoUpdater.on('download-progress', (progressInfo) => {
+    const downloadPercent = Math.round(progressInfo.percent);
+    const downloadSpeedMB = (progressInfo.bytesPerSecond / 1024 / 1024).toFixed(2);
 
     // 메인 윈도우 프로그레스 바 업데이트 (0.0 ~ 1.0)
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.setProgressBar(progressObj.percent / 100);
+      mainWindow.setProgressBar(progressInfo.percent / 100);
     }
 
     // 25%, 50%, 75% 구간마다 알림 표시
-    if (percent >= 25 && lastNotifiedPercent < 25) {
+    if (downloadPercent >= 25 && lastNotifiedPercent < 25) {
       lastNotifiedPercent = 25;
       if (Notification.isSupported()) {
         new Notification({
           title: '업데이트 다운로드 중',
-          body: `다운로드 진행 중: 25% (${speedMB} MB/s)`,
+          body: `다운로드 진행 중: 25% (${downloadSpeedMB} MB/s)`,
         }).show();
       }
-    } else if (percent >= 50 && lastNotifiedPercent < 50) {
+    } else if (downloadPercent >= 50 && lastNotifiedPercent < 50) {
       lastNotifiedPercent = 50;
       if (Notification.isSupported()) {
         new Notification({
           title: '업데이트 다운로드 중',
-          body: `다운로드 진행 중: 50% (${speedMB} MB/s)`,
+          body: `다운로드 진행 중: 50% (${downloadSpeedMB} MB/s)`,
         }).show();
       }
-    } else if (percent >= 75 && lastNotifiedPercent < 75) {
+    } else if (downloadPercent >= 75 && lastNotifiedPercent < 75) {
       lastNotifiedPercent = 75;
       if (Notification.isSupported()) {
         new Notification({
           title: '업데이트 다운로드 중',
-          body: `다운로드 진행 중: 75% (${speedMB} MB/s)`,
+          body: `다운로드 진행 중: 75% (${downloadSpeedMB} MB/s)`,
         }).show();
       }
     }
   });
 
   // 다운로드 완료
-  autoUpdater.on('update-downloaded', (info) => {
-    console.log('[AutoUpdater] Update downloaded:', info.version);
+  autoUpdater.on('update-downloaded', (downloadedUpdateInfo) => {
 
     // 프로그레스 바 완료 표시 후 제거
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -476,20 +475,20 @@ function setupAutoUpdater(): void {
     if (Notification.isSupported()) {
       new Notification({
         title: '✅ 업데이트 다운로드 완료',
-        body: `새로운 버전(v${info.version})이 준비되었습니다.`,
+        body: `새로운 버전(v${downloadedUpdateInfo.version})이 준비되었습니다.`,
       }).show();
     }
 
     dialog.showMessageBox(mainWindow!, {
       type: 'info',
       title: '업데이트 준비 완료',
-      message: `새로운 버전(v${info.version}) 다운로드가 완료되었습니다.`,
+      message: `새로운 버전(v${downloadedUpdateInfo.version}) 다운로드가 완료되었습니다.`,
       detail: '앱을 다시 시작하여 업데이트를 설치하시겠습니까?\n\n지금 설치하지 않으면 다음 실행 시 자동으로 설치됩니다.',
       buttons: ['지금 재시작', '나중에'],
       defaultId: 0,
       cancelId: 1,
-    }).then((result) => {
-      if (result.response === 0) {
+    }).then((installDialogResult) => {
+      if (installDialogResult.response === 0) {
         // 즉시 재시작 및 설치
         autoUpdater.quitAndInstall(false, true);
       }
@@ -535,10 +534,10 @@ function setupAutoUpdater(): void {
 /**
  * Weather fetch handler (CORS 회피용)
  */
-ipcMain.handle('fetch-weather', async (_event, city: string = '서울') => {
+ipcMain.handle('fetch-weather', async (_ipcEvent, cityName: string = '서울') => {
   try {
-    const url = `https://www.google.com/search?q=${encodeURIComponent(city)}+날씨`;
-    const response = await fetch(url, {
+    const weatherSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(cityName)}+날씨`;
+    const weatherResponse = await fetch(weatherSearchUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -553,10 +552,10 @@ ipcMain.handle('fetch-weather', async (_event, city: string = '서울') => {
         'Cache-Control': 'max-age=0',
       },
     });
-    return await response.text();
-  } catch (error) {
-    console.error('[IPC] fetch-weather failed:', error);
-    throw error;
+    return await weatherResponse.text();
+  } catch (weatherFetchError) {
+    console.error('[IPC] fetch-weather failed:', weatherFetchError);
+    throw weatherFetchError;
   }
 });
 
@@ -579,19 +578,14 @@ ipcMain.handle('check-for-updates', async () => {
       };
     }
 
-    console.log('[AutoUpdater] Manual update check requested');
-    console.log('[AutoUpdater] Current version:', app.getVersion());
-    console.log('[AutoUpdater] Feed URL:', autoUpdater.getFeedURL());
+    const updateCheckResult = await autoUpdater.checkForUpdates();
 
-    const result = await autoUpdater.checkForUpdates();
-
-    if (result) {
-      console.log('[AutoUpdater] Update check result:', result);
+    if (updateCheckResult) {
       return {
         success: true,
         message: '업데이트 확인 중...',
         currentVersion: app.getVersion(),
-        updateInfo: result.updateInfo,
+        updateInfo: updateCheckResult.updateInfo,
       };
     } else {
       return {
@@ -599,14 +593,13 @@ ipcMain.handle('check-for-updates', async () => {
         message: '업데이트를 확인할 수 없습니다.',
       };
     }
-  } catch (error: any) {
-    console.error('[AutoUpdater] Manual check error:', error);
-    console.error('[AutoUpdater] Error stack:', error.stack);
+  } catch (updateCheckError: any) {
+    console.error('[AutoUpdater] Manual check error:', updateCheckError);
     return {
       success: false,
-      message: `업데이트 확인 중 오류: ${error.message}`,
-      error: error.message,
-      errorStack: error.stack,
+      message: `업데이트 확인 중 오류: ${updateCheckError.message}`,
+      error: updateCheckError.message,
+      errorStack: updateCheckError.stack,
     };
   }
 });
@@ -622,37 +615,34 @@ ipcMain.handle('close-quickadd-window', () => {
   try {
     if (quickAddWindow && !quickAddWindow.isDestroyed()) {
       quickAddWindow.close();
-      console.log('[IPC] QuickAdd window closed');
       return { success: true };
     }
     return { success: false, message: 'QuickAdd window not found' };
-  } catch (error: any) {
-    console.error('[IPC] Failed to close QuickAdd window:', error);
-    return { success: false, message: error.message };
+  } catch (closeWindowError: any) {
+    console.error('[IPC] Failed to close QuickAdd window:', closeWindowError);
+    return { success: false, message: closeWindowError.message };
   }
 });
 
 /**
  * 윈도우 알림 표시
  */
-ipcMain.handle('show-notification', (event, title: string, body: string) => {
+ipcMain.handle('show-notification', (_notificationEvent, notificationTitle: string, notificationBody: string) => {
   try {
     if (Notification.isSupported()) {
-      const notification = new Notification({
-      title,
-      body,
-      icon: getAssetPath('icon.ico'), // 앱 아이콘 사용
+      const systemNotification = new Notification({
+        title: notificationTitle,
+        body: notificationBody,
+        icon: getAssetPath('icon.ico'),
       });
-      notification.show();
-      console.log(`[Notification] Shown: ${title} - ${body}`);
+      systemNotification.show();
       return { success: true };
     } else {
-      console.warn('[Notification] Not supported on this platform');
       return { success: false, message: 'Notifications not supported' };
     }
-  } catch (error: any) {
-    console.error('[Notification] Failed to show notification:', error);
-    return { success: false, message: error.message };
+  } catch (notificationError: any) {
+    console.error('[Notification] Failed to show notification:', notificationError);
+    return { success: false, message: notificationError.message };
   }
 });
 
@@ -674,22 +664,22 @@ ipcMain.handle('close-pip', () => {
   }
 });
 
-ipcMain.handle('pip-update', (event, data) => {
+ipcMain.handle('pip-update', (_pipUpdateEvent, pipStateData) => {
   if (pipWindow && !pipWindow.isDestroyed()) {
-    pipWindow.webContents.send('pip-update-msg', data);
+    pipWindow.webContents.send('pip-update-msg', pipStateData);
   }
 });
 
 
-ipcMain.handle('pip-action', (event, action, payload) => {
-  if (action === 'toggle-always-on-top') {
+ipcMain.handle('pip-action', (_pipActionEvent, pipActionType, pipActionPayload) => {
+  if (pipActionType === 'toggle-always-on-top') {
     if (pipWindow && !pipWindow.isDestroyed()) {
-      pipWindow.setAlwaysOnTop(payload);
+      pipWindow.setAlwaysOnTop(pipActionPayload);
     }
   } else {
     // 다른 액션은 메인 윈도우로 전달
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('pip-action-msg', action, payload);
+      mainWindow.webContents.send('pip-action-msg', pipActionType, pipActionPayload);
     }
   }
 });

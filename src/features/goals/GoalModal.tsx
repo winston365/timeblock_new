@@ -1,4 +1,19 @@
-﻿import { useState, useEffect } from 'react';
+﻿/**
+ * GoalModal.tsx
+ *
+ * @file 목표 생성/수정 모달 컴포넌트
+ * @description
+ *   - Role: 사용자가 새로운 목표를 생성하거나 기존 목표를 수정할 수 있는 모달 UI 제공
+ *   - Responsibilities:
+ *     - 목표 이름, 시간, 아이콘, 색상 입력 폼 관리
+ *     - 프리셋 목표 빠른 선택 기능
+ *     - 목표 저장 (생성/수정) 처리
+ *   - Key Dependencies:
+ *     - useGoalStore: 목표 상태 관리 및 CRUD 액션
+ *     - DailyGoal: 목표 도메인 타입
+ */
+
+import { useState, useEffect } from 'react';
 import { useGoalStore } from '@/shared/stores/goalStore';
 import type { DailyGoal } from '@/shared/types/domain';
 
@@ -21,6 +36,16 @@ const GOAL_PRESETS = [
 const GOAL_ICONS = ['💡', '📚', '🧠', '📝', '🧘', '🏋️', '🧹', '🧾', '📖', '💻', '🎧', '📈', '🎨', '🎸', '🍳', '💤'];
 const GOAL_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#64748b', '#f43f5e'];
 
+/**
+ * 목표 생성/수정 모달 컴포넌트
+ *
+ * @param {GoalModalProps} props - 모달 속성
+ * @param {boolean} props.isOpen - 모달 표시 여부
+ * @param {() => void} props.onClose - 모달 닫기 콜백
+ * @param {DailyGoal} [props.goal] - 수정할 기존 목표 (없으면 생성 모드)
+ * @param {() => void} [props.onSaved] - 저장 완료 후 콜백
+ * @returns {JSX.Element | null} 모달 컴포넌트 또는 null
+ */
 export default function GoalModal({ isOpen, onClose, goal, onSaved }: GoalModalProps) {
   const isEditMode = !!goal;
   const { addGoal, updateGoal } = useGoalStore();

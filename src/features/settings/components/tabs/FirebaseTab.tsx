@@ -10,8 +10,20 @@
 import type { FirebaseTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass } from './styles';
 
+/**
+ * Firebase 및 Bark API 설정을 관리하는 탭 컴포넌트입니다.
+ * @param props - 탭 props
+ * @param props.localSettings - 현재 로컬 설정 상태
+ * @param props.setLocalSettings - 로컬 설정 상태 업데이트 함수
+ * @returns Firebase 설정 입력 폼 UI
+ */
 export function FirebaseTab({ localSettings, setLocalSettings }: FirebaseTabProps) {
-    const updateFirebaseConfig = (key: string, value: string) => {
+    /**
+     * Firebase 설정의 개별 필드를 업데이트합니다.
+     * @param configKey - Firebase 설정 필드명
+     * @param configValue - 업데이트할 값
+     */
+    const updateFirebaseConfig = (configKey: string, configValue: string) => {
         setLocalSettings((prev: Settings | null) => {
             if (!prev) return prev;
             const currentConfig = prev.firebaseConfig || {
@@ -27,7 +39,7 @@ export function FirebaseTab({ localSettings, setLocalSettings }: FirebaseTabProp
                 ...prev,
                 firebaseConfig: {
                     ...currentConfig,
-                    [key]: value,
+                    [configKey]: configValue,
                 },
             };
         });

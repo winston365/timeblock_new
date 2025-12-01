@@ -3,6 +3,9 @@
  *
  * @role 작업 완료 시 XP 보상 지급을 담당
  * @responsibility 단일 책임: XP 계산 및 지급만 처리
+ * @dependencies
+ *   - calculateTaskXP: 작업 XP 계산 유틸리티
+ *   - useGameStateStore: XP 지급을 위한 게임 상태 스토어
  */
 
 import type { TaskCompletionHandler, TaskCompletionContext } from '../types';
@@ -21,6 +24,11 @@ import { calculateTaskXP } from '@/shared/lib/utils';
 export class XPRewardHandler implements TaskCompletionHandler {
   name = 'XPRewardHandler';
 
+  /**
+   * 작업 완료 시 XP를 계산하고 지급합니다.
+   * @param context - 작업 완료 컨텍스트 (task, wasCompleted 포함)
+   * @returns XP 획득 이벤트 배열 (0 XP인 경우 빈 배열)
+   */
   async handle(context: TaskCompletionContext): Promise<import('@/shared/services/gameplay/gameState').GameStateEvent[]> {
     const { task, wasCompleted } = context;
 
@@ -36,8 +44,6 @@ export class XPRewardHandler implements TaskCompletionHandler {
     // skipEvents=true로 설정하여 Store에서의 중복 이벤트 처리 방지
     const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
     await useGameStateStore.getState().addXP(xpAmount, task.timeBlock || undefined, true);
-
-    console.log(`[${this.name}] ✅ Granted ${xpAmount} XP for task: ${task.text}`);
 
     // 0 XP인 경우 이벤트를 반환하지 않음 (무의미한 토스트 방지)
     if (xpAmount === 0) {

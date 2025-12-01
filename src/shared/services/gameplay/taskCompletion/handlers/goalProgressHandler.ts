@@ -3,6 +3,8 @@
  *
  * @role 작업 완료/미완료 시 연결된 전역 목표의 진행률 자동 업데이트
  * @responsibility 단일 책임: 전역 목표 진행률 재계산만 처리
+ * @dependencies
+ *   - recalculateGlobalGoalProgress: 목표 진행률 재계산 레포지토리 함수
  */
 
 import type { TaskCompletionHandler, TaskCompletionContext } from '../types';
@@ -18,6 +20,11 @@ import { recalculateGlobalGoalProgress } from '@/data/repositories';
 export class GoalProgressHandler implements TaskCompletionHandler {
   name = 'GoalProgressHandler';
 
+  /**
+   * 작업 완료 시 연결된 전역 목표의 진행률을 재계산합니다.
+   * @param context - 작업 완료 컨텍스트 (task, date 포함)
+   * @returns 빈 이벤트 배열 (UI 토스트 불필요)
+   */
   async handle(context: TaskCompletionContext): Promise<import('@/shared/services/gameplay/gameState').GameStateEvent[]> {
     const { task, date } = context;
 
@@ -29,7 +36,6 @@ export class GoalProgressHandler implements TaskCompletionHandler {
     try {
       // 전역 목표 진행률 재계산
       await recalculateGlobalGoalProgress(task.goalId, date);
-      console.log(`[${this.name}] ✅ Updated progress for global goal: ${task.goalId}`);
     } catch (error) {
       console.error(`[${this.name}] ❌ Failed to update goal progress:`, error);
       // 에러가 발생해도 작업 완료 자체는 성공시킴 (목표 진행률은 나중에 수동으로도 재계산 가능)

@@ -2,11 +2,15 @@
  * SettingsModal
  *
  * @role Gemini API 키, Firebase 설정, 테마 설정을 관리하는 모달 컴포넌트
- * @input isOpen (모달 표시 여부), onClose (모달 닫기), onSaved (저장 완료 콜백)
- * @output 탭 기반 설정 UI (테마, Gemini, Firebase)
- * @external_dependencies
- *   - settingsRepository: 설정 데이터 로드/저장
+ * @responsibilities
+ *   - 탭 기반 설정 UI 제공 (테마, Gemini, Firebase, 게임플레이 등)
+ *   - 로컬 설정 상태 관리 및 저장
+ *   - 동기화 로그 및 토큰 사용량 표시
+ *   - 앱 업데이트 확인
+ * @dependencies
+ *   - settingsStore: 설정 데이터 로드/저장
  *   - firebaseService: Firebase 초기화
+ *   - syncLogger: 동기화 로그 관리
  */
 
 import { useState, useEffect } from 'react';
@@ -53,7 +57,12 @@ interface SettingsModalProps {
 }
 
 /**
- * 설정 모달 컴포넌트
+ * 설정 모달 컴포넌트입니다.
+ * @param props - 모달 props
+ * @param props.isOpen - 모달 표시 여부
+ * @param props.onClose - 모달 닫기 콜백
+ * @param props.onSaved - 설정 저장 완료 콜백 (선택적)
+ * @returns 탭 기반 설정 UI를 포함한 모달
  */
 export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModalProps) {
     const {
@@ -67,6 +76,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<'gemini' | 'firebase' | 'appearance' | 'logs' | 'dontdo' | 'shortcuts' | 'gameplay' | 'schedule'>('appearance');
     const [currentTheme, setCurrentTheme] = useState<string>(() => {
+        // eslint-disable-next-line no-restricted-globals -- theme is an allowed exception per CLAUDE.md
         return localStorage.getItem('theme') || '';
     });
 
@@ -214,9 +224,10 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
             } else {
                 setUpdateStatus(`❌ ${result.message}`);
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
             console.error('Update check failed:', error);
-            setUpdateStatus(`❌ 오류: ${error.message || '알 수 없는 오류'}`);
+            setUpdateStatus(`❌ 오류: ${errorMessage}`);
         } finally {
             setCheckingUpdate(false);
         }

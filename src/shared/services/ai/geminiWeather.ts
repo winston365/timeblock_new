@@ -1,6 +1,9 @@
 /**
- * Gemini Weather Service - Google Search Grounding 사용
- * refer 프로젝트 참고
+ * Role: Fetches real-time multi-day weather via Gemini with Google Search Grounding and parses it into forecast structures.
+ * Dependencies:
+ * - geminiApi.callGeminiAPIWithTools for search-grounded Gemini responses
+ * - chatHistoryRepository.addTokenUsage for token logging
+ * - shared weather types (DayForecast) for typed forecast formatting
  */
 
 import { callGeminiAPIWithTools } from './geminiApi';
@@ -22,12 +25,15 @@ export interface WeatherResponse {
 
 /**
  * Gemini Google Search Grounding으로 실시간 날씨 가져오기
+ * @param location 사용자가 조회하는 지역명
+ * @param apiKey Gemini API 키
+ * @returns 파싱된 3일치 예보 데이터
  */
 export async function fetchWeatherWithGemini(
     location: string,
     apiKey: string
 ): Promise<WeatherResponse> {
-    const prompt = `
+    const weatherPrompt = `
 You are a weather data assistant. Your task is to use Google Search to find accurate hourly weather forecast for "${location}" for the NEXT 3 DAYS (TODAY, TOMORROW, and DAY AFTER TOMORROW).
 
 **IMPORTANT INSTRUCTIONS:**
@@ -80,7 +86,7 @@ Location: [City name in Korean]
 `.trim();
 
     try {
-        const { text, tokenUsage } = await callGeminiAPIWithTools(prompt, apiKey);
+        const { text, tokenUsage } = await callGeminiAPIWithTools(weatherPrompt, apiKey);
 
         // 디버깅: 원본 응답 출력
         console.log('[Gemini Weather] Raw response:', text);
@@ -90,15 +96,15 @@ Location: [City name in Korean]
             addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens).catch(console.error);
         }
 
-        const parsed = parseWeatherResponse(text);
+        const parsedForecast = parseWeatherResponse(text);
 
         // 파싱된 데이터 로그
-        console.log('[Weather Parse] Parsed forecast days:', parsed.forecast.length);
-        parsed.forecast.forEach((day) => {
+        console.log('[Weather Parse] Parsed forecast days:', parsedForecast.forecast.length);
+        parsedForecast.forecast.forEach((day) => {
             console.log(`[Weather Parse] ${day.dateLabel}: ${day.hourly.length} hours`);
         });
 
-        return parsed;
+        return parsedForecast;
     } catch (error) {
         console.error('[Gemini Weather] Error:', error);
         throw new Error('날씨 정보를 가져오는데 실패했습니다.');
@@ -108,8 +114,8 @@ Location: [City name in Korean]
 /**
  * Gemini 응답 파싱 - 3일치 예보
  */
-function parseWeatherResponse(text: string): WeatherResponse {
-    const lines = text.split('\n');
+function parseWeatherResponse(responseText: string): WeatherResponse {
+    const responseLines = responseText.split('\n');
     let resolvedAddress = '';
     const forecastDays: DayForecast[] = [];
 
@@ -119,11 +125,11 @@ function parseWeatherResponse(text: string): WeatherResponse {
     const currentHourlyData: WeatherDataPoint[] = [];
     let isInTable = false;
 
-    for (const line of lines) {
-        const trimmed = line.trim();
+    for (const line of responseLines) {
+        const lineText = line.trim();
 
         // Day separator 감지
-        if (trimmed.startsWith('=== DAY:')) {
+        if (lineText.startsWith('=== DAY:')) {
             // 이전 날짜 데이터 저장
             if (currentDay && currentHourlyData.length > 0) {
                 saveDayForecast(forecastDays, currentDay, currentDateLabel, currentLocation, currentHourlyData);
@@ -131,13 +137,13 @@ function parseWeatherResponse(text: string): WeatherResponse {
             }
 
             // 새로운 날짜 시작
-            if (trimmed.includes('오늘')) {
+            if (lineText.includes('오늘')) {
                 currentDay = 'today';
                 currentDateLabel = '오늘';
-            } else if (trimmed.includes('내일')) {
+            } else if (lineText.includes('내일')) {
                 currentDay = 'tomorrow';
                 currentDateLabel = '내일';
-            } else if (trimmed.includes('모레')) {
+            } else if (lineText.includes('모레')) {
                 currentDay = 'dayAfter';
                 currentDateLabel = '모레';
             }
@@ -145,27 +151,27 @@ function parseWeatherResponse(text: string): WeatherResponse {
             continue;
         }
 
-        if (trimmed.startsWith('Location:') || trimmed.startsWith('위치:')) {
-            currentLocation = trimmed.substring(trimmed.indexOf(':') + 1).trim();
+        if (lineText.startsWith('Location:') || lineText.startsWith('위치:')) {
+            currentLocation = lineText.substring(lineText.indexOf(':') + 1).trim();
             if (!resolvedAddress) resolvedAddress = currentLocation;
             continue;
         }
 
         // 테이블 감지
-        if (trimmed.startsWith('|')) {
-            if (trimmed.toLowerCase().includes('time') || trimmed.includes('---')) {
+        if (lineText.startsWith('|')) {
+            if (lineText.toLowerCase().includes('time') || lineText.includes('---')) {
                 isInTable = true;
                 continue;
             }
 
             if (isInTable && currentDay) {
-                const parts = trimmed.split('|').map(p => p.trim()).filter(p => p !== '');
-                if (parts.length >= 5) {
-                    const time = parts[0];
-                    const temperature = parseFloat(parts[1].replace(/[^0-9.-]/g, ''));
-                    const condition = parts[2];
-                    const chanceOfRain = parseFloat(parts[3].replace(/[^0-9.]/g, '')) || 0;
-                    const humidity = parseFloat(parts[4].replace(/[^0-9.]/g, '')) || 0;
+                const tableColumns = lineText.split('|').map(column => column.trim()).filter(column => column !== '');
+                if (tableColumns.length >= 5) {
+                    const time = tableColumns[0];
+                    const temperature = parseFloat(tableColumns[1].replace(/[^0-9.-]/g, ''));
+                    const condition = tableColumns[2];
+                    const chanceOfRain = parseFloat(tableColumns[3].replace(/[^0-9.]/g, '')) || 0;
+                    const humidity = parseFloat(tableColumns[4].replace(/[^0-9.]/g, '')) || 0;
 
                     if (!isNaN(temperature)) {
                         currentHourlyData.push({
@@ -231,33 +237,33 @@ function saveDayForecast(
 function getTimeBasedIcon(time: string, condition: string): string {
     const hour = parseInt(time.split(':')[0]);
     const isNight = hour >= 18 || hour < 6;
-    const c = condition.toLowerCase();
+    const normalizedCondition = condition.toLowerCase();
 
-    if (c.includes('맑음') || c.includes('clear')) return isNight ? '🌙' : '☀️';
-    if (c.includes('구름') || c.includes('흐림') || c.includes('cloud') || c.includes('cloudy')) {
-        return c.includes('조금') || c.includes('약간') ? (isNight ? '☁️' : '🌤️') : '☁️';
+    if (normalizedCondition.includes('맑음') || normalizedCondition.includes('clear')) return isNight ? '🌙' : '☀️';
+    if (normalizedCondition.includes('구름') || normalizedCondition.includes('흐림') || normalizedCondition.includes('cloud') || normalizedCondition.includes('cloudy')) {
+        return normalizedCondition.includes('조금') || normalizedCondition.includes('약간') ? (isNight ? '☁️' : '🌤️') : '☁️';
     }
-    if (c.includes('비') || c.includes('rain')) return '🌧️';
-    if (c.includes('눈') || c.includes('snow')) return '❄️';
-    if (c.includes('천둥') || c.includes('thunder')) return '⛈️';
-    if (c.includes('안개') || c.includes('fog')) return '🌫️';
+    if (normalizedCondition.includes('비') || normalizedCondition.includes('rain')) return '🌧️';
+    if (normalizedCondition.includes('눈') || normalizedCondition.includes('snow')) return '❄️';
+    if (normalizedCondition.includes('천둥') || normalizedCondition.includes('thunder')) return '⛈️';
+    if (normalizedCondition.includes('안개') || normalizedCondition.includes('fog')) return '🌫️';
 
     return isNight ? '🌙' : '🌤️';
 }
 
 function mapConditionToIcon(condition: string): string {
-    const c = condition.toLowerCase();
+    const normalizedCondition = condition.toLowerCase();
 
-    if (c.includes('맑음') || c.includes('clear')) return '☀️';
-    if (c.includes('구름') || c.includes('흐림') || c.includes('cloud') || c.includes('cloudy')) {
-        if (c.includes('조금') || c.includes('약간')) return '🌤️';
-        if (c.includes('많음')) return '☁️';
+    if (normalizedCondition.includes('맑음') || normalizedCondition.includes('clear')) return '☀️';
+    if (normalizedCondition.includes('구름') || normalizedCondition.includes('흐림') || normalizedCondition.includes('cloud') || normalizedCondition.includes('cloudy')) {
+        if (normalizedCondition.includes('조금') || normalizedCondition.includes('약간')) return '🌤️';
+        if (normalizedCondition.includes('많음')) return '☁️';
         return '⛅';
     }
-    if (c.includes('비') || c.includes('rain')) return '🌧️';
-    if (c.includes('눈') || c.includes('snow')) return '❄️';
-    if (c.includes('천둥') || c.includes('thunder')) return '⛈️';
-    if (c.includes('안개') || c.includes('fog')) return '🌫️';
+    if (normalizedCondition.includes('비') || normalizedCondition.includes('rain')) return '🌧️';
+    if (normalizedCondition.includes('눈') || normalizedCondition.includes('snow')) return '❄️';
+    if (normalizedCondition.includes('천둥') || normalizedCondition.includes('thunder')) return '⛈️';
+    if (normalizedCondition.includes('안개') || normalizedCondition.includes('fog')) return '🌫️';
 
     return '🌤️';
 }

@@ -24,10 +24,11 @@ export interface IgnitionConfig {
 
 /**
  * 점화 사용 가능 여부 확인
- * 
- * @param gameState 현재 게임 상태
- * @param isBonus 비활동 보너스 여부 (true면 제한 무시)
- * @returns 점화 가능 여부 및 상세 정보
+ *
+ * @param gameState - 현재 게임 상태
+ * @param isBonus - 비활동 보너스 여부 (true면 제한 무시)
+ * @param config - 쿨다운/XP 비용 설정
+ * @returns 점화 가능 여부 및 상세 정보 (쿨다운, 무료 횟수, XP 요구사항)
  */
 export function checkIgnitionAvailability(
     gameState: GameState | null,
@@ -93,6 +94,9 @@ export function checkIgnitionAvailability(
 
 /**
  * 시간을 MM:SS 형식으로 포맷
+ *
+ * @param seconds - 초 단위 시간
+ * @returns MM:SS 형식 문자열
  */
 export function formatCooldownTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);

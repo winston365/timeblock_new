@@ -1,8 +1,17 @@
 /**
- * Weather Widget Component
- * 
- * TopToolbar에 표시되는 날씨 위젯 (클릭 시 드롭다운)
- * Design: Atmospheric & Airy (Glassmorphism, Gradients)
+ * @file WeatherWidget.tsx
+ * @description TopToolbar 날씨 위젯 컴포넌트 (클릭 시 상세 드롭다운)
+ *
+ * @role 현재 날씨 정보 요약 표시 및 상세 정보 모달 제공
+ * @responsibilities
+ *   - 현재 기온 및 날씨 아이콘 표시 (컴팩트 뷰)
+ *   - 상세 날씨 모달 (온도/강수 차트, AI 인사이트, 복장 추천)
+ *   - 자동 새로고침 (9/11/12/15시), 날짜 변경 감지
+ *   - 3일 예보 탭 전환
+ * @dependencies
+ *   - useWeatherStore: 날씨 상태 관리 스토어
+ *   - weatherService: 날씨 데이터 조회 및 인사이트 생성
+ *   - lucide-react: 아이콘
  */
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -11,6 +20,11 @@ import { getWeatherInsight, type WeatherInsightResult, type OutfitCard } from '.
 import { RefreshCw, Sparkles } from 'lucide-react';
 import type { HourlyWeather } from '@/shared/types/weather';
 
+/**
+ * TopToolbar 날씨 위젯 컴포넌트
+ *
+ * @returns 날씨 요약 버튼 및 상세 드롭다운 모달 UI
+ */
 export default function WeatherWidget() {
     const { forecast, selectedDay, loading, error, fetchWeather, setSelectedDay, lastUpdated } = useWeatherStore();
     const [isExpanded, setIsExpanded] = useState(false);

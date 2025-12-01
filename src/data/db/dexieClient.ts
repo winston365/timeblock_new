@@ -1,7 +1,15 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Dexie (IndexedDB) 클라이언트 설정
  *
  * @role IndexedDB를 Dexie로 관리, 앱의 모든 로컬 데이터 저장/조회 담당
+ * @responsibilities
+ *   - 스키마 버전 관리 및 마이그레이션
+ *   - 테이블 정의 (dailyData, gameState, templates 등)
+ *   - 데이터베이스 초기화 및 상태 조회
+ * @key_dependencies
+ *   - Dexie: IndexedDB ORM 라이브러리
+ *   - @/shared/types/domain: 도메인 타입 정의
  */
 
 import Dexie, { type Table } from 'dexie';
@@ -20,19 +28,36 @@ import type {
   AIInsight
 } from '@/shared/types/domain';
 
-// RAG 벡터 문서 타입
+/**
+ * RAG 벡터 문서 레코드 타입
+ * @description AI 컨텍스트 검색을 위한 벡터 임베딩 문서 저장 구조
+ */
 export interface RAGDocumentRecord {
+  /** 문서 고유 ID */
   id: string;
+  /** 문서 유형 (task, journal, goal, insight) */
   type: 'task' | 'journal' | 'goal' | 'insight';
+  /** 문서 내용 */
   content: string;
+  /** 문서 날짜 */
   date: string;
+  /** 완료 여부 */
   completed: boolean;
-  metadata: string; // JSON stringified
+  /** JSON 문자열화된 메타데이터 */
+  metadata: string;
+  /** 벡터 임베딩 배열 */
   embedding: number[];
-  contentHash: string; // 변경 감지용 해시
-  indexedAt: number; // 인덱싱 시간
+  /** 변경 감지용 콘텐츠 해시 */
+  contentHash: string;
+  /** 인덱싱 타임스탬프 */
+  indexedAt: number;
 }
 
+/**
+ * TimeBlock 애플리케이션 Dexie 데이터베이스 클래스
+ * @extends Dexie
+ * @description 모든 로컬 데이터 저장소 테이블을 관리하는 메인 DB 클래스
+ */
 export class TimeBlockDB extends Dexie {
   // 테이블 선언
   dailyData!: Table<DailyData & { date: string }, string>;
@@ -275,6 +300,11 @@ export class TimeBlockDB extends Dexie {
 
 export const db = new TimeBlockDB();
 
+/**
+ * 데이터베이스 초기화
+ * @description Dexie 데이터베이스를 열고 초기 상태를 확인
+ * @returns {Promise<void>}
+ */
 export async function initializeDatabase(): Promise<void> {
   try {
     await db.open();
@@ -284,6 +314,12 @@ export async function initializeDatabase(): Promise<void> {
   }
 }
 
+/**
+ * 데이터베이스 통계 정보 조회
+ * @description 주요 테이블들의 레코드 수를 조회하여 반환
+ * @returns {Promise<Object>} 각 테이블별 레코드 수
+ * @throws {Error} 데이터베이스 조회 실패 시
+ */
 export async function getDatabaseInfo(): Promise<{
   dailyDataCount: number;
   templatesCount: number;

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Electron Preload Script
  *
@@ -83,9 +84,8 @@ const electronAPI = {
 
 try {
   contextBridge.exposeInMainWorld('electronAPI', electronAPI);
-  console.log('✅ Preload: electronAPI exposed successfully');
-} catch (error) {
-  console.error('❌ Preload: Failed to expose electronAPI', error);
+} catch (exposeBridgeError) {
+  console.error('❌ Preload: Failed to expose electronAPI', exposeBridgeError);
 }
 
 // ============================================================================

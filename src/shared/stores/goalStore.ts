@@ -39,6 +39,20 @@ interface GoalStore {
 
 /**
  * 전역 목표 상태 스토어
+ *
+ * @description 목표 CRUD 및 진행률 관리를 위한 Zustand 스토어
+ * @returns {GoalStore} 목표 상태 및 액션 객체
+ *   - goals: 현재 목표 목록
+ *   - loading: 로딩 상태
+ *   - error: 에러 상태
+ *   - loadGoals: 목표 로드
+ *   - addGoal: 목표 추가
+ *   - updateGoal: 목표 수정
+ *   - deleteGoal: 목표 삭제
+ *   - reorderGoals: 목표 순서 변경
+ *   - recalculateProgress: 진행률 재계산
+ *   - refresh: 목표 새로고침
+ *   - reset: 스토어 초기화
  */
 export const useGoalStore = create<GoalStore>((set, get) => ({
     goals: [],
@@ -48,8 +62,8 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     loadGoals: async () => {
         set({ loading: true, error: null });
         try {
-            const goals = await loadGlobalGoals();
-            set({ goals: goals.sort((a, b) => a.order - b.order), loading: false });
+            const loadedGoals = await loadGlobalGoals();
+            set({ goals: loadedGoals.sort((goalA, goalB) => goalA.order - goalB.order), loading: false });
         } catch (error) {
             console.error('GoalStore: Failed to load goals', error);
             set({ error: error as Error, loading: false });
@@ -64,7 +78,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
             // 낙관적 업데이트: 즉시 스토어에 추가
             const currentGoals = get().goals;
             set({
-                goals: [...currentGoals, newGoal].sort((a, b) => a.order - b.order),
+                goals: [...currentGoals, newGoal].sort((goalA, goalB) => goalA.order - goalB.order),
                 loading: false
             });
 
@@ -84,7 +98,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
             // 낙관적 업데이트: 즉시 스토어에 반영
             const currentGoals = get().goals;
             set({
-                goals: currentGoals.map(g => g.id === goalId ? updatedGoal : g),
+                goals: currentGoals.map(existingGoal => existingGoal.id === goalId ? updatedGoal : existingGoal),
                 loading: false
             });
 
@@ -104,7 +118,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
             // 낙관적 업데이트: 즉시 스토어에서 제거
             const currentGoals = get().goals;
             set({
-                goals: currentGoals.filter(g => g.id !== goalId),
+                goals: currentGoals.filter(existingGoal => existingGoal.id !== goalId),
                 loading: false
             });
         } catch (error) {
@@ -120,7 +134,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
             await reorderGlobalGoals(goals);
 
             // 낙관적 업데이트: 즉시 스토어에 반영
-            set({ goals: goals.sort((a, b) => a.order - b.order), loading: false });
+            set({ goals: goals.sort((goalA, goalB) => goalA.order - goalB.order), loading: false });
         } catch (error) {
             console.error('GoalStore: Failed to reorder goals', error);
             set({ error: error as Error, loading: false });
@@ -135,7 +149,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
             // 낙관적 업데이트: 진행률 업데이트
             const currentGoals = get().goals;
             set({
-                goals: currentGoals.map(g => g.id === goalId ? updatedGoal : g)
+                goals: currentGoals.map(existingGoal => existingGoal.id === goalId ? updatedGoal : existingGoal)
             });
         } catch (error) {
             console.error('GoalStore: Failed to recalculate progress', error);

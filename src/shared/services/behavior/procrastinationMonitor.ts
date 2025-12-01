@@ -84,12 +84,17 @@ function triggerIntervention(): void {
 }
 
 /**
- * Track a time block change for procrastination patterns.
+ * 작업의 타임블록 변경을 추적하여 미루기 패턴을 감지합니다.
+ * 
+ * 반복적인 블록 이동(3회 이상) 또는 inbox 왕복을 감지하면
+ * Waifu 개입을 트리거합니다.
  *
- * @param taskId Target task ID
- * @param previousBlock Original block (null when inbox)
- * @param nextBlock Destination block (null when inbox)
- * @param currentDate Date string (YYYY-MM-DD)
+ * @param {Object} params - 추적 파라미터
+ * @param {string} params.taskId - 대상 작업 ID
+ * @param {TimeBlockId | null | undefined} params.previousBlock - 이전 블록 (inbox에서 이동 시 null)
+ * @param {TimeBlockId | null | undefined} params.nextBlock - 목적지 블록 (inbox로 이동 시 null)
+ * @param {string} [params.currentDate] - 날짜 문자열 (YYYY-MM-DD), 기본값은 오늘
+ * @returns {Promise<void>}
  */
 export async function trackTaskTimeBlockChange(params: {
   taskId: string;

@@ -1,14 +1,13 @@
 ﻿/**
  * Template Repository
  *
- * @role ?묒뾽 ?쒗뵆由??곗씠??愿由?諛??먮룞 ?앹꽦 ?묒뾽 泥섎━
- * @input Template 媛앹껜, ?쒗뵆由?ID, Task ?앹꽦 ?붿껌
- * @output Template 諛곗뿴, Template 媛앹껜, Task 媛앹껜
+ * @role 작업 템플릿 데이터 관리 및 자동 생성 작업 처리
+ * @input Template 객체, 템플릿 ID, Task 생성 요청
+ * @output Template 배열, Template 객체, Task 객체
  * @external_dependencies
- *   - IndexedDB (db.templates): 硫붿씤 ??μ냼
- *   - localStorage (STORAGE_KEYS.TEMPLATES): 諛깆뾽 ??μ냼
- *   - Firebase: ?ㅼ떆媛??숆린??(syncToFirebase)
- *   - @/shared/types/domain: Template, Task, TimeBlockId, Resistance ???
+ *   - IndexedDB (db.templates): 메인 저장소
+ *   - Firebase: 실시간 동기화 (fetchFromFirebase)
+ *   - @/shared/types/domain: Template, Task, TimeBlockId, Resistance 타입
  */
 
 import { db } from '../db/dexieClient';
@@ -19,35 +18,26 @@ import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { templateStrategy } from '@/shared/services/sync/firebase/strategies';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
-import { createLogger } from '@/shared/lib/logger';
-
-// ============================================================================
-// Logger
-// ============================================================================
-
-const logger = createLogger('TemplateRepository');
-
 // ============================================================================
 // Template CRUD
 // ============================================================================
 
 /**
- * 紐⑤뱺 ?쒗뵆由?濡쒕뱶
+ * 모든 템플릿 로드
  *
- * @returns {Promise<Template[]>} ?쒗뵆由?諛곗뿴
- * @throws ?놁쓬
+ * @returns {Promise<Template[]>} 템플릿 배열
+ * @throws 없음
  * @sideEffects
- *   - IndexedDB?먯꽌 ?곗씠??議고쉶
- *   - localStorage ?대갚 ??IndexedDB???곗씠??蹂듭썝
- *   - Firebase ?대갚 ??IndexedDB???곗씠??蹂듭썝
+ *   - IndexedDB에서 데이터 조회
+ *   - Firebase 폴백 시 IndexedDB에 데이터 복원
  */
 export async function loadTemplates(): Promise<Template[]> {
   try {
-    // 1. IndexedDB?먯꽌 議고쉶
+    // 1. IndexedDB에서 조회
     const templates = await db.templates.toArray();
 
     if (templates.length > 0) {
-      // preparation ?꾨뱶??undefined瑜?鍮?臾몄옄?대줈 ?뺤젣, category? isFavorite 湲곕낯媛??ㅼ젙
+      // preparation 필드의 undefined를 빈 문자열로 정제, category와 isFavorite 기본값 설정
       return templates.map(template => ({
         ...template,
         preparation1: template.preparation1 ?? '',
@@ -59,12 +49,12 @@ export async function loadTemplates(): Promise<Template[]> {
       }));
     }
 
-    // 2. Firebase?먯꽌 議고쉶 (IndexedDB ?ㅽ뙣 ??
+    // 2. Firebase에서 조회 (IndexedDB 실패 시)
     if (isFirebaseInitialized()) {
       const firebaseTemplates = await fetchFromFirebase<Template[]>(templateStrategy);
 
       if (firebaseTemplates && firebaseTemplates.length > 0) {
-        // preparation ?꾨뱶 ?뺤젣
+        // preparation 필드 정제
         const sanitizedTemplates = firebaseTemplates.map(template => ({
           ...template,
           preparation1: template.preparation1 ?? '',
@@ -152,7 +142,7 @@ export async function createTemplate(
       imageUrl: imageUrl || '',
     };
 
-    // 1. IndexedDB?????
+    // 1. IndexedDB에 저장
     await db.templates.put(template);
 
     addSyncLog('dexie', 'save', 'Template created', {
@@ -172,16 +162,14 @@ export async function createTemplate(
 }
 
 /**
- * ?쒗뵆由??낅뜲?댄듃
+ * 템플릿 업데이트
  *
- * @param {string} id - ?쒗뵆由?ID
- * @param {Partial<Omit<Template, 'id'>>} updates - ?낅뜲?댄듃???꾨뱶
- * @returns {Promise<Template>} ?낅뜲?댄듃???쒗뵆由?
- * @throws {Error} ?쒗뵆由우씠 議댁옱?섏? ?딄굅??????ㅽ뙣 ??
+ * @param {string} id - 템플릿 ID
+ * @param {Partial<Omit<Template, 'id'>>} updates - 업데이트할 필드
+ * @returns {Promise<Template>} 업데이트된 템플릿
+ * @throws {Error} 템플릿이 존재하지 않거나 저장 실패 시
  * @sideEffects
- *   - IndexedDB?먯꽌 ?쒗뵆由?議고쉶 諛??낅뜲?댄듃
- *   - localStorage??諛깆뾽
- *   - Firebase??鍮꾨룞湲??숆린??
+ *   - IndexedDB에서 템플릿 조회 및 업데이트
  */
 export async function updateTemplate(
   id: string,
@@ -196,7 +184,7 @@ export async function updateTemplate(
 
     const updatedTemplate = { ...template, ...updates };
 
-    // 1. IndexedDB?????
+    // 1. IndexedDB에 저장
     await db.templates.put(updatedTemplate);
 
     addSyncLog('dexie', 'save', 'Template updated', {
@@ -215,19 +203,17 @@ export async function updateTemplate(
 }
 
 /**
- * ?쒗뵆由???젣
+ * 템플릿 삭제
  *
- * @param {string} id - ??젣???쒗뵆由?ID
+ * @param {string} id - 삭제할 템플릿 ID
  * @returns {Promise<void>}
- * @throws {Error} IndexedDB ??젣 ?ㅽ뙣 ??
+ * @throws {Error} IndexedDB 삭제 실패 시
  * @sideEffects
- *   - IndexedDB?먯꽌 ?쒗뵆由???젣
- *   - localStorage??蹂寃쎌궗??諛섏쁺
- *   - Firebase??鍮꾨룞湲??숆린??
+ *   - IndexedDB에서 템플릿 삭제
  */
 export async function deleteTemplate(id: string): Promise<void> {
   try {
-    // 1. IndexedDB?먯꽌 ??젣
+    // 1. IndexedDB에서 삭제
     await db.templates.delete(id);
 
     addSyncLog('dexie', 'save', 'Template deleted', { id });
@@ -242,13 +228,13 @@ export async function deleteTemplate(id: string): Promise<void> {
 }
 
 /**
- * ?뱀젙 ?쒗뵆由?議고쉶
+ * 특정 템플릿 조회
  *
- * @param {string} id - ?쒗뵆由?ID
- * @returns {Promise<Template | undefined>} ?쒗뵆由?媛앹껜 ?먮뒗 undefined
- * @throws ?놁쓬
+ * @param {string} id - 템플릿 ID
+ * @returns {Promise<Template | undefined>} 템플릿 객체 또는 undefined
+ * @throws 없음
  * @sideEffects
- *   - IndexedDB?먯꽌 ?곗씠??議고쉶
+ *   - IndexedDB에서 데이터 조회
  */
 export async function getTemplate(id: string): Promise<Template | undefined> {
   try {
@@ -258,7 +244,7 @@ export async function getTemplate(id: string): Promise<Template | undefined> {
       return undefined;
     }
 
-    // preparation ?꾨뱶??undefined瑜?鍮?臾몄옄?대줈 ?뺤젣
+    // preparation 필드의 undefined를 빈 문자열로 정제
     return {
       ...template,
       preparation1: template.preparation1 ?? '',
@@ -272,27 +258,27 @@ export async function getTemplate(id: string): Promise<Template | undefined> {
 }
 
 // ============================================================================
-// ?쒗뵆由우뿉???묒뾽 ?앹꽦
+// 템플릿에서 작업 생성
 // ============================================================================
 
 /**
- * ?쒗뵆由우뿉??Task ?앹꽦
+ * 템플릿에서 Task 생성
  *
- * @param {Template} template - ?쒗뵆由?媛앹껜
- * @returns {Task} ?앹꽦???묒뾽 媛앹껜
- * @throws ?놁쓬
- * @sideEffects ?놁쓬 (?쒖닔 ?⑥닔)
+ * @param {Template} template - 템플릿 객체
+ * @returns {Task} 생성된 작업 객체
+ * @throws 없음
+ * @sideEffects 없음 (순수 함수)
  */
 export function createTaskFromTemplate(template: Template): Task {
   const now = new Date().toISOString();
   const adjustedDuration = Math.round(template.baseDuration * getResistanceMultiplier(template.resistance));
 
-  // timeBlock???ㅼ젙?섏뼱 ?덉쑝硫??대떦 釉붾줉??泥?踰덉㎏ ?쒓컙?(start hour)瑜?hourSlot?쇰줈 ?ㅼ젙
+  // timeBlock이 설정되어 있으면 해당 블록의 첫 번째 시간(start hour)을 hourSlot으로 설정
   let hourSlot: number | undefined = undefined;
   if (template.timeBlock) {
-    const block = TIME_BLOCKS.find(b => b.id === template.timeBlock);
-    if (block) {
-      hourSlot = block.start;
+    const matchedBlock = TIME_BLOCKS.find(b => b.id === template.timeBlock);
+    if (matchedBlock) {
+      hourSlot = matchedBlock.start;
     }
   }
 
@@ -317,12 +303,12 @@ export function createTaskFromTemplate(template: Template): Task {
 }
 
 /**
- * ?먮룞 ?앹꽦 ?쒗뵆由우뿉??Task ?앹꽦
+ * 자동 생성 템플릿에서 Task 생성
  *
- * @param {Template} template - ?먮룞 ?앹꽦 ?쒗뵆由?媛앹껜
- * @returns {Task} fromAutoTemplate ?뚮옒洹멸? true???묒뾽 媛앹껜
- * @throws ?놁쓬
- * @sideEffects ?놁쓬 (?쒖닔 ?⑥닔)
+ * @param {Template} template - 자동 생성 템플릿 객체
+ * @returns {Task} fromAutoTemplate 플래그가 true인 작업 객체
+ * @throws 없음
+ * @sideEffects 없음 (순수 함수)
  */
 export function createTaskFromAutoTemplate(template: Template): Task {
   const task = createTaskFromTemplate(template);
@@ -331,29 +317,32 @@ export function createTaskFromAutoTemplate(template: Template): Task {
 }
 
 /**
- * ???룄 諛곗쑉 媛?몄삤湲?
+ * 저항도 배수 가져오기
+ *
+ * @param {Resistance} resistance - 저항도 레벨
+ * @returns {number} 저항도에 따른 배수
  */
 function getResistanceMultiplier(resistance: Resistance): number {
   return RESISTANCE_MULTIPLIERS[resistance] ?? 1.0;
 }
 
 // ============================================================================
-// ?먮룞 ?앹꽦
+// 자동 생성
 // ============================================================================
 
 /**
- * ?먮룞 ?앹꽦 ?쒗뵆由?議고쉶
+ * 자동 생성 템플릿 조회
  *
- * @returns {Promise<Template[]>} autoGenerate媛 true???쒗뵆由?諛곗뿴
- * @throws ?놁쓬
+ * @returns {Promise<Template[]>} autoGenerate가 true인 템플릿 배열
+ * @throws 없음
  * @sideEffects
- *   - IndexedDB?먯꽌 ?꾪꽣留곷맂 ?곗씠??議고쉶
+ *   - IndexedDB에서 필터링된 데이터 조회
  */
 export async function getAutoGenerateTemplates(): Promise<Template[]> {
   try {
     const templates = await db.templates.where('autoGenerate').equals(1).toArray();
 
-    // preparation ?꾨뱶??undefined瑜?鍮?臾몄옄?대줈 ?뺤젣
+    // preparation 필드의 undefined를 빈 문자열로 정제
     return templates.map(template => ({
       ...template,
       preparation1: template.preparation1 ?? '',
@@ -367,11 +356,11 @@ export async function getAutoGenerateTemplates(): Promise<Template[]> {
 }
 
 /**
- * ?쒗뵆由우씠 ?ㅻ뒛 ?앹꽦?섏뼱???섎뒗吏 ?뺤씤
+ * 템플릿이 오늘 생성되어야 하는지 확인
  *
- * @param {Template} template - ?쒗뵆由?媛앹껜
- * @param {string} today - ?ㅻ뒛 ?좎쭨 (YYYY-MM-DD)
- * @returns {boolean} ?ㅻ뒛 ?앹꽦 ?щ?
+ * @param {Template} template - 템플릿 객체
+ * @param {string} todayDateStr - 오늘 날짜 (YYYY-MM-DD)
+ * @returns {boolean} 오늘 생성 여부
  */
 function shouldGenerateToday(template: Template, today: string): boolean {
   const { recurrenceType, weeklyDays, intervalDays, lastGeneratedDate } = template;
@@ -409,13 +398,13 @@ function shouldGenerateToday(template: Template, today: string): boolean {
 }
 
 /**
- * ?먮룞 ?앹꽦 ?쒗뵆由우뿉???묒뾽 ?앹꽦 (留ㅼ씪 00???ㅽ뻾)
+ * 자동 생성 템플릿에서 작업 생성 (매일 00시 실행)
  *
- * @returns {Promise<Task[]>} ?앹꽦???묒뾽 諛곗뿴
- * @throws ?놁쓬
+ * @returns {Promise<Task[]>} 생성된 작업 배열
+ * @throws 없음
  * @sideEffects
- *   - IndexedDB?먯꽌 ?먮룞 ?앹꽦 ?쒗뵆由?議고쉶
- *   - ?쒗뵆由우쓽 lastGeneratedDate ?낅뜲?댄듃
+ *   - IndexedDB에서 자동 생성 템플릿 조회
+ *   - 템플릿의 lastGeneratedDate 업데이트
  */
 export async function generateTasksFromAutoTemplates(): Promise<Task[]> {
   try {
@@ -424,12 +413,12 @@ export async function generateTasksFromAutoTemplates(): Promise<Task[]> {
     const tasksToGenerate: Task[] = [];
 
     for (const template of autoTemplates) {
-      // 二쇨린???곕씪 ?ㅻ뒛 ?앹꽦?댁빞 ?섎뒗吏 ?뺤씤
+      // 주기에 따라 오늘 생성해야 하는지 확인
       if (shouldGenerateToday(template, today)) {
         const task = createTaskFromAutoTemplate(template);
         tasksToGenerate.push(task);
 
-        // ?쒗뵆由우쓽 lastGeneratedDate ?낅뜲?댄듃
+        // 템플릿의 lastGeneratedDate 업데이트
         await updateTemplate(template.id, {
           lastGeneratedDate: today
         });

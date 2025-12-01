@@ -23,11 +23,15 @@ if (savedTheme) {
 
 // URL 쿼리 파라미터 확인 (mode에 따라 다른 컴포넌트 렌더링)
 const urlParams = new URLSearchParams(window.location.search);
-const mode = urlParams.get('mode');
+const appMode = urlParams.get('mode');
 
+/**
+ * 앱 모드에 따라 렌더링할 루트 컴포넌트 결정
+ * @returns 모드에 맞는 React 컴포넌트 (QuickAdd, PiP, 또는 기본 App)
+ */
 const renderApp = () => {
-  if (mode === 'quickadd') return <QuickAddTask />;
-  if (mode === 'pip') return <PipTimer />;
+  if (appMode === 'quickadd') return <QuickAddTask />;
+  if (appMode === 'pip') return <PipTimer />;
   return <App />;
 };
 

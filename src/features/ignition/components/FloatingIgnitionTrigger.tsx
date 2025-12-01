@@ -120,7 +120,7 @@ export default function FloatingIgnitionTrigger() {
         } else {
             setIsVisible(false);
         }
-    }, [dailyData, gameState, isOpen, justDoItCooldownMinutes, ignitionInactivityMinutes]);
+    }, [dailyData, isOpen, justDoItCooldownMinutes, ignitionInactivityMinutes]);
 
     useEffect(() => {
         // 초기 체크

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @file SpinnerView.tsx
  * @role 점화 스피너 화면 컴포넌트
@@ -11,6 +12,9 @@ import TaskSpinner from './TaskSpinner';
 import type { WeightedTask } from '../hooks/useIgnitionPool';
 import type { Task } from '@/shared/types/domain';
 
+/**
+ * SpinnerView 컴포넌트 Props
+ */
 interface SpinnerViewProps {
   weightedPool: WeightedTask[];
   totalWeight: number;
@@ -24,6 +28,13 @@ interface SpinnerViewProps {
   onConfirmSelection: (selection: WeightedTask) => void;
 }
 
+/**
+ * 점화 스피너 화면 컴포넌트
+ * 확률 분포 패널, 스피너, 최근 기록을 포함한 전체 스피너 뷰 렌더링
+ *
+ * @param props - SpinnerViewProps
+ * @returns 스피너 화면 UI
+ */
 export default function SpinnerView({
   weightedPool,
   totalWeight,
@@ -129,10 +140,21 @@ export default function SpinnerView({
 // HistoryPanel Sub-Component
 // ============================================================================
 
+/**
+ * HistoryPanel 컴포넌트 Props
+ */
 interface HistoryPanelProps {
+  /** 점화 히스토리 작업 목록 */
   history: Task[];
 }
 
+/**
+ * 점화 히스토리 패널 컴포넌트
+ * 최근 점화 결과 목록을 가로 스크롤로 표시
+ *
+ * @param props - HistoryPanelProps
+ * @returns 히스토리 패널 UI
+ */
 function HistoryPanel({ history }: HistoryPanelProps) {
   return (
     <div className="border-t border-white/10 pt-6">

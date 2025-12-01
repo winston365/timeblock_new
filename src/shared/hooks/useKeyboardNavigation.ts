@@ -8,7 +8,7 @@
  *   - react: useEffect, useCallback, useState hooks
  */
 
-import { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 
 export interface KeyboardShortcut {
   key: string;
@@ -304,6 +304,3 @@ export function useTabNavigation({
     }),
   };
 }
-
-// React import 추가 (useTabNavigation에서 사용)
-import React from 'react';

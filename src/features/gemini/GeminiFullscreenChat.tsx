@@ -1,13 +1,20 @@
 /**
- * GeminiFullscreenChat - 전체 화면 비주얼 노벨 스타일 AI 챗
+ * GeminiFullscreenChat.tsx
  *
- * @role Gemini AI와의 몰입형 대화 인터페이스. 좌측에 와이푸 이미지, 우측에 채팅 UI를 50/50 분할 표시
- * @input isOpen (모달 표시 여부), onClose (모달 닫기 핸들러)
- * @output 전체 화면 비주얼 노벨 스타일 채팅 UI
- * @external_dependencies
- *   - GeminiChatModal: 기존 채팅 로직 재사용
- *   - WaifuPanel: 와이푸 이미지 로직
- *   - useWaifuState: 와이푸 상태
+ * @fileoverview 전체 화면 비주얼 노벨 스타일 AI 챗 컴포넌트
+ *
+ * @role Gemini AI와의 몰입형 대화 인터페이스 제공
+ * @responsibilities
+ *   - 좌측 와이푸 이미지 / 우측 채팅 UI의 50/50 분할 레이아웃 렌더링
+ *   - 채팅 히스토리 로드 및 저장
+ *   - Gemini API 호출을 통한 AI 응답 생성
+ *   - 와이푸 이미지 호감도 기반 동적 변경
+ *   - 키보드 단축키(ESC, Enter) 처리
+ * @dependencies
+ *   - callAIWithContext: 통합 AI 호출 서비스
+ *   - chatHistoryRepository: 채팅 히스토리 영속화
+ *   - useWaifu, useEnergy, useGameState, useDailyData: 게임/일일 상태 훅
+ *   - waifuImageUtils: 호감도 기반 이미지 경로 계산
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -19,7 +26,6 @@ import { useSettingsStore } from '@/shared/stores/settingsStore';
 import {
   loadTodayChatHistory,
   saveChatHistory,
-  addTokenUsage
 } from '@/data/repositories/chatHistoryRepository';
 import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier } from '@/features/waifu/waifuImageUtils';
 import baseImage from '@/features/waifu/base.png';
@@ -365,7 +371,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
 
             {messages.length > 0 && (
               <>
-                {messages.map((msg, index) => {
+                {messages.map((msg, messageIndex) => {
                   const isUser = msg.role === 'user';
                   const bubbleClasses = [
                     'max-w-[70%] rounded-[18px] border px-4 py-3 text-sm leading-relaxed transition-transform duration-200',
@@ -378,7 +384,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
                     <div
                       key={msg.id}
                       className={`flex gap-4 ${isUser ? 'flex-row-reverse' : ''}`}
-                      style={{ animationDelay: `${index * 0.1}s` }}
+                      style={{ animationDelay: `${messageIndex * 0.1}s` }}
                     >
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-xl shadow-[0_8px_20px_rgba(0,0,0,0.25)]">
                         {isUser ? '👤' : '🤖'}

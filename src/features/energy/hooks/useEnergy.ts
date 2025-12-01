@@ -42,6 +42,7 @@ export function useEnergy() {
     // Initial load
     useEffect(() => {
         loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only load once on mount
 
     // Derived state

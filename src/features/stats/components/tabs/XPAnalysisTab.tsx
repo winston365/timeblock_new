@@ -29,7 +29,23 @@ const BLOCKS_WITH_OTHER = [
     { id: 'other', label: '기타 (23:00 - 05:00)', start: 23, end: 5 },
 ] as const;
 
-// Filter Section Component (Memoized for performance)
+/**
+ * 상태 통계 필터 섹션 컴포넌트
+ * @param props - FilterProps
+ * @param props.rangeDays - 선택된 기간 (7, 14, 30일)
+ * @param props.onRangeDaysChange - 기간 변경 핸들러
+ * @param props.includeWeekends - 주말 포함 여부
+ * @param props.onIncludeWeekendsChange - 주말 포함 변경 핸들러
+ * @param props.todayOnly - 오늘만 보기 여부
+ * @param props.onTodayOnlyChange - 오늘만 보기 변경 핸들러
+ * @param props.showLastWeekComparison - 지난 주 비교 여부
+ * @param props.onShowLastWeekComparisonChange - 지난 주 비교 변경 핸들러
+ * @param props.showAdvancedFilters - 고급 필터 표시 여부
+ * @param props.onShowAdvancedFiltersToggle - 고급 필터 토글 핸들러
+ * @param props.blockVisibility - 블록 표시 여부 맵
+ * @param props.onBlockVisibilityChange - 블록 표시 변경 핸들러
+ * @returns 필터 섹션 UI 엘리먼트
+ */
 export const FilterSection = memo(function FilterSection({
     rangeDays,
     onRangeDaysChange,
@@ -119,7 +135,16 @@ export const FilterSection = memo(function FilterSection({
     );
 });
 
-// XP Analysis Tab Component
+/**
+ * XP 추이 차트 및 고급 필터 기능을 제공하는 탭
+ * @param props - XPAnalysisTabProps
+ * @param props.xpHistory - 일별 XP 데이터 배열
+ * @param props.averageXP - 평균 XP
+ * @param props.maxXP - 최대 XP
+ * @param props.numberFormatter - 숫자 포맷터
+ * @param props.showLastWeekComparison - 지난 주 비교 여부
+ * @returns XP 분석 탭 UI 엘리먼트
+ */
 export function XPAnalysisTab({
     xpHistory,
     averageXP,
@@ -153,9 +178,9 @@ export function XPAnalysisTab({
                             <YAxis stroke="var(--color-text-tertiary)" domain={[0, Math.max(maxXP, averageXP)]} tickFormatter={v => numberFormatter.format(v)} />
                             <Tooltip
                                 contentStyle={{ background: 'var(--color-bg-secondary)', border: `1px solid var(--color-border)` }}
-                                formatter={(value: any, name: any) => [
-                                    `${numberFormatter.format(value as number)} XP`,
-                                    name === 'xp' ? '이번 주' : name === 'lastWeekXP' ? '지난 주' : name
+                                formatter={(xpValue: number, dataKey: string) => [
+                                    `${numberFormatter.format(xpValue)} XP`,
+                                    dataKey === 'xp' ? '이번 주' : dataKey === 'lastWeekXP' ? '지난 주' : dataKey
                                 ]}
                             />
                             <Legend />

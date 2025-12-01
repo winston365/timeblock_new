@@ -15,7 +15,8 @@ export default function IgnitionButton() {
     const { gameState } = useGameStateStore();
     const { settings } = useSettingsStore();
     const [cooldown, setCooldown] = useState(0);
-    const [forceUpdate, setForceUpdate] = useState(0);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [_forceUpdate, setForceUpdate] = useState(0);
 
     const check = checkIgnitionAvailability(gameState, false, {
         cooldownMinutes: settings?.ignitionCooldownMinutes,

@@ -1,10 +1,20 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Store 유틸리티 함수
  *
- * @role Zustand 스토어에서 공통으로 사용되는 패턴들을 추상화하여 중복 제거
- * @input Store 상태, 업데이트 함수, 롤백 데이터
- * @output 표준화된 상태 업데이트 객체
- * @dependencies domain types
+ * @fileoverview Zustand 스토어에서 공통으로 사용되는 패턴들을 추상화한 유틸리티 모듈
+ *
+ * @role 스토어 상태 업데이트 및 롤백 패턴 표준화
+ * @responsibilities
+ *   - Firebase 호환성을 위한 데이터 정제 (undefined 제거)
+ *   - TimeBlock/HourSlot 자동 계산
+ *   - DailyData 업데이트 헬퍼 제공
+ *   - Optimistic Update 패턴 지원
+ *   - 롤백 상태 생성
+ *   - 유효성 검사 어설션
+ *
+ * @dependencies
+ *   - domain types: DailyData, Task, TimeBlockId, TIME_BLOCKS
  */
 
 import type { DailyData, Task, TimeBlockId } from '../types/domain';

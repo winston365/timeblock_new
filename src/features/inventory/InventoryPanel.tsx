@@ -13,11 +13,18 @@ import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { INVENTORY_ITEMS, type InventoryItemType } from '@/shared/types/domain';
 import { toast } from 'react-hot-toast';
 
+/**
+ * 인벤토리 패널 컴포넌트
+ *
+ * 룰렛 등에서 획득한 아이템(휴식권 등)을 표시하고 사용할 수 있는 인벤토리 UI를 제공합니다.
+ *
+ * @returns {JSX.Element} 인벤토리 패널 UI
+ */
 export default function InventoryPanel() {
-    const { gameState, useItem } = useGameStateStore();
+    const { gameState, useItem: consumeItem } = useGameStateStore();
 
     const inventory = gameState?.inventory || {};
-    const inventoryEntries = Object.entries(inventory).filter(([_, quantity]) => quantity > 0);
+    const inventoryEntries = Object.entries(inventory).filter(([, quantity]) => quantity > 0);
 
     const handleUseItem = async (itemId: string) => {
         const itemMeta = INVENTORY_ITEMS[itemId as InventoryItemType];
@@ -27,7 +34,7 @@ export default function InventoryPanel() {
         }
 
         try {
-            await useItem(itemId);
+            await consumeItem(itemId);
             toast.success(`${itemMeta.label}을(를) 사용했습니다! ${itemMeta.description}`);
         } catch (error) {
             console.error('Failed to use item:', error);

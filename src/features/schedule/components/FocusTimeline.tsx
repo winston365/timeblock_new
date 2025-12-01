@@ -1,3 +1,13 @@
+/**
+ * @file FocusTimeline.tsx
+ * @role 예정된 작업 목록을 타임라인 형태로 표시하는 컴포넌트
+ * @responsibilities
+ *   - 드래그 앤 드롭으로 작업 순서 재배치
+ *   - 작업 항목 클릭 시 편집 모드 진입
+ *   - 작업별 난이도 및 소요 시간 표시
+ * @dependencies framer-motion (Reorder, useDragControls), Task 타입
+ */
+
 import { Reorder, useDragControls } from 'framer-motion';
 import type { Task } from '@/shared/types/domain';
 
@@ -7,6 +17,14 @@ interface FocusTimelineProps {
     onEdit: (task: Task) => void;
 }
 
+/**
+ * 예정된 작업 목록을 드래그 가능한 타임라인으로 표시하는 컴포넌트
+ * @param props - 타임라인 프로퍼티
+ * @param props.tasks - 표시할 작업 목록
+ * @param props.onReorder - 작업 순서 변경 시 호출되는 콜백 함수
+ * @param props.onEdit - 작업 편집 시 호출되는 콜백 함수
+ * @returns 드래그 가능한 작업 타임라인 UI
+ */
 export function FocusTimeline({ tasks, onReorder, onEdit }: FocusTimelineProps) {
     return (
         <div className="space-y-4">
@@ -27,44 +45,51 @@ export function FocusTimeline({ tasks, onReorder, onEdit }: FocusTimelineProps) 
     );
 }
 
-function TimelineItem({ task, onEdit }: { task: Task; onEdit: (task: Task) => void }) {
-    const controls = useDragControls();
+/**
+ * 타임라인 개별 작업 항목 컴포넌트 (드래그 가능)
+ * @param props - 항목 프로퍼티
+ * @param props.task - 표시할 작업 객체
+ * @param props.onEdit - 작업 편집 시 호출되는 콜백 함수
+ * @returns 드래그 가능한 작업 항목 UI
+ */
+function TimelineItem({ task: scheduledTask, onEdit }: { task: Task; onEdit: (task: Task) => void }) {
+    const dragControls = useDragControls();
 
     return (
         <Reorder.Item
-            value={task}
+            value={scheduledTask}
             dragListener={false}
-            dragControls={controls}
+            dragControls={dragControls}
             className="relative flex items-center gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm transition-all hover:border-[var(--color-primary)] hover:shadow-md"
         >
             {/* Drag Handle */}
             <div
                 className="cursor-grab touch-none p-2 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] active:cursor-grabbing"
-                onPointerDown={(e) => controls.start(e)}
+                onPointerDown={(e) => dragControls.start(e)}
             >
                 ⋮⋮
             </div>
 
             {/* Content */}
-            <div className="flex-1 cursor-pointer" onClick={() => onEdit(task)}>
-                <div className="font-medium text-[var(--color-text-primary)]">{task.text}</div>
+            <div className="flex-1 cursor-pointer" onClick={() => onEdit(scheduledTask)}>
+                <div className="font-medium text-[var(--color-text-primary)]">{scheduledTask.text}</div>
                 <div className="mt-1 flex items-center gap-2 text-xs text-[var(--color-text-tertiary)]">
                     <span className="flex items-center gap-1">
-                        ⏱ {task.baseDuration}분
+                        ⏱ {scheduledTask.baseDuration}분
                     </span>
                     <span>·</span>
-                    <span className={`${task.resistance === 'low' ? 'text-emerald-500' :
-                            task.resistance === 'medium' ? 'text-amber-500' :
+                    <span className={`${scheduledTask.resistance === 'low' ? 'text-emerald-500' :
+                            scheduledTask.resistance === 'medium' ? 'text-amber-500' :
                                 'text-rose-500'
                         }`}>
-                        {task.resistance === 'low' ? '쉬움' : task.resistance === 'medium' ? '보통' : '어려움'}
+                        {scheduledTask.resistance === 'low' ? '쉬움' : scheduledTask.resistance === 'medium' ? '보통' : '어려움'}
                     </span>
                 </div>
             </div>
 
             {/* Edit Button (Optional, since whole card is clickable) */}
             <button
-                onClick={() => onEdit(task)}
+                onClick={() => onEdit(scheduledTask)}
                 className="rounded-full p-2 text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
             >
                 ✏️

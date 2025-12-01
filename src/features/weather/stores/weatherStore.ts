@@ -1,7 +1,16 @@
 /**
- * Weather Zustand Store
- * 
- * 날씨 정보 상태 관리
+ * @file weatherStore.ts
+ * @description 날씨 정보 Zustand 상태 관리 스토어
+ *
+ * @role 날씨 데이터 상태 관리 및 조회 액션 제공
+ * @responsibilities
+ *   - 날씨 예보 데이터 상태 관리 (forecast, selectedDay)
+ *   - 로딩/에러 상태 관리
+ *   - 날씨 조회 액션 (캐시 활용, 에러 복구)
+ *   - 재조회 필요 여부 판단 (30분 경과)
+ * @dependencies
+ *   - fetchWeatherFromGoogle, clearWeatherCache: weatherService
+ *   - WeatherState: 날씨 상태 타입
  */
 
 import { create } from 'zustand';
@@ -14,6 +23,11 @@ interface WeatherStore extends WeatherState {
     shouldRefetch: () => boolean;
 }
 
+/**
+ * 날씨 정보 Zustand 스토어
+ *
+ * @returns 날씨 상태 및 액션 (forecast, selectedDay, fetchWeather, setSelectedDay, shouldRefetch)
+ */
 export const useWeatherStore = create<WeatherStore>((set, get) => ({
     forecast: [],
     selectedDay: 0,

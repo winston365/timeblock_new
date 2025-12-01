@@ -1,13 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * Logging Utility
+ * Structured Logging Utility
  *
- * @role 구조화된 로깅을 위한 유틸리티
- * @usage 모든 Repository와 Service에서 사용
- * @features
+ * @file logger.ts
+ * @description 레벨별, 스타일이 적용된 콘솔 출력을 제공하는 구조화된 로깅 유틸리티
+ *
+ * @role Repository 및 Service 레이어에서 사용하는 로깅 시스템
+ * @responsibilities
  *   - 컨텍스트 정보 자동 추가 (타임스탬프, 모듈명)
- *   - 로그 레벨별 색상 코딩
- *   - 프로덕션에서는 error/warn만 출력
- *   - 선택적 데이터 객체 출력
+ *   - 환경별 로그 레벨 필터링 및 색상 코딩
+ *   - 선택적 데이터 객체 출력 지원
+ *   - 성능 측정을 위한 start/stop 패턴 제공
+ * @dependencies import.meta.env, process.env (환경 플래그)
  */
 
 // ============================================================================
@@ -65,6 +69,16 @@ const EMOJI = {
 // Core Logger
 // ============================================================================
 
+/**
+ * 모듈 컨텍스트와 타임스탬프를 포함한 구조화된 로거
+ *
+ * @example
+ * ```typescript
+ * const logger = createLogger('MyService');
+ * logger.info('Processing started');
+ * logger.error('Failed to save', error, { userId: '123' });
+ * ```
+ */
 class Logger {
   private module: string;
 
@@ -74,6 +88,9 @@ class Logger {
 
   /**
    * 로그 출력 여부 결정
+   *
+   * @param level - 확인할 로그 레벨
+   * @returns 출력 여부
    */
   private shouldLog(level: LogLevel): boolean {
     return LOG_LEVELS[level] >= LOG_LEVELS[MIN_LOG_LEVEL];
@@ -81,6 +98,8 @@ class Logger {
 
   /**
    * 타임스탬프 생성 (HH:mm:ss.SSS)
+   *
+   * @returns 포맷된 타임스탬프 문자열
    */
   private getTimestamp(): string {
     const now = new Date();
@@ -93,9 +112,13 @@ class Logger {
 
   /**
    * 포맷된 로그 메시지 생성
+   *
+   * @param level - 로그 레벨
+   * @param message - 로그 메시지
+   * @param context - 선택적 컨텍스트 데이터
+   * @returns 포맷된 로그 문자열
    */
   private formatMessage(level: LogLevel, message: string, context?: LogContext): string {
-    const timestamp = this.getTimestamp();
     const emoji = EMOJI[level];
     const color = COLORS[level];
     const reset = COLORS.reset;
@@ -111,7 +134,10 @@ class Logger {
   }
 
   /**
-   * Debug 로그 (개발 환경에서만)
+   * Debug 로그 (개발 환경에서만 출력)
+   *
+   * @param message - 로그 메시지
+   * @param context - 선택적 컨텍스트 데이터
    */
   debug(message: string, context?: LogContext): void {
     if (!this.shouldLog('debug')) return;
@@ -120,6 +146,9 @@ class Logger {
 
   /**
    * Info 로그
+   *
+   * @param message - 로그 메시지
+   * @param context - 선택적 컨텍스트 데이터
    */
   info(message: string, context?: LogContext): void {
     if (!this.shouldLog('info')) return;
@@ -128,14 +157,20 @@ class Logger {
 
   /**
    * Success 로그 (성공 작업 강조)
+   *
+   * @param message - 로그 메시지
+   * @param context - 선택적 컨텍스트 데이터
    */
   success(message: string, context?: LogContext): void {
     if (!this.shouldLog('success')) return;
-    console.log(this.formatMessage('success', message, context));
+    console.info(this.formatMessage('success', message, context));
   }
 
   /**
    * Warning 로그
+   *
+   * @param message - 로그 메시지
+   * @param context - 선택적 컨텍스트 데이터
    */
   warn(message: string, context?: LogContext): void {
     if (!this.shouldLog('warn')) return;
@@ -144,6 +179,10 @@ class Logger {
 
   /**
    * Error 로그 (에러 객체 지원)
+   *
+   * @param message - 로그 메시지
+   * @param error - 선택적 Error 객체 또는 기타 에러 값
+   * @param context - 선택적 컨텍스트 데이터
    */
   error(message: string, error?: Error | unknown, context?: LogContext): void {
     if (!this.shouldLog('error')) return;
@@ -162,6 +201,10 @@ class Logger {
 
   /**
    * 작업 시작 로그 (성능 측정용)
+   *
+   * @param action - 시작하는 작업명
+   * @param context - 선택적 컨텍스트 데이터
+   * @returns 작업 종료 시 호출할 함수 (소요 시간 기록)
    */
   start(action: string, context?: LogContext): () => void {
     const startTime = Date.now();
@@ -175,7 +218,10 @@ class Logger {
   }
 
   /**
-   * 그룹 로그 (중첩된 로그)
+   * 그룹 로그 (중첩된 로그, 개발 환경에서만 작동)
+   *
+   * @param label - 그룹 레이블
+   * @param callback - 그룹 내에서 실행할 콜백 함수
    */
   group(label: string, callback: () => void): void {
     if (!IS_DEVELOPMENT) return;
@@ -212,6 +258,11 @@ export function createLogger(module: string): Logger {
 // Global Logger (레거시 지원)
 // ============================================================================
 
+/**
+ * 앱 전역에서 사용할 수 있는 기본 Logger 인스턴스
+ *
+ * @deprecated 모듈별 Logger 생성을 권장합니다 (createLogger 사용)
+ */
 export const globalLogger = createLogger('App');
 
 // ============================================================================

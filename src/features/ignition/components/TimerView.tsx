@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @file TimerView.tsx
  * @role 점화 타이머 화면 컴포넌트

@@ -1,6 +1,27 @@
+/**
+ * @file FocusTimer.tsx
+ * @role 집중 모드 타이머 원형 프로그레스 컴포넌트
+ * @responsibilities
+ *   - 남은 시간 시각적 표시 (SVG 원형 프로그레스 바)
+ *   - 진행률에 따른 색상 변화
+ *   - 애니메이션 효과 (framer-motion)
+ * @dependencies
+ *   - framer-motion: 애니메이션
+ */
 import { motion } from 'framer-motion';
 import { ReactNode } from 'react';
 
+/**
+ * FocusTimer 컴포넌트 Props
+ * @param remainingMinutes - 남은 시간 (분)
+ * @param totalMinutes - 전체 시간 (분)
+ * @param progress - 진행률 (0-100), 제공 시 remainingMinutes 대신 사용
+ * @param size - 타이머 크기 (px)
+ * @param strokeWidth - 프로그레스 바 두께
+ * @param isRunning - 타이머 실행 중 여부
+ * @param children - 커스텀 내부 콘텐츠
+ * @param color - 커스텀 프로그레스 바 색상
+ */
 interface FocusTimerProps {
     remainingMinutes?: number;
     totalMinutes?: number;
@@ -12,6 +33,11 @@ interface FocusTimerProps {
     color?: string;
 }
 
+/**
+ * 집중 모드 타이머 컴포넌트
+ * @param props - FocusTimerProps
+ * @returns 원형 프로그레스 타이머 UI
+ */
 export function FocusTimer({
     remainingMinutes = 0,
     totalMinutes = 60,
@@ -31,9 +57,9 @@ export function FocusTimer({
     const strokeDashoffset = circumference - (finalPercentage / 100) * circumference;
 
     // Default color logic if not provided
-    const getDefaultColor = (p: number) => {
-        if (p > 60) return '#3b82f6'; // Blue-500
-        if (p > 30) return '#8b5cf6'; // Violet-500
+    const getDefaultColor = (percentage: number) => {
+        if (percentage > 60) return '#3b82f6'; // Blue-500
+        if (percentage > 30) return '#8b5cf6'; // Violet-500
         return '#ef4444'; // Red-500
     };
 

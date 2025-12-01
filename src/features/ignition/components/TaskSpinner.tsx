@@ -1,17 +1,38 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * @file TaskSpinner.tsx
+ * @role 점화 시스템 스피너 UI 컴포넌트
+ * @responsibilities
+ *   - 작업 목록을 회전하며 무작위 선택 애니메이션 제공
+ *   - 가중치 기반 당첨 확률 계산 및 시각적 감속 효과
+ *   - 결과 확정 후 선택된 작업 콜백 호출
+ * @dependencies framer-motion, Task 타입
+ */
+
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import type { Task } from '@/shared/types/domain';
 
-
+/**
+ * TaskSpinner 컴포넌트 Props
+ */
 interface TaskSpinnerProps {
     tasks: Task[];
     onSelect: (task: Task) => void;
     onSpinStart?: () => void;
     disabled?: boolean;
     statusText?: string;
-    resultTask?: Task | null; // externally confirmed result (e.g., pendingSelection)
+    /** 외부에서 확정된 결과 작업 (예: pendingSelection) */
+    resultTask?: Task | null;
 }
 
+/**
+ * 점화 스피너 컴포넌트
+ * 작업 목록을 회전하며 가중치 기반으로 무작위 선택하는 룰렛 UI
+ *
+ * @param props - TaskSpinnerProps
+ * @returns 스피너 UI 컴포넌트
+ */
 export default function TaskSpinner({ tasks, onSelect, onSpinStart, disabled, statusText, resultTask }: TaskSpinnerProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isSpinning, setIsSpinning] = useState(false);
@@ -85,15 +106,15 @@ export default function TaskSpinner({ tasks, onSelect, onSpinStart, disabled, st
 
         // 2. Calculate steps to land on winner
         // Ensure at least 4 full rotations + distance to winner
-        const currentIdx = currentIndex;
-        const distance = (winnerIndex - currentIdx + capturedTasks.length) % capturedTasks.length;
+        const startIndex = currentIndex;
+        const distance = (winnerIndex - startIndex + capturedTasks.length) % capturedTasks.length;
         const baseSpeed = 18; // ms, slightly faster start
         const maxSpeed = 180; // ms, clear slowdown ceiling for visibility
         const tailSpeed = 160; // ms, minimum speed near the very end
         const minFullSpins = 4;
         const totalSteps = (minFullSpins * capturedTasks.length) + distance;
-        let steps = 0;
-        let activeIndex = currentIdx;
+        let stepCount = 0;
+        let activeIndex = startIndex;
 
         let lastTime = performance.now();
         let accumulator = 0;
@@ -108,9 +129,9 @@ export default function TaskSpinner({ tasks, onSelect, onSpinStart, disabled, st
                 accumulator -= currentStepDuration;
                 activeIndex = (activeIndex + 1) % capturedTasks.length;
                 setCurrentIndex(activeIndex);
-                steps++;
+                stepCount++;
 
-                const progress = steps / Math.max(totalSteps, 1); // 0→1
+                const progress = stepCount / Math.max(totalSteps, 1); // 0→1
                 // 좀 더 강한 감속 (sine out ^1.8)
                 const eased = Math.pow(Math.sin((Math.min(progress, 1) * Math.PI) / 2), 1.8);
                 currentStepDuration = baseSpeed + (maxSpeed - baseSpeed) * eased;
@@ -118,7 +139,7 @@ export default function TaskSpinner({ tasks, onSelect, onSpinStart, disabled, st
                 if (progress > 0.8) currentStepDuration = Math.max(currentStepDuration, tailSpeed);
                 if (progress > 0.5) setIsSlowingDown(true);
 
-                if (steps >= totalSteps) {
+                if (stepCount >= totalSteps) {
                     setCurrentIndex(winnerIndex);
                     setHasResult(true);
                     setLocalResultTask(capturedTasks[winnerIndex]);

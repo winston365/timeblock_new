@@ -1,12 +1,23 @@
 /**
- * WaifuPanel
+ * @file WaifuPanel.tsx
  *
- * @role 와이푸 캐릭터의 이미지, 대사, 호감도, 완료 작업 수, 기분을 표시하는 패널 컴포넌트
- * @input imagePath (string, optional) - 수동 이미지 경로 지정
- * @output 와이푸 이미지, 대사 말풍선, 호감도 바, 기분 표시, 완료 작업 수를 포함한 UI
- * @external_dependencies
- *   - useWaifuState: 와이푸 상태 훅
- *   - waifuImageUtils: 이미지 경로 및 호감도 관리 유틸리티
+ * @description 와이푸 캐릭터의 이미지, 대사, 호감도, 완료 작업 수, 기분을 표시하는 패널 컴포넌트
+ *
+ * @role 와이푸 캐릭터 UI 패널 - 호감도 기반 이미지/대사 자동 변경, 사용자 인터랙션 처리
+ *
+ * @responsibilities
+ *   - 호감도에 따른 와이푸 이미지 자동 선택 및 표시
+ *   - 클릭/시간 기반 이미지 및 대사 변경
+ *   - 호감도 바, 기분 표시, 완료 작업 수 UI 렌더링
+ *   - 클릭 시 XP 및 호감도 증가 처리
+ *   - 시간대별 조명 효과 적용
+ *
+ * @dependencies
+ *   - useWaifu: 와이푸 상태 및 액션 훅
+ *   - useWaifuCompanionStore: 컴패니언 레이어 상태 관리
+ *   - waifuImageUtils: 이미지 경로 및 호감도 유틸리티
+ *   - waifuImagePreloader: 이미지 사전 로드
+ *   - audioService: 오디오 재생 서비스
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -48,7 +59,7 @@ interface WaifuPanelProps {
  *   - 호감도 변경 시 이미지 자동 업데이트
  */
 export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
-  const { waifuState, loading, currentMood, currentDialogue, currentAudio, refresh: refreshWaifu, onInteract } = useWaifu();
+  const { waifuState, loading, currentMood, currentDialogue, currentAudio, onInteract } = useWaifu();
   const { message: companionMessage, isPinned, togglePin, expressionOverride, show: showWaifu, currentImagePath: storedImagePath, setCurrentImagePath } = useWaifuCompanionStore();
   const { settings } = useSettingsStore();
   const { addXP } = useGameStateStore();
@@ -69,7 +80,8 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
 
   // Smooth Transition State
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [nextImagePath, setNextImagePath] = useState<string>('');
+  // nextImagePath는 트랜지션 중 다음 이미지 경로를 임시 저장 (setNextImagePath로만 사용)
+  const [, setNextImagePath] = useState<string>('');
 
   // Floating Feedback State
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
@@ -87,8 +99,8 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     }
 
     // 이미지 프리로드 (백그라운드) - 초기 렌더링 후 지연 실행하여 첫 이미지 로딩 우선순위 보장
-    const timer = setTimeout(() => {
-      preloadWaifuImages().catch((err) => console.error('[WaifuPanel] Image preload failed:', err));
+    const preloadTimer = setTimeout(() => {
+      preloadWaifuImages().catch((preloadError) => console.error('[WaifuPanel] Image preload failed:', preloadError));
     }, 2000);
 
     // Time-aware Lighting Logic
@@ -105,10 +117,10 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
       }
     };
     updateLighting();
-    const interval = setInterval(updateLighting, 60000 * 30); // Check every 30 mins
+    const lightingInterval = setInterval(updateLighting, 60000 * 30); // Check every 30 mins
     return () => {
-      clearInterval(interval);
-      clearTimeout(timer);
+      clearInterval(lightingInterval);
+      clearTimeout(preloadTimer);
     };
   }, [settings]);
 
@@ -217,6 +229,7 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     
     // 호감도 티어가 변경되었으면 이미지 업데이트
     changeImage(waifuState.affection, 'auto');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expressionOverride?.imagePath, imagePath, waifuState?.affection, waifuMode, changeImage, storedImagePath, displayImagePath, setCurrentImagePath]);
 
   // 설정된 간격마다 자동으로 이미지 및 대사 변경
@@ -255,7 +268,11 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     }
   }, [currentAudio, companionMessage, isNormalMode]);
 
-  // 하트 파티클 효과
+  /**
+   * 지정된 위치에 하트 모양 confetti 파티클을 생성합니다.
+   * @param x - 화면 X 좌표
+   * @param y - 화면 Y 좌표
+   */
   const spawnHeartParticles = (x: number, y: number) => {
     confetti({
       particleCount: 15,
@@ -267,18 +284,26 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     });
   };
 
-  // 클릭 사운드 재생
+  /**
+   * 랜덤한 클릭 사운드를 재생합니다 (click1~4.mp3 중 하나).
+   */
   const playClickSound = () => {
     const soundId = Math.floor(Math.random() * 4) + 1;
     audioService.play(`audio/click${soundId}.mp3`);
   };
 
-  // Floating Feedback 추가 함수
+  /**
+   * 화면에 떠오르는 피드백 텍스트를 추가합니다.
+   * @param x - 화면 X 좌표
+   * @param y - 화면 Y 좌표
+   * @param text - 표시할 텍스트 (예: '+1 XP')
+   * @param color - 텍스트 색상 (hex)
+   */
   const addFeedback = (x: number, y: number, text: string, color: string) => {
     const id = feedbackIdRef.current++;
     setFeedbacks((prev) => [...prev, { id, x, y, text, color }]);
     setTimeout(() => {
-      setFeedbacks((prev) => prev.filter((item) => item.id !== id));
+      setFeedbacks((prev) => prev.filter((feedbackItem) => feedbackItem.id !== id));
     }, 1000);
   };
 
@@ -354,7 +379,11 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     );
   }
 
-  // 기분 설명 가져오기
+  /**
+   * 기분 이모지에 대응하는 설명 텍스트를 반환합니다.
+   * @param mood - 기분 이모지 (예: '🥰', '😊')
+   * @returns 기분에 대한 한국어 설명 문자열
+   */
   const getMoodDescription = (mood: string): string => {
     switch (mood) {
       case '🥰': return '애정 넘침';

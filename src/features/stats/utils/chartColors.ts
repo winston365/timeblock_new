@@ -45,6 +45,7 @@ export function getBlockColor(blockId: string, opacity: number = 1): string {
 /**
  * 모든 타임블록 색상 배열로 반환
  * Recharts의 색상 배열로 사용 가능
+ * @returns 타임블록 색상 배열
  */
 export function getAllBlockColors(): string[] {
     return ['5-8', '8-11', '11-14', '14-17', '17-20', '20-23', 'other']

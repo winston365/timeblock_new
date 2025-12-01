@@ -1,3 +1,21 @@
+/**
+ * useAppInitialization Hook
+ *
+ * @file useAppInitialization.ts
+ * @role 애플리케이션 초기화 오케스트레이션
+ * @responsibilities
+ *   - IndexedDB(Dexie) 초기화
+ *   - 설정 로드 및 Firebase 연결
+ *   - Firebase ↔ Dexie 양방향 데이터 동기화
+ *   - Zustand 스토어 초기 데이터 로드
+ *   - RAG/SyncEngine 서비스 부트스트랩
+ * @dependencies
+ *   - dexieClient: IndexedDB 접근
+ *   - firebaseService: Firebase 초기화 및 데이터 fetch
+ *   - syncEngine: 실시간 동기화 관리
+ *   - settingsStore, dailyDataStore, gameStateStore: Zustand 스토어
+ */
+
 import { useState, useEffect, useRef } from 'react';
 import { initializeDatabase, db } from '@/data/db/dexieClient';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
@@ -15,8 +33,12 @@ import type { GameState } from '@/shared/types/domain';
 /**
  * 애플리케이션 초기화 훅
  *
- * @role DB 초기화, 설정 로드, Firebase 연결, 초기 데이터 로드 및 저장을 수행합니다.
- * @returns {Object} 초기화 상태 및 에러
+ * DB 초기화, 설정 로드, Firebase 연결, 초기 데이터 로드 및 저장을 수행합니다.
+ * 앱 시작 시 한 번만 실행되며, 모든 필수 서비스와 데이터를 준비합니다.
+ *
+ * @returns 초기화 상태 객체
+ * @returns {boolean} returns.isInitialized - 초기화 완료 여부
+ * @returns {Error | null} returns.error - 초기화 중 발생한 에러 (없으면 null)
  */
 export function useAppInitialization() {
     const [isInitialized, setIsInitialized] = useState(false);
@@ -34,18 +56,14 @@ export function useAppInitialization() {
             initRef.current = true;
 
             try {
-                console.log('Initializing application...');
-
                 // 1. IndexedDB 초기화
                 await initializeDatabase();
-                console.log('Database initialized');
 
                 // SyncEngine 초기화 (Hooks 등록)
                 syncEngine.initialize();
 
                 // 2. 설정 로드
                 const settings = await loadSettings();
-                console.log('Settings loaded');
 
                 // RAG Sync Handler 초기화 (설정 로드 후 실행하여 API Key 확보)
                 ragSyncHandler.initialize();
@@ -53,12 +71,9 @@ export function useAppInitialization() {
                 // 3. Firebase 초기화 및 데이터 동기화
                 if (settings.firebaseConfig) {
                     try {
-                        const initialized = initializeFirebase(settings.firebaseConfig);
-                        if (initialized) {
-                            console.log('Firebase initialized');
-
+                        const firebaseInitialized = initializeFirebase(settings.firebaseConfig);
+                        if (firebaseInitialized) {
                             // 초기 데이터 가져오기
-                            console.log('Fetching data from Firebase...');
                             const firebaseData = await fetchDataFromFirebase();
 
                             // --- 데이터 병합 및 저장 로직 (Dexie Only) ---
@@ -69,8 +84,10 @@ export function useAppInitialization() {
                                 const localGameStateEntry = await db.gameState.get('current');
                                 const localGameState = localGameStateEntry
                                     ? (() => {
-                                        const { key: _key, ...rest } = localGameStateEntry as GameState & { key: string };
-                                        return rest as GameState;
+                                        // Extract gameState data, excluding internal key property
+                                        const { key: _internalKey, ...gameStateData } = localGameStateEntry as GameState & { key: string };
+                                        void _internalKey; // Intentionally unused - just for destructuring
+                                        return gameStateData as GameState;
                                     })()
                                     : null;
 
@@ -98,42 +115,42 @@ export function useAppInitialization() {
                                 // 3.2 DailyData 저장
                                 const dailyDataDates = Object.keys(firebaseData.dailyData);
                                 if (dailyDataDates.length > 0) {
-                                    const updates: Promise<any>[] = [];
+                                    const dailyDataUpdatePromises: Promise<unknown>[] = [];
                                     for (const date of dailyDataDates) {
-                                        const data = firebaseData.dailyData[date];
-                                        if (!data || !Array.isArray(data.tasks)) {
+                                        const remoteDailyEntry = firebaseData.dailyData[date];
+                                        if (!remoteDailyEntry || !Array.isArray(remoteDailyEntry.tasks)) {
                                             continue;
                                         }
 
-                                        updates.push((async () => {
-                                            const existing = await db.dailyData.get(date);
-                                            const remoteUpdatedAt = data.updatedAt ?? 0;
-                                            const localUpdatedAt = existing?.updatedAt ?? 0;
+                                        dailyDataUpdatePromises.push((async () => {
+                                            const existingDailyEntry = await db.dailyData.get(date);
+                                            const remoteUpdatedAt = remoteDailyEntry.updatedAt ?? 0;
+                                            const localUpdatedAt = existingDailyEntry?.updatedAt ?? 0;
 
                                             const mergedStates = {
-                                                ...(existing?.timeBlockStates || {}),
-                                                ...(data.timeBlockStates || {}),
+                                                ...(existingDailyEntry?.timeBlockStates || {}),
+                                                ...(remoteDailyEntry.timeBlockStates || {}),
                                             };
 
-                                            if (!existing || remoteUpdatedAt > localUpdatedAt) {
+                                            if (!existingDailyEntry || remoteUpdatedAt > localUpdatedAt) {
                                                 await db.dailyData.put({
                                                     date,
-                                                    tasks: data.tasks,
-                                                    goals: data.goals || [],
+                                                    tasks: remoteDailyEntry.tasks,
+                                                    goals: remoteDailyEntry.goals || [],
                                                     timeBlockStates: mergedStates,
                                                     updatedAt: remoteUpdatedAt || Date.now(),
                                                 });
                                             } else if (remoteUpdatedAt < localUpdatedAt) {
                                                 syncToFirebase(dailyDataStrategy, {
-                                                    tasks: existing.tasks || [],
-                                                    goals: existing.goals || [],
-                                                    timeBlockStates: existing.timeBlockStates || {},
-                                                    updatedAt: existing.updatedAt || Date.now(),
+                                                    tasks: existingDailyEntry.tasks || [],
+                                                    goals: existingDailyEntry.goals || [],
+                                                    timeBlockStates: existingDailyEntry.timeBlockStates || {},
+                                                    updatedAt: existingDailyEntry.updatedAt || Date.now(),
                                                 }, date).catch(console.error);
                                             }
                                         })());
                                     }
-                                    await Promise.all(updates);
+                                    await Promise.all(dailyDataUpdatePromises);
                                 }
 
                                 // 3.3 GlobalInbox 저장
@@ -156,21 +173,22 @@ export function useAppInitialization() {
                                 // 3.4 EnergyLevels 저장
                                 if (firebaseData.energyLevels) {
                                     const energyDates = Object.keys(firebaseData.energyLevels);
-                                    const updates: Promise<any>[] = [];
-                                    for (const date of energyDates) {
-                                        const levels = firebaseData.energyLevels[date];
-                                        if (Array.isArray(levels) && levels.length > 0) {
-                                            updates.push(
-                                                db.energyLevels.where('date').equals(date).delete().then(() => {
-                                                    const levelsWithId = levels.map(level => ({
+                                    const energyLevelUpdatePromises: Promise<unknown>[] = [];
+                                    for (const energyDate of energyDates) {
+                                        const energyLevels = firebaseData.energyLevels[energyDate];
+                                        if (Array.isArray(energyLevels) && energyLevels.length > 0) {
+                                            energyLevelUpdatePromises.push(
+                                                db.energyLevels.where('date').equals(energyDate).delete().then(() => {
+                                                    const levelsWithId = energyLevels.map(level => ({
                                                         ...level,
-                                                        id: `${date}_${level.timestamp}`,
-                                                        date,
+                                                        id: `${energyDate}_${level.timestamp}`,
+                                                        date: energyDate,
                                                     }));
 
                                                     // 중복 제거 (ID 기준)
+                                                    type EnergyLevelWithId = typeof levelsWithId[number];
                                                     const uniqueLevels = Array.from(
-                                                        new Map(levelsWithId.map((item: any) => [item.id, item])).values()
+                                                        new Map(levelsWithId.map((levelItem: EnergyLevelWithId) => [levelItem.id, levelItem])).values()
                                                     );
 
                                                     return db.energyLevels.bulkPut(uniqueLevels);
@@ -178,7 +196,7 @@ export function useAppInitialization() {
                                             );
                                         }
                                     }
-                                    await Promise.all(updates);
+                                    await Promise.all(energyLevelUpdatePromises);
                                 }
 
                                 // 3.5 ShopItems 저장
@@ -208,17 +226,17 @@ export function useAppInitialization() {
                                 // 3.8 TokenUsage 저장
                                 if (firebaseData.tokenUsage) {
                                     const tokenDates = Object.keys(firebaseData.tokenUsage);
-                                    const updates: Promise<any>[] = [];
-                                    for (const date of tokenDates) {
-                                        const data = firebaseData.tokenUsage[date];
-                                        if (data) {
-                                            updates.push(db.dailyTokenUsage.put({
-                                                ...data,
-                                                date
+                                    const tokenUsageUpdatePromises: Promise<unknown>[] = [];
+                                    for (const tokenDate of tokenDates) {
+                                        const tokenUsageEntry = firebaseData.tokenUsage[tokenDate];
+                                        if (tokenUsageEntry) {
+                                            tokenUsageUpdatePromises.push(db.dailyTokenUsage.put({
+                                                ...tokenUsageEntry,
+                                                date: tokenDate
                                             }));
                                         }
                                     }
-                                    await Promise.all(updates);
+                                    await Promise.all(tokenUsageUpdatePromises);
                                 }
 
                                 // 3.9 GlobalGoals 저장
@@ -286,14 +304,13 @@ export function useAppInitialization() {
                     loadDailyData(),
                     loadGameState(),
                 ]);
-                console.log('All stores loaded');
 
                 setIsInitialized(true);
 
-                // Expose RAG for debugging
-                (window as any).rag = ragService;
-                (window as any).hybridRag = (await import('@/shared/services/rag/hybridRAGService')).hybridRAGService;
-                console.log('🔍 RAG Service exposed as window.rag, window.hybridRag');
+                // Expose RAG for debugging (개발 환경에서 window.rag, window.hybridRag로 접근 가능)
+                const windowWithDebug = window as Window & { rag?: typeof ragService; hybridRag?: unknown };
+                windowWithDebug.rag = ragService;
+                windowWithDebug.hybridRag = (await import('@/shared/services/rag/hybridRAGService')).hybridRAGService;
 
             } catch (err) {
                 console.error('Application initialization failed:', err);

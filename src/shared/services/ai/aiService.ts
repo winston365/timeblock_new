@@ -1,16 +1,17 @@
 /**
- * AI 호출 통합 서비스
+ * AI Service
  *
- * @role 모든 AI 호출을 단일 인터페이스로 통합
- *       1. 현재 내상태 context 수집 (PersonaContext)
- *       2. AI 페르소나 프롬프트 생성 (기본 성격)
- *       3. 개별 요청별 추가 instructions 결합
- *       4. Gemini API 호출
- * @input AI 호출 타입, 현재 상태, 사용자 프롬프트, 대화 히스토리, 추가 지시사항
- * @output AI 응답 텍스트, 토큰 사용량
- * @external_dependencies
- *   - geminiApi: Gemini API 호출 및 페르소나 생성
- *   - personaUtils: PersonaContext 빌드
+ * @role AI 오케스트레이션 레이어 - 페르소나 컨텍스트 구축, 프롬프트 조합, Gemini API 위임
+ * @responsibilities
+ *   - 타입별(chat, insight, task-breakdown, custom) AI 호출 통합
+ *   - 페르소나 컨텍스트 빌드 및 프롬프트 조합
+ *   - RAG 컨텍스트 주입
+ *   - 토큰 사용량 로깅
+ * @dependencies
+ *   - geminiApi: Gemini API 호출 및 페르소나 프롬프트 생성
+ *   - personaUtils: 페르소나 컨텍스트 빌드
+ *   - chatHistoryRepository: 토큰 사용량 로깅
+ *   - hybridRAGService: 컨텍스트 검색
  */
 
 import { callGeminiAPI, generateWaifuPersona, SYSTEM_PERSONA_PROMPT } from './geminiApi';
@@ -60,7 +61,7 @@ export interface AICallResult {
 /**
  * AI 통합 호출 함수
  *
- * @param {AICallParams} params - AI 호출 파라미터
+ * @param {AICallParams} callParams - AI 호출 파라미터
  * @returns {Promise<AICallResult>} AI 응답 텍스트와 토큰 사용량
  * @throws {Error} API 키가 없거나 API 호출 실패 시
  * @sideEffects
@@ -89,7 +90,7 @@ export interface AICallResult {
  * });
  * ```
  */
-export async function callAIWithContext(params: AICallParams): Promise<AICallResult> {
+export async function callAIWithContext(callParams: AICallParams): Promise<AICallResult> {
   const {
     dailyData,
     gameState,
@@ -101,7 +102,7 @@ export async function callAIWithContext(params: AICallParams): Promise<AICallRes
     userPrompt = '',
     history = [],
     additionalInstructions = '',
-  } = params;
+  } = callParams;
 
   // ===== ✅ 1단계: 타입별 페르소나 프롬프트 =====
   let basePersonaPrompt: string;
@@ -123,7 +124,7 @@ export async function callAIWithContext(params: AICallParams): Promise<AICallRes
   let finalPrompt: string;
 
   switch (type) {
-    case 'chat':
+    case 'chat': {
       // Hybrid RAG Context Injection (구조화된 쿼리 + 벡터 검색)
       const ragContext = await hybridRAGService.generateContext(userPrompt);
       const ragPrompt = ragContext ? `\n\n[참고 가능한 과거 기록]\n${ragContext}` : '';
@@ -131,6 +132,7 @@ export async function callAIWithContext(params: AICallParams): Promise<AICallRes
       // 대화가 이어져도 기본 페르소나 컨텍스트를 항상 포함해 맥락이 끊기지 않도록 유지
       finalPrompt = `${basePersonaPrompt}${ragPrompt}\n\n${userPrompt}`;
       break;
+    }
 
     case 'insight':
       // RAG Context Injection for Insight (using recent journals/tasks)
@@ -156,13 +158,13 @@ export async function callAIWithContext(params: AICallParams): Promise<AICallRes
   }
 
   // ===== ✅ 4단계: Gemini API 호출 =====
-  const result = await callGeminiAPI(finalPrompt, history, apiKey, model);
+  const aiResult = await callGeminiAPI(finalPrompt, history, apiKey, model);
 
-  if (result.tokenUsage) {
-    await addTokenUsage(result.tokenUsage.promptTokens, result.tokenUsage.candidatesTokens);
+  if (aiResult.tokenUsage) {
+    await addTokenUsage(aiResult.tokenUsage.promptTokens, aiResult.tokenUsage.candidatesTokens);
   }
 
-  return result;
+  return aiResult;
 }
 
 /**
@@ -171,7 +173,7 @@ export async function callAIWithContext(params: AICallParams): Promise<AICallRes
  * @returns {string} 인사이트 생성 지시사항 프롬프트
  */
 export function getInsightPrompt(): string {
-  const prompt = `
+  const insightPrompt = `
 ---
 
 ## 💡 오늘의 인사이트 작성 (종합 분석)
@@ -229,5 +231,5 @@ export function getInsightPrompt(): string {
    - 현재까지의 진행 상황을 게임 랭크로 평가
    - 긍정적인 피드백 위주
 `;
-  return prompt;
+  return insightPrompt;
 }

@@ -2,6 +2,12 @@
  * DailyData Repository - TimeBlock Operations
  * 
  * @role TimeBlockState 상태 관리 (잠금, 완료 등)
+ * @responsibilities
+ *   - 블록 상태 업데이트 (updateBlockState)
+ *   - 블록 잠금 토글 (toggleBlockLock)
+ * @key_dependencies
+ *   - coreOperations: loadDailyData, saveDailyData
+ *   - @/shared/types/domain: TimeBlockState 타입
  */
 
 import type { TimeBlockState } from '@/shared/types/domain';

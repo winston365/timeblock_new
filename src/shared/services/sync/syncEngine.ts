@@ -1,4 +1,22 @@
-import { Dexie, Table } from 'dexie';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Unified Sync Engine
+ *
+ * @role Dexie와 Firebase 간의 양방향 자동 동기화를 관리합니다.
+ * @responsibilities
+ *   - Dexie Hook을 사용하여 로컬 변경 사항을 감지하고 Firebase에 자동 업로드
+ *   - Firebase 실시간 리스너로 원격 변경 사항을 로컬에 반영
+ *   - Operation Queue 패턴으로 Race Condition 및 Split-brain 방지
+ *   - 무한 동기화 루프 방지 메커니즘
+ * @dependencies
+ *   - dexie: IndexedDB ORM
+ *   - firebase/database: Firebase Realtime Database SDK
+ *   - ./firebase/syncCore: 제네릭 동기화 코어 로직
+ *   - ./firebase/strategies: 데이터 타입별 동기화 전략
+ *   - ./firebase/firebaseClient: Firebase 클라이언트 관리
+ */
+
+import { Table } from 'dexie';
 import { syncToFirebase } from './firebase/syncCore';
 import {
     dailyDataStrategy,
@@ -13,7 +31,7 @@ import {
 } from './firebase/strategies';
 import { db } from '@/data/db/dexieClient';
 import { getFirebaseDatabase } from './firebase/firebaseClient';
-import { ref, onValue, off } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 import { getDeviceId } from './firebase/syncUtils';
 import { useToastStore } from '@/shared/stores/toastStore';
 import type { Task, DailyTokenUsage } from '@/shared/types/domain';
@@ -103,11 +121,19 @@ export class SyncEngine {
     /**
      * Dexie Hook을 등록하여 자동 동기화를 활성화합니다.
      */
-    public initialize() {
+    /**
+     * Dexie Hook을 등록하여 자동 동기화를 활성화합니다.
+     * 각 테이블에 대해 creating, updating, deleting 훅을 등록하여
+     * 로컬 변경 시 Firebase로 자동 동기화합니다.
+     *
+     * @returns {void}
+     * @sideEffects
+     *   - Dexie 테이블에 훅 등록
+     *   - 기존 토큰 사용량 NaN 값 복구
+     */
+    public initialize(): void {
         if (this.initialized) return;
         this.initialized = true;
-
-        console.log('🔄 SyncEngine: Initializing hooks...');
 
         // 기존 토큰 사용량에 NaN이 있으면 정정
         this.repairTokenUsage().catch(console.error);
@@ -185,14 +211,18 @@ export class SyncEngine {
                 await syncToFirebase(settingsStrategy, obj);
             }
         });
-
-        console.log('✅ SyncEngine: Hooks registered');
     }
 
     /**
      * Firebase 실시간 리스너를 시작합니다 (Remote -> Local).
+     * 각 컬렉션에 대해 onValue 리스너를 등록하여 원격 변경을 감지합니다.
+     *
+     * @returns {void}
+     * @sideEffects
+     *   - Firebase onValue 리스너 등록 (8개 컬렉션)
+     *   - 원격 변경 시 로컬 Dexie DB 업데이트
      */
-    public startListening() {
+    public startListening(): void {
         const database = getFirebaseDatabase();
         const userId = 'user'; // TODO: 실제 유저 ID 사용
         const deviceId = getDeviceId();
@@ -411,8 +441,6 @@ export class SyncEngine {
                 }, 'settings:current');
             }
         });
-
-        console.log('✅ SyncEngine: Listeners started');
     }
 
     /**
@@ -482,9 +510,9 @@ export class SyncEngine {
             } finally {
                 this.isSyncingFromRemote = false;
             }
-        }).catch(err => {
+        }).catch(syncError => {
             // 큐 체인 끊김 방지
-            console.error('❌ SyncEngine: Operation queue error:', err);
+            console.error('❌ SyncEngine: Operation queue error:', syncError);
         });
 
         // 현재 큐가 완료될 때까지 대기
@@ -509,9 +537,9 @@ export class SyncEngine {
         table.hook('creating', (primKey, obj, transaction) => {
             if (this.isSyncingFromRemote) return;
             transaction.on('complete', () => {
-                onChanged(primKey, obj, 'create').catch(err => {
-                    console.error(`Sync failed for ${table.name}:`, err);
-                    useToastStore.getState().addToast(`동기화 실패 (${table.name}): ${err.message}`, 'error');
+                onChanged(primKey, obj, 'create').catch(hookError => {
+                    console.error(`Sync failed for ${table.name}:`, hookError);
+                    useToastStore.getState().addToast(`동기화 실패 (${table.name}): ${hookError.message}`, 'error');
                 });
             });
         });
@@ -521,9 +549,9 @@ export class SyncEngine {
             if (this.isSyncingFromRemote) return;
             const updatedObj = { ...obj, ...modifications } as T;
             transaction.on('complete', () => {
-                onChanged(primKey, updatedObj, 'update').catch(err => {
-                    console.error(`Sync failed for ${table.name}:`, err);
-                    useToastStore.getState().addToast(`동기화 실패 (${table.name}): ${err.message}`, 'error');
+                onChanged(primKey, updatedObj, 'update').catch(hookError => {
+                    console.error(`Sync failed for ${table.name}:`, hookError);
+                    useToastStore.getState().addToast(`동기화 실패 (${table.name}): ${hookError.message}`, 'error');
                 });
             });
         });
@@ -532,9 +560,9 @@ export class SyncEngine {
         table.hook('deleting', (primKey, obj, transaction) => {
             if (this.isSyncingFromRemote) return;
             transaction.on('complete', () => {
-                onChanged(primKey, obj, 'delete').catch(err => {
-                    console.error(`Sync failed for ${table.name}:`, err);
-                    useToastStore.getState().addToast(`동기화 실패 (${table.name}): ${err.message}`, 'error');
+                onChanged(primKey, obj, 'delete').catch(hookError => {
+                    console.error(`Sync failed for ${table.name}:`, hookError);
+                    useToastStore.getState().addToast(`동기화 실패 (${table.name}): ${hookError.message}`, 'error');
                 });
             });
         });
@@ -543,7 +571,12 @@ export class SyncEngine {
 
 export const syncEngine = SyncEngine.getInstance();
 
-// Helper: group completed tasks by YYYY-MM-DD (from completedAt)
+/**
+ * 완료된 작업을 완료 날짜(YYYY-MM-DD)별로 그룹화합니다.
+ *
+ * @param {Task[]} tasks - 그룹화할 작업 배열
+ * @returns {Record<string, Task[]>} 날짜별로 그룹화된 작업 객체
+ */
 function groupCompletedByDate(tasks: Task[]): Record<string, Task[]> {
     const grouped: Record<string, Task[]> = {};
     tasks.forEach(task => {

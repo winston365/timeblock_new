@@ -1,10 +1,17 @@
 /**
  * TimeBlock XP 유틸리티
  *
+ * @fileoverview 타임블록 기반 XP 시스템의 핵심 계산 로직을 제공하는 유틸리티 모듈
+ *
  * @role 현재 타임블록 정보 및 XP 진행률 계산
- * @input 현재 시간, GameState의 timeBlockXP
- * @output 타임블록 정보, XP 진행률, 활성화 상태
- * @dependencies TIME_BLOCKS (domain.ts)
+ * @responsibilities
+ *   - 현재 시간에 해당하는 타임블록 식별
+ *   - 타임블록별 XP 진행률 계산
+ *   - 남은 시간 계산 (블록 내, 하루 종료까지)
+ *   - 비활성 시간대 (23:00~05:00) 처리
+ *
+ * @dependencies
+ *   - TIME_BLOCKS: 타임블록 정의 상수 (domain.ts)
  */
 
 import { TIME_BLOCKS } from '@/shared/types/domain';
@@ -36,10 +43,10 @@ export interface TimeBlockXPProgress {
 }
 
 /**
- * 현재 시간에 해당하는 타임블록 정보 반환
- * 
- * @param hour - 시간 (0-23), 기본값은 현재 시간
- * @returns 타임블록 정보 또는 비활성 시간대 정보
+ * 현재 시간에 해당하는 타임블록 정보를 반환합니다.
+ *
+ * @param hour - 시간 (0-23), 생략 시 현재 시간 사용
+ * @returns 해당 시간의 타임블록 정보 (비활성 시간대인 경우 night 블록 반환)
  */
 export function getCurrentTimeBlockInfo(hour?: number): TimeBlockInfo {
   const currentHour = hour ?? new Date().getHours();
@@ -82,7 +89,9 @@ export function getCurrentTimeBlockInfo(hour?: number): TimeBlockInfo {
 }
 
 /**
- * 현재 타임블록의 남은 시간 계산 (분)
+ * 현재 타임블록의 남은 시간을 분 단위로 계산합니다.
+ *
+ * @returns 현재 블록 종료까지 남은 시간 (분). 비활성 시간대의 경우 05시까지 남은 시간 반환
  */
 export function getRemainingMinutesInBlock(): number {
   const now = new Date();
@@ -104,11 +113,11 @@ export function getRemainingMinutesInBlock(): number {
 }
 
 /**
- * 타임블록 XP 진행률 계산
- * 
- * @param timeBlockXP - GameState의 timeBlockXP 객체
- * @param goalXP - 타임블록당 XP 목표 (기본 200)
- * @returns XP 진행 정보
+ * 타임블록 XP 진행률을 계산합니다.
+ *
+ * @param timeBlockXP - GameState의 timeBlockXP 객체 (블록ID → XP 매핑)
+ * @param goalXP - 타임블록당 XP 목표값 (기본값: 200)
+ * @returns 현재 블록의 XP 진행 정보 (블록 ID, 라벨, XP, 진행률, 남은 시간 등)
  */
 export function calculateTimeBlockXPProgress(
   timeBlockXP: Record<string, number> | undefined,
@@ -155,7 +164,10 @@ export function calculateTimeBlockXPProgress(
 }
 
 /**
- * 타임블록 ID로 라벨 가져오기
+ * 타임블록 ID로 라벨을 조회합니다.
+ *
+ * @param blockId - 타임블록 ID
+ * @returns 타임블록 라벨. 찾지 못한 경우 blockId 그대로 반환
  */
 export function getBlockLabel(blockId: string): string {
   const block = TIME_BLOCKS.find(b => b.id === blockId);
@@ -163,7 +175,9 @@ export function getBlockLabel(blockId: string): string {
 }
 
 /**
- * 모든 타임블록 목록과 현재 활성 여부 반환
+ * 모든 타임블록 목록과 현재 활성 여부를 반환합니다.
+ *
+ * @returns 전체 타임블록 정보 배열 (각 블록의 활성화 상태 포함)
  */
 export function getAllTimeBlocksWithStatus(): Array<TimeBlockInfo> {
   const currentHour = new Date().getHours();

@@ -1,4 +1,14 @@
-import type { GameState } from '@/shared/types/domain';
+/**
+ * @file StatsModal.tsx
+ * @role 통계 대시보드 모달 컴포넌트
+ * @responsibilities
+ *   - XP 히스토리 및 타임블록 데이터 집계
+ *   - 탭 기반 UI (개요, XP 분석, 타임블록, 인사이트)
+ *   - AI 인사이트 생성 및 캐싱
+ *   - 필터링 옵션 (기간, 주말 포함, 지난주 비교 등)
+ * @dependencies useGameState, useCompletedTasksStore, useSettingsStore, Gemini API
+ */
+
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import { getLocalDate, calculateTaskXP, getBlockIdFromHour } from '@/shared/lib/utils';
 import { useGameState } from '@/shared/hooks/useGameState';
@@ -27,6 +37,14 @@ const BLOCKS_WITH_OTHER = [
     { id: 'other', label: '기타 (23:00 - 05:00)', start: 23, end: 5 },
 ] as const;
 
+/**
+ * 통계 대시보드 모달 컴포넌트
+ * 상세 XP 분석, 타임블록 성과, AI 인사이트를 제공합니다.
+ * @param {StatsModalProps} props - 모달 속성
+ * @param {boolean} props.open - 모달 열림 상태
+ * @param {Function} props.onClose - 닫기 콜백 함수
+ * @returns {JSX.Element | null} 통계 모달 UI 또는 null
+ */
 export function StatsModal({ open, onClose }: StatsModalProps) {
     const { gameState, loading } = useGameState();
     const { completedTasks, loadData: loadCompletedTasks, loading: completedLoading } = useCompletedTasksStore();
@@ -233,11 +251,11 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
         }
 
         return arr.map(entry => {
-            const row: Record<string, any> = { date: entry.date };
+            const blockXPRow: Record<string, string | number> = { date: entry.date };
             BLOCKS_WITH_OTHER.forEach(block => {
-                row[block.id] = entry.blocks?.[block.id] ?? 0;
+                blockXPRow[block.id] = entry.blocks?.[block.id] ?? 0;
             });
-            return row;
+            return blockXPRow;
         });
     }, [gameState?.timeBlockXPHistory, gameState?.timeBlockXP, completedAgg, today, includeWeekends, todayOnly, rangeDays]);
 
@@ -405,10 +423,10 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
 
                     {/* Tab Navigation */}
                     <div className="flex gap-2 px-6 pb-3">
-                        {['overview', 'xp', 'blocks', 'insights'].map(tab => (
+                        {(['overview', 'xp', 'blocks', 'insights'] as const).map(tab => (
                             <button
                                 key={tab}
-                                onClick={() => handleTabChange(tab as any)}
+                                onClick={() => handleTabChange(tab)}
                                 className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${activeTab === tab
                                     ? 'bg-[var(--color-primary)] text-white shadow-md'
                                     : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'

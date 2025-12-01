@@ -1,16 +1,41 @@
 /**
- * LogsTab
+ * @fileoverview LogsTab - 동기화 로그 및 토큰 사용량 모니터링 탭 컴포넌트
  *
- * @role 동기화 로그 및 Gemini 토큰 사용량 모니터링 탭
- * @input LogsTabProps (logs, tokenUsage, 필터 상태 등)
- * @output 동기화 로그 목록, 토큰 사용량 테이블 UI 렌더링
- * @external_dependencies 없음 (순수 UI 컴포넌트)
+ * @description
+ * Role: 동기화 로그 및 Gemini 토큰 사용량 모니터링 탭
+ *
+ * Responsibilities:
+ * - 동기화 로그 목록 표시 및 필터링 (타입별, 액션별)
+ * - Gemini 토큰 사용량 테이블 표시
+ * - 토큰 비용 계산 및 표시
+ * - 로그 삭제 기능
+ *
+ * Key Dependencies:
+ * - react: useState (서브 탭 상태 관리)
+ * - types: LogsTabProps, SyncLogEntry, SyncType, SyncAction, DailyTokenUsage 타입 정의
+ * - styles: 공통 스타일 클래스 및 비용 계산 유틸리티
  */
 
 import { useState } from 'react';
 import type { LogsTabProps, SyncLogEntry, SyncType, SyncAction, DailyTokenUsage } from './types';
 import { sectionClass, infoBoxClass, calculateTokenCost, formatCost } from './styles';
 
+/**
+ * 동기화 로그 및 Gemini 토큰 사용량을 모니터링하는 탭 컴포넌트
+ *
+ * 두 개의 서브 탭(동기화 로그, Gemini 토큰)을 제공하며,
+ * 로그 필터링 및 토큰 비용 계산 기능을 포함합니다.
+ *
+ * @param props - 탭 컴포넌트 props
+ * @param props.logs - 동기화 로그 목록
+ * @param props.tokenUsage - 일별 토큰 사용량 목록
+ * @param props.filterType - 현재 선택된 로그 타입 필터
+ * @param props.setFilterType - 로그 타입 필터 변경 함수
+ * @param props.filterAction - 현재 선택된 액션 필터
+ * @param props.setFilterAction - 액션 필터 변경 함수
+ * @param props.handleClearLogs - 로그 삭제 핸들러
+ * @returns 동기화 로그 목록 및 토큰 사용량 테이블 UI
+ */
 export function LogsTab({
     logs,
     tokenUsage,

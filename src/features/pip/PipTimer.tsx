@@ -1,12 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * PiP Timer Component
- *
- * @role 항상 위에 떠 있는 미니 타이머 윈도우
- * @input electronAPI를 통한 상태 동기화
- * @output 타이머 표시 및 컨트롤 버튼
+ * @file PipTimer.tsx
+ * @role 항상 위에 떠 있는 미니 타이머 윈도우 (Picture-in-Picture)
+ * @responsibilities
+ *   - 현재 작업 타이머 표시 및 진행률 시각화
+ *   - 타이머 시작/정지/완료 컨트롤
+ *   - 테마 및 최상위 고정 설정
+ *   - 다음 작업 미리보기
+ * @dependencies
+ *   - electronAPI: PiP 상태 동기화 및 액션 전송
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type PipStatus = 'running' | 'paused' | 'break' | 'idle' | 'ready';
 
@@ -21,18 +26,34 @@ interface PipTimerState {
     breakRemainingSeconds?: number | null;
 }
 
+/**
+ * 초 단위 시간을 "분:초" 형식으로 변환
+ * @param seconds - 변환할 초 단위 시간
+ * @returns 포맷된 시간 문자열 (ex: "5:03")
+ */
 const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.max(0, seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+/**
+ * 타임스탬프를 "HH:MM" 형식의 시계 문자열로 변환
+ * @param timestamp - 변환할 타임스탬프 (밀리초)
+ * @returns 포맷된 시간 문자열 또는 타임스탬프가 없으면 null
+ */
 const formatClock = (timestamp?: number) => {
     if (!timestamp) return null;
     const date = new Date(timestamp);
     return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 };
 
+/**
+ * PiP(Picture-in-Picture) 타이머 컴포넌트
+ * 항상 위에 떠 있는 미니 타이머 윈도우를 렌더링합니다.
+ *
+ * @returns 타이머 UI 요소
+ */
 export default function PipTimer() {
     const [state, setState] = useState<PipTimerState>({
         remainingTime: 0,
@@ -41,7 +62,6 @@ export default function PipTimer() {
     });
     const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(true);
     const [themeOption, setThemeOption] = useState<'default' | 'dark' | 'light'>('default');
-    const [showExtras, setShowExtras] = useState(false);
 
     useEffect(() => {
         const unsubscribe = window.electronAPI?.onPipUpdate((data: PipTimerState) => {
@@ -85,10 +105,6 @@ export default function PipTimer() {
 
     const handleClose = () => {
         window.electronAPI?.closePip();
-    };
-
-    const handleTogglePause = () => {
-        window.electronAPI?.sendPipAction('toggle-pause');
     };
 
     const handleToggleAlwaysOnTop = () => {
@@ -306,8 +322,8 @@ export default function PipTimer() {
                         </div>
                     </div>
 
-                    {/* 보조 패널 */}
-                    <div className={`mt-1 w-full overflow-hidden rounded-2xl border border-white/20 bg-white/10 text-sm text-white shadow-sm backdrop-blur transition-all duration-300 ${showExtras ? 'max-h-36 opacity-100' : 'max-h-0 opacity-0'}`}>
+                    {/* 보조 패널 (현재 비활성화) */}
+                    <div className="mt-1 w-full overflow-hidden rounded-2xl border border-white/20 bg-white/10 text-sm text-white shadow-sm backdrop-blur transition-all duration-300 max-h-0 opacity-0">
                         <div className="p-3 space-y-2">
                             <div className="flex items-center justify-between">
                                 <span className="font-semibold">휴식 남은 시간</span>

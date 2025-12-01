@@ -172,10 +172,6 @@ export function mergeTaskArray(
     (a, b) => b.createdAt - a.createdAt
   );
 
-  console.log(
-    `🔄 Merged Tasks: Local ${localTasks.length} + Remote ${remoteTasks.length} → ${mergedTasks.length} unique tasks`
-  );
-
   // 더 최신 타임스탬프 사용
   return {
     data: mergedTasks,

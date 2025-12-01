@@ -1,9 +1,19 @@
 /**
  * @file InboxTab.tsx
- * @role 시간 블록에 배치되지 않은 작업들을 관리하는 인박스 탭
- * @input useInboxStore에서 인박스 작업 데이터
- * @output 인박스 작업 목록, 추가/편집/삭제 버튼, 드래그앤드롭 영역 UI
- * @dependencies useInboxStore, TaskCard, TaskModal, useDragDropManager
+ * 
+ * Role: 시간 블록에 배치되지 않은 작업들을 관리하는 인박스 탭 컴포넌트
+ * 
+ * Responsibilities:
+ * - 인박스 작업 목록 표시 (전체/최근/난이도별 필터링)
+ * - 인라인 빠른 추가 및 모달을 통한 작업 추가/편집/삭제
+ * - 타임블록에서 드래그앤드롭으로 작업을 인박스로 이동
+ * - 퀘스트 진행 (prepare_tasks) 업데이트
+ * 
+ * Key Dependencies:
+ * - useInboxStore: 인박스 작업 CRUD 및 상태 관리
+ * - TaskCard: 개별 작업 카드 UI
+ * - TaskModal: 작업 추가/편집 모달
+ * - useDragDropManager: 드래그앤드롭 데이터 관리
  */
 
 import { useState, useEffect } from 'react';
@@ -221,9 +231,9 @@ export default function InboxTab() {
   const counts = {
     all: inboxTasks.length,
     recent: Math.min(inboxTasks.length, 3),
-    high: inboxTasks.filter(t => t.resistance === 'high').length,
-    medium: inboxTasks.filter(t => t.resistance === 'medium').length,
-    low: inboxTasks.filter(t => t.resistance === 'low').length,
+    high: inboxTasks.filter(inboxTask => inboxTask.resistance === 'high').length,
+    medium: inboxTasks.filter(inboxTask => inboxTask.resistance === 'medium').length,
+    low: inboxTasks.filter(inboxTask => inboxTask.resistance === 'low').length,
   };
 
   const filteredTasks = (() => {
@@ -231,11 +241,11 @@ export default function InboxTab() {
       case 'recent':
         return [...inboxTasks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3);
       case 'high':
-        return inboxTasks.filter(t => t.resistance === 'high');
+        return inboxTasks.filter(inboxTask => inboxTask.resistance === 'high');
       case 'medium':
-        return inboxTasks.filter(t => t.resistance === 'medium');
+        return inboxTasks.filter(inboxTask => inboxTask.resistance === 'medium');
       case 'low':
-        return inboxTasks.filter(t => t.resistance === 'low');
+        return inboxTasks.filter(inboxTask => inboxTask.resistance === 'low');
       default:
         return inboxTasks;
     }
@@ -359,6 +369,7 @@ export default function InboxTab() {
 }
 
 // 섹션별 렌더링 (최근/난이도)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function renderGroupedTasks(
   tasks: Task[],
   onEdit: (task: Task) => void,
@@ -373,9 +384,9 @@ function renderGroupedTasks(
   const recent = sorted.slice(0, 3);
   const rest = sorted.slice(3);
 
-  const byResistance = rest.reduce<Record<'high' | 'medium' | 'low', Task[]>>((acc, t) => {
-    acc[t.resistance]?.push(t);
-    return acc;
+  const byResistance = rest.reduce<Record<'high' | 'medium' | 'low', Task[]>>((groupedTasks, task) => {
+    groupedTasks[task.resistance]?.push(task);
+    return groupedTasks;
   }, { high: [], medium: [], low: [] });
 
   const section = (title: string, list: Task[]) => (

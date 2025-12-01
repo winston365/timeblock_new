@@ -1,5 +1,4 @@
 import { vectorStore } from '../src/shared/services/rag/vectorStore';
-import { embeddingService } from '../src/shared/services/rag/embeddingService';
 import { ragService } from '../src/shared/services/rag/ragService';
 
 async function verifyRAG() {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @file BingoModal.tsx
  * @role 데일리 빙고 게임 모달 컴포넌트
@@ -16,16 +17,27 @@ import { fetchFromFirebase, listenToFirebase, syncToFirebase } from '@/shared/se
 import { bingoProgressStrategy } from '@/shared/services/sync/firebase/strategies';
 import { db } from '@/data/db/dexieClient';
 
+/**
+ * 빙고 모달 컴포넌트 Props
+ */
 interface BingoModalProps {
+    /** 모달 열림 상태 */
     open: boolean;
+    /** 모달 닫기 콜백 */
     onClose: () => void;
+    /** 빙고 셀 설정 (9개) */
     cells?: readonly BingoCellConfig[];
+    /** 최대 인정 빙고 라인 수 */
     maxLines?: number;
+    /** 빙고 라인 완료 시 XP 보상 */
     lineRewardXP?: number;
+    /** 초기 진행 상태 */
     initialProgress?: BingoProgress | null;
+    /** 진행 상태 변경 콜백 */
     onProgressChange?: (progress: BingoProgress) => void;
 }
 
+/** 빙고 진행 상태 저장 키 접두사 */
 export const BINGO_PROGRESS_STORAGE_KEY = 'bingo-progress';
 const LINE_INDEXES: number[][] = [
     [0, 1, 2],
@@ -40,21 +52,32 @@ const LINE_INDEXES: number[][] = [
 
 const LINE_LABELS = ['Row 1', 'Row 2', 'Row 3', 'Col 1', 'Col 2', 'Col 3', 'Diag ↘', 'Diag ↙'];
 
-const seededShuffle = (list: readonly BingoCellConfig[], seedStr: string) => {
+/**
+ * 시드 기반 셔플 함수 (동일 시드에 대해 항상 동일한 결과)
+ * @param cellConfigList - 셔플할 빙고 셀 설정 배열
+ * @param seedStr - 시드 문자열 (날짜 등)
+ * @returns 셔플된 빙고 셀 배열
+ */
+const seededShuffle = (cellConfigList: readonly BingoCellConfig[], seedStr: string) => {
     let seed = 0;
     for (let i = 0; i < seedStr.length; i++) {
         seed = (seed << 5) - seed + seedStr.charCodeAt(i);
         seed |= 0;
     }
-    const arr = [...list];
-    for (let i = arr.length - 1; i > 0; i--) {
+    const shuffledCells = [...cellConfigList];
+    for (let i = shuffledCells.length - 1; i > 0; i--) {
         seed = (seed * 1664525 + 1013904223) % 0xffffffff;
-        const j = Math.abs(seed) % (i + 1);
-        [arr[i], arr[j]] = [arr[j], arr[i]];
+        const swapIndex = Math.abs(seed) % (i + 1);
+        [shuffledCells[i], shuffledCells[swapIndex]] = [shuffledCells[swapIndex], shuffledCells[i]];
     }
-    return arr;
+    return shuffledCells;
 };
 
+/**
+ * 데일리 빙고 게임 모달 컴포넌트
+ * @param props - BingoModalProps
+ * @returns 빙고 모달 UI 또는 null (닫힌 상태)
+ */
 export function BingoModal({ open, onClose, cells, maxLines = SETTING_DEFAULTS.bingoMaxLines, lineRewardXP = SETTING_DEFAULTS.bingoLineRewardXP, initialProgress, onProgressChange }: BingoModalProps) {
     const baseCells = useMemo(() => (cells && cells.length === 9 ? cells : DEFAULT_BINGO_CELLS), [cells]);
     const today = getLocalDate();
@@ -102,6 +125,7 @@ export function BingoModal({ open, onClose, cells, maxLines = SETTING_DEFAULTS.b
                 completedLines: mergedLines,
             };
         },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         [displayCells, today],
     );
 
@@ -156,6 +180,7 @@ export function BingoModal({ open, onClose, cells, maxLines = SETTING_DEFAULTS.b
             mounted = false;
             unsubscribe?.();
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, loaded, today, storageKey, mergeProgress]);
 
     // ESC로 모달 닫기

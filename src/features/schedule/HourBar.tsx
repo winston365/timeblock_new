@@ -33,6 +33,26 @@ interface HourBarProps {
   onDropTask: (taskId: string, targetHour: number) => void;
 }
 
+/**
+ * 1시간 단위 작업 구간 컴포넌트
+ * 시간 범위 표시, 작업 카드 목록, 인라인 입력, 태그 선택 기능을 제공합니다.
+ *
+ * @param props.hour - 시간 (0-23)
+ * @param props.blockId - 소속 타임블록 ID
+ * @param props.tasks - 해당 시간대의 작업 목록
+ * @param props.isLocked - 블록 잠금 상태
+ * @param props.tagId - 현재 선택된 태그 ID
+ * @param props.tagTemplates - 사용 가능한 태그 템플릿 목록
+ * @param props.recentTagIds - 최근 사용한 태그 ID 목록
+ * @param props.onSelectTag - 태그 선택 콜백
+ * @param props.onCreateTask - 작업 생성 콜백
+ * @param props.onEditTask - 작업 편집 콜백
+ * @param props.onUpdateTask - 작업 업데이트 콜백
+ * @param props.onDeleteTask - 작업 삭제 콜백
+ * @param props.onToggleTask - 작업 완료 토글 콜백
+ * @param props.onDropTask - 드롭 시 호출 콜백 (현재 내부 처리로 미사용)
+ * @returns 시간 바 UI
+ */
 export default function HourBar({
   hour,
   blockId,
@@ -47,7 +67,6 @@ export default function HourBar({
   onUpdateTask,
   onDeleteTask,
   onToggleTask,
-  onDropTask: _onDropTask,
 }: HourBarProps) {
   const [inlineInputValue, setInlineInputValue] = useState('');
   const [tagPickerOpen, setTagPickerOpen] = useState(false);

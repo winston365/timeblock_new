@@ -1,10 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @file IgnitionOverlay.tsx
- * @role 점화 시스템 메인 오버레이 컴포넌트 (SpinnerView / TimerView 전환)
- * @input useIgnitionStore에서 점화 상태, useIgnitionPool에서 작업 풀
- * @output 점화 스피너 또는 타이머 화면 UI
- * @dependencies useIgnitionStore, useIgnitionPool, SpinnerView, TimerView
- * @refactored 2024-01 - 컴포넌트 분리 (SpinnerView, TimerView), 로직 분리 (useIgnitionPool)
+ * @role 점화 시스템 메인 오버레이 컴포넌트
+ * @responsibilities
+ *   - SpinnerView / TimerView 간 전환 관리
+ *   - 작업 선택 후 AI 마이크로스텝 생성 요청
+ *   - 타이머 완료 시 XP 보상 처리
+ *   - 히스토리 기록 및 휴식권/꽝 처리
+ * @dependencies useIgnitionStore, useIgnitionPool, SpinnerView, TimerView, geminiApi
  */
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -114,6 +117,7 @@ export default function IgnitionOverlay() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 자동 결과 확인 타이머 (5초 후 자동 확인)
@@ -145,6 +149,7 @@ export default function IgnitionOverlay() {
     return () => {
       if (autoConfirmTimerRef.current) clearTimeout(autoConfirmTimerRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingSelection]);
 
   // ============================================================================

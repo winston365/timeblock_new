@@ -34,7 +34,19 @@ const BLOCKS_WITH_OTHER = [
     { id: 'other', label: '기타 (23:00 - 05:00)', start: 23, end: 5 },
 ] as const;
 
-// Time Blocks Tab Component
+/**
+ * 타임블록별 XP 누적 차트 및 분포 파이차트를 제공하는 탭
+ * @param props - TimeBlocksTabProps
+ * @param props.gameState - 게임 상태
+ * @param props.stackedBlockData - 누적 차트 데이터
+ * @param props.todayBlockPie - 오늘 파이차트 데이터
+ * @param props.todayXP - 오늘 XP
+ * @param props.todayBlockSum - 오늘 블록별 XP 합계
+ * @param props.xpMismatch - XP 불일치 여부
+ * @param props.numberFormatter - 숫자 포맷터
+ * @param props.blockVisibility - 블록 표시 여부 맵
+ * @returns TimeBlocks 탭 UI 엘리먼트
+ */
 export function TimeBlocksTab({
     gameState,
     stackedBlockData,
@@ -73,7 +85,7 @@ export function TimeBlocksTab({
                             <YAxis stroke="var(--color-text-tertiary)" tickFormatter={v => numberFormatter.format(v)} />
                             <Tooltip
                                 contentStyle={{ background: 'var(--color-bg-secondary)', border: `1px solid var(--color-border)` }}
-                                formatter={(value: any, name: any) => [`${numberFormatter.format(value as number)} XP`, name]}
+                                formatter={(xpValue: number, blockName: string) => [`${numberFormatter.format(xpValue)} XP`, blockName]}
                             />
                             <Legend />
                             {BLOCKS_WITH_OTHER.filter(b => blockVisibility[b.id]).map((block) => (
@@ -113,7 +125,7 @@ export function TimeBlocksTab({
                                 </Pie>
                                 <Tooltip
                                     contentStyle={{ background: 'var(--color-bg-secondary)', border: `1px solid var(--color-border)` }}
-                                    formatter={(value: any, name: any) => [`${numberFormatter.format(value as number)} XP`, name]}
+                                    formatter={(xpValue: number, blockName: string) => [`${numberFormatter.format(xpValue)} XP`, blockName]}
                                 />
                             </PieChart>
                         </ResponsiveContainer>

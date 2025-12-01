@@ -1,9 +1,17 @@
 /**
  * @file CompletedTab.tsx
- * @role 완료된 작업을 날짜별 타임라인 형태로 표시하는 탭
- * @input useCompletedTasksStore에서 완료된 작업 데이터
- * @output 날짜별 그룹화된 완료 작업 목록, XP 합계 UI
- * @dependencies useCompletedTasksStore, calculateTaskXP, formatTime
+ * 
+ * Role: 완료된 작업을 날짜별 타임라인 형태로 표시하는 탭 컴포넌트
+ * 
+ * Responsibilities:
+ * - 최근 30일간 완료된 작업을 날짜별로 그룹화하여 표시
+ * - 각 작업의 XP 계산 및 일별/전체 XP 합계 표시
+ * - 작업 완료 취소 기능 제공
+ * 
+ * Key Dependencies:
+ * - useCompletedTasksStore: 완료된 작업 데이터 및 완료 상태 토글
+ * - calculateTaskXP: 작업별 XP 계산 유틸리티
+ * - formatTime: 시간 포맷팅 유틸리티
  */
 
 import { useEffect } from 'react';
@@ -11,6 +19,12 @@ import { formatTime, calculateTaskXP } from '@/shared/lib/utils';
 import type { Task } from '@/shared/types/domain';
 import { useCompletedTasksStore } from '@/shared/stores/completedTasksStore';
 
+/**
+ * 완료된 작업 탭 컴포넌트
+ * 날짜별로 그룹화된 완료 작업 목록과 XP 합계를 표시합니다.
+ * 
+ * @returns {JSX.Element} 완료 탭 UI
+ */
 export default function CompletedTab() {
   // Store Hooks
   const { completedTasks, loading, loadData, toggleTaskCompletion } = useCompletedTasksStore();
@@ -74,7 +88,7 @@ export default function CompletedTab() {
           <div className="flex flex-col gap-5">
             {orderedDates.map(date => {
               const tasksForDate = groupedByDate[date] || [];
-              const dateXP = tasksForDate.reduce((sum, t) => sum + calculateTaskXP(t), 0);
+              const dateXP = tasksForDate.reduce((sum, completedTask) => sum + calculateTaskXP(completedTask), 0);
 
               return (
                 <div key={date} className="flex flex-col gap-2">

@@ -17,7 +17,14 @@ const BLOCKS_WITH_OTHER = [
     { id: 'other', label: '기타 (23:00 - 05:00)', start: 23, end: 5 },
 ] as const;
 
-// Summary Card Component
+/**
+ * XP 요약 카드 컴포넌트
+ * @param props - SummaryCardProps
+ * @param props.title - 카드 제목
+ * @param props.value - 표시할 값
+ * @param props.accent - 강조 색상 사용 여부
+ * @returns 요약 카드 UI 엘리먼트
+ */
 export const SummaryCard = memo(function SummaryCard({ title, value, accent = false }: SummaryCardProps) {
     return (
         <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 shadow-sm">
@@ -29,7 +36,12 @@ export const SummaryCard = memo(function SummaryCard({ title, value, accent = fa
     );
 });
 
-// Today Block Progress Component
+/**
+ * 오늘 타임블록별 XP 진행률 표시 컴포넌트
+ * @param props - TodayBlockProgressProps
+ * @param props.blocks - 타임블록 ID별 XP 맵
+ * @returns 블록별 XP 진행률 바 UI 엘리먼트
+ */
 export const TodayBlockProgress = memo(function TodayBlockProgress({ blocks }: TodayBlockProgressProps) {
     const entries = BLOCKS_WITH_OTHER.map(block => ({
         ...block,
@@ -66,7 +78,15 @@ export const TodayBlockProgress = memo(function TodayBlockProgress({ blocks }: T
     );
 });
 
-// Overview Tab Component
+/**
+ * XP 요약, 목표 진행률, 타임블록 요약을 표시하는 탭
+ * @param props - OverviewTabProps
+ * @param props.gameState - 게임 상태 (dailyXP, totalXP, availableXP, streak, timeBlockXP)
+ * @param props.weeklyProgress - 주간 목표 진행 상황
+ * @param props.monthlyProgress - 월간 목표 진행 상황
+ * @param props.numberFormatter - 숫자 포맷터
+ * @returns Overview 탭 UI 엘리먼트
+ */
 export function OverviewTab({
     gameState,
     weeklyProgress,

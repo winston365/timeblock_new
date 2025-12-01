@@ -16,6 +16,15 @@ interface CompletionCelebrationModalProps {
   onClose: () => void;
 }
 
+/**
+ * 집중 타이머를 성공적으로 마쳤을 때 축하 UI를 표시하는 모달 컴포넌트
+ * @param props - 모달 프로퍼티
+ * @param props.task - 완료된 작업 객체
+ * @param props.xpGained - 획득한 총 XP
+ * @param props.timerBonus - 타이머 사용으로 인한 보너스 XP
+ * @param props.onClose - 모달 닫기 시 호출되는 콜백 함수
+ * @returns 축하 메시지와 XP 획득 정보를 보여주는 모달 UI
+ */
 export function CompletionCelebrationModal({
   task,
   xpGained,

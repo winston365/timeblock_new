@@ -15,11 +15,12 @@ import {
     deleteEnergyLevel as deleteEnergyLevelFromRepo,
     loadRecentEnergyLevels,
     calculateTimeBlockAverages as calculateBlockAvg,
-    calculateAverageEnergy,
-    getCurrentEnergy as getLatestEnergy,
 } from '@/data/repositories/energyRepository';
 import { getLocalDate } from '@/shared/lib/utils';
 
+/**
+ * 일별 시간대 에너지 데이터 인터페이스
+ */
 export interface DailyTimeBlockEnergy {
     date: string;
     timeBlocks: Record<string, number>;
@@ -43,11 +44,17 @@ interface EnergyActions {
 }
 
 // Helper functions for calculations
-function calculateOverallAverageFromData(recentData: Record<string, EnergyLevel[]>): number {
+
+/**
+ * 최근 에너지 데이터로부터 전체 평균을 계산합니다.
+ * @param {Record<string, EnergyLevel[]>} recentEnergyData - 날짜별 에너지 레벨 맵
+ * @returns {number} 전체 평균 에너지 (0-100)
+ */
+function calculateOverallAverageFromData(recentEnergyData: Record<string, EnergyLevel[]>): number {
     try {
         let totalEnergy = 0;
         let count = 0;
-        for (const levels of Object.values(recentData)) {
+        for (const levels of Object.values(recentEnergyData)) {
             for (const level of levels) {
                 totalEnergy += level.energy;
                 count++;
@@ -60,15 +67,21 @@ function calculateOverallAverageFromData(recentData: Record<string, EnergyLevel[
     }
 }
 
+/**
+ * 최근 에너지 데이터로부터 시간대별 통계를 계산합니다.
+ * @param {Record<string, EnergyLevel[]>} recentEnergyData - 날짜별 에너지 레벨 맵
+ * @param {number} [days=5] - 계산할 일수
+ * @returns {DailyTimeBlockEnergy[]} 일별 시간대 에너지 통계 배열
+ */
 function calculateRecentTimeBlockStatsFromData(
-    recentData: Record<string, EnergyLevel[]>,
+    recentEnergyData: Record<string, EnergyLevel[]>,
     days: number = 5
 ): DailyTimeBlockEnergy[] {
     try {
         const result: DailyTimeBlockEnergy[] = [];
-        const dates = Object.keys(recentData).sort().reverse().slice(0, days);
+        const dates = Object.keys(recentEnergyData).sort().reverse().slice(0, days);
         for (const date of dates) {
-            const levels = recentData[date];
+            const levels = recentEnergyData[date];
             const timeBlocks = calculateBlockAvg(levels);
             result.push({ date, timeBlocks });
         }
@@ -79,6 +92,10 @@ function calculateRecentTimeBlockStatsFromData(
     }
 }
 
+/**
+ * 에너지 상태 관리 Zustand 스토어
+ * 에너지 레벨 데이터의 로드, 추가, 삭제 및 통계 계산을 담당합니다.
+ */
 export const useEnergyStore = create<EnergyState & EnergyActions>()(
     devtools(
         (set, get) => ({

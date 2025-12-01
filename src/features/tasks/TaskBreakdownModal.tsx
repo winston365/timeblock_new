@@ -1,9 +1,19 @@
 /**
  * @file TaskBreakdownModal.tsx
- * @role AI가 생성한 작업 세분화 결과를 보여주고 사용자가 수정할 수 있는 모달
- * @input isOpen, onClose, onConfirm, initialText (AI 생성 결과)
- * @output 입력 텍스트, 선택 가능한 작업 목록 (체크박스), 확인/취소 버튼 UI
- * @dependencies useTaskBreakdownStore, useSettingsStore, useWaifu
+ * 
+ * Role: AI가 생성한 작업 세분화 결과를 보여주고 사용자가 수정할 수 있는 모달 컴포넌트
+ * 
+ * Responsibilities:
+ * - AI 생성 세분화 텍스트를 파싱하여 작업 목록으로 변환
+ * - 기본 타임블록/저항도/예상시간 설정 제공
+ * - 개별 작업 선택(체크박스) 및 전체 선택/해제
+ * - "더 세밀하게" / "더 단순하게" 재생성 요청
+ * - Ctrl/Cmd + Enter 단축키로 빠른 적용
+ * 
+ * Key Dependencies:
+ * - useTaskBreakdownStore: 세분화 상태 및 재생성 트리거
+ * - useSettingsStore: Gemini API 키
+ * - useWaifu: 와이푸 호감도(affection)
  */
 
 import { useEffect, useId, useRef, useState } from 'react';
@@ -54,7 +64,10 @@ const resistanceLabel: Record<Resistance, string> = {
     medium: '중간 저항',
     high: '저항 높음',
 };
+/** 시간 선택 옵션 (분 단위) */
 const DURATION_OPTIONS = [5, 10, 15, 30, 45, 60, 90, 120];
+
+/** AI 로딩 스피너 컴포넌트 */
 const Spinner = () => (
     <div className="flex w-full flex-col items-center justify-center gap-4 py-6 text-[var(--color-text)]">
         <div className="flex items-center justify-center">
@@ -66,6 +79,17 @@ const Spinner = () => (
     </div>
 );
 
+/**
+ * AI 작업 세분화 모달 컴포넌트
+ * AI가 제안한 세부 작업 항목을 확인하고 선택적으로 추가할 수 있습니다.
+ * 
+ * @param {TaskBreakdownModalProps} props - 모달 props
+ * @param {boolean} props.isOpen - 모달 열림 여부
+ * @param {() => void} props.onClose - 모달 닫기 콜백
+ * @param {(tasks: Task[]) => Promise<void>} props.onConfirm - 작업 추가 확인 콜백
+ * @param {string} props.initialText - AI 생성 초기 텍스트
+ * @returns {JSX.Element | null} 모달 UI (isOpen이 false면 null)
+ */
 export default function TaskBreakdownModal({
   isOpen,
   onClose,
@@ -126,6 +150,7 @@ export default function TaskBreakdownModal({
     } else {
       setPreviewTasks([]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, defaultTimeBlock, defaultResistance, defaultDuration]);
 
   /**
@@ -163,7 +188,7 @@ export default function TaskBreakdownModal({
       const blockMatch = remainingText.match(/@(\d+-\d+)/);
       if (blockMatch) {
         const blockId = blockMatch[1];
-        if (TIME_BLOCKS.some(b => b.id === blockId)) {
+        if (TIME_BLOCKS.some(block => block.id === blockId)) {
           task.timeBlock = blockId as TimeBlockId;
         }
         remainingText = remainingText.replace(/@\d+-\d+/, '').trim();
@@ -440,7 +465,7 @@ export default function TaskBreakdownModal({
                           const resistance = task.resistance || defaultResistance;
                           const duration = task.baseDuration || defaultDuration;
                           const blockLabel = task.timeBlock
-                            ? TIME_BLOCKS.find(b => b.id === task.timeBlock)?.label
+                            ? TIME_BLOCKS.find(block => block.id === task.timeBlock)?.label
                             : null;
 
                           return (

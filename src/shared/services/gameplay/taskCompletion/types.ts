@@ -1,8 +1,8 @@
 /**
- * Task Completion Service Types
- *
+ * @file types.ts
  * @role 작업 완료 처리를 위한 타입 정의
- * @description 작업 완료 시 발생하는 부수효과들을 처리하기 위한 타입들
+ * @responsibilities 작업 완료 시 발생하는 부수효과들을 처리하기 위한 인터페이스 및 타입 제공
+ * @key-dependencies Task, TimeBlockState (도메인 타입)
  */
 
 import type { Task, TimeBlockState } from '@/shared/types/domain';

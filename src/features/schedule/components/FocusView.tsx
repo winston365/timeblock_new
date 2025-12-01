@@ -1,9 +1,21 @@
+/**
+ * @file FocusView.tsx
+ * @role 집중 모드 메인 뷰 컴포넌트
+ * @responsibilities
+ *   - 현재 시간대 작업 표시 및 타이머 관리
+ *   - 작업 시작/완료/중단 처리
+ *   - PiP(Picture-in-Picture) 모드 연동
+ *   - 휴식 시간 관리 및 자동 전환
+ * @dependencies
+ *   - focusModeStore: 집중 모드 상태 관리
+ *   - settingsStore: 사용자 설정
+ *   - FocusTimer, FocusHeroTask, FocusTimeline 등 하위 컴포넌트
+ */
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
 import { calculateTaskXP } from '@/shared/lib/utils';
-import { recommendNextTask, getRecommendationMessage } from '../utils/taskRecommendation';
+import { getRecommendationMessage } from '../utils/taskRecommendation';
 import { useFocusModeStore } from '../stores/focusModeStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { FocusTimer } from './FocusTimer';
@@ -11,14 +23,22 @@ import { FocusHeroTask } from './FocusHeroTask';
 import { FocusTimeline } from './FocusTimeline';
 import { QuickMemo } from './QuickMemo';
 import { BreakView } from './BreakView';
+import { FocusMusicPlayer } from './FocusMusicPlayer';
+import { useFocusMusic } from '../hooks/useFocusMusic';
 
-const MUSIC_REPO = { owner: 'winston365', repo: 'music', branches: ['main', 'gh-pages'] } as const;
-const MUSIC_FOLDERS = [
-    { id: '잔잔6593', label: '잔잔 6593' },
-    { id: '활기', label: '활기' },
-    { id: '흥분', label: '흥분' },
-] as const;
-
+/**
+ * FocusView 컴포넌트 Props
+ * @param currentBlockId - 현재 타임 블록 ID
+ * @param tasks - 현재 블록의 작업 목록
+ * @param allDailyTasks - 오늘 전체 작업 목록
+ * @param isLocked - 블록 잠금 상태
+ * @param onEditTask - 작업 수정 핸들러
+ * @param onUpdateTask - 작업 업데이트 핸들러
+ * @param onToggleTask - 작업 완료 토글 핸들러
+ * @param onToggleLock - 블록 잠금 토글 핸들러 (선택적)
+ * @param onExitFocusMode - 집중 모드 종료 핸들러
+ * @param onCreateTask - 새 작업 생성 핸들러
+ */
 interface FocusViewProps {
     currentBlockId: TimeBlockId;
     tasks: Task[];
@@ -32,6 +52,11 @@ interface FocusViewProps {
     onCreateTask: (text: string, blockId: TimeBlockId, hourSlot?: number) => Promise<void>;
 }
 
+/**
+ * 집중 모드 메인 뷰 컴포넌트
+ * @param props - FocusViewProps
+ * @returns 집중 모드 UI 렌더링
+ */
 export function FocusView({
     currentBlockId,
     tasks,
@@ -40,7 +65,6 @@ export function FocusView({
     onEditTask,
     onUpdateTask,
     onToggleTask,
-    onToggleLock,
     onExitFocusMode,
     onCreateTask
 }: FocusViewProps) {
@@ -53,18 +77,23 @@ export function FocusView({
     const [now, setNow] = useState(Date.now());
 
     const currentEnergy = 50;
-    type MusicTrack = { name: string; url: string };
 
-    const audioRef = useRef<HTMLAudioElement | null>(null);
-    const [selectedMusicFolder, setSelectedMusicFolder] = useState<string>(MUSIC_FOLDERS[0].id);
-    const [musicTracks, setMusicTracks] = useState<MusicTrack[]>([]);
-    const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(null);
-    const [isMusicLoading, setIsMusicLoading] = useState(false);
-    const [isMusicPlaying, setIsMusicPlaying] = useState(false);
-    const [loopMode, setLoopMode] = useState<'track' | 'folder'>('folder');
-    const [musicVolume, setMusicVolume] = useState(0.6);
-    const musicVolumeRef = useRef(musicVolume);
-    const loopModeRef = useRef<'track' | 'folder'>(loopMode);
+    // Music player hook
+    const {
+        selectedMusicFolder,
+        musicTracks,
+        currentTrackIndex,
+        isMusicLoading,
+        isMusicPlaying,
+        loopMode,
+        musicVolume,
+        setSelectedMusicFolder,
+        setMusicVolume,
+        handleTogglePlay,
+        handleNextRandom,
+        handleLoopModeChange,
+    } = useFocusMusic({ githubToken: settings?.githubToken });
+
     const lastSavedMemoRef = useRef<{ taskId: string | null; memo: string }>({ taskId: null, memo: '' });
     // 시간/작업 계산 (상단에서 정의하여 TDZ 회피)
     const nowDate = useMemo(() => new Date(now), [now]);
@@ -163,162 +192,6 @@ export function FocusView({
             setInlineInputValue('');
         }
     };
-
-    const stopMusic = useCallback(() => {
-        const audio = audioRef.current;
-        if (audio) {
-            audio.pause();
-            audio.src = '';
-        }
-        setIsMusicPlaying(false);
-        setCurrentTrackIndex(null);
-    }, []);
-
-    const fetchMusicTracks = useCallback(async () => {
-        if (!selectedMusicFolder) return;
-        setIsMusicLoading(true);
-        setMusicTracks([]);
-        setCurrentTrackIndex(null);
-        try {
-            const folderEncoded = encodeURIComponent(selectedMusicFolder);
-            const headers: Record<string, string> = {
-                Accept: 'application/vnd.github+json',
-            };
-            if (settings?.githubToken) {
-                headers.Authorization = `Bearer ${settings.githubToken}`;
-            }
-
-            let tracks: MusicTrack[] = [];
-            let lastStatus: number | null = null;
-
-            for (const branch of MUSIC_REPO.branches) {
-                const apiUrl = `https://api.github.com/repos/${MUSIC_REPO.owner}/${MUSIC_REPO.repo}/contents/${folderEncoded}?ref=${branch}`;
-                const res = await fetch(apiUrl, { headers });
-                lastStatus = res.status;
-                if (!res.ok) {
-                    continue; // 다음 브랜치 시도
-                }
-                const data = await res.json();
-                if (!Array.isArray(data)) {
-                    continue;
-                }
-                tracks = data
-                    .filter((item) => item.type === 'file' && /\.mp3$/i.test(item.name))
-                    .map((item) => {
-                        const fileEncoded = encodeURIComponent(item.name);
-                        const url = `https://cdn.jsdelivr.net/gh/${MUSIC_REPO.owner}/${MUSIC_REPO.repo}@${branch}/${folderEncoded}/${fileEncoded}`;
-                        return {
-                            name: item.name.replace(/\.mp3$/i, ''),
-                            url,
-                        };
-                    });
-                if (tracks.length > 0) break;
-            }
-
-            if (tracks.length === 0) {
-                if (lastStatus === 404) {
-                    toast.error('음원 폴더를 찾을 수 없습니다. (branch main/gh-pages 모두 실패)');
-                } else {
-                    toast.error('선택한 폴더에 mp3 파일이 없거나 불러오지 못했습니다.');
-                }
-            }
-            setMusicTracks(tracks);
-        } catch (error) {
-            console.error('[FocusView] 음악 목록 로드 실패:', error);
-            toast.error('음악 목록을 불러오는 데 실패했습니다.');
-        } finally {
-            setIsMusicLoading(false);
-        }
-    }, [selectedMusicFolder, settings?.githubToken]);
-
-    const handleNextRandom = useCallback(
-        (avoidSame = true) => {
-            if (!musicTracks.length) {
-                toast.error('재생할 트랙이 없습니다.');
-                return;
-            }
-            let nextIndex = Math.floor(Math.random() * musicTracks.length);
-            if (avoidSame && musicTracks.length > 1 && nextIndex === currentTrackIndex) {
-                nextIndex = (nextIndex + 1) % musicTracks.length;
-            }
-            setCurrentTrackIndex(nextIndex);
-            const audio = audioRef.current || new Audio();
-            audioRef.current = audio;
-            audio.src = musicTracks[nextIndex].url;
-            audio.volume = musicVolumeRef.current;
-            audio.loop = loopModeRef.current === 'track';
-            audio.onended = () => {
-                if (loopModeRef.current === 'folder') {
-                    handleNextRandom();
-                }
-            };
-            audio
-                .play()
-                .then(() => setIsMusicPlaying(true))
-                .catch((err) => {
-                    console.error('[FocusView] 음악 재생 실패:', err);
-                    toast.error('음악을 재생할 수 없습니다.');
-                });
-        },
-        [currentTrackIndex, musicTracks]
-    );
-
-    const handleTogglePlay = useCallback(() => {
-        const audio = audioRef.current;
-        if (audio && isMusicPlaying) {
-            audio.pause();
-            setIsMusicPlaying(false);
-            return;
-        }
-        if (!musicTracks.length) {
-            toast.error('재생할 트랙이 없습니다.');
-            return;
-        }
-        if (audio && currentTrackIndex !== null) {
-            audio.volume = musicVolumeRef.current;
-            audio.loop = loopModeRef.current === 'track';
-            audio.play().then(() => setIsMusicPlaying(true)).catch(() => toast.error('음악을 재생할 수 없습니다.'));
-        } else {
-            handleNextRandom(false);
-        }
-    }, [currentTrackIndex, handleNextRandom, isMusicPlaying, musicTracks.length]);
-
-    const handleLoopModeChange = useCallback((mode: 'track' | 'folder') => {
-        setLoopMode(mode);
-    }, []);
-
-    useEffect(() => {
-        loopModeRef.current = loopMode;
-        if (audioRef.current) {
-            audioRef.current.loop = loopMode === 'track';
-            audioRef.current.onended = () => {
-                if (loopModeRef.current === 'folder') {
-                    handleNextRandom();
-                }
-            };
-        }
-    }, [loopMode, handleNextRandom]);
-
-    useEffect(() => {
-        musicVolumeRef.current = musicVolume;
-        if (audioRef.current) {
-            audioRef.current.volume = musicVolume;
-        }
-    }, [musicVolume]);
-
-    useEffect(() => {
-        stopMusic();
-        fetchMusicTracks();
-    }, [fetchMusicTracks, stopMusic]);
-
-    useEffect(() => {
-        return () => {
-            stopMusic();
-        };
-    }, [stopMusic]);
-
-    const currentBlock = TIME_BLOCKS.find(b => b.id === currentBlockId);
-    const blockLabel = currentBlock?.label ?? '블록 외 시간';
 
     // All completed tasks from the entire day
     const allCompletedTasks = allDailyTasks.filter(t => t.completed);
@@ -506,6 +379,7 @@ export function FocusView({
         });
 
         return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isPaused, pauseTask, resumeTask, activeTaskId, handleToggleTaskWrapper, startBreakForNextTask, recommendedTask, setFocusMode, startTask]);
 
     // Progress calculation for current hour tasks only
@@ -585,95 +459,20 @@ export function FocusView({
                         <p className="text-base text-[var(--color-text-secondary)]">{slotLabel}</p>
 
                         {/* 배경 음악 플레이어 (컴팩트) */}
-                        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-3 shadow-sm max-w-3xl">
-                            <div className="flex flex-wrap items-center gap-3">
-                                <div className="flex flex-col gap-0.5">
-                                    <span className="text-sm font-semibold text-[var(--color-text)]">배경 음악</span>
-                                    <span className="text-xs text-[var(--color-text-tertiary)]">폴더 선택 후 랜덤 재생 / 반복</span>
-                                </div>
-                                <select
-                                    className="ml-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2 text-sm text-[var(--color-text)]"
-                                    value={selectedMusicFolder}
-                                    onChange={(e) => {
-                                        setSelectedMusicFolder(e.target.value);
-                                    }}
-                                    disabled={isMusicLoading}
-                                >
-                                    {MUSIC_FOLDERS.map((folder) => (
-                                        <option key={folder.id} value={folder.id}>{folder.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="mt-2 flex flex-wrap items-center gap-2">
-                                <button
-                                    onClick={handleTogglePlay}
-                                    className={`rounded-xl px-3 py-2 text-sm font-semibold shadow-sm disabled:opacity-60 ${isMusicPlaying
-                                            ? 'bg-emerald-500 text-white hover:opacity-90'
-                                            : 'bg-[var(--color-primary)] text-white hover:opacity-90'
-                                        }`}
-                                    disabled={isMusicLoading || !musicTracks.length}
-                                    aria-pressed={isMusicPlaying}
-                                >
-                                    {isMusicPlaying ? '⏸︎ 일시정지 (재생 중)' : '▶️ 재생'}
-                                </button>
-                                <button
-                                    onClick={() => handleNextRandom(true)}
-                                    className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-bg-tertiary-hover)] disabled:opacity-60"
-                                    disabled={isMusicLoading || !musicTracks.length}
-                                >
-                                    🔀 랜덤 다음
-                                </button>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => handleLoopModeChange('track')}
-                                        className={`rounded-xl border px-3 py-2 text-sm transition ${loopMode === 'track'
-                                                ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-sm'
-                                                : 'border-[var(--color-border)] bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary-hover)]'
-                                            }`}
-                                        aria-pressed={loopMode === 'track'}
-                                    >
-                                        🔂 한 곡 반복
-                                    </button>
-                                    <button
-                                        onClick={() => handleLoopModeChange('folder')}
-                                        className={`rounded-xl border px-3 py-2 text-sm transition ${loopMode === 'folder'
-                                                ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-sm'
-                                                : 'border-[var(--color-border)] bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary-hover)]'
-                                            }`}
-                                        aria-pressed={loopMode === 'folder'}
-                                    >
-                                        🔁 폴더 반복
-                                    </button>
-                                </div>
-                                <div className="flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2">
-                                    <span className="text-xs text-[var(--color-text-tertiary)]">🔊 볼륨</span>
-                                    <input
-                                        type="range"
-                                        min={0}
-                                        max={1}
-                                        step={0.01}
-                                        value={musicVolume}
-                                        onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
-                                        className="h-2 w-32 cursor-pointer appearance-none rounded-full bg-gradient-to-r from-emerald-400 via-sky-400 to-indigo-500"
-                                        style={{
-                                            accentColor: 'var(--color-primary)',
-                                        }}
-                                        aria-label="음악 볼륨"
-                                    />
-                                    <span className="text-xs font-medium text-[var(--color-text-secondary)] w-10 text-right">{Math.round(musicVolume * 100)}%</span>
-                                </div>
-                                <div className="ml-auto text-xs text-[var(--color-text-tertiary)]">
-                                    {isMusicLoading && '불러오는 중...'}
-                                    {!isMusicLoading && currentTrackIndex !== null && musicTracks[currentTrackIndex] && (
-                                        <span>재생 중: {musicTracks[currentTrackIndex].name}</span>
-                                    )}
-                                    {!isMusicLoading && currentTrackIndex === null && musicTracks.length > 0 && (
-                                        <span>{musicTracks.length}곡 준비됨</span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                        <FocusMusicPlayer
+                            selectedMusicFolder={selectedMusicFolder}
+                            setSelectedMusicFolder={setSelectedMusicFolder}
+                            isMusicLoading={isMusicLoading}
+                            isMusicPlaying={isMusicPlaying}
+                            musicTracks={musicTracks}
+                            currentTrackIndex={currentTrackIndex}
+                            loopMode={loopMode}
+                            musicVolume={musicVolume}
+                            setMusicVolume={setMusicVolume}
+                            handleTogglePlay={handleTogglePlay}
+                            handleNextRandom={handleNextRandom}
+                            handleLoopModeChange={handleLoopModeChange}
+                        />
                     </div>
                     <FocusTimer remainingMinutes={remainingMinutes} totalMinutes={60} />
                 </div>

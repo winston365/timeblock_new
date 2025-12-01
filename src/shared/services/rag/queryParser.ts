@@ -1,9 +1,31 @@
 /**
- * QueryParser - 자연어 쿼리를 구조화된 검색 조건으로 변환
+ * QueryParser - 자연어 쿼리 파서
  * 
- * @role 사용자의 자연어 질문에서 날짜, 완료 상태, 키워드 등을 추출
+ * @fileoverview
+ * Role: 사용자의 자연어 질문을 구조화된 검색 조건으로 변환
+ * 
+ * Responsibilities:
+ *   - 날짜 표현 파싱 (상대적/절대적 날짜)
+ *   - 완료 상태 필터 추출
+ *   - 시간대 필터 추출
+ *   - 키워드 추출 (불용어 제거)
+ *   - 쿼리 유형 분류 (date_specific, status_query, semantic_search, stats_query)
+ * 
+ * Key Dependencies:
+ *   - 없음 (독립 모듈)
  */
 
+/**
+ * 파싱된 쿼리 결과 타입
+ * @property dateFilter - 특정 날짜 (YYYY-MM-DD)
+ * @property dateRange - 날짜 범위 (start, end)
+ * @property relativeDateType - 상대적 날짜 유형
+ * @property completedFilter - 완료 상태 필터
+ * @property timeBlockFilter - 시간대 필터
+ * @property keywords - 추출된 키워드
+ * @property originalQuery - 원본 쿼리 문자열
+ * @property queryType - 쿼리 유형
+ */
 export interface ParsedQuery {
     // 날짜 관련
     dateFilter?: string;           // YYYY-MM-DD 형식
@@ -29,6 +51,8 @@ export interface ParsedQuery {
 
 /**
  * 자연어 쿼리를 파싱하여 구조화된 검색 조건으로 변환
+ * @param query - 사용자의 자연어 쿼리 문자열
+ * @returns 파싱된 쿼리 객체
  */
 export function parseQuery(query: string): ParsedQuery {
     const result: ParsedQuery = {
@@ -156,7 +180,11 @@ export function parseQuery(query: string): ParsedQuery {
     return result;
 }
 
-// 헬퍼 함수들
+/**
+ * Date 객체를 YYYY-MM-DD 형식 문자열로 변환
+ * @param date - 변환할 Date 객체
+ * @returns YYYY-MM-DD 형식 문자열
+ */
 function formatDate(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -164,6 +192,12 @@ function formatDate(date: Date): string {
     return `${year}-${month}-${day}`;
 }
 
+/**
+ * 기준 날짜로부터 주 범위 계산 (월요일~일요일)
+ * @param baseDate - 기준 날짜
+ * @param weekOffset - 주 오프셋 (0: 이번주, -1: 지난주)
+ * @returns 시작일과 종료일
+ */
 function getWeekRange(baseDate: Date, weekOffset: number): { start: string; end: string } {
     const date = new Date(baseDate);
     date.setDate(date.getDate() + weekOffset * 7);
@@ -181,6 +215,12 @@ function getWeekRange(baseDate: Date, weekOffset: number): { start: string; end:
     };
 }
 
+/**
+ * 기준 날짜로부터 월 범위 계산
+ * @param baseDate - 기준 날짜
+ * @param monthOffset - 월 오프셋 (0: 이번달, -1: 지난달)
+ * @returns 시작일과 종료일
+ */
 function getMonthRange(baseDate: Date, monthOffset: number): { start: string; end: string } {
     const date = new Date(baseDate);
     date.setMonth(date.getMonth() + monthOffset);

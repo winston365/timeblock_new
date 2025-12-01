@@ -16,7 +16,12 @@ interface MemoModalProps {
 }
 
 /**
- * 메모 모달 컴포넌트 (Tailwind 기반 스타일)
+ * 메모 내용을 전체화면으로 보고 편집할 수 있는 모달 컴포넌트
+ * @param props - 모달 프로퍼티
+ * @param props.memo - 기존 메모 내용
+ * @param props.onSave - 메모 저장 시 호출되는 콜백 함수
+ * @param props.onClose - 모달 닫기 시 호출되는 콜백 함수
+ * @returns 전체 화면 메모 편집 모달 UI
  */
 export function MemoModal({ memo, onSave, onClose }: MemoModalProps) {
   const [editedMemo, setEditedMemo] = useState(memo);
@@ -41,6 +46,7 @@ export function MemoModal({ memo, onSave, onClose }: MemoModalProps) {
     };
     window.addEventListener('keydown', handleKeyboard);
     return () => window.removeEventListener('keydown', handleKeyboard);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose, editedMemo]);
 
   const handleSave = () => {

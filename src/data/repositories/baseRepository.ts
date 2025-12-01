@@ -1,13 +1,19 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Base Repository
  *
  * @role Repository들의 공통 패턴을 추상화한 베이스 유틸리티
- * @input RepositoryConfig, 데이터 객체, 키
- * @output 저장/로드된 데이터
- * @external_dependencies
+ * @responsibilities
+ *   - 데이터 로드/저장/업데이트/삭제 공통 인터페이스 제공
+ *   - 2-tier fallback (IndexedDB → Firebase)
+ *   - 2-way sync (IndexedDB + Firebase)
+ *   - 컨렉션 데이터 처리 (bulkPut, clear)
+ * @key_dependencies
  *   - IndexedDB (Dexie): 메인 저장소 (유일한 로컬 저장소)
  *   - Firebase: 실시간 동기화 (syncToFirebase, fetchFromFirebase)
  *   - syncLogger: 동기화 로그
+ * @input RepositoryConfig, 데이터 객체, 키
+ * @output 저장/로드된 데이터
  * @note localStorage는 더 이상 사용하지 않음 (Dexie가 유일한 로컬 저장소)
  *       기존 localStorage 데이터는 마이그레이션 로직에서 일회성으로 복구됨
  */
@@ -343,13 +349,10 @@ export async function saveCollection<T>(
 
     // 3. Firebase에 저장 (firebaseStrategy가 있을 때만)
     if (syncFirebase && firebaseStrategy && isFirebaseInitialized()) {
-      console.log(`🔥 [Sync] Syncing ${prefix} collection to Firebase...`);
       // 비동기로 실행하여 UI 블로킹 방지
       syncToFirebase(firebaseStrategy, items, 'all').catch((err) => {
         console.error(`Failed to sync ${prefix} collection to Firebase:`, err);
       });
-    } else {
-      console.log(`⚠️ [Sync] Skipping Firebase sync for ${prefix}:`, { syncFirebase, hasStrategy: !!firebaseStrategy, initialized: isFirebaseInitialized() });
     }
 
 

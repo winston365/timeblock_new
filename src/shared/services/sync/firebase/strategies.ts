@@ -32,6 +32,11 @@ import type {
 // DailyData 전략 (Last-Write-Wins)
 // ============================================================================
 
+/**
+ * DailyData 동기화 전략 (Last-Write-Wins)
+ * 일일 스케줄 데이터를 Firebase와 동기화합니다.
+ * @type {SyncStrategy<DailyData>}
+ */
 export const dailyDataStrategy: SyncStrategy<DailyData> = {
   collection: 'dailyData',
   getSuccessMessage: (data, key) =>
@@ -42,6 +47,11 @@ export const dailyDataStrategy: SyncStrategy<DailyData> = {
 // GameState 전략 (Delta-based Merge)
 // ============================================================================
 
+/**
+ * GameState 동기화 전략 (Delta-based Merge)
+ * 게임 상태(XP, 퀘스트, 히스토리)를 병합 알고리즘으로 동기화합니다.
+ * @type {SyncStrategy<GameState>}
+ */
 export const gameStateStrategy: SyncStrategy<GameState> = {
   collection: 'gameState',
   resolveConflict: mergeGameState,
@@ -53,6 +63,11 @@ export const gameStateStrategy: SyncStrategy<GameState> = {
 // ChatHistory 전략 (Last-Write-Wins)
 // ============================================================================
 
+/**
+ * ChatHistory 동기화 전략 (Last-Write-Wins)
+ * 와이프 대화 기록을 Firebase와 동기화합니다.
+ * @type {SyncStrategy<ChatHistory>}
+ */
 export const chatHistoryStrategy: SyncStrategy<ChatHistory> = {
   collection: 'chatHistory',
   getSuccessMessage: (data, key) =>
@@ -63,6 +78,11 @@ export const chatHistoryStrategy: SyncStrategy<ChatHistory> = {
 // TokenUsage 전략 (Last-Write-Wins)
 // ============================================================================
 
+/**
+ * TokenUsage 동기화 전략 (Last-Write-Wins)
+ * 일일 토큰 사용량을 Firebase와 동기화합니다.
+ * @type {SyncStrategy<DailyTokenUsage>}
+ */
 export const tokenUsageStrategy: SyncStrategy<DailyTokenUsage> = {
   collection: 'tokenUsage',
   getSuccessMessage: (data, key) =>
@@ -73,6 +93,11 @@ export const tokenUsageStrategy: SyncStrategy<DailyTokenUsage> = {
 // EnergyLevels 전략 (Last-Write-Wins)
 // ============================================================================
 
+/**
+ * EnergyLevels 동기화 전략 (Last-Write-Wins)
+ * 시간대별 에너지 레벨 데이터를 Firebase와 동기화합니다.
+ * @type {SyncStrategy<EnergyLevel[]>}
+ */
 export const energyLevelsStrategy: SyncStrategy<EnergyLevel[]> = {
   collection: 'energyLevels',
   getSuccessMessage: (data, key) =>
@@ -83,6 +108,11 @@ export const energyLevelsStrategy: SyncStrategy<EnergyLevel[]> = {
 // Templates 전략 (Last-Write-Wins)
 // ============================================================================
 
+/**
+ * Template 동기화 전략 (Last-Write-Wins)
+ * 스케줄 템플릿을 Firebase와 동기화합니다.
+ * @type {SyncStrategy<Template[]>}
+ */
 export const templateStrategy: SyncStrategy<Template[]> = {
   collection: 'templates',
   getSuccessMessage: (data) =>
@@ -93,6 +123,11 @@ export const templateStrategy: SyncStrategy<Template[]> = {
 // GlobalInbox 전략 (ID-based Merge)
 // ============================================================================
 
+/**
+ * GlobalInbox 동기화 전략 (ID-based Merge)
+ * 스케줄되지 않은 대기 작업들을 ID 기반 병합으로 동기화합니다.
+ * @type {SyncStrategy<Task[]>}
+ */
 export const globalInboxStrategy: SyncStrategy<Task[]> = {
   collection: 'globalInbox',
   resolveConflict: mergeTaskArray,
@@ -104,6 +139,11 @@ export const globalInboxStrategy: SyncStrategy<Task[]> = {
 // CompletedInbox (date-keyed) Sync
 // ============================================================================
 
+/**
+ * CompletedInbox 동기화 전략 (Last-Write-Wins)
+ * 완료된 인박스 작업을 날짜별로 Firebase와 동기화합니다.
+ * @type {SyncStrategy<Task[]>}
+ */
 export const completedInboxStrategy: SyncStrategy<Task[]> = {
   collection: 'completedInbox',
   getSuccessMessage: (data, key) =>
@@ -114,6 +154,11 @@ export const completedInboxStrategy: SyncStrategy<Task[]> = {
 // ShopItems 전략 (Last-Write-Wins)
 // ============================================================================
 
+/**
+ * ShopItems 동기화 전략 (Last-Write-Wins)
+ * 상점 아이템 및 인벤토리를 Firebase와 동기화합니다.
+ * @type {SyncStrategy<ShopItem[]>}
+ */
 export const shopItemsStrategy: SyncStrategy<ShopItem[]> = {
   collection: 'shopItems',
   getSuccessMessage: (data) =>
@@ -124,6 +169,11 @@ export const shopItemsStrategy: SyncStrategy<ShopItem[]> = {
 // DailyGoals 전략 (Last-Write-Wins) - DEPRECATED
 // ============================================================================
 
+/**
+ * DailyGoals 동기화 전략 (Last-Write-Wins)
+ * @deprecated globalGoalStrategy로 대체되었습니다.
+ * @type {SyncStrategy<DailyGoal[]>}
+ */
 export const dailyGoalStrategy: SyncStrategy<DailyGoal[]> = {
   collection: 'dailyGoals',
   getSuccessMessage: (data, key) =>
@@ -134,6 +184,11 @@ export const dailyGoalStrategy: SyncStrategy<DailyGoal[]> = {
 // GlobalGoals 전략 (Last-Write-Wins)
 // ============================================================================
 
+/**
+ * GlobalGoals 동기화 전략 (Last-Write-Wins)
+ * 글로벌 목표(총 진행 시간 추적)를 Firebase와 동기화합니다.
+ * @type {SyncStrategy<DailyGoal[]>}
+ */
 export const globalGoalStrategy: SyncStrategy<DailyGoal[]> = {
   collection: 'globalGoals',
   getSuccessMessage: (data) =>
@@ -144,6 +199,11 @@ export const globalGoalStrategy: SyncStrategy<DailyGoal[]> = {
 // WarmupPreset 전략 (Last-Write-Wins)
 // ============================================================================
 
+/**
+ * WarmupPreset 동기화 전략 (Last-Write-Wins)
+ * 워밍업 프리셋 아이템을 Firebase와 동기화합니다.
+ * @type {SyncStrategy<WarmupPresetItem[]>}
+ */
 export const warmupPresetStrategy: SyncStrategy<WarmupPresetItem[]> = {
   collection: 'warmupPreset',
   getSuccessMessage: (data) => `Warmup preset synced (${data.length} items)`,
@@ -153,13 +213,19 @@ export const warmupPresetStrategy: SyncStrategy<WarmupPresetItem[]> = {
 // Settings 전략 (Last-Write-Wins)
 // ============================================================================
 
+/**
+ * Settings 동기화 전략 (Last-Write-Wins)
+ * 앱 설정을 Firebase와 동기화합니다. (민감 정보 제외)
+ * @type {SyncStrategy<Settings>}
+ */
 export const settingsStrategy: SyncStrategy<Settings> = {
   collection: 'settings',
   getSuccessMessage: (data) =>
     `Settings synced (Auto-msg: ${data.autoMessageEnabled}, Waifu: ${data.waifuMode})`,
   serialize: (data) => {
     // 민감한 정보(API Key, Firebase Config)는 동기화에서 제외
-    const { geminiApiKey, firebaseConfig, ...rest } = data;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { geminiApiKey: _apiKey, firebaseConfig: _config, ...rest } = data;
     return rest;
   },
 };
@@ -168,6 +234,11 @@ export const settingsStrategy: SyncStrategy<Settings> = {
 // Bingo Progress 전략 (Last-Write-Wins)
 // ============================================================================
 
+/**
+ * BingoProgress 동기화 전략 (Last-Write-Wins)
+ * 빙고 진행 상태를 Firebase와 동기화합니다.
+ * @type {SyncStrategy<BingoProgress>}
+ */
 export const bingoProgressStrategy: SyncStrategy<BingoProgress> = {
   collection: 'bingoProgress',
   getSuccessMessage: (_, key) => `Bingo progress synced (${key || 'today'})`,

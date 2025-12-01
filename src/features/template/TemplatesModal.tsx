@@ -1,13 +1,19 @@
-﻿/**
- * TemplatesModal - 템플릿 관리 전체 화면 모달
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * @file TemplatesModal.tsx
+ * @description 템플릿 관리 전체 화면 모달 컴포넌트
  *
- * @role 반복 작업 템플릿을 관리하고 오늘 할 일로 추가하는 전체 화면 모달 컴포넌트
- * @input isOpen (모달 표시 여부), onClose (모달 닫기 핸들러), onTaskCreate (템플릿에서 작업 생성 시 콜백)
- * @output 템플릿 목록, 검색, 복제, 자동 생성 배지, 추가/편집/삭제 버튼을 포함한 모달 UI
- * @external_dependencies
- *   - useTemplateStore: 템플릿 상태 관리
- *   - TemplateModal: 템플릿 추가/편집 모달 컴포넌트
- *   - utils: XP 계산 함수
+ * @role 반복 작업 템플릿 목록 조회, 검색, 필터링, CRUD 및 작업 생성 제공
+ * @responsibilities
+ *   - 템플릿 목록 표시 (카드 그리드 레이아웃)
+ *   - 검색 및 필터링 (카테고리, 즐겨찾기, 매일, 7일 이내)
+ *   - 템플릿 추가/편집/삭제/복제 기능
+ *   - 템플릿에서 오늘 할 일 생성
+ *   - 다음 생성일 표시 및 정렬
+ * @dependencies
+ *   - useTemplateStore: 템플릿 상태 관리 스토어
+ *   - TemplateModal: 템플릿 추가/편집 모달
+ *   - calculateTaskXP, getLocalDate: 유틸리티 함수
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -23,6 +29,15 @@ interface TemplatesModalProps {
   onTaskCreate: (template: Template) => void;
 }
 
+/**
+ * 템플릿 관리 전체 화면 모달 컴포넌트
+ *
+ * @param props - 컴포넌트 속성
+ * @param props.isOpen - 모달 표시 여부
+ * @param props.onClose - 모달 닫기 핸들러
+ * @param props.onTaskCreate - 템플릿에서 작업 생성 시 콜백
+ * @returns 템플릿 목록 및 관리 UI가 포함된 전체 화면 모달
+ */
 export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: TemplatesModalProps) {
   // Store Hooks
   const { templates, categories, loadData, loadCategories, deleteTemplate, addTemplate } = useTemplateStore();
@@ -75,12 +90,12 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
         nextDate = new Date(lastGenerated);
         nextDate.setDate(nextDate.getDate() + 1);
         break;
-      case 'weekly':
+      case 'weekly': {
         if (!template.weeklyDays || template.weeklyDays.length === 0) return null;
         const currentDay = today.getDay();
         const sortedDays = [...template.weeklyDays].sort((a, b) => a - b);
-        let nextDay = sortedDays.find(day => day > currentDay);
-        let daysUntil = nextDay !== undefined ? nextDay - currentDay : (7 - currentDay + sortedDays[0]);
+        const nextDay = sortedDays.find(day => day > currentDay);
+        const daysUntil = nextDay !== undefined ? nextDay - currentDay : (7 - currentDay + sortedDays[0]);
         nextDate = new Date(today);
         nextDate.setDate(nextDate.getDate() + daysUntil);
 
@@ -92,6 +107,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
           }
         }
         break;
+      }
       case 'interval':
         if (!template.intervalDays) return null;
         nextDate = new Date(lastGenerated);

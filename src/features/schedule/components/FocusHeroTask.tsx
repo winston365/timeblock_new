@@ -1,8 +1,33 @@
+/**
+ * @file FocusHeroTask.tsx
+ * @role 집중 모드 히어로 작업 카드 컴포넌트
+ * @responsibilities
+ *   - 추천 작업 대형 표시
+ *   - 작업 타이머 및 마일스톤 진행률 표시
+ *   - 작업 시작/완료/중단 버튼 제공
+ *   - 난이도/소요시간 인라인 수정
+ * @dependencies
+ *   - framer-motion: 애니메이션
+ *   - calculateTaskXP: XP 계산 유틸리티
+ */
 import { motion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
 import { calculateTaskXP } from '@/shared/lib/utils';
 
+/**
+ * FocusHeroTask 컴포넌트 Props
+ * @param task - 표시할 작업 객체
+ * @param recommendationMessage - AI 추천 메시지
+ * @param isActive - 현재 활성 상태 여부
+ * @param startTime - 작업 시작 시간 (timestamp)
+ * @param onEdit - 작업 수정 핸들러
+ * @param onUpdateTask - 작업 업데이트 핸들러
+ * @param onToggle - 작업 완료 토글 핸들러
+ * @param onStartNow - 작업 시작 핸들러
+ * @param onStop - 작업 중단 핸들러
+ * @param onComplete - 작업 완료 핸들러
+ */
 interface FocusHeroTaskProps {
     task: Task;
     recommendationMessage: string;
@@ -34,6 +59,11 @@ const RESISTANCE_LABEL: Record<Resistance, string> = {
     high: '어려움'
 };
 
+/**
+ * 집중 모드 히어로 작업 카드 컴포넌트
+ * @param props - FocusHeroTaskProps
+ * @returns 히어로 작업 카드 UI
+ */
 export function FocusHeroTask({
     task,
     recommendationMessage,
@@ -41,7 +71,6 @@ export function FocusHeroTask({
     startTime,
     onEdit,
     onUpdateTask,
-    onToggle,
     onStartNow,
     onStop,
     onComplete

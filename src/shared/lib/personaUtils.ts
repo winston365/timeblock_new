@@ -1,10 +1,33 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * personaUtils - PersonaContext 빌드 유틸리티
  *
+ * @fileoverview AI 페르소나에 필요한 컨텍스트 정보를 수집하고 구성하는 유틸리티 모듈
+ *
  * @role PersonaContext 생성 로직을 유틸리티 함수로 제공 (훅 제거로 불필요한 재연산 방지)
- * @input DailyData, GameState, WaifuState, currentEnergy
- * @output PersonaContext 객체
- * @external_dependencies
+ * @responsibilities
+ *   - DailyData, GameState, WaifuState, currentEnergy를 기반으로 PersonaContext 생성
+ *   - 최근 10일간 작업 패턴 분석
+ *   - 현재 타임블록 상태 및 작업 정보 수집
+ *   - Inbox 작업 데이터 통합
+ *
+ * @dependencies
+ *   - inboxRepository: Inbox 작업 조회
+ *   - dailyDataRepository: 최근 일일 데이터 조회
+ *   - dexieClient: completedInbox 테이블 접근
+ *   - domain types: Task, TimeBlockState, TIME_BLOCKS
+ */
+import { loadInboxTasks } from '@/data/repositories/inboxRepository';
+import type { PersonaContext } from '@/shared/services/ai/geminiApi';
+import type { DailyData, GameState, Task, TimeBlockState, WaifuState } from '@/shared/types/domain';
+import { TIME_BLOCKS } from '@/shared/types/domain';
+import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
+import { db } from '@/data/db/dexieClient';
+
+/**
+ * PersonaContext 빌드에 필요한 파라미터
+ */
+export interface BuildPersonaContextParams {
   dailyData: DailyData | null;
   gameState: GameState | null;
   waifuState: WaifuState | null;
@@ -19,35 +42,12 @@
  * - DB 조회(getRecentDailyData)를 필요한 시점에만 수행
  * - AI 채팅/인사이트 생성 시점에만 호출
  *
- * @param {BuildPersonaContextParams} params - dailyData, gameState, waifuState, currentEnergy
- * @returns {Promise<PersonaContext>} PersonaContext 객체
- * @throws {Error} PersonaContext 빌드 실패 시
- * @sideEffects
- *   - getRecentDailyData(10) 호출 (DB 조회)
+ * @param params - dailyData, gameState, waifuState, currentEnergy를 포함한 파라미터 객체
+ * @returns PersonaContext 객체
+ * @throws PersonaContext 빌드 실패 시 에러
  *
  * @example
- * ```tsx
- * const personaContext = await buildPersonaContext({
- *   dailyData,
- *   gameState,
- *   waifuState,
-
-/**
- * PersonaContext 객체를 생성합니다.
- *
- * 기존 usePersonaContext 훅을 일반 함수로 변경하여 성능 최적화:
- * - 상태 변경 시마다 재실행되는 문제 해결
- * - DB 조회(getRecentDailyData)를 필요한 시점에만 수행
- * - AI 채팅/인사이트 생성 시점에만 호출
- *
- * @param {BuildPersonaContextParams} params - dailyData, gameState, waifuState, currentEnergy
- * @returns {Promise<PersonaContext>} PersonaContext 객체
- * @throws {Error} PersonaContext 빌드 실패 시
- * @sideEffects
- *   - getRecentDailyData(10) 호출 (DB 조회)
- *
- * @example
- * ```tsx
+ * ```typescript
  * const personaContext = await buildPersonaContext({
  *   dailyData,
  *   gameState,
@@ -57,20 +57,6 @@
  * const systemPrompt = generateWaifuPersona(personaContext);
  * ```
  */
-import { loadInboxTasks } from '@/data/repositories/inboxRepository';
-import type { PersonaContext } from '@/shared/services/ai/geminiApi';
-import type { DailyData, GameState, Task, TimeBlockState, WaifuState } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
-import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
-import { db } from '@/data/db/dexieClient';
-
-export interface BuildPersonaContextParams {
-  dailyData: DailyData | null;
-  gameState: GameState | null;
-  waifuState: WaifuState | null;
-  currentEnergy: number;
-}
-
 export async function buildPersonaContext(
   params: BuildPersonaContextParams
 ): Promise<PersonaContext> {

@@ -2,11 +2,14 @@
  * Settings Zustand Store
  *
  * @role 설정 상태(API 키, waifuMode 등)의 전역 상태 관리
- * @input 설정 업데이트 요청
- * @output 설정 상태 및 관리 함수
- * @external_dependencies
+ * @responsibilities
+ *   - 설정 데이터 로드/저장 (IndexedDB/Firebase)
+ *   - waifuMode, API 키, 자동 메시지 설정 관리
+ *   - AI 작업 세분화 트리거 설정
+ *   - 하지않기 체크리스트 CRUD
+ * @key_dependencies
  *   - zustand: 전역 상태 관리 라이브러리
- *   - repositories: 설정 데이터 레포지토리
+ *   - settingsRepository: 설정 데이터 영속성 관리
  */
 
 import { create } from 'zustand';

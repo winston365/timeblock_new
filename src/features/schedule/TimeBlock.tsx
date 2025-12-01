@@ -44,6 +44,10 @@ interface TimeBlockProps {
 
 /**
  * 타임블록 컴포넌트
+ * 시간대별 작업 목록을 표시하고 드래그 앤 드롭, 잠금, 진행률 등의 기능을 제공합니다.
+ *
+ * @param props - TimeBlockProps 참조
+ * @returns 타임블록 UI (헤더, 작업 카드 목록, 진행률 바 포함)
  */
 const TimeBlock = memo(function TimeBlock({
   block,
@@ -59,7 +63,6 @@ const TimeBlock = memo(function TimeBlock({
   onToggleTask,
   onToggleLock,
   onUpdateBlockState,
-  onDropTask: _onDropTask,
   hourSlotTags,
   tagTemplates,
   recentTagIds,
@@ -100,6 +103,7 @@ const TimeBlock = memo(function TimeBlock({
         id: `perfect-plan-${block.id}`,
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.isPerfect]);
 
   // 통합 드래그 앤 드롭 훅 사용

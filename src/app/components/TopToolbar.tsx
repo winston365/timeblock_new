@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * TopToolbar - 상단 툴바
  *
@@ -123,15 +124,15 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   useEffect(() => {
     let mounted = true;
     const storageKey = `${BINGO_PROGRESS_STORAGE_KEY}:${today}`;
-    const isValidProgress = (p: any): p is BingoProgress =>
-      p && p.date === today && Array.isArray(p.completedCells) && Array.isArray(p.completedLines);
-    const mergeProgress = (a?: BingoProgress | null, b?: BingoProgress | null): BingoProgress | null => {
-      const valid = [a, b].filter(isValidProgress) as BingoProgress[];
-      if (valid.length === 0) return null;
+    const isValidProgress = (progress: any): progress is BingoProgress =>
+      progress && progress.date === today && Array.isArray(progress.completedCells) && Array.isArray(progress.completedLines);
+    const mergeProgress = (remoteProgress?: BingoProgress | null, localProgress?: BingoProgress | null): BingoProgress | null => {
+      const validProgressList = [remoteProgress, localProgress].filter(isValidProgress) as BingoProgress[];
+      if (validProgressList.length === 0) return null;
       return {
         date: today,
-        completedCells: Array.from(new Set(valid.flatMap(p => p.completedCells))),
-        completedLines: Array.from(new Set(valid.flatMap(p => p.completedLines))),
+        completedCells: Array.from(new Set(validProgressList.flatMap(progress => progress.completedCells))),
+        completedLines: Array.from(new Set(validProgressList.flatMap(progress => progress.completedLines))),
       };
     };
     const cacheProgress = async (value: BingoProgress) => {
@@ -377,7 +378,10 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   );
 }
 
-// Helper component to register position
+/**
+ * XP 파티클 애니메이션 타겟 위치 등록 헬퍼 컴포넌트
+ * @returns 보이지 않는 위치 추적용 span 엘리먼트
+ */
 function XPPositionRegistrar() {
   const setTargetPosition = useXPParticleStore(state => state.setTargetPosition);
   const ref = useRef<HTMLSpanElement>(null);

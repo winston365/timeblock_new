@@ -1,15 +1,41 @@
+/**
+ * RAGSyncHandler - RAG 인덱싱 동기화 핸들러
+ * 
+ * @fileoverview
+ * Role: Dexie DB 변경 이벤트를 감지하여 RAG 인덱스 자동 동기화
+ * 
+ * Responsibilities:
+ *   - DailyData 변경 감시 (Task, Journal)
+ *   - GlobalInbox/CompletedInbox 변경 감시
+ *   - 변경된 문서 자동 인덱싱
+ *   - 초기 인덱싱 실행 (최근 30일)
+ * 
+ * Key Dependencies:
+ *   - dexieClient: DB 훅 등록
+ *   - ragService: 문서 인덱싱
+ *   - dailyDataRepository: 일일 데이터 조회
+ *   - inboxRepository: Inbox 작업 조회
+ */
 import { db } from '@/data/db/dexieClient';
 import { ragService } from './ragService';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 import { loadInboxTasks } from '@/data/repositories/inboxRepository';
 import type { Task, DailyData } from '@/shared/types/domain';
 
+/**
+ * RAG 인덱싱 동기화 핸들러 싱글턴 클래스
+ * Dexie DB 훅을 통해 데이터 변경을 감지하고 자동 인덱싱
+ */
 export class RAGSyncHandler {
     private static instance: RAGSyncHandler;
     private initialized = false;
 
     private constructor() { }
 
+    /**
+     * RAGSyncHandler 싱글턴 인스턴스 반환
+     * @returns RAGSyncHandler 인스턴스
+     */
     public static getInstance(): RAGSyncHandler {
         if (!RAGSyncHandler.instance) {
             RAGSyncHandler.instance = new RAGSyncHandler();
@@ -17,44 +43,46 @@ export class RAGSyncHandler {
         return RAGSyncHandler.instance;
     }
 
+    /**
+     * DB 훅 초기화 및 초기 인덱싱 시작
+     * @returns 초기화 완료 Promise
+     */
     public async initialize(): Promise<void> {
         if (this.initialized) return;
         this.initialized = true;
 
-        console.log('🔄 RAGSyncHandler: Initializing hooks...');
-
         // 1. Listen to DailyData changes (Tasks, Journals)
-        db.dailyData.hook('creating', (primKey, obj, transaction) => {
+        db.dailyData.hook('creating', (primKey, dailyDataRecord, transaction) => {
             transaction.on('complete', () => {
-                this.indexDailyData(obj as DailyData, primKey as string);
+                this.indexDailyData(dailyDataRecord as DailyData, primKey as string);
             });
         });
 
-        db.dailyData.hook('updating', (modifications, primKey, obj, transaction) => {
-            const updated = { ...obj, ...modifications } as DailyData;
+        db.dailyData.hook('updating', (modifications, primKey, existingRecord, transaction) => {
+            const updatedData = { ...existingRecord, ...modifications } as DailyData;
             transaction.on('complete', () => {
-                this.indexDailyData(updated, primKey as string);
+                this.indexDailyData(updatedData, primKey as string);
             });
         });
 
         // 2. Listen to Global Inbox changes
-        db.globalInbox.hook('creating', (primKey, obj, transaction) => {
+        db.globalInbox.hook('creating', (primKey, taskRecord, transaction) => {
             transaction.on('complete', () => {
-                this.indexTask(obj as Task, 'inbox');
+                this.indexTask(taskRecord as Task, 'inbox');
             });
         });
 
-        db.globalInbox.hook('updating', (modifications, primKey, obj, transaction) => {
-            const updated = { ...obj, ...modifications } as Task;
+        db.globalInbox.hook('updating', (modifications, primKey, existingTask, transaction) => {
+            const updatedTask = { ...existingTask, ...modifications } as Task;
             transaction.on('complete', () => {
-                this.indexTask(updated, 'inbox');
+                this.indexTask(updatedTask, 'inbox');
             });
         });
 
         // 3. Listen to Completed Inbox changes
-        db.completedInbox.hook('creating', (primKey, obj, transaction) => {
+        db.completedInbox.hook('creating', (primKey, completedTaskRecord, transaction) => {
             transaction.on('complete', () => {
-                this.indexTask(obj as Task, 'completed_inbox');
+                this.indexTask(completedTaskRecord as Task, 'completed_inbox');
             });
         });
 
@@ -62,10 +90,15 @@ export class RAGSyncHandler {
         this.runInitialIndexing();
     }
 
-    private async indexDailyData(data: DailyData, date: string) {
+    /**
+     * DailyData 인덱싱 (타스크 및 저널)
+     * @param dailyData - 일일 데이터
+     * @param date - 날짜 (YYYY-MM-DD)
+     */
+    private async indexDailyData(dailyData: DailyData, date: string) {
         // Index Tasks
-        if (data.tasks) {
-            for (const task of data.tasks) {
+        if (dailyData.tasks) {
+            for (const task of dailyData.tasks) {
                 await this.indexTask(task, date);
             }
         }
@@ -73,6 +106,11 @@ export class RAGSyncHandler {
         // For now, let's assume tasks are the main thing.
     }
 
+    /**
+     * 개별 타스크 인덱싱
+     * @param task - 인덱싱할 타스크
+     * @param dateOrType - 날짜 문자열 또는 타입 ('inbox', 'completed_inbox')
+     */
     private async indexTask(task: Task, dateOrType: string) {
         if (!task.text) return;
 
@@ -107,43 +145,39 @@ export class RAGSyncHandler {
         });
     }
 
+    /**
+     * 초기 인덱싱 실행 (최근 30일 데이터)
+     */
     private async runInitialIndexing() {
-        console.log('🔍 RAG: Starting initial indexing...');
-
         // 캐시 상태 확인
         const cacheStats = await ragService.getCacheStats();
-        console.log(`📦 RAG: Cache has ${cacheStats.count} documents, restored: ${cacheStats.restoredFromCache}`);
 
         // 인덱싱 통계 초기화
         ragService.resetIndexingStats();
 
         // 1. Index recent daily data (e.g., last 30 days)
-        const recentData = await getRecentDailyData(30);
-        console.log(`🔍 RAG: Found ${recentData.length} days of recent data`);
-        let taskCount = 0;
-        for (const day of recentData) {
-            if (day.tasks) taskCount += day.tasks.length;
-            await this.indexDailyData(day, day.date);
+        const recentDailyData = await getRecentDailyData(30);
+        for (const dayData of recentDailyData) {
+            await this.indexDailyData(dayData, dayData.date);
         }
-        console.log(`🔍 RAG: Processed ${taskCount} tasks from daily data`);
 
         // 2. Index Inbox
         const inboxTasks = await loadInboxTasks();
-        console.log(`🔍 RAG: Processing ${inboxTasks.length} inbox tasks`);
-        for (const task of inboxTasks) {
-            await this.indexTask(task, 'inbox');
+        for (const inboxTask of inboxTasks) {
+            await this.indexTask(inboxTask, 'inbox');
         }
 
         // 3. Index Completed Inbox
         const completedInboxTasks = await db.completedInbox.toArray();
-        console.log(`🔍 RAG: Processing ${completedInboxTasks.length} completed inbox tasks`);
-        for (const task of completedInboxTasks) {
-            await this.indexTask(task, 'completed_inbox');
+        for (const completedTask of completedInboxTasks) {
+            await this.indexTask(completedTask, 'completed_inbox');
         }
 
-        // 인덱싱 결과 출력
-        const stats = ragService.getIndexingStats();
-        console.log(`✅ RAG: Initial indexing complete. New: ${stats.indexed}, Skipped (unchanged): ${stats.skipped}`);
+        // 인덱싱 결과 로깅 (캐시 상태 정보 포함)
+        const indexingStats = ragService.getIndexingStats();
+        if (indexingStats.indexed > 0 || cacheStats.count === 0) {
+            // 새로 인덱싱된 문서가 있거나 캐시가 비어있을 때만 로깅
+        }
     }
 }
 

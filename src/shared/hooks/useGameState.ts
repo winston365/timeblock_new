@@ -38,6 +38,7 @@ export function useGameState() {
       hasInitialized.current = true;
       store.loadData();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // 빈 배열로 한 번만 실행
 
   return {

@@ -1,13 +1,46 @@
-import React from 'react';
+/**
+ * @file NeonCheckbox.tsx
+ * 
+ * @description
+ * Role: 네온 효과가 적용된 커스텀 체크박스 컴포넌트
+ * 
+ * Responsibilities:
+ * - 네온 글로우, 파티클, 링 펄스 등 시각적 효과 제공
+ * - 체크 상태에 따른 애니메이션 처리
+ * - 커스터마이징 가능한 크기 및 색상
+ * 
+ * Key Dependencies:
+ * - CSS-in-JS 스타일 태그를 통한 동적 스타일링
+ */
 
+/** NeonCheckbox 컴포넌트의 props 인터페이스 */
 interface NeonCheckboxProps {
+    /** 체크 상태 */
     checked: boolean;
+    /** 체크 상태 변경 콜백 */
     onChange: () => void;
+    /** 추가 CSS 클래스 */
     className?: string;
+    /** 체크박스 크기 (px, 기본값: 30) */
     size?: number;
+    /** 네온 효과 기본 색상 (기본값: var(--color-primary)) */
     primaryColor?: string;
 }
 
+/**
+ * 네온 효과 체크박스 컴포넌트
+ * 
+ * 체크 시 네온 글로우, 파티클 폭발, 링 펄스, 스파크 등의
+ * 화려한 시각적 효과를 제공하는 커스텀 체크박스.
+ * 
+ * @param props - NeonCheckbox 컴포넌트 props
+ * @param props.checked - 체크 상태
+ * @param props.onChange - 체크 상태 변경 콜백
+ * @param props.className - 추가 CSS 클래스
+ * @param props.size - 체크박스 크기 (px, 기본값: 30)
+ * @param props.primaryColor - 네온 효과 기본 색상
+ * @returns 네온 체크박스 React 엘리먼트
+ */
 export function NeonCheckbox({
     checked,
     onChange,

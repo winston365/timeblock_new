@@ -161,7 +161,6 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
         const parsed = JSON.parse(fixedText);
         // 최소한 status 필드가 있는지 확인
         if (parsed && parsed.status) {
-          console.log('[InsightPanel] Recovered truncated JSON successfully');
           return parsed;
         }
       } catch {
@@ -187,7 +186,6 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
           }
           
           if (partialData.status) {
-            console.log('[InsightPanel] Extracted partial data from truncated response');
             return partialData as InsightData;
           }
         }
@@ -393,6 +391,7 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
       clearInterval(countdownInterval);
       clearInterval(aiInterval);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.geminiApiKey, settings?.autoMessageInterval]);
 
   const progress = totalTime > 0 ? ((totalTime - timeLeft) / totalTime) * 100 : 0;

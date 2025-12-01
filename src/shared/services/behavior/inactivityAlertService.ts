@@ -29,16 +29,18 @@ const ALERT_INTERVAL = isDev
     ? 5 * 1000 // 개발: 5초
     : 10 * 60 * 1000; // 프로덕션: 10분
 
-// 로그 출력 (설정 확인용)
-console.log(
-    `[InactivityAlert] Mode: ${isDev ? 'DEVELOPMENT' : 'PRODUCTION'} | ` +
-    `Threshold: ${INACTIVITY_THRESHOLD / 1000}s | Interval: ${ALERT_INTERVAL / 1000}s`
-);
+
 
 // ============================================================================
 // Service 클래스
 // ============================================================================
 
+/**
+ * 사용자 비활동 감지 및 알림 서비스
+ * 
+ * 앱 내에서 사용자 활동이 없을 경우 주기적으로 알림을 표시하여
+ * 사용자에게 휴식 후 작업 재개를 권장합니다.
+ */
 class InactivityAlertService {
     private inactivityTimer: NodeJS.Timeout | null = null;
     private alertIntervalTimer: NodeJS.Timeout | null = null;
@@ -48,6 +50,8 @@ class InactivityAlertService {
 
     /**
      * 서비스 시작
+     * 비활동 감지 타이머와 활동 이벤트 리스너를 초기화합니다.
+     * @returns {void}
      */
     start(): void {
         if (this.isRunning) {
@@ -55,7 +59,6 @@ class InactivityAlertService {
             return;
         }
 
-        console.log('[InactivityAlert] Service started');
         this.isRunning = true;
         this.resetInactivityTimer();
         this.attachActivityListeners();
@@ -63,13 +66,14 @@ class InactivityAlertService {
 
     /**
      * 서비스 중지
+     * 모든 타이머와 이벤트 리스너를 정리합니다.
+     * @returns {void}
      */
     stop(): void {
         if (!this.isRunning) {
             return;
         }
 
-        console.log('[InactivityAlert] Service stopped');
         this.isRunning = false;
         this.cleanup();
     }
@@ -91,7 +95,6 @@ class InactivityAlertService {
 
         // 비활동 상태 해제
         if (this.isInactive) {
-            console.log('[InactivityAlert] User activity detected, resetting timer');
             this.isInactive = false;
             this.alertCount = 0;
         }
@@ -104,11 +107,9 @@ class InactivityAlertService {
 
     /**
      * 비활동 감지 시 호출
+     * 비활동 상태를 설정하고 주기적 알림을 시작합니다.
      */
     private onInactivityDetected(): void {
-        console.log(
-            `[InactivityAlert] ${INACTIVITY_THRESHOLD / 1000}s of inactivity - starting periodic alerts every ${ALERT_INTERVAL / 1000}s`
-        );
         this.isInactive = true;
         this.alertCount = 0;
 
@@ -123,10 +124,10 @@ class InactivityAlertService {
 
     /**
      * 알림 표시
+     * Windows 네이티브 알림 또는 브라우저 Notification API를 사용합니다.
      */
     private async showAlert(): Promise<void> {
         this.alertCount++;
-        console.log(`[InactivityAlert] Showing alert (${this.alertCount})`);
 
         const title = '⏰ TimeBlock 알림';
         const body = '1시간 동안 활동이 없었습니다. 휴식 후 다시 시작해보세요!';

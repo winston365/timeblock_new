@@ -1,15 +1,33 @@
 /**
- * DontDoTab
+ * @fileoverview DontDoTab - "하지않기" 체크리스트 관리 탭 컴포넌트
  *
- * @role "하지않기" 체크리스트 항목 관리 탭 (습관 억제 보상 시스템)
- * @input DontDoTabProps (localSettings, setLocalSettings)
- * @output 체크리스트 CRUD UI 렌더링
- * @external_dependencies 없음 (순수 UI 컴포넌트)
+ * @description
+ * Role: "하지않기" 체크리스트 항목 관리 탭 (습관 억제 보상 시스템)
+ *
+ * Responsibilities:
+ * - 하지않기 체크리스트 항목 CRUD (생성, 수정, 삭제)
+ * - 항목 순서 변경 (위/아래 이동)
+ * - XP 보상 값 설정
+ *
+ * Key Dependencies:
+ * - types: DontDoTabProps, Settings, DontDoChecklistItem 타입 정의
+ * - styles: 공통 스타일 클래스
  */
 
 import type { DontDoTabProps, Settings, DontDoChecklistItem } from './types';
 import { sectionClass, infoBoxClass } from './styles';
 
+/**
+ * "하지않기" 체크리스트 항목을 관리하는 탭 컴포넌트
+ *
+ * 사용자가 피해야 할 행동을 정의하고, 해당 행동을 참았을 때
+ * 획득할 수 있는 XP 보상을 설정할 수 있습니다.
+ *
+ * @param props - 탭 컴포넌트 props
+ * @param props.localSettings - 현재 로컬 설정 상태
+ * @param props.setLocalSettings - 설정 상태 업데이트 함수
+ * @returns 체크리스트 CRUD UI
+ */
 export function DontDoTab({ localSettings, setLocalSettings }: DontDoTabProps) {
     const handleDontDoItemChange = (id: string, updates: Partial<DontDoChecklistItem>) => {
         setLocalSettings((prev: Settings | null) => {

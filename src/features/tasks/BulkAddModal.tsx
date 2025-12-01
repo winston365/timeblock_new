@@ -1,9 +1,17 @@
 /**
  * @file BulkAddModal.tsx
- * @role 여러 작업을 한 번에 추가할 수 있는 대량 추가 모달 (F1 단축키)
- * @input isOpen, onClose, onAddTasks
- * @output 텍스트 입력 영역, 기본 설정, 파싱된 작업 미리보기, 추가 버튼 UI
- * @dependencies TIME_BLOCKS, createTaskFromPartial
+ * 
+ * Role: 여러 작업을 한 번에 추가할 수 있는 대량 추가 모달 컴포넌트 (F1 단축키)
+ * 
+ * Responsibilities:
+ * - 여러 줄 텍스트 입력을 개별 작업으로 파싱
+ * - 기본 타임블록/저항도/예상시간 설정 제공
+ * - 실시간 파싱 미리보기 표시
+ * - Ctrl/Cmd + Enter 단축키로 빠른 추가
+ * 
+ * Key Dependencies:
+ * - TIME_BLOCKS: 타임블록 정의 상수
+ * - createTaskFromPartial: 부분 데이터로 Task 객체 생성
  */
 
 import { useState, useRef, useEffect, useId } from 'react';
@@ -47,6 +55,8 @@ const resistanceLabel: Record<Resistance, string> = {
     medium: '보통 저항',
     high: '저항 높음',
 };
+
+/** 시간 선택 옵션 (분 단위) */
 const DURATION_OPTIONS = [5, 10, 15, 30, 45, 60, 90, 120];
 
 /**
@@ -98,6 +108,7 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
         } else {
             setPreviewTasks([]);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [input, defaultTimeBlock, defaultResistance, defaultDuration]);
 
     /**
@@ -136,7 +147,7 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
             const blockMatch = remainingText.match(/@(\d+-\d+)/);
             if (blockMatch) {
                 const blockId = blockMatch[1];
-                if (TIME_BLOCKS.some((b) => b.id === blockId)) {
+                if (TIME_BLOCKS.some((block) => block.id === blockId)) {
                     task.timeBlock = blockId as TimeBlockId;
                 }
                 remainingText = remainingText.replace(/@\d+-\d+/, '').trim();
@@ -393,7 +404,7 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
 
                                                     const blockLabel = task.timeBlock
 
-                                                        ? TIME_BLOCKS.find((b) => b.id === task.timeBlock)?.label
+                                                        ? TIME_BLOCKS.find((block) => block.id === task.timeBlock)?.label
 
                                                         : null;
 

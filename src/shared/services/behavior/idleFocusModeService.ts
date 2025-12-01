@@ -52,6 +52,8 @@ const ACTIVITY_THROTTLE_MS = 1000; // 활동 감지 throttle (1초)
 /**
  * 비활동 threshold를 분 단위에서 밀리초로 변환
  * @pure
+ * @param {number} minutes - 분 단위 시간
+ * @returns {number} 밀리초 단위 시간
  */
 function calculateThresholdMs(minutes: number): number {
     return minutes * 60 * 1000;
@@ -60,6 +62,10 @@ function calculateThresholdMs(minutes: number): number {
 /**
  * 활동 이벤트가 throttle 조건을 만족하는지 판단
  * @pure
+ * @param {number} lastActivityTime - 마지막 활동 시간 (밀리초 타임스탬프)
+ * @param {number} currentTime - 현재 시간 (밀리초 타임스탬프)
+ * @param {number} throttleMs - throttle 간격 (밀리초)
+ * @returns {boolean} throttle 조건 만족 여부
  */
 function shouldProcessActivity(
     lastActivityTime: number,
@@ -72,6 +78,9 @@ function shouldProcessActivity(
 /**
  * 비활동 감지 시 FocusMode로 전환해야 하는지 판단
  * @pure
+ * @param {boolean} isFocusModeActive - 현재 FocusMode 활성화 상태
+ * @param {boolean} isFeatureEnabled - 기능 활성화 설정 여부
+ * @returns {{ shouldActivate: boolean; skipReason: string | null }} 전환 필요 여부와 스킵 사유
  */
 function shouldActivateFocusMode(
     isFocusModeActive: boolean,
@@ -279,6 +288,12 @@ function showInfoToast(message: string, icon: string): void {
 // Service 클래스
 // ============================================================================
 
+/**
+ * 비활동 감지 후 자동 집중 모드 전환 서비스
+ * 
+ * 설정된 시간 동안 사용자 활동이 없으면 카운트다운 후
+ * 자동으로 FocusView로 전환합니다.
+ */
 class IdleFocusModeService {
     private idleTimer: NodeJS.Timeout | null = null;
     private countdownTimer: NodeJS.Timeout | null = null;
@@ -290,29 +305,25 @@ class IdleFocusModeService {
     /**
      * 현재 threshold를 설정에서 동적으로 가져옴
      * 사용자 설정값을 항상 존중함 (분 단위 → 밀리초 변환)
+     * @returns {number} 비활동 감지 임계값 (밀리초)
      */
     private getThresholdMs(): number {
         const minutes = readThresholdMinutesFromSettings();
         const thresholdMs = calculateThresholdMs(minutes);
         
-        console.log(`[IdleFocusMode] getThresholdMs: ${minutes}분 = ${thresholdMs}ms`);
         return thresholdMs;
     }
 
     /**
      * 서비스 시작
+     * 비활동 감지 타이머와 키보드 이벤트 리스너를 초기화합니다.
+     * @returns {void}
      */
     start(): void {
         if (this.isRunning) {
             console.warn('[IdleFocusMode] Service already running');
             return;
         }
-
-        const thresholdMs = this.getThresholdMs();
-
-        console.log(
-            `[IdleFocusMode] Service started | Threshold: ${thresholdMs / 1000}s (${thresholdMs / 60000}min)`
-        );
 
         this.isRunning = true;
         this.isInCountdown = false;
@@ -322,13 +333,14 @@ class IdleFocusModeService {
 
     /**
      * 서비스 중지
+     * 모든 타이머와 이벤트 리스너를 정리합니다.
+     * @returns {void}
      */
     stop(): void {
         if (!this.isRunning) {
             return;
         }
 
-        console.log('[IdleFocusMode] Service stopped');
         this.isRunning = false;
         this.cleanup();
     }
@@ -345,7 +357,6 @@ class IdleFocusModeService {
         }
 
         const thresholdMs = this.getThresholdMs();
-        console.log(`[IdleFocusMode] Starting idle timer: ${thresholdMs / 1000}s`);
 
         // 새로운 타이머 설정
         this.idleTimer = setTimeout(() => {
@@ -360,20 +371,18 @@ class IdleFocusModeService {
         const isFocusModeActive = readFocusModeState();
         const isFeatureEnabled = readIdleFocusModeEnabled();
         
-        const { shouldActivate, skipReason } = shouldActivateFocusMode(
+        const { shouldActivate } = shouldActivateFocusMode(
             isFocusModeActive,
             isFeatureEnabled
         );
 
         if (!shouldActivate) {
-            console.log(`[IdleFocusMode] ${skipReason}, skipping`);
             if (isFocusModeActive) {
                 this.startIdleTimer();
             }
             return;
         }
 
-        console.log('[IdleFocusMode] Idle detected, starting countdown');
         this.startCountdown();
     }
 
@@ -420,12 +429,12 @@ class IdleFocusModeService {
 
     /**
      * FocusMode 활성화
+     * 사용자를 집중 모드로 전환하고 성공 토스트를 표시합니다.
      */
     private activateFocusMode(): void {
         try {
             writeFocusModeState(true);
             showSuccessToast('🎯 집중 모드가 활성화되었습니다!', '🔥');
-            console.log('[IdleFocusMode] FocusMode activated');
         } catch (error) {
             console.error('[IdleFocusMode] Failed to activate FocusMode:', error);
         }
@@ -485,7 +494,6 @@ class IdleFocusModeService {
 
         // 카운트다운 중이면 취소하고 타이머 리셋
         if (this.isInCountdown) {
-            console.log('[IdleFocusMode] Activity during countdown - cancelling');
             this.cancelCountdown();
             dismissToast('idle-focus-countdown');
             showInfoToast('⏸️ 집중 모드 전환이 취소되었습니다', '👋');

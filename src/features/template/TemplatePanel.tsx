@@ -1,13 +1,18 @@
-﻿/**
- * TemplatePanel
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * @file TemplatePanel.tsx
+ * @description 사이드바용 템플릿 관리 패널 컴포넌트
  *
- * @role 반복 작업 템플릿을 관리하고 오늘 할 일로 추가하는 패널 컴포넌트
- * @input onTaskCreate (function) - 템플릿에서 작업 생성 시 콜백
- * @output 템플릿 목록, 카테고리 탭, 추가/편집/삭제 버튼을 포함한 UI
- * @external_dependencies
+ * @role 반복 작업 템플릿 목록 조회 및 오늘 할 일 추가 기능 제공
+ * @responsibilities
+ *   - 템플릿 목록 표시 (카테고리별 탭 필터링)
+ *   - 템플릿 추가/편집/삭제 기능
+ *   - 템플릿에서 오늘 할 일 생성
+ *   - 예상 XP 표시
+ * @dependencies
  *   - loadTemplates, deleteTemplate: 템플릿 Repository
- *   - TemplateModal: 템플릿 추가/편집 모달 컴포넌트
- *   - utils: XP 계산 함수
+ *   - TemplateModal: 템플릿 추가/편집 모달
+ *   - calculateTaskXP: XP 계산 유틸리티
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -21,6 +26,13 @@ interface TemplatePanelProps {
   onTaskCreate: (template: Template) => void;
 }
 
+/**
+ * 사이드바용 템플릿 관리 패널 컴포넌트
+ *
+ * @param props - 컴포넌트 속성
+ * @param props.onTaskCreate - 템플릿에서 작업 생성 시 콜백
+ * @returns 템플릿 목록 및 카테고리 탭이 포함된 패널 UI
+ */
 export default function TemplatePanel({ onTaskCreate }: TemplatePanelProps) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);

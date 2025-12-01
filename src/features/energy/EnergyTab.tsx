@@ -6,7 +6,7 @@
  * @dependencies useEnergy 훅, EnergyLevel 타입
  */
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useEnergy } from '@/features/energy/hooks/useEnergy';
 
 const ACTIVITY_OPTIONS = [
@@ -37,7 +37,6 @@ export default function EnergyTab() {
     currentEnergy,
     todayAverage,
     overallAverage,
-    timeBlockAverages,
     recentTimeBlockStats,
     addEnergyLevel,
     deleteEnergyLevel,
@@ -168,7 +167,7 @@ export default function EnergyTab() {
           <h4 className="text-sm font-bold text-[var(--color-text)]">📈 오늘의 에너지 흐름</h4>
           <div className="h-48 w-full">
             {energyLevels.length > 1 ? (
-              <EnergyLineChart data={energyLevels} />
+              <EnergyLineChart energyLevels={energyLevels} />
             ) : (
               <div className="flex h-full items-center justify-center text-xs text-[var(--color-text-tertiary)]">
                 데이터가 부족합니다 (2개 이상 필요)
@@ -182,7 +181,7 @@ export default function EnergyTab() {
           <h4 className="text-sm font-bold text-[var(--color-text)]">🔥 시간대별 에너지 (최근 5일)</h4>
           <div className="flex flex-1 items-center justify-center">
             {recentTimeBlockStats?.length ? (
-              <EnergyHeatmap stats={recentTimeBlockStats} />
+              <EnergyHeatmap timeBlockStats={recentTimeBlockStats} />
             ) : (
               <div className="text-xs text-[var(--color-text-tertiary)]">데이터가 없습니다</div>
             )}
@@ -239,6 +238,15 @@ export default function EnergyTab() {
 
 // --- Components ---
 
+/**
+ * 상태 카드 컴포넌트
+ * @param {Object} props - 컴포넌트 속성
+ * @param {string} props.label - 카드 레이블
+ * @param {string} props.value - 표시할 값
+ * @param {string} props.color - 값 텍스트 색상
+ * @param {React.ReactNode} [props.icon] - 선택적 아이콘
+ * @returns {JSX.Element} 상태 카드 UI
+ */
 function StatusCard({ label, value, color, icon }: { label: string; value: string; color: string; icon?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 text-center shadow-sm transition hover:-translate-y-1">
@@ -249,6 +257,12 @@ function StatusCard({ label, value, color, icon }: { label: string; value: strin
   );
 }
 
+/**
+ * 배터리 아이콘 컴포넌트
+ * @param {Object} props - 컴포넌트 속성
+ * @param {number} props.level - 배터리 레벨 (0-100)
+ * @returns {JSX.Element} 배터리 아이콘 UI
+ */
 function BatteryIcon({ level }: { level: number }) {
   return (
     <div className="relative h-6 w-10 rounded border-2 border-[var(--color-text)] p-0.5">
@@ -264,12 +278,18 @@ function BatteryIcon({ level }: { level: number }) {
   );
 }
 
-function EnergyLineChart({ data }: { data: any[] }) {
+/**
+ * 에너지 라인 차트 컴포넌트
+ * @param {Object} props - 컴포넌트 속성
+ * @param {Array} props.energyLevels - 에너지 레벨 데이터 배열
+ * @returns {JSX.Element} SVG 라인 차트
+ */
+function EnergyLineChart({ energyLevels }: { energyLevels: Array<{ timestamp: number; energy: number }> }) {
   // Simple SVG Line Chart
-  const sortedData = [...data].sort((a, b) => a.timestamp - b.timestamp);
-  const points = sortedData.map((d, i) => {
-    const x = (i / (sortedData.length - 1)) * 100;
-    const y = 100 - d.energy; // Invert Y for SVG
+  const sortedLevels = [...energyLevels].sort((a, b) => a.timestamp - b.timestamp);
+  const points = sortedLevels.map((level, i) => {
+    const x = (i / (sortedLevels.length - 1)) * 100;
+    const y = 100 - level.energy; // Invert Y for SVG
     return `${x},${y}`;
   }).join(' ');
 
@@ -298,21 +318,21 @@ function EnergyLineChart({ data }: { data: any[] }) {
       />
 
       {/* Dots */}
-      {sortedData.map((d, i) => {
-        const x = (i / (sortedData.length - 1)) * 100;
-        const y = 100 - d.energy;
+      {sortedLevels.map((level, i) => {
+        const x = (i / (sortedLevels.length - 1)) * 100;
+        const y = 100 - level.energy;
         return (
           <circle
-            key={d.timestamp}
+            key={level.timestamp}
             cx={x}
             cy={y}
             r="3" // Increased radius for visibility
-            fill={getEnergyColor(d.energy)}
+            fill={getEnergyColor(level.energy)}
             stroke="var(--color-bg-surface)"
             strokeWidth="1"
             className="transition-all hover:r-4"
           >
-            <title>{`${new Date(d.timestamp).toLocaleTimeString()} - ${d.energy}%`}</title>
+            <title>{`${new Date(level.timestamp).toLocaleTimeString()} - ${level.energy}%`}</title>
           </circle>
         );
       })}
@@ -320,8 +340,15 @@ function EnergyLineChart({ data }: { data: any[] }) {
   );
 }
 
-function EnergyHeatmap({ stats }: { stats: any[] }) {
-  // stats: [{ date: 'MM-DD', timeBlocks: { '5-8': 80, ... } }, ...]
+/**
+ * 에너지 히트맵 컴포넌트
+ * 시간대별 에너지 레벨을 히트맵으로 시각화합니다.
+ * @param {Object} props - 컴포넌트 속성
+ * @param {Array} props.timeBlockStats - 일별 시간대 에너지 통계 배열
+ * @returns {JSX.Element} 히트맵 UI
+ */
+function EnergyHeatmap({ timeBlockStats }: { timeBlockStats: Array<{ date: string; timeBlocks: Record<string, number> }> }) {
+  // timeBlockStats: [{ date: 'MM-DD', timeBlocks: { '5-8': 80, ... } }, ...]
   // We want rows = Time Blocks, Cols = Days
 
   return (
@@ -329,9 +356,9 @@ function EnergyHeatmap({ stats }: { stats: any[] }) {
       {/* Header Row (Dates) */}
       <div className="flex">
         <div className="w-16 shrink-0" /> {/* Spacer for labels */}
-        {stats.map(day => (
-          <div key={day.date} className="flex-1 text-center text-[10px] font-bold text-[var(--color-text-secondary)]">
-            {day.date.substring(5)}
+        {timeBlockStats.map(dailyStat => (
+          <div key={dailyStat.date} className="flex-1 text-center text-[10px] font-bold text-[var(--color-text-secondary)]">
+            {dailyStat.date.substring(5)}
           </div>
         ))}
       </div>
@@ -342,17 +369,17 @@ function EnergyHeatmap({ stats }: { stats: any[] }) {
           <div className="w-16 shrink-0 text-[10px] font-medium text-[var(--color-text-tertiary)]">
             {getBlockLabel(blockId).split(' ')[0]} {/* Simplify label */}
           </div>
-          {stats.map(day => {
-            const value = day.timeBlocks[blockId];
+          {timeBlockStats.map(dailyStat => {
+            const energyValue = dailyStat.timeBlocks[blockId];
             return (
               <div
-                key={`${day.date}-${blockId}`}
+                key={`${dailyStat.date}-${blockId}`}
                 className="flex-1 aspect-[2/1] rounded-md transition-all hover:scale-105 hover:shadow-sm"
                 style={{
-                  backgroundColor: value !== undefined ? getEnergyColor(value) : 'var(--color-bg-elevated)',
-                  opacity: value !== undefined ? 0.8 : 0.3,
+                  backgroundColor: energyValue !== undefined ? getEnergyColor(energyValue) : 'var(--color-bg-elevated)',
+                  opacity: energyValue !== undefined ? 0.8 : 0.3,
                 }}
-                title={`${day.date} ${getBlockLabel(blockId)}: ${value !== undefined ? value + '%' : 'No Data'}`}
+                title={`${dailyStat.date} ${getBlockLabel(blockId)}: ${energyValue !== undefined ? energyValue + '%' : 'No Data'}`}
               />
             );
           })}
@@ -364,6 +391,11 @@ function EnergyHeatmap({ stats }: { stats: any[] }) {
 
 // --- Utils ---
 
+/**
+ * 시간대 ID에 해당하는 레이블을 반환합니다.
+ * @param {string} blockId - 시간대 ID (예: '5-8', '8-11')
+ * @returns {string} 시간대 레이블
+ */
 function getBlockLabel(blockId: string): string {
   const labels: Record<string, string> = {
     '5-8': '아침 (05-08)',
@@ -376,6 +408,11 @@ function getBlockLabel(blockId: string): string {
   return labels[blockId] || blockId;
 }
 
+/**
+ * 에너지 레벨에 따른 색상을 반환합니다.
+ * @param {number} energy - 에너지 레벨 (0-100)
+ * @returns {string} 색상 코드
+ */
 function getEnergyColor(energy: number): string {
   if (energy >= 80) return '#10b981'; // Emerald
   if (energy >= 60) return '#3b82f6'; // Blue

@@ -17,6 +17,9 @@ import { XP_PER_MINUTE } from './constants';
 
 /**
  * 로컬 날짜를 YYYY-MM-DD 형식으로 반환
+ *
+ * @param date - 변환할 Date 객체 (기본값: 현재 시간)
+ * @returns YYYY-MM-DD 형식의 날짜 문자열
  */
 export function getLocalDate(date: Date = new Date()): string {
   const year = date.getFullYear();
@@ -27,6 +30,9 @@ export function getLocalDate(date: Date = new Date()): string {
 
 /**
  * 시간을 HH:mm 형식으로 반환
+ *
+ * @param date - 변환할 Date 객체 (기본값: 현재 시간)
+ * @returns HH:mm 형식의 시간 문자열
  */
 export function formatTime(date: Date = new Date()): string {
   const hours = String(date.getHours()).padStart(2, '0');
@@ -36,27 +42,36 @@ export function formatTime(date: Date = new Date()): string {
 
 /**
  * 분을 "Xh Ym" 또는 "Xm" 형식으로 변환
+ *
+ * @param minutes - 변환할 시간 (분 단위)
+ * @returns 포맷된 시간 문자열 (예: '30분', '1시간 30분')
  */
 export function formatDuration(minutes: number): string {
   if (minutes < 60) {
     return `${minutes}분`;
   }
   const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins > 0 ? `${hours}시간 ${mins}분` : `${hours}시간`;
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes > 0 ? `${hours}시간 ${remainingMinutes}분` : `${hours}시간`;
 }
 
 /**
  * 초를 "mm:ss" 형식으로 변환
+ *
+ * @param seconds - 변환할 시간 (초 단위)
+ * @returns mm:ss 형식의 타이머 문자열
  */
 export function formatTimer(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  const displayMinutes = Math.floor(seconds / 60);
+  const displaySeconds = seconds % 60;
+  return `${String(displayMinutes).padStart(2, '0')}:${String(displaySeconds).padStart(2, '0')}`;
 }
 
 /**
  * ISO 날짜 문자열을 상대 시간으로 변환
+ *
+ * @param isoString - ISO 8601 형식의 날짜 문자열
+ * @returns 상대 시간 문자열 (예: '방금 전', '5분 전', '2시간 전')
  */
 export function getRelativeTime(isoString: string): string {
   const date = new Date(isoString);
@@ -78,6 +93,8 @@ export function getRelativeTime(isoString: string): string {
 
 /**
  * 현재 시간이 속한 타임블록 ID 반환
+ *
+ * @returns 타임블록 ID (예: '5-8', '8-11' 등) 또는 null
  */
 export function getCurrentTimeBlock(): TimeBlockId {
   const now = new Date();
@@ -112,6 +129,9 @@ export function getBlockIdFromHour(hour: number): string {
 
 /**
  * 타임블록의 진행률 계산 (0-100)
+ *
+ * @param blockId - 타임블록 ID (예: '5-8', '8-11')
+ * @returns 진행률 (0-100 사이의 정수)
  */
 export function getBlockProgress(blockId: string): number {
   const block = TIME_BLOCKS.find(b => b.id === blockId);
@@ -136,6 +156,10 @@ export function getBlockProgress(blockId: string): number {
 
 /**
  * 저항도에 따라 조정된 시간 계산
+ *
+ * @param baseDuration - 기본 소요 시간 (분)
+ * @param resistance - 작업 저항도 ('low' | 'medium' | 'high')
+ * @returns 저항도 배율이 적용된 조정 시간 (분)
  */
 export function calculateAdjustedDuration(baseDuration: number, resistance: Resistance): number {
   return Math.round(baseDuration * RESISTANCE_MULTIPLIERS[resistance]);
@@ -164,6 +188,9 @@ export function generateId(prefix: string = 'task'): string {
 
 /**
  * Task가 인박스에 있는지 확인
+ *
+ * @param task - 확인할 Task 객체
+ * @returns 인박스에 있으면 true (timeBlock === null)
  */
 export function isInInbox(task: Task): boolean {
   return task.timeBlock === null;
@@ -171,6 +198,9 @@ export function isInInbox(task: Task): boolean {
 
 /**
  * Task가 오늘 것인지 확인 (createdAt 기준)
+ *
+ * @param task - 확인할 Task 객체
+ * @returns 오늘 생성된 Task면 true
  */
 export function isToday(task: Task): boolean {
   const taskDate = getLocalDate(new Date(task.createdAt));
@@ -185,6 +215,9 @@ export function isToday(task: Task): boolean {
 /**
  * 작업 완료 시 획득 XP 계산
  * 난이도에 따라 XP 배율 적용 (쉬움 1.0배, 보통 1.3배, 어려움 1.6배)
+ *
+ * @param task - XP를 계산할 Task 객체
+ * @returns 획득할 XP 양
  */
 export function calculateTaskXP(task: Task): number {
   // 실제 소요 시간이 있으면 그걸 사용, 없으면 조정된 시간 사용
@@ -206,6 +239,9 @@ export function calculateTaskXP(task: Task): number {
 
 /**
  * 호감도 범위 제한 (0-100)
+ *
+ * @param affection - 제한할 호감도 값
+ * @returns 0-100 범위로 제한된 호감도
  */
 export function clampAffection(affection: number): number {
   return Math.max(0, Math.min(100, affection));
@@ -213,6 +249,9 @@ export function clampAffection(affection: number): number {
 
 /**
  * 호감도로 티어 구간 찾기
+ *
+ * @param affection - 호감도 값 (0-100)
+ * @returns 티어 문자열 ('EXCELLENT' | 'VERY_GOOD' | 'GOOD' | 'NEUTRAL' | 'LOW' | 'VERY_LOW')
  */
 export function getAffectionTier(affection: number): string {
   if (affection >= 85) return 'EXCELLENT';
@@ -229,16 +268,22 @@ export function getAffectionTier(affection: number): string {
 
 /**
  * 배열을 객체로 변환 (Firebase 저장용)
+ *
+ * @param arr - id 속성을 가진 객체 배열
+ * @returns id를 키로 하는 Record 객체
  */
 export function arrayToObject<T extends { id: string }>(arr: T[]): Record<string, T> {
-  return arr.reduce((acc, item) => {
-    acc[item.id] = item;
-    return acc;
+  return arr.reduce((accumulator, entity) => {
+    accumulator[entity.id] = entity;
+    return accumulator;
   }, {} as Record<string, T>);
 }
 
 /**
  * 객체를 배열로 변환
+ *
+ * @param obj - 변환할 Record 객체 (null/undefined 허용)
+ * @returns 객체의 값들로 이루어진 배열
  */
 export function objectToArray<T>(obj: Record<string, T> | null | undefined): T[] {
   if (!obj) return [];
@@ -319,6 +364,10 @@ export function removeFromStorage(key: string): void {
 
 /**
  * 디바운스 함수
+ *
+ * @param func - 디바운스를 적용할 함수
+ * @param wait - 대기 시간 (ms)
+ * @returns 디바운스가 적용된 함수
  */
 export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,

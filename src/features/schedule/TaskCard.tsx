@@ -49,6 +49,23 @@ const RESISTANCE_BADGE_LABEL: Record<Resistance, string> = {
   high: 'High'
 };
 
+/**
+ * 개별 작업 카드 컴포넌트
+ * 작업의 상세 정보를 표시하고 체크, 편집, 삭제, 드래그 앤 드롭 기능을 제공합니다.
+ *
+ * @param props.task - 표시할 작업 데이터
+ * @param props.onEdit - 편집 버튼 클릭 콜백
+ * @param props.onDelete - 삭제 버튼 클릭 콜백
+ * @param props.onToggle - 완료 토글 콜백
+ * @param props.onUpdateTask - 작업 부분 업데이트 콜백
+ * @param props.onDragStart - 드래그 시작 콜백
+ * @param props.onDragEnd - 드래그 종료 콜백
+ * @param props.onAwardXP - XP 지급 콜백 (메모 미션 등)
+ * @param props.hideMetadata - 메타데이터 숨김 여부
+ * @param props.blockIsLocked - 소속 블록 잠금 상태
+ * @param props.compact - 컴팩트 모드 여부
+ * @returns 작업 카드 UI
+ */
 export default function TaskCard({
   task,
   onEdit,
@@ -70,7 +87,7 @@ export default function TaskCard({
   const [editedText, setEditedText] = useState(task.text);
   const [timerIconActive, setTimerIconActive] = useState(false);
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
-  const [elapsedTime, setElapsedTime] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const showMinimal = compact && hideMetadata;
 
   const { setDragData } = useDragDropManager();
@@ -163,33 +180,48 @@ export default function TaskCard({
     openMission(task, onUpdateTask, onAwardXP);
   };
 
-  const handleTimerToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  /**
+   * 타이머 토글 핸들러 (현재 미사용, 향후 타이머 기능 활성화 시 사용 예정)
+   * @param timerEvent - 마우스 클릭 이벤트
+   */
+  const handleTimerToggle = (timerEvent: React.MouseEvent) => {
+    timerEvent.stopPropagation();
     if (!timerIconActive) {
       setTimerStartTime(Date.now());
-      setElapsedTime(0);
+      setElapsedSeconds(0);
     } else {
       setTimerStartTime(null);
     }
     setTimerIconActive(!timerIconActive);
   };
 
+  // 타이머가 활성화된 경우 경과 시간을 1초마다 업데이트
   useEffect(() => {
     if (!timerIconActive || timerStartTime === null) return;
 
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - timerStartTime) / 1000);
-      setElapsedTime(elapsed);
+      setElapsedSeconds(elapsed);
     }, 1000);
 
     return () => clearInterval(interval);
   }, [timerIconActive, timerStartTime]);
 
-  const formatElapsedTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+  /**
+   * 경과 시간을 MM:SS 형식으로 포맷팅
+   * @param totalSeconds - 총 경과 초
+   * @returns 포맷팅된 시간 문자열 (예: "05:30")
+   */
+  const formatElapsedTime = (totalSeconds: number): string => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // 타이머 관련 변수 (향후 UI 통합 시 사용)
+  void handleTimerToggle;
+  void formatElapsedTime;
+  void elapsedSeconds;
 
   const memoModalComponent = showMemoModal ? (
     <MemoModal

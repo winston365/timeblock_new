@@ -1,9 +1,15 @@
 /**
  * @file TaskModal.tsx
- * @role 작업 추가/수정을 위한 모달 폼 컴포넌트
- * @input task (수정할 작업 또는 null), initialBlockId, onSave, onClose
- * @output 작업 입력 폼 모달 (제목, 메모, 예상 시간, 난이도, 준비물)
- * @dependencies useSettingsStore, loadGlobalGoals, MemoModal, useTaskBreakdownStore
+ * @role 작업 생성/수정 모달 폼 (AI 지원 태깅 및 이모지 추천 포함)
+ * @responsibilities
+ *   - 새 작업 생성 및 기존 작업 편집 UI 제공
+ *   - AI 기반 이모지 추천 및 작업 세분화 트리거
+ *   - 과거 유사 작업 패턴 기반 컨텍스트 추천
+ *   - 키보드 단축키 지원 (Ctrl+Enter 저장, ESC 닫기)
+ * @dependencies
+ *   - useSettingsStore (설정), useTaskBreakdownStore (AI 세분화)
+ *   - useTaskContextSuggestion (패턴 추천), suggestTaskEmoji (이모지 AI)
+ *   - MemoModal (전체화면 메모 편집)
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -16,7 +22,7 @@ import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { loadGlobalGoals } from '@/data/repositories';
 import { MemoModal } from './MemoModal';
 import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
-import { suggestTaskContext, type TaskContextSuggestion } from '@/shared/services/rag/autoTagService';
+import { useTaskContextSuggestion } from './hooks/useTaskContextSuggestion';
 
 interface TaskModalProps {
   task: Task | null;
@@ -29,13 +35,19 @@ interface TaskModalProps {
 }
 
 /**
- * 작업 추가/수정 모달
+ * Task creation/edit modal with schedule-aware defaults, AI helpers, and context pattern suggestions.
+ * @param props.task - 기존 작업 데이터 또는 null
+ * @param props.initialBlockId - 초기 타임블록 식별자
+ * @param props.onSave - 단일 작업 저장 콜백
+ * @param props.onSaveMultiple - 다중 작업 저장 콜백
+ * @param props.onClose - 모달 닫기 핸들러
+ * @param props.source - 모달 호출 출처 (schedule|inbox)
+ * @param props.zIndex - 모달 z-index 오버라이드
  */
 export default function TaskModal({
   task,
   initialBlockId,
   onSave,
-  onSaveMultiple,
   onClose,
   source = 'schedule',
   zIndex = 1000,
@@ -49,26 +61,35 @@ export default function TaskModal({
   const [preparation3, setPreparation3] = useState('');
   const [goalId, setGoalId] = useState<string | null>(null);
   const [goals, setGoals] = useState<DailyGoal[]>([]);
-  const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [memoRows, setMemoRows] = useState(2);
   const [showMemoModal, setShowMemoModal] = useState(false);
-  const [contextSuggestion, setContextSuggestion] = useState<TaskContextSuggestion | null>(null);
-  const [contextLoading, setContextLoading] = useState(false);
 
   const formRef = useRef<HTMLFormElement>(null);
 
   const { settings } = useSettingsStore();
   const { triggerBreakdown } = useTaskBreakdownStore();
 
+  // 맥락 추천 훅 사용
+  const {
+    contextSuggestion,
+    contextLoading,
+    appliedFields,
+    applyContextDuration,
+    applyContextResistance,
+    applyContextPreparation,
+    applyContextMemo,
+    applyAll: applyAllContext,
+  } = useTaskContextSuggestion(text);
+
   // 목표 목록 로드
   useEffect(() => {
     const fetchGoals = async () => {
       try {
         const loadedGoals = await loadGlobalGoals();
-        setGoals(loadedGoals.sort((a, b) => a.order - b.order));
-      } catch (error) {
-        console.error('[TaskModal] Failed to load goals:', error);
+        setGoals(loadedGoals.sort((firstGoal, secondGoal) => firstGoal.order - secondGoal.order));
+      } catch (goalLoadError) {
+        console.error('[TaskModal] Failed to load goals:', goalLoadError);
       }
     };
     fetchGoals();
@@ -131,8 +152,8 @@ export default function TaskModal({
     return updatedText;
   };
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputText = e.target.value;
+  const handleTextChange = (textChangeEvent: React.ChangeEvent<HTMLInputElement>) => {
+    const inputText = textChangeEvent.target.value;
     const isSpaceInput = inputText.length > text.length && inputText.endsWith(' ');
 
     if (isSpaceInput) {
@@ -144,8 +165,8 @@ export default function TaskModal({
     if (error) setError(null);
   };
 
-  const handleMemoChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newMemo = e.target.value;
+  const handleMemoChange = (memoChangeEvent: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newMemo = memoChangeEvent.target.value;
     setMemo(newMemo);
     const lineCount = newMemo.split('\n').length;
     setMemoRows(Math.min(Math.max(lineCount, 2), 6));
@@ -153,14 +174,14 @@ export default function TaskModal({
 
   // 키보드 단축키
   useEffect(() => {
-    const handleKeyboard = (e: KeyboardEvent) => {
+    const handleKeyboard = (keyboardEvent: KeyboardEvent) => {
       if (showMemoModal) return;
 
-      if (e.key === 'Escape') {
+      if (keyboardEvent.key === 'Escape') {
         onClose();
       }
-      if (e.key === 'Enter' && e.ctrlKey) {
-        e.preventDefault();
+      if (keyboardEvent.key === 'Enter' && keyboardEvent.ctrlKey) {
+        keyboardEvent.preventDefault();
         formRef.current?.requestSubmit();
       }
     };
@@ -180,7 +201,7 @@ export default function TaskModal({
     }
 
     // 현재 입력 상태로 임시 Task 객체 생성
-    const tempTask: any = {
+    const draftTask: Partial<Task> & { timeBlock: TimeBlockId } = {
       text: text.trim(),
       memo: memo.trim(),
       baseDuration,
@@ -191,7 +212,7 @@ export default function TaskModal({
       timeBlock: initialBlockId,
     };
 
-    triggerBreakdown(tempTask, source, settings.geminiApiKey, 50);
+    triggerBreakdown(draftTask, source, settings.geminiApiKey, 50);
   };
 
   const handleAutoEmoji = async () => {
@@ -210,137 +231,22 @@ export default function TaskModal({
       if (emoji) {
         setText(`${emoji} ${text}`);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (emojiSuggestionError) {
+      console.error(emojiSuggestionError);
     }
   };
 
-  // 맥락 추천 - 텍스트 변경 시 자동 조회 (debounced)
-  useEffect(() => {
-    const trimmedText = text.trim();
-    if (trimmedText.length < 5) {
-      setContextSuggestion(null);
-      return;
-    }
+  // 훅으로 추출된 맥락 함수들에 현재 상태 바인딩
+  const handleApplyDuration = () => applyContextDuration(setBaseDuration);
+  const handleApplyResistance = () => applyContextResistance(setResistance);
+  const handleApplyPreparation = (item: string) =>
+    applyContextPreparation(item, preparation1, preparation2, preparation3, setPreparation1, setPreparation2, setPreparation3);
+  const handleApplyMemo = (snippet: string) => applyContextMemo(snippet, memo, setMemo);
+  const handleApplyAll = () =>
+    applyAllContext(setBaseDuration, setResistance, preparation1, preparation2, preparation3, setPreparation1, setPreparation2, setPreparation3);
 
-    const timeoutId = setTimeout(async () => {
-      setContextLoading(true);
-      try {
-        const result = await suggestTaskContext(trimmedText);
-        setContextSuggestion(result);
-      } catch (err) {
-        console.error('맥락 추천 실패:', err);
-      } finally {
-        setContextLoading(false);
-      }
-    }, 500); // 500ms debounce
-
-    return () => clearTimeout(timeoutId);
-  }, [text]);
-
-  // 추천 값 적용 핸들러
-  const [appliedFields, setAppliedFields] = useState<Set<string>>(new Set());
-
-  const markApplied = (field: string) => {
-    setAppliedFields(prev => new Set(prev).add(field));
-    setTimeout(() => {
-      setAppliedFields(prev => {
-        const next = new Set(prev);
-        next.delete(field);
-        return next;
-      });
-    }, 1500);
-  };
-
-  const applyContextDuration = () => {
-    if (contextSuggestion?.avgDuration) {
-      const options = [5, 10, 15, 30, 45, 60, 90, 120];
-      const closest = options.reduce((prev, curr) => 
-        Math.abs(curr - contextSuggestion.avgDuration) < Math.abs(prev - contextSuggestion.avgDuration) ? curr : prev
-      );
-      setBaseDuration(closest);
-      markApplied('duration');
-      toast.success(`소요 시간 ${closest}분 적용됨`);
-    }
-  };
-
-  const applyContextResistance = () => {
-    if (contextSuggestion?.commonResistance) {
-      setResistance(contextSuggestion.commonResistance.level);
-      markApplied('resistance');
-      toast.success(`난이도 ${contextSuggestion.commonResistance.label} 적용됨`);
-    }
-  };
-
-  const applyContextPreparation = (prep: string) => {
-    // 빈 슬롯 찾아서 채우기
-    if (!preparation1) {
-      setPreparation1(prep);
-      markApplied('prep1');
-    } else if (!preparation2) {
-      setPreparation2(prep);
-      markApplied('prep2');
-    } else if (!preparation3) {
-      setPreparation3(prep);
-      markApplied('prep3');
-    } else {
-      toast.error('준비물이 모두 채워져 있습니다');
-      return;
-    }
-    toast.success(`준비물 "${prep}" 추가됨`);
-  };
-
-  const applyContextMemo = (snippet: string) => {
-    const newMemo = memo.trim() ? `${memo.trim()}\n${snippet}` : snippet;
-    setMemo(newMemo);
-    markApplied('memo');
-    toast.success('메모에 추가됨');
-  };
-
-  const applyAll = () => {
-    let applied = 0;
-    
-    if (contextSuggestion?.avgDuration) {
-      const options = [5, 10, 15, 30, 45, 60, 90, 120];
-      const closest = options.reduce((prev, curr) => 
-        Math.abs(curr - contextSuggestion.avgDuration) < Math.abs(prev - contextSuggestion.avgDuration) ? curr : prev
-      );
-      setBaseDuration(closest);
-      markApplied('duration');
-      applied++;
-    }
-    
-    if (contextSuggestion?.commonResistance) {
-      setResistance(contextSuggestion.commonResistance.level);
-      markApplied('resistance');
-      applied++;
-    }
-    
-    // 준비물 적용 (빈 슬롯에만)
-    const preps = contextSuggestion?.commonPreparations || [];
-    if (preps.length > 0 && !preparation1) {
-      setPreparation1(preps[0]);
-      markApplied('prep1');
-      applied++;
-    }
-    if (preps.length > 1 && !preparation2) {
-      setPreparation2(preps[1]);
-      markApplied('prep2');
-      applied++;
-    }
-    if (preps.length > 2 && !preparation3) {
-      setPreparation3(preps[2]);
-      markApplied('prep3');
-      applied++;
-    }
-    
-    if (applied > 0) {
-      toast.success(`${applied}개 항목 적용됨`);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (submitEvent: React.FormEvent) => {
+    submitEvent.preventDefault();
     const trimmedText = text.trim();
 
     if (!trimmedText) {
@@ -383,8 +289,8 @@ export default function TaskModal({
     }
   };
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
+  const handleOverlayClick = (overlayEvent: React.MouseEvent) => {
+    if (overlayEvent.target === overlayEvent.currentTarget) {
       onClose();
     }
   };
@@ -510,7 +416,7 @@ export default function TaskModal({
                     <select
                       id="task-resistance"
                       value={resistance}
-                      onChange={e => setResistance(e.target.value as Resistance)}
+                      onChange={resistanceChangeEvent => setResistance(resistanceChangeEvent.target.value as Resistance)}
                       className={selectFieldClasses}
                     >
                       <option value="low">💧 쉬움 (x1.0)</option>
@@ -525,7 +431,7 @@ export default function TaskModal({
                     <select
                       id="task-goal"
                       value={goalId || ''}
-                      onChange={e => setGoalId(e.target.value || null)}
+                      onChange={goalChangeEvent => setGoalId(goalChangeEvent.target.value || null)}
                       className={selectFieldClasses}
                     >
                       <option value="">목표 없음</option>
@@ -568,9 +474,9 @@ export default function TaskModal({
                     type="button"
                     className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-sm font-medium text-indigo-200 transition hover:bg-indigo-500/20 disabled:opacity-50"
                     onClick={handleAIBreakdown}
-                    disabled={aiLoading || !text.trim()}
+                    disabled={!text.trim()}
                   >
-                    {aiLoading ? '⏳ 분석 중...' : '🧠 AI 세분화'}
+                    🧠 AI 세분화
                   </button>
                 </div>
               </div>
@@ -589,7 +495,7 @@ export default function TaskModal({
                     {contextSuggestion && contextSuggestion.matchCount > 0 && (
                       <button
                         type="button"
-                        onClick={applyAll}
+                        onClick={handleApplyAll}
                         className="text-xs px-2 py-1 rounded-md bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 transition-colors flex items-center gap-1"
                       >
                         🪄 모두 적용
@@ -623,7 +529,7 @@ export default function TaskModal({
                         {contextSuggestion.avgDuration > 0 && (
                           <button
                             type="button"
-                            onClick={applyContextDuration}
+                            onClick={handleApplyDuration}
                             className="text-[var(--color-text-secondary)] hover:text-amber-400 transition-colors flex items-center gap-1"
                           >
                             ⏱️ 평균 {contextSuggestion.avgDuration}분 
@@ -636,7 +542,7 @@ export default function TaskModal({
                         {contextSuggestion.commonResistance && (
                           <button
                             type="button"
-                            onClick={applyContextResistance}
+                            onClick={handleApplyResistance}
                             className="text-[var(--color-text-secondary)] hover:text-amber-400 transition-colors flex items-center gap-1"
                           >
                             💪 {contextSuggestion.commonResistance.label} 
@@ -654,14 +560,14 @@ export default function TaskModal({
                       </div>
                       
                       {/* 과거 메모 스니펫 */}
-                      {contextSuggestion.fullMemos && contextSuggestion.fullMemos.length > 0 && (
+                          {contextSuggestion.fullMemos && contextSuggestion.fullMemos.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-2 border-t border-amber-500/20">
                           <span className="text-xs text-[var(--color-text-tertiary)] mr-1">📝</span>
-                          {contextSuggestion.fullMemos.slice(0, 3).map((memoItem, idx) => (
+                          {contextSuggestion.fullMemos.slice(0, 3).map((memoItem, memoIndex) => (
                             <button
-                              key={idx}
+                              key={memoIndex}
                               type="button"
-                              onClick={() => applyContextMemo(memoItem.memo)}
+                              onClick={() => handleApplyMemo(memoItem.memo)}
                               title={`"${memoItem.memo}" 메모에 추가 (클릭)`}
                               className="text-xs px-2 py-0.5 rounded bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:bg-amber-500/20 border border-[var(--color-border)] transition-colors truncate max-w-[120px]"
                             >
@@ -675,18 +581,18 @@ export default function TaskModal({
                       {contextSuggestion.commonPreparations.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-2 border-t border-amber-500/20">
                           <span className="text-xs text-[var(--color-text-tertiary)] mr-1">🎒</span>
-                          {contextSuggestion.commonPreparations.map((prep, idx) => (
+                          {contextSuggestion.commonPreparations.map((preparationOption, preparationIndex) => (
                             <button
-                              key={idx}
+                              key={preparationIndex}
                               type="button"
-                              onClick={() => applyContextPreparation(prep)}
+                              onClick={() => handleApplyPreparation(preparationOption)}
                               className={`text-xs px-2 py-0.5 rounded border transition-colors ${
-                                appliedFields.has(`prep:${prep}`)
+                                appliedFields.has(`prep:${preparationOption}`)
                                   ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
                                   : 'bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:bg-amber-500/20 border-[var(--color-border)]'
                               }`}
                             >
-                              {appliedFields.has(`prep:${prep}`) ? '✓ ' : ''}{prep}
+                              {appliedFields.has(`prep:${preparationOption}`) ? '✓ ' : ''}{preparationOption}
                             </button>
                           ))}
                         </div>
@@ -719,21 +625,21 @@ export default function TaskModal({
                     <input
                       type="text"
                       value={preparation1}
-                      onChange={e => setPreparation1(e.target.value)}
+                      onChange={preparationOneChangeEvent => setPreparation1(preparationOneChangeEvent.target.value)}
                       placeholder="1. 물리적 준비물"
                       className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
                     />
                     <input
                       type="text"
                       value={preparation2}
-                      onChange={e => setPreparation2(e.target.value)}
+                      onChange={preparationTwoChangeEvent => setPreparation2(preparationTwoChangeEvent.target.value)}
                       placeholder="2. 환경 세팅"
                       className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
                     />
                     <input
                       type="text"
                       value={preparation3}
-                      onChange={e => setPreparation3(e.target.value)}
+                      onChange={preparationThreeChangeEvent => setPreparation3(preparationThreeChangeEvent.target.value)}
                       placeholder="3. 시작 의식"
                       className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
                     />

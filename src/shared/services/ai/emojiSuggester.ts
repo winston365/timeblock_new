@@ -1,56 +1,68 @@
+/**
+ * Role: Debounced emoji suggestion pipeline that queues task titles, consults Gemini, and applies suggested emojis to tasks.
+ * Dependencies:
+ * - settingsRepository for feature toggles and API configuration
+ * - geminiApi for emoji recommendations
+ * - chatHistoryRepository for token logging
+ * - unified task service for persistence and UI updates
+ */
 import { loadSettings } from '@/data/repositories/settingsRepository';
 import { suggestTaskEmoji } from './geminiApi';
 import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import { updateAnyTask } from '@/shared/services/task';
 
-type Job = {
+type EmojiSuggestionJob = {
   taskId: string;
-  text: string;
+  taskTitle: string;
 };
 
-const queue: Job[] = [];
-const cache = new Map<string, string>();
-let timer: ReturnType<typeof setTimeout> | null = null;
+const suggestionQueue: EmojiSuggestionJob[] = [];
+const taskTitleEmojiCache = new Map<string, string>();
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 const DEBOUNCE_MS = 500;
 
 const scheduleProcess = () => {
-  if (timer) return;
-  timer = setTimeout(runJobs, DEBOUNCE_MS);
+  if (debounceTimer) return;
+  debounceTimer = setTimeout(runJobs, DEBOUNCE_MS);
 };
 
 async function runJobs() {
-  timer = null;
-  if (queue.length === 0) return;
+  debounceTimer = null;
+  if (suggestionQueue.length === 0) return;
 
-  const settings = await loadSettings().catch(() => null);
-  if (!settings?.autoEmojiEnabled || !settings?.geminiApiKey) {
-    queue.length = 0;
+  const userSettings = await loadSettings().catch(() => null);
+  if (!userSettings?.autoEmojiEnabled || !userSettings?.geminiApiKey) {
+    suggestionQueue.length = 0;
     return;
   }
 
-  const apiKey = settings.geminiApiKey;
-  const model = settings.geminiModel;
+  const geminiApiKey = userSettings.geminiApiKey;
+  const geminiModel = userSettings.geminiModel;
 
-  while (queue.length) {
-    const job = queue.shift()!;
-    const cached = cache.get(job.text);
-    if (cached) {
-      applyEmoji(job.taskId, cached);
+  while (suggestionQueue.length) {
+    const queuedJob = suggestionQueue.shift()!;
+    const cachedEmoji = taskTitleEmojiCache.get(queuedJob.taskTitle);
+    if (cachedEmoji) {
+      applyEmoji(queuedJob.taskId, cachedEmoji);
       continue;
     }
 
     try {
-      const { emoji, tokenUsage } = await suggestTaskEmoji(job.text, apiKey, model);
-      const trimmed = emoji.trim();
+      const { emoji: suggestedEmoji, tokenUsage } = await suggestTaskEmoji(
+        queuedJob.taskTitle,
+        geminiApiKey,
+        geminiModel
+      );
+      const trimmedEmoji = suggestedEmoji.trim();
       if (tokenUsage) {
         addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens).catch(console.error);
       }
-      if (trimmed) {
-        cache.set(job.text, trimmed);
-        applyEmoji(job.taskId, trimmed);
+      if (trimmedEmoji) {
+        taskTitleEmojiCache.set(queuedJob.taskTitle, trimmedEmoji);
+        applyEmoji(queuedJob.taskId, trimmedEmoji);
       }
-    } catch (err) {
-      console.error('[EmojiSuggester] Failed to suggest emoji:', err);
+    } catch (suggestionError) {
+      console.error('[EmojiSuggester] Failed to suggest emoji:', suggestionError);
     }
   }
 }
@@ -60,17 +72,18 @@ async function runJobs() {
  * 통합 Task 서비스를 사용하여 저장소 위치 자동 감지 + UI 실시간 반영
  */
 function applyEmoji(taskId: string, emoji: string) {
-  updateAnyTask(taskId, { emoji }).catch(err => {
-    console.error('[EmojiSuggester] Failed to apply emoji:', err);
+  updateAnyTask(taskId, { emoji }).catch(applyError => {
+    console.error('[EmojiSuggester] Failed to apply emoji:', applyError);
   });
 }
 
 /**
- * 작업 제목 기반 이모지 추천을 큐에 추가합니다.
- * 토글이 꺼져 있으면 내부에서 무시합니다.
+ * 작업 제목 기반 이모지 추천을 큐에 추가합니다. 토글이 꺼져 있으면 내부에서 무시합니다.
+ * @param taskId 작업 식별자
+ * @param taskTitle 작업 제목 텍스트
  */
-export function scheduleEmojiSuggestion(taskId: string, text: string) {
-  if (!text) return;
-  queue.push({ taskId, text });
+export function scheduleEmojiSuggestion(taskId: string, taskTitle: string) {
+  if (!taskTitle) return;
+  suggestionQueue.push({ taskId, taskTitle });
   scheduleProcess();
 }

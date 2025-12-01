@@ -2,6 +2,16 @@
  * DailyData Repository - Query Helpers
  * 
  * @role 조회 전용 헬퍼 함수들 (인박스, 완료 작업, 블록 작업, 최근 데이터 등)
+ * @responsibilities
+ *   - 인박스 작업 조회 (getInboxTasks)
+ *   - 완료된 작업 조회 (getCompletedTasks)
+ *   - 블록별 작업 조회 (getBlockTasks)
+ *   - 최근 N일 데이터 조회 (getRecentDailyData)
+ *   - 최근 완료/미완료 작업 조회
+ * @key_dependencies
+ *   - db.completedInbox: 완료된 인박스 작업 테이블
+ *   - coreOperations: loadDailyData
+ *   - inboxRepository: loadInboxTasks
  */
 
 import { db } from '../../db/dexieClient';
@@ -90,8 +100,8 @@ export async function getRecentCompletedTasks(days: number = 7): Promise<Task[]>
     const allCompletedTasks: Task[] = [];
 
     // 모든 날짜의 완료된 작업 수집 (dailyData에서)
-    recentData.forEach(dayData => {
-      const completedTasks = dayData.tasks.filter(task => task.completed);
+    recentData.forEach(dailyDataWithDate => {
+      const completedTasks = dailyDataWithDate.tasks.filter(task => task.completed);
       allCompletedTasks.push(...completedTasks);
     });
 

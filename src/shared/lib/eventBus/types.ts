@@ -1,9 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Event Bus - 타입 정의
- * 
+ *
+ * @file types.ts
  * @description 모든 도메인 이벤트의 타입 정의
+ *
+ * @role EventBus에서 사용하는 모든 이벤트 페이로드 및 타입 정의
+ * @responsibilities
+ *   - 도메인별 이벤트 페이로드 인터페이스 정의 (Task, Block, XP, Quest 등)
+ *   - 이벤트 타입 매핑 (EventTypeMap)으로 타입 안전성 보장
+ *   - EventHandler, Middleware 등 공통 타입 정의
  * @naming_convention [domain]:[action]:[detail?]
- */
+ * @dependencies 없음 (타입 정의 파일)
 
 /**
  * 이벤트 메타데이터

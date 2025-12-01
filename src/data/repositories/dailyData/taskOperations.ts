@@ -2,6 +2,15 @@
  * DailyData Repository - Task Operations
  * 
  * @role Task CRUD 및 Global Inbox 연동
+ * @responsibilities
+ *   - Task 추가 (addTask)
+ *   - Task 업데이트 (updateTask) - dailyData ↔ inbox 이동 포함
+ *   - Task 삭제 (deleteTask)
+ *   - Task 완료 토글 (toggleTaskCompletion)
+ * @key_dependencies
+ *   - db.dailyData, db.globalInbox: Dexie IndexedDB 테이블
+ *   - inboxRepository: Global Inbox 연동
+ *   - coreOperations: loadDailyData, saveDailyData
  */
 
 import { db } from '../../db/dexieClient';

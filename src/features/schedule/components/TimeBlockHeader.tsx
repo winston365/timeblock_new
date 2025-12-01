@@ -1,7 +1,22 @@
+/**
+ * @file TimeBlockHeader.tsx
+ * @role 타임 블록 헤더 컴포넌트
+ * @responsibilities
+ *   - 블록 레이블/시간 범위 표시
+ *   - 진행률 바 표시
+ *   - 잠금/퍼펙트 상태 배지
+ *   - 집중 타이머 컨트롤
+ * @dependencies
+ *   - TimeBlockState: 블록 상태 타입
+ *   - TimeStatus: 시간 상태 타입
+ */
 import React from 'react';
 import type { TimeBlockState } from '@/shared/types/domain';
 import type { TimeStatus } from '../hooks/useTimeBlockCalculations';
 
+/**
+ * 블록 컨텍스트별 메타 정보 (current/past/upcoming)
+ */
 const CONTEXT_META = {
   current: {
     label: '현재',
@@ -17,6 +32,27 @@ const CONTEXT_META = {
   }
 } as const;
 
+/**
+ * TimeBlockHeader 컴포넌트 Props
+ * @param block - 블록 정보 (id, label, start, end)
+ * @param isCurrentBlock - 현재 블록 여부
+ * @param isPastBlock - 지난 블록 여부
+ * @param tasksCount - 작업 수
+ * @param maxXP - 최대 획득 가능 XP
+ * @param state - 블록 상태
+ * @param timeStatus - 시간 상태
+ * @param timeRemainingLabel - 남은 시간 레이블
+ * @param completionPercentage - 완료율 (%)
+ * @param needsPlanBoost - 계획 부스트 필요 여부
+ * @param planLoadRatio - 계획 부하 비율
+ * @param onRequestAddTask - 작업 추가 요청 핸들러
+ * @param onToggleExpand - 확장 토글 핸들러
+ * @param onToggleLock - 잠금 토글 핸들러
+ * @param timer - 타이머 컨트롤 객체
+ * @param remainingMinutes - 남은 시간 (분)
+ * @param formatMinutesToHM - 분 포맷터 함수
+ * @param children - 자식 요소
+ */
 interface TimeBlockHeaderProps {
   block: {
     id: string;
@@ -47,6 +83,11 @@ interface TimeBlockHeaderProps {
   children?: React.ReactNode;
 }
 
+/**
+ * 타임 블록 헤더 컴포넌트
+ * @param props - TimeBlockHeaderProps
+ * @returns 블록 헤더 UI
+ */
 export const TimeBlockHeader: React.FC<TimeBlockHeaderProps> = ({
   block,
   isCurrentBlock,

@@ -11,19 +11,32 @@ import type { BaseTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass } from './styles';
 import { SETTING_DEFAULTS, IDLE_FOCUS_DEFAULTS, IGNITION_DEFAULTS, DEFAULT_BINGO_CELLS } from '@/shared/constants/defaults';
 
+/**
+ * 게임플레이 관련 설정을 관리하는 탭 컴포넌트입니다.
+ * @param props - 탭 props
+ * @param props.localSettings - 현재 로컬 설정 상태
+ * @param props.setLocalSettings - 로컬 설정 상태 업데이트 함수
+ * @returns 점화, XP 목표, 빙고, 와이푸 설정 등 게임플레이 설정 UI
+ */
 export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
     const bingoCells = (localSettings?.bingoCells && localSettings.bingoCells.length === 9 ? localSettings.bingoCells : DEFAULT_BINGO_CELLS).map(cell => ({ ...cell }));
     const bingoMaxLines = localSettings?.bingoMaxLines ?? SETTING_DEFAULTS.bingoMaxLines;
     const bingoLineRewardXP = localSettings?.bingoLineRewardXP ?? SETTING_DEFAULTS.bingoLineRewardXP;
 
-    const updateBingoCell = (index: number, key: 'text' | 'xp', value: string | number) => {
+    /**
+     * 빙고 셀의 개별 필드를 업데이트합니다.
+     * @param cellIndex - 빙고 셀 인덱스 (0-8)
+     * @param fieldKey - 업데이트할 필드명 ('text' 또는 'xp')
+     * @param fieldValue - 업데이트할 값
+     */
+    const updateBingoCell = (cellIndex: number, fieldKey: 'text' | 'xp', fieldValue: string | number) => {
         setLocalSettings((prev: Settings | null) => {
             if (!prev) return prev;
-            const next = prev.bingoCells && prev.bingoCells.length === 9 ? [...prev.bingoCells] : DEFAULT_BINGO_CELLS.map(cell => ({ ...cell }));
-            const target = next[index];
-            if (!target) return prev;
-            next[index] = { ...target, [key]: value };
-            return { ...prev, bingoCells: next };
+            const updatedCells = prev.bingoCells && prev.bingoCells.length === 9 ? [...prev.bingoCells] : DEFAULT_BINGO_CELLS.map(cell => ({ ...cell }));
+            const targetCell = updatedCells[cellIndex];
+            if (!targetCell) return prev;
+            updatedCells[cellIndex] = { ...targetCell, [fieldKey]: fieldValue };
+            return { ...prev, bingoCells: updatedCells };
         });
     };
 
@@ -93,14 +106,14 @@ export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
             </p>
 
             <div className="grid gap-3 sm:grid-cols-3">
-                {bingoCells.map((cell, idx) => (
-                    <div key={cell.id || idx} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3">
-                        <div className="text-[11px] font-semibold text-[var(--color-text-tertiary)] mb-1">칸 #{idx + 1}</div>
+                {bingoCells.map((bingoCell, cellIndex) => (
+                    <div key={bingoCell.id || cellIndex} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3">
+                        <div className="text-[11px] font-semibold text-[var(--color-text-tertiary)] mb-1">칸 #{cellIndex + 1}</div>
                         <input
                             type="text"
                             className={`${inputClass} mb-2`}
-                            value={cell.text}
-                            onChange={(e) => updateBingoCell(idx, 'text', e.target.value)}
+                            value={bingoCell.text}
+                            onChange={(e) => updateBingoCell(cellIndex, 'text', e.target.value)}
                             placeholder="예: 물 한 컵 마시기"
                         />
                         <div className="flex items-center gap-2">
@@ -109,8 +122,8 @@ export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
                                 min={0}
                                 max={500}
                                 className={`${inputClass} flex-1`}
-                                value={cell.xp}
-                                onChange={(e) => updateBingoCell(idx, 'xp', parseInt(e.target.value) || 0)}
+                                value={bingoCell.xp}
+                                onChange={(e) => updateBingoCell(cellIndex, 'xp', parseInt(e.target.value) || 0)}
                             />
                             <span className="text-xs text-[var(--color-text-secondary)]">XP</span>
                         </div>

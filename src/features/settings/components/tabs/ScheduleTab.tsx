@@ -1,15 +1,30 @@
 /**
- * ScheduleTab
+ * @fileoverview ScheduleTab - 스케줄 관련 설정 탭 컴포넌트
  *
- * @role 스케줄 관련 설정 (시간대 속성 템플릿, 인사이트 주기) 탭
- * @input ScheduleTabProps (localSettings, setLocalSettings)
- * @output 시간대 태그 템플릿 CRUD, 인사이트 주기 설정 UI 렌더링
- * @external_dependencies 없음 (순수 UI 컴포넌트)
+ * @description
+ * Role: 스케줄 관련 설정 (시간대 속성 템플릿, 인사이트 주기) 관리 탭
+ *
+ * Responsibilities:
+ * - 시간대 태그 템플릿 CRUD (생성, 수정, 삭제)
+ * - 인사이트 자동 갱신 주기 설정
+ * - 설정 상태를 부모 컴포넌트로 전달
+ *
+ * Key Dependencies:
+ * - types: BaseTabProps, TimeSlotTagTemplate, Settings 타입 정의
+ * - styles: 공통 스타일 클래스 및 유틸리티 함수
  */
 
 import type { BaseTabProps, TimeSlotTagTemplate, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass, primaryButtonClass, getBadgeTextColor } from './styles';
 
+/**
+ * 스케줄 관련 설정을 관리하는 탭 컴포넌트
+ *
+ * @param props - 탭 컴포넌트 props
+ * @param props.localSettings - 현재 로컬 설정 상태
+ * @param props.setLocalSettings - 설정 상태 업데이트 함수
+ * @returns 시간대 태그 템플릿 CRUD 및 인사이트 주기 설정 UI
+ */
 export function ScheduleTab({ localSettings, setLocalSettings }: BaseTabProps) {
     const tagTemplates = localSettings?.timeSlotTags || [];
 

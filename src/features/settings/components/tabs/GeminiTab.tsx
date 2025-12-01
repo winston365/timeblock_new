@@ -10,6 +10,13 @@
 import type { GeminiTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass } from './styles';
 
+/**
+ * Gemini AI API 설정을 관리하는 탭 컴포넌트입니다.
+ * @param props - 탭 props
+ * @param props.localSettings - 현재 로컬 설정 상태
+ * @param props.setLocalSettings - 로컬 설정 상태 업데이트 함수
+ * @returns AI API 설정 폼 UI (API 키, 모델명, 자동 이모지 등)
+ */
 export function GeminiTab({ localSettings, setLocalSettings }: GeminiTabProps) {
     return (
         <div className={sectionClass}>

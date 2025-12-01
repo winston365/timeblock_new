@@ -1,8 +1,18 @@
 /**
- * MemoMissionModal
+ * @file MemoMissionModal.tsx
  * 
- * 전역 메모 미션 모달 컴포넌트
- * 1분 동안 30자 이상 작성하면 XP 보상
+ * @description
+ * Role: 전역 메모 미션 모달 컴포넌트
+ * 
+ * Responsibilities:
+ * - 1분 타이머와 함께 메모 작성 UI 제공
+ * - 30자 이상 작성 시 20XP, 200자 이상 시 40XP 보상 지급
+ * - 미션 진행 상황 시각화 (타이머, 글자 수, 조건 충족 여부)
+ * 
+ * Key Dependencies:
+ * - memoMissionStore: 미션 상태 관리
+ * - gameStateStore: XP 지급
+ * - FocusTimer: 타이머 시각화 컴포넌트
  */
 
 import { useEffect, useRef } from 'react';
@@ -11,6 +21,14 @@ import { useMemoMissionStore } from '@/shared/stores/memoMissionStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { FocusTimer } from '@/features/schedule/components/FocusTimer';
 
+/**
+ * 메모 미션 모달 컴포넌트
+ * 
+ * 사용자가 1분 동안 30자 이상 메모를 작성하면 XP 보상을 받을 수 있는 모달.
+ * 200자 이상 작성 시 추가 보상 제공.
+ * 
+ * @returns 메모 미션 모달 React 엘리먼트, 또는 닫힌 상태면 null
+ */
 export function MemoMissionModal() {
     const {
         isOpen,

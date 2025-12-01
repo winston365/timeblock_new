@@ -1,18 +1,36 @@
 /**
- * Gemini API - Types & Interfaces
- * 
- * @role Gemini API 관련 타입 정의
+ * types.ts
+ *
+ * @fileoverview Gemini API 관련 TypeScript 타입 정의
+ *
+ * @role Gemini 서비스 전반에서 사용되는 공통 타입 제공
+ * @responsibilities
+ *   - API 요청/응답 타입 정의 (GeminiMessage, GeminiResponse, TokenUsage)
+ *   - 페르소나 컨텍스트 타입 정의 (PersonaContext, DetailedTask)
+ *   - 작업 AI 기능 파라미터 타입 정의 (TaskBreakdownParams)
+ * @dependencies
+ *   - 없음 (순수 타입 정의 모듈)
  */
 
 // ============================================================================
 // API Types
 // ============================================================================
 
+/**
+ * Gemini API 메시지 형식
+ * @property {'user' | 'model'} role - 메시지 발신자 역할
+ * @property {Array<{text: string}>} parts - 메시지 텍스트 파트 배열
+ */
 export interface GeminiMessage {
   role: 'user' | 'model';
   parts: Array<{ text: string }>;
 }
 
+/**
+ * Gemini API 응답 형식
+ * @property {Array} candidates - 생성된 응답 후보 배열
+ * @property {Object} [usageMetadata] - 토큰 사용량 메타데이터 (선택)
+ */
 export interface GeminiResponse {
   candidates: Array<{
     content: {
@@ -28,6 +46,12 @@ export interface GeminiResponse {
   };
 }
 
+/**
+ * API 호출 토큰 사용량 정보
+ * @property {number} promptTokens - 프롬프트에 사용된 토큰 수
+ * @property {number} candidatesTokens - 응답 생성에 사용된 토큰 수
+ * @property {number} totalTokens - 총 토큰 사용량
+ */
 export interface TokenUsage {
   promptTokens: number;
   candidatesTokens: number;

@@ -37,26 +37,7 @@ export async function loadDailyGoals(date: string): Promise<DailyGoal[]> {
       return dailyData.goals;
     }
 
-    // 2. localStorage 폴백
-    const cached = localStorage.getItem(`goals_${date}`);
-    if (cached) {
-      const goals = JSON.parse(cached);
-      // IndexedDB에 저장
-      if (dailyData) {
-        await db.dailyData.update(date, { goals });
-      } else {
-        await db.dailyData.put({
-          date,
-          tasks: [],
-          goals,
-          timeBlockStates: {},
-          updatedAt: Date.now(),
-        });
-      }
-      return goals;
-    }
-
-    // 3. Firebase 폴백
+    // 2. Firebase 폴백
     const firebaseGoals = await fetchFromFirebase<DailyGoal[]>(dailyGoalStrategy, date);
     if (firebaseGoals && firebaseGoals.length > 0) {
       // IndexedDB에 저장
@@ -137,9 +118,6 @@ async function copyGoalsFromPreviousDay(date: string): Promise<DailyGoal[]> {
           });
         }
 
-        // localStorage에도 저장
-        localStorage.setItem(`goals_${date}`, JSON.stringify(copiedGoals));
-
         // Firebase에 동기화
         const dataToSync: DailyData = {
           tasks: existingDailyData?.tasks || [],
@@ -148,8 +126,6 @@ async function copyGoalsFromPreviousDay(date: string): Promise<DailyGoal[]> {
           updatedAt: Date.now(),
         };
         await syncToFirebase(dailyDataStrategy, dataToSync, date);
-
-        console.log(`📋 Copied ${copiedGoals.length} goals from ${previousDateStr} to ${date} (progress reset)`);
 
         return copiedGoals;
       }
@@ -201,9 +177,6 @@ export async function createGoal(
     });
   }
 
-  // localStorage 백업
-  localStorage.setItem(`goals_${date}`, JSON.stringify(updatedGoals));
-
   // Firebase 동기화 (전체 DailyData를 동기화하여 일관성 보장)
   const latestData = await db.dailyData.get(date);
   if (latestData) {
@@ -233,7 +206,7 @@ export async function updateGoal(
   updates: Partial<DailyGoal>
 ): Promise<DailyGoal> {
   const goals = await loadDailyGoals(date);
-  const index = goals.findIndex(g => g.id === goalId);
+  const index = goals.findIndex(goal => goal.id === goalId);
 
   if (index === -1) {
     throw new Error(`Goal not found: ${goalId}`);
@@ -250,9 +223,6 @@ export async function updateGoal(
 
   // IndexedDB 저장
   await db.dailyData.update(date, { goals: updatedGoals, updatedAt: Date.now() });
-
-  // localStorage 백업
-  localStorage.setItem(`goals_${date}`, JSON.stringify(updatedGoals));
 
   // Firebase 동기화 (전체 DailyData를 동기화하여 일관성 보장)
   const latestData = await db.dailyData.get(date);
@@ -277,13 +247,13 @@ export async function updateGoal(
  */
 export async function deleteGoal(date: string, goalId: string): Promise<void> {
   const goals = await loadDailyGoals(date);
-  const updatedGoals = goals.filter(g => g.id !== goalId);
+  const updatedGoals = goals.filter(goal => goal.id !== goalId);
 
   // 연결된 할일들의 goalId를 null로 설정
   const dailyData = await db.dailyData.get(date);
   if (dailyData) {
-    const updatedTasks = dailyData.tasks.map(t =>
-      t.goalId === goalId ? { ...t, goalId: null } : t
+    const updatedTasks = dailyData.tasks.map(task =>
+      task.goalId === goalId ? { ...task, goalId: null } : task
     );
 
     await db.dailyData.update(date, {
@@ -292,9 +262,6 @@ export async function deleteGoal(date: string, goalId: string): Promise<void> {
       updatedAt: Date.now(),
     });
   }
-
-  // localStorage 백업
-  localStorage.setItem(`goals_${date}`, JSON.stringify(updatedGoals));
 
   // Firebase 동기화 (전체 DailyData를 동기화하여 일관성 보장)
   const latestData = await db.dailyData.get(date);
@@ -323,15 +290,15 @@ export async function recalculateGoalProgress(date: string, goalId: string): Pro
     throw new Error(`DailyData not found for date: ${date}`);
   }
 
-  const linkedTasks = dailyData.tasks.filter(t => t.goalId === goalId);
+  const linkedTasks = dailyData.tasks.filter(task => task.goalId === goalId);
 
   // 계획한 시간 = 모든 연결된 할일의 adjustedDuration 합계
-  const plannedMinutes = linkedTasks.reduce((sum, t) => sum + t.adjustedDuration, 0);
+  const plannedMinutes = linkedTasks.reduce((sum, task) => sum + task.adjustedDuration, 0);
 
   // 달성한 시간 = 완료된 할일의 actualDuration (없으면 adjustedDuration) 합계
   const completedMinutes = linkedTasks
-    .filter(t => t.completed)
-    .reduce((sum, t) => sum + (t.actualDuration || t.adjustedDuration), 0);
+    .filter(task => task.completed)
+    .reduce((sum, task) => sum + (task.actualDuration || task.adjustedDuration), 0);
 
   return updateGoal(date, goalId, { plannedMinutes, completedMinutes });
 }

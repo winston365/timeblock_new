@@ -1,10 +1,30 @@
+/**
+ * @file Toast.tsx
+ * 
+ * @description
+ * Role: 범용 토스트 알림 컴포넌트
+ * 
+ * Responsibilities:
+ * - success, error, warning, info 4가지 타입의 토스트 UI 제공
+ * - 3초 후 자동으로 사라지는 애니메이션 처리
+ * - 수동 닫기 버튼 제공
+ * 
+ * Key Dependencies:
+ * - toastStore: ToastType 타입 정의
+ */
+
 import { useEffect, useState } from 'react';
 import { ToastType } from '@/shared/stores/toastStore';
 
+/** Toast 컴포넌트의 props 인터페이스 */
 interface ToastProps {
+    /** 토스트 고유 식별자 */
     id: string;
+    /** 표시할 메시지 */
     message: string;
+    /** 토스트 타입 (success, error, warning, info) */
     type: ToastType;
+    /** 토스트 닫기 콜백 */
     onClose: () => void;
 }
 
@@ -35,7 +55,21 @@ const TOAST_STYLES: Record<ToastType, { bg: string; icon: string; title: string;
     }
 };
 
-export default function Toast({ id, message, type, onClose }: ToastProps) {
+/**
+ * 범용 토스트 알림 컴포넌트
+ * 
+ * 4가지 타입(success, error, warning, info)을 지원하며,
+ * 3초 후 자동으로 페이드아웃된다.
+ * 
+ * @param props - Toast 컴포넌트 props
+ * @param props.id - 토스트 고유 식별자
+ * @param props.message - 표시할 메시지
+ * @param props.type - 토스트 타입
+ * @param props.onClose - 토스트 닫기 콜백
+ * @returns 토스트 React 엘리먼트
+ */
+export default function Toast({ id: _toastId, message, type, onClose }: ToastProps) {
+    void _toastId; // id는 외부에서 관리용으로 전달받으나 내부에서 미사용
     const [isVisible, setIsVisible] = useState(true);
     const style = TOAST_STYLES[type];
 

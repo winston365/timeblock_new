@@ -1,8 +1,20 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Error Handler Utility
  *
+ * @fileoverview 애플리케이션 전반에서 일관된 에러 처리를 제공하는 유틸리티 모듈
+ *
  * @role 일관된 에러 처리 및 사용자 친화적 에러 메시지 생성
- * @usage Repository와 Service에서 try-catch 블록에 사용
+ * @responsibilities
+ *   - 에러 분류 (Network, Database, Validation, Permission, Unknown)
+ *   - 구조화된 에러 객체 생성
+ *   - 사용자 친화적 메시지 매핑
+ *   - 에러 로깅
+ *   - try-catch 래퍼 함수 제공
+ *   - 유효성 검사 어설션
+ *
+ * @dependencies
+ *   - logger: 로깅 유틸리티
  */
 
 import { createLogger } from './logger';
@@ -59,7 +71,10 @@ const USER_MESSAGES: Record<ErrorCategory, string> = {
 // ============================================================================
 
 /**
- * 에러 분류
+ * 에러를 카테고리별로 분류합니다.
+ *
+ * @param error - 분류할 에러 객체
+ * @returns 에러 카테고리 (NETWORK, DATABASE, VALIDATION, PERMISSION, UNKNOWN)
  */
 function classifyError(error: unknown): ErrorCategory {
   if (error instanceof Error) {

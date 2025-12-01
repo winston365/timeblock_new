@@ -1,6 +1,17 @@
 /**
- * Weather Service - Gemini Google Search Grounding 사용
- * refer 프로젝트 기반
+ * @file weatherService.ts
+ * @description 날씨 데이터 조회 및 인사이트 생성 서비스
+ *
+ * @role 외부 API를 통한 날씨 정보 조회 및 캐싱, 복장 추천 생성
+ * @responsibilities
+ *   - Gemini Google Search를 통한 날씨 데이터 조회
+ *   - Dexie 캐시 관리 (일별 만료)
+ *   - 체감온도 기반 복장 추천 생성
+ *   - 날씨 인사이트 텍스트 생성
+ * @dependencies
+ *   - fetchWeatherWithGemini: Gemini AI 날씨 조회
+ *   - useSettingsStore: API 키 조회
+ *   - db.weather: Dexie 캐시 테이블
  */
 
 import type { DayForecast } from '@/shared/types/weather';
@@ -27,6 +38,13 @@ function isValidForecast(forecast: unknown): forecast is DayForecast[] {
 
 export type WeatherFetchResult = { forecast: DayForecast[]; timestamp?: number; status?: 'ok' | 'missing-key' | 'error'; message?: string };
 
+/**
+ * Google 검색 기반 Gemini를 통해 날씨 정보를 조회합니다.
+ *
+ * @param city - 조회할 도시명 (기본값: '서울 은평구')
+ * @param forceRefresh - 캐시 무시 여부
+ * @returns 날씨 예보 결과 (forecast, timestamp, status, message)
+ */
 export async function fetchWeatherFromGoogle(
     city: string = '서울 은평구',
     forceRefresh: boolean = false
@@ -36,7 +54,6 @@ export async function fetchWeatherFromGoogle(
         if (!forceRefresh) {
             const cached = await loadCachedWeather();
             if (cached && isValidForecast(cached.forecast)) {
-                console.log('[WeatherService] Using cached data from Dexie');
                 return { ...cached, status: 'ok' };
             }
         }
@@ -44,11 +61,8 @@ export async function fetchWeatherFromGoogle(
         // 2. API 호출
         const geminiApiKey = useSettingsStore.getState().settings?.geminiApiKey;
         if (!geminiApiKey) {
-            console.warn('[WeatherService] Gemini API 키가 설정되지 않았습니다. 설정 후 이용해 주세요.');
             return { forecast: [], timestamp: Date.now(), status: 'missing-key', message: 'Gemini API 키가 설정되지 않았습니다.' };
         }
-
-        console.log('[WeatherService] Fetching with Gemini Google Search...');
         const data = await fetchWeatherWithGemini(city, geminiApiKey);
         if (!isValidForecast(data?.forecast)) {
             throw new Error('날씨 응답 데이터가 올바르지 않습니다.');
@@ -65,6 +79,11 @@ export async function fetchWeatherFromGoogle(
     }
 }
 
+/**
+ * Dexie에서 캐시된 날씨 데이터를 로드합니다.
+ *
+ * @returns 캐시된 날씨 데이터 또는 null (만료/없음)
+ */
 export async function loadCachedWeather(): Promise<{ forecast: DayForecast[]; timestamp: number } | null> {
     try {
         const cached = await db.weather.get('latest');
@@ -78,9 +97,8 @@ export async function loadCachedWeather(): Promise<{ forecast: DayForecast[]; ti
         }
 
         // 오늘 날짜 확인 (YYYY-MM-DD)
-        const today = new Date().toISOString().split('T')[0];
-        if (cached.lastUpdatedDate !== today) {
-            console.log('[WeatherService] Cache expired (different date)');
+        const todayDate = new Date().toISOString().split('T')[0];
+        if (cached.lastUpdatedDate !== todayDate) {
             return null;
         }
 
@@ -91,6 +109,12 @@ export async function loadCachedWeather(): Promise<{ forecast: DayForecast[]; ti
     }
 }
 
+/**
+ * 날씨 데이터를 Dexie에 캐시합니다.
+ *
+ * @param forecast - 저장할 날씨 예보 배열
+ * @param timestamp - 저장 시점 타임스탬프
+ */
 export async function cacheWeather(forecast: DayForecast[], timestamp: number): Promise<void> {
     try {
         const today = new Date().toISOString().split('T')[0];
@@ -105,6 +129,9 @@ export async function cacheWeather(forecast: DayForecast[], timestamp: number): 
     }
 }
 
+/**
+ * Dexie에 저장된 날씨 캐시를 삭제합니다.
+ */
 export async function clearWeatherCache(): Promise<void> {
     try {
         await db.weather.delete('latest');
@@ -119,6 +146,15 @@ type InsightContext = {
     tonightLow?: number;
 };
 
+/**
+ * 날씨 기반 인사이트 및 복장 추천을 생성합니다.
+ *
+ * @param temp - 현재 기온
+ * @param feelsLike - 체감 온도
+ * @param _condition - 날씨 상태 (현재 미사용)
+ * @param context - 추가 컨텍스트 (humidity, chanceOfRain, tonightLow)
+ * @returns 인사이트 결과 (intro, cards, markdown)
+ */
 export function getWeatherInsight(
     temp: number,
     feelsLike: number,

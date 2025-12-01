@@ -6,10 +6,14 @@
  * @dependencies framer-motion, xpParticleStore
  */
 
-import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useXPParticleStore } from '@/features/gamification/stores/xpParticleStore';
 
+/**
+ * XP 파티클 오버레이 컴포넌트
+ * @description 화면 전역에 XP 획득 파티클 애니메이션을 표시
+ * @returns 파티클 오버레이 UI 또는 null (목적지 미설정 시)
+ */
 export const XPParticleOverlay = () => {
     const { particles, targetPosition, removeParticle } = useXPParticleStore();
 
@@ -32,6 +36,14 @@ export const XPParticleOverlay = () => {
     );
 };
 
+/**
+ * 개별 파티클 컴포넌트
+ * @param props.particle - 파티클 정보 (위치, XP 양 등)
+ * @param props.targetX - 목적지 X 좌표
+ * @param props.targetY - 목적지 Y 좌표
+ * @param props.onComplete - 애니메이션 완료 콜백
+ * @returns 애니메이션되는 파티클 요소
+ */
 const Particle = ({
     particle,
     targetX,

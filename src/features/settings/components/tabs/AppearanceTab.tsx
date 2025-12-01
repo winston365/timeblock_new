@@ -12,6 +12,17 @@
 import type { AppearanceTabProps } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass, primaryButtonClass } from './styles';
 
+/**
+ * 테마 설정 및 앱 정보를 표시하는 탭 컴포넌트입니다.
+ * @param props - 탭 props
+ * @param props.currentTheme - 현재 선택된 테마
+ * @param props.setCurrentTheme - 테마 변경 함수
+ * @param props.appVersion - 앱 버전 문자열
+ * @param props.checkingUpdate - 업데이트 확인 중 여부
+ * @param props.updateStatus - 업데이트 상태 메시지
+ * @param props.handleCheckForUpdates - 업데이트 확인 핸들러
+ * @returns 테마 선택 및 앱 정보 UI
+ */
 export function AppearanceTab({
     currentTheme,
     setCurrentTheme,
@@ -20,13 +31,19 @@ export function AppearanceTab({
     updateStatus,
     handleCheckForUpdates,
 }: AppearanceTabProps) {
-    const handleThemeChange = (theme: string) => {
-        setCurrentTheme(theme);
-        if (theme) {
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
+    /**
+     * 테마를 변경하고 DOM 및 localStorage에 적용합니다.
+     * @param selectedTheme - 선택된 테마 이름 (빈 문자열이면 기본 테마)
+     */
+    const handleThemeChange = (selectedTheme: string) => {
+        setCurrentTheme(selectedTheme);
+        if (selectedTheme) {
+            document.documentElement.setAttribute('data-theme', selectedTheme);
+            // theme is an allowed localStorage exception per CLAUDE.md
+            localStorage.setItem('theme', selectedTheme);
         } else {
             document.documentElement.removeAttribute('data-theme');
+            // theme is an allowed localStorage exception per CLAUDE.md
             localStorage.removeItem('theme');
         }
     };
@@ -73,10 +90,10 @@ export function AppearanceTab({
                         { label: 'Primary', style: 'bg-[var(--color-primary)]' },
                         { label: 'Surface', style: 'bg-[var(--color-bg-surface)]' },
                         { label: 'Elevated', style: 'bg-[var(--color-bg-elevated)]' },
-                    ].map(color => (
-                        <div key={color.label} className="flex flex-col items-center gap-2">
-                            <div className={`h-16 w-16 rounded-2xl border-2 border-[var(--color-border)] ${color.style}`} />
-                            <span className="text-xs text-[var(--color-text-secondary)]">{color.label}</span>
+                    ].map(colorPreview => (
+                        <div key={colorPreview.label} className="flex flex-col items-center gap-2">
+                            <div className={`h-16 w-16 rounded-2xl border-2 border-[var(--color-border)] ${colorPreview.style}`} />
+                            <span className="text-xs text-[var(--color-text-secondary)]">{colorPreview.label}</span>
                         </div>
                     ))}
                 </div>

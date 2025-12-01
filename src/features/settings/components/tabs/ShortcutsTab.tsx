@@ -1,15 +1,33 @@
 /**
- * ShortcutsTab
+ * @fileoverview ShortcutsTab - 앱 단축키 설정 관리 탭 컴포넌트
  *
- * @role 앱 단축키 설정 관리 탭
- * @input ShortcutsTabProps (localSettings, setLocalSettings)
- * @output 단축키 입력 폼 UI 렌더링
- * @external_dependencies 없음 (순수 UI 컴포넌트)
+ * @description
+ * Role: 앱 단축키 설정 관리 탭
+ *
+ * Responsibilities:
+ * - 좌측/우측 패널 토글 단축키 설정
+ * - 대량 할 일 추가 모달 단축키 설정
+ * - 키 조합 입력 캡처 및 변환 (Ctrl, Shift, Alt + 키)
+ *
+ * Key Dependencies:
+ * - types: ShortcutsTabProps, Settings 타입 정의
+ * - styles: 공통 스타일 클래스
  */
 
 import type { ShortcutsTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass } from './styles';
 
+/**
+ * 앱 단축키를 설정하는 탭 컴포넌트
+ *
+ * 사용자가 입력 필드에서 키 조합을 누르면 해당 단축키가
+ * 자동으로 캡처되어 설정됩니다.
+ *
+ * @param props - 탭 컴포넌트 props
+ * @param props.localSettings - 현재 로컬 설정 상태
+ * @param props.setLocalSettings - 설정 상태 업데이트 함수
+ * @returns 단축키 입력 폼 UI
+ */
 export function ShortcutsTab({ localSettings, setLocalSettings }: ShortcutsTabProps) {
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, settingKey: keyof Settings) => {
         e.preventDefault();

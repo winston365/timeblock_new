@@ -5,7 +5,7 @@
  * @features 색상 코딩, 성능 측정, 필터링, 그룹화
  */
 
-import type { EventType, EventMeta, Middleware } from '../types';
+import type { EventType, Middleware } from '../types';
 
 export interface LoggerOptions {
     /** 로거 활성화 여부 (기본: true) */

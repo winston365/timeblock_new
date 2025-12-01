@@ -12,7 +12,7 @@
 
 import { useState, useEffect } from 'react';
 import type { ShopItem } from '@/shared/types/domain';
-import { loadShopItems, deleteShopItem, purchaseShopItem, useShopItem } from '@/data/repositories';
+import { loadShopItems, deleteShopItem, purchaseShopItem, useShopItem as consumeShopItem } from '@/data/repositories';
 import { useGameState } from '@/shared/hooks';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { ShopModal } from './ShopModal';
@@ -24,6 +24,12 @@ interface ShopPanelProps {
 
 /**
  * 상점 패널 컴포넌트
+ *
+ * XP로 보상 아이템을 구매하고 사용할 수 있는 상점 UI를 제공합니다.
+ *
+ * @param {ShopPanelProps} props - 컴포넌트 props
+ * @param {Function} [props.onPurchaseSuccess] - 구매 성공 시 호출되는 콜백 함수
+ * @returns {JSX.Element} 상점 패널 UI
  */
 export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
@@ -39,8 +45,8 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
   }, []);
 
   const loadShopItemsData = async () => {
-    const data = await loadShopItems();
-    setShopItems(data);
+    const items = await loadShopItems();
+    setShopItems(items);
   };
 
   const handleAddItem = () => {
@@ -132,7 +138,7 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
     }
 
     try {
-      const result = await useShopItem(item.id);
+      const result = await consumeShopItem(item.id);
 
       if (result.success) {
         toast.success(result.message);
