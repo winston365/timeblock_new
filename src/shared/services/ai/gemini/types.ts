@@ -119,10 +119,6 @@ export interface PersonaContext {
   // ✅ 블록별 "하지않기" 체크리스트 상태
   timeBlockDontDoStatus?: Record<string, Record<string, boolean>>;
 
-  // 에너지 정보
-  currentEnergy: number;
-  energyRecordedAt: number | null;
-
   // XP 히스토리 (최근 7일)
   xpHistory: Array<{ date: string; xp: number }>;
 

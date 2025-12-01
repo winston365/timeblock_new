@@ -15,7 +15,6 @@ export * from './waifuRepository';
 export * from './templateRepository';
 export * from './shopRepository';
 export * from './chatHistoryRepository';
-export * from './energyRepository';
 export * from './inboxRepository';
 export * from './globalGoalRepository';
 export * from './systemRepository';

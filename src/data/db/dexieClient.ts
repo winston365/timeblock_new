@@ -19,7 +19,6 @@ import type {
   Template,
   ShopItem,
   WaifuState,
-  EnergyLevel,
   Settings,
   ChatHistory,
   DailyTokenUsage,
@@ -65,7 +64,6 @@ export class TimeBlockDB extends Dexie {
   templates!: Table<Template, string>;
   shopItems!: Table<ShopItem, string>;
   waifuState!: Table<WaifuState & { key: string }, string>;
-  energyLevels!: Table<EnergyLevel & { id: string; date: string }, string>;
   settings!: Table<Settings & { key: string }, string>;
   chatHistory!: Table<ChatHistory, string>;
   dailyTokenUsage!: Table<DailyTokenUsage, string>;
@@ -295,6 +293,27 @@ export class TimeBlockDB extends Dexie {
       aiInsights: 'date',
       ragDocuments: 'id, type, date, completed, contentHash, indexedAt', // ✅ RAG 벡터 영구 저장
     });
+
+    // 스키마 버전 13 - energyLevels 테이블 제거
+    this.version(13).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      energyLevels: null, // ✅ 테이블 삭제
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      globalInbox: 'id, createdAt, completed',
+      completedInbox: 'id, completedAt, createdAt',
+      globalGoals: 'id, createdAt, order',
+      systemState: 'key',
+      images: 'id',
+      weather: 'id',
+      aiInsights: 'date',
+      ragDocuments: 'id, type, date, completed, contentHash, indexedAt',
+    });
   }
 }
 
@@ -324,21 +343,18 @@ export async function getDatabaseInfo(): Promise<{
   dailyDataCount: number;
   templatesCount: number;
   shopItemsCount: number;
-  energyLevelsCount: number;
 }> {
   try {
-    const [dailyDataCount, templatesCount, shopItemsCount, energyLevelsCount] = await Promise.all([
+    const [dailyDataCount, templatesCount, shopItemsCount] = await Promise.all([
       db.dailyData.count(),
       db.templates.count(),
       db.shopItems.count(),
-      db.energyLevels.count(),
     ]);
 
     return {
       dailyDataCount,
       templatesCount,
       shopItemsCount,
-      energyLevelsCount,
     };
   } catch (error) {
     console.error('❌ Failed to get database info:', error);

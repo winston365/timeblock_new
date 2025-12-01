@@ -19,7 +19,6 @@ import type {
   GameState,
   ChatHistory,
   DailyTokenUsage,
-  EnergyLevel,
   Template,
   Task,
   ShopItem,
@@ -87,21 +86,6 @@ export const tokenUsageStrategy: SyncStrategy<DailyTokenUsage> = {
   collection: 'tokenUsage',
   getSuccessMessage: (data, key) =>
     `TokenUsage synced: ${key} (${data.totalTokens} tokens)`,
-};
-
-// ============================================================================
-// EnergyLevels 전략 (Last-Write-Wins)
-// ============================================================================
-
-/**
- * EnergyLevels 동기화 전략 (Last-Write-Wins)
- * 시간대별 에너지 레벨 데이터를 Firebase와 동기화합니다.
- * @type {SyncStrategy<EnergyLevel[]>}
- */
-export const energyLevelsStrategy: SyncStrategy<EnergyLevel[]> = {
-  collection: 'energyLevels',
-  getSuccessMessage: (data, key) =>
-    `EnergyLevels synced: ${key} (${data.length} records)`,
 };
 
 // ============================================================================

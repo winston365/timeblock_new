@@ -76,8 +76,6 @@ export function generateWaifuPersona(context: PersonaContext): string {
     lockedBlocksCount,
     totalBlocksCount,
     allBlockTasks,
-    currentEnergy,
-    energyRecordedAt,
     xpHistory,
     timeBlockXPHistory,
     recentBlockPatterns,
@@ -154,20 +152,6 @@ export function generateWaifuPersona(context: PersonaContext): string {
     }).join('')}`
     : '';
 
-  // 에너지 정보 생성
-  const energyTimeDiff = energyRecordedAt ? Math.floor((Date.now() - energyRecordedAt) / (1000 * 60)) : null;
-  const energyInfo = energyTimeDiff !== null
-    ? `${currentEnergy}% (${energyTimeDiff}분 전 기록)`
-    : currentEnergy > 0 ? `${currentEnergy}%` : '미기록';
-
-  let energyStatus = '';
-  if (currentEnergy === 0) energyStatus = '에너지 기록 필요';
-  else if (currentEnergy < 30) energyStatus = '매우 낮음 - 휴식 필요';
-  else if (currentEnergy < 50) energyStatus = '낮음 - 가벼운 작업 권장';
-  else if (currentEnergy < 70) energyStatus = '보통 - 중간 난이도 작업 가능';
-  else if (currentEnergy < 90) energyStatus = '좋음 - 복잡한 작업 도전';
-  else energyStatus = '최상 - 고난도 작업 추천';
-
   // 시간대별 평가를 위한 정보
   let timeContextMessage = '';
   if (currentHour >= 0 && currentHour < 6) {
@@ -197,8 +181,6 @@ export function generateWaifuPersona(context: PersonaContext): string {
 - 총 보유 XP: ${totalXP} XP
 - 사용 가능 XP: ${availableXP} XP${timeBlockStats}${xpHistoryInfo}${timeBlockXPHistoryInfo}${inboxInfo}${allBlockTasksInfo}${recentTaskLogInfo}
 
-**에너지 상태**: ${energyInfo} (${energyStatus})
-
 **시간대 컨텍스트**: ${timeContextMessage}
 
 ## 💬 응답 지침
@@ -212,15 +194,6 @@ export function generateWaifuPersona(context: PersonaContext): string {
 - **인박스(미배치 할일) 또는 템플릿을 언급하며 실질적 도움**
 - 시간대별 생산성 패턴 기반 추천
 - **중요: "미배치 할일", "인박스 할일", "인박스"는 모두 같은 의미입니다. 시간대에 배치되지 않은 미완료 할일을 의미합니다.**
-
-### ⚡ 에너지 인식 및 권장 사항
-- 사용자의 현재 에너지 수준을 확인하고 에너지 기록 시간과 현재 시간의 차이를 명확히 인지
-- 에너지 수준에 따라 다음 권장 사항을 제시:
-  - **고에너지 상태 (70-100%)**: 고난도 문제 해결, 장기 프로젝트 구상, 복잡한 업무 처리
-  - **중간 에너지 상태 (40-70%)**: 자기계발 학습, 자료 정리, 중간 난이도 작업
-  - **저에너지 상태 (0-40%)**: 독서, 일정 정비, 회고, 휴식 준비
-- 에너지가 낮은 상태에서 어려운 작업을 하라고 요청받은 경우, 사용자의 에너지 상태를 고려한 대안을 제안
-- 에너지 기록이 오래된 경우, 현재 에너지가 다를 수 있음을 언급하고 새 기록을 권장
 
 ### 구조화된 형식 사용:
 - 마크다운 문법 활용 (\`\`\`, **, -, 1. 등)

@@ -3,7 +3,7 @@
  *
  * @role UI 레이아웃 및 모달 상태의 전역 관리
  * @responsibilities
- *   - 활성 탭 상태 관리 (today, stats, energy, completed, inbox)
+ *   - 활성 탭 상태 관리 (today, stats, completed, inbox)
  *   - 사이드바 및 패널 접힘 상태 관리
  *   - 전역 모달 열림/닫힘 상태 관리
  *   - localStorage 영속성 (레이아웃 상태만)
@@ -17,7 +17,7 @@ import { persist } from 'zustand/middleware';
 
 interface UIState {
     // Layout
-    activeTab: 'today' | 'stats' | 'energy' | 'completed' | 'inbox';
+    activeTab: 'today' | 'stats' | 'completed' | 'inbox';
     rightPanelTab: 'quest' | 'shop';
     leftSidebarCollapsed: boolean;
     rightPanelsCollapsed: boolean;

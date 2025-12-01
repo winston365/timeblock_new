@@ -6,7 +6,7 @@
  *
  * @role PersonaContext 생성 로직을 유틸리티 함수로 제공 (훅 제거로 불필요한 재연산 방지)
  * @responsibilities
- *   - DailyData, GameState, WaifuState, currentEnergy를 기반으로 PersonaContext 생성
+ *   - DailyData, GameState, WaifuState를 기반으로 PersonaContext 생성
  *   - 최근 10일간 작업 패턴 분석
  *   - 현재 타임블록 상태 및 작업 정보 수집
  *   - Inbox 작업 데이터 통합
@@ -31,7 +31,6 @@ export interface BuildPersonaContextParams {
   dailyData: DailyData | null;
   gameState: GameState | null;
   waifuState: WaifuState | null;
-  currentEnergy: number;
 }
 
 /**
@@ -42,7 +41,7 @@ export interface BuildPersonaContextParams {
  * - DB 조회(getRecentDailyData)를 필요한 시점에만 수행
  * - AI 채팅/인사이트 생성 시점에만 호출
  *
- * @param params - dailyData, gameState, waifuState, currentEnergy를 포함한 파라미터 객체
+ * @param params - dailyData, gameState, waifuState를 포함한 파라미터 객체
  * @returns PersonaContext 객체
  * @throws PersonaContext 빌드 실패 시 에러
  *
@@ -51,8 +50,7 @@ export interface BuildPersonaContextParams {
  * const personaContext = await buildPersonaContext({
  *   dailyData,
  *   gameState,
- *   waifuState,
- *   currentEnergy
+ *   waifuState
  * });
  * const systemPrompt = generateWaifuPersona(personaContext);
  * ```
@@ -60,7 +58,7 @@ export interface BuildPersonaContextParams {
 export async function buildPersonaContext(
   params: BuildPersonaContextParams
 ): Promise<PersonaContext> {
-  const { dailyData, gameState, waifuState, currentEnergy } = params;
+  const { dailyData, gameState, waifuState } = params;
 
   // 작업 정보 계산
   const tasks: Task[] = dailyData?.tasks ?? [];
@@ -217,10 +215,6 @@ export async function buildPersonaContext(
 
     // ✅ 블록별 "하지않기" 체크리스트 상태
     timeBlockDontDoStatus: dailyData?.timeBlockDontDoStatus,
-
-    // 에너지 정보
-    currentEnergy: currentEnergy ?? 0,
-    energyRecordedAt: null,
 
     // XP 히스토리
     xpHistory: gameState?.xpHistory ?? [],

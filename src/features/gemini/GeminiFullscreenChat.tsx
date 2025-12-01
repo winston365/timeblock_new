@@ -13,7 +13,7 @@
  * @dependencies
  *   - callAIWithContext: 통합 AI 호출 서비스
  *   - chatHistoryRepository: 채팅 히스토리 영속화
- *   - useWaifu, useEnergy, useGameState, useDailyData: 게임/일일 상태 훅
+ *   - useWaifu, useGameState, useDailyData: 게임/일일 상태 훅
  *   - waifuImageUtils: 호감도 기반 이미지 경로 계산
  */
 
@@ -21,7 +21,6 @@ import { useState, useRef, useEffect } from 'react';
 import { callAIWithContext } from '@/shared/services/ai/aiService';
 import { useGameState, useDailyData } from '@/shared/hooks';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
-import { useEnergy } from '@/features/energy/hooks/useEnergy';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import {
   loadTodayChatHistory,
@@ -55,7 +54,6 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
   const { dailyData } = useDailyData();
   const { gameState } = useGameState();
   const { waifuState } = useWaifu();
-  const { currentEnergy } = useEnergy();
   const { settings, loadData: loadSettingsData } = useSettingsStore();
   const [messages, setMessages] = useState<GeminiChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -183,7 +181,6 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
         dailyData,
         gameState,
         waifuState,
-        currentEnergy,
         apiKey: settings.geminiApiKey,
         type: 'chat',
         userPrompt: userMessage.text,
@@ -280,7 +277,7 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
             }}
             role="button"
             tabIndex={0}
-            aria-label={`와이푸 이미지. 클릭 시 포즈 변경. 현재 호감도: ${waifuState?.affection}%, 기분: ${currentEnergy ? '현재 에너지' : ''}`}
+            aria-label={`와이푸 이미지. 클릭 시 포즈 변경. 현재 호감도: ${waifuState?.affection}%`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();

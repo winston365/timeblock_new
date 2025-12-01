@@ -11,7 +11,6 @@
 import { useState } from 'react';
 import type React from 'react';
 import type { GameState } from '@/shared/types/domain';
-import { useEnergy } from '@/features/energy/hooks/useEnergy';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { getAffectionColor } from '@/features/waifu/waifuImageUtils';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
@@ -24,6 +23,7 @@ import WeatherWidget from '@/features/weather/WeatherWidget';
 import IgnitionButton from '@/features/ignition/components/IgnitionButton';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { StatsModal } from '@/features/stats/StatsModal';
+import DailySummaryModal from '@/features/insight/DailySummaryModal';
 import { useFocusModeStore } from '@/features/schedule/stores/focusModeStore';
 import { useScheduleViewStore } from '@/features/schedule/stores/scheduleViewStore';
 import { TIME_BLOCKS } from '@/shared/types/domain';
@@ -53,13 +53,13 @@ interface TopToolbarProps {
  * @returns 툴바 UI
  */
 export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplates, onOpenSettings }: TopToolbarProps) {
-  const { currentEnergy } = useEnergy();
   const { waifuState, currentMood } = useWaifu();
   const { show } = useWaifuCompanionStore();
   const { isLoading: aiAnalyzing, cancelBreakdown } = useTaskBreakdownStore();
   const [hovered, setHovered] = useState<string | null>(null);
   const [showStats, setShowStats] = useState(false);
   const [showBingo, setShowBingo] = useState(false);
+  const [showDailySummary, setShowDailySummary] = useState(false);
   const [bingoProgress, setBingoProgress] = useState<BingoProgress | null>(null);
   const { settings } = useSettingsStore();
   const isNormalWaifu = settings?.waifuMode === 'normal';
@@ -238,10 +238,6 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
 
         <div className="flex flex-1 flex-wrap items-center gap-[var(--spacing-md)] text-[13px]">
           <div className={statItemClass}>
-            <span>⚡ 에너지:</span>
-            <span className={statValueClass}>{currentEnergy > 0 ? `${currentEnergy}%` : '-'}</span>
-          </div>
-          <div className={statItemClass}>
             <span>⭐ 오늘 XP:</span>
             <span
               ref={(el) => {
@@ -355,6 +351,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
           {/* 점화 버튼 */}
           <IgnitionButton />
           {renderCTA('stats', '📊 통계', () => setShowStats(true))}
+          {renderCTA('daily-summary', '📝 AI 요약', () => setShowDailySummary(true))}
           {renderCTA('bingo', '🟦 빙고', () => setShowBingo(true), `🟦 ${bingoProgress?.completedCells.length ?? 0}/9`)}
           {!isNormalWaifu && renderCTA('waifu', '💬 와이푸', handleCallWaifu)}
           {renderCTA('templates', '📋 템플릿', onOpenTemplates)}
@@ -363,6 +360,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         </div>
       </header>
       {showStats && <StatsModal open={showStats} onClose={() => setShowStats(false)} />}
+      {showDailySummary && <DailySummaryModal open={showDailySummary} onClose={() => setShowDailySummary(false)} />}
       {showBingo && (
         <BingoModal
           open={showBingo}

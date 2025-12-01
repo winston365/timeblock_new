@@ -33,7 +33,6 @@ export interface AICallParams {
   dailyData: DailyData | null;
   gameState: GameState | null;
   waifuState: WaifuState | null;
-  currentEnergy: number;
 
   // ===== 2. AI 설정 (필수) =====
   apiKey: string;
@@ -72,7 +71,7 @@ export interface AICallResult {
  * ```typescript
  * // 채팅
  * const result = await callAIWithContext({
- *   dailyData, gameState, waifuState, currentEnergy,
+ *   dailyData, gameState, waifuState,
  *   apiKey: settings.geminiApiKey,
  *   model: settings.geminiModel,
  *   type: 'chat',
@@ -82,7 +81,7 @@ export interface AICallResult {
  *
  * // 인사이트
  * const insight = await callAIWithContext({
- *   dailyData, gameState, waifuState, currentEnergy,
+ *   dailyData, gameState, waifuState,
  *   apiKey: settings.geminiApiKey,
  *   model: settings.geminiModel,
  *   type: 'insight',
@@ -95,7 +94,6 @@ export async function callAIWithContext(callParams: AICallParams): Promise<AICal
     dailyData,
     gameState,
     waifuState,
-    currentEnergy,
     apiKey,
     model,
     type,
@@ -115,7 +113,6 @@ export async function callAIWithContext(callParams: AICallParams): Promise<AICal
       dailyData,
       gameState,
       waifuState,
-      currentEnergy,
     });
     basePersonaPrompt = generateWaifuPersona(personaContext);
   }

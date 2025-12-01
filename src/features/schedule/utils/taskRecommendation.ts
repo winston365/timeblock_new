@@ -2,7 +2,7 @@
  * Task Recommendation Utility
  * 
  * @role AI-based task recommendation for Focus Mode
- * @input tasks, context (time, energy)
+ * @input tasks, context (time)
  * @output recommended task
  */
 
@@ -11,7 +11,6 @@ import type { Task } from '@/shared/types/domain';
 interface RecommendationContext {
     currentTime: Date;
     remainingMinutes: number;
-    currentEnergy?: number;
 }
 
 /**
@@ -26,7 +25,7 @@ export function recommendNextTask(
 
     if (incompleteTasks.length === 0) return null;
 
-    const { remainingMinutes, currentEnergy = 50 } = context;
+    const { remainingMinutes } = context;
 
     // Score each task
     const scoredTasks = incompleteTasks.map(task => {
@@ -39,21 +38,10 @@ export function recommendNextTask(
             score -= 20; // Penalty for too long
         }
 
-        // 2. Difficulty based on energy
-        if (currentEnergy >= 70) {
-            // High energy → prefer difficult tasks
-            if (task.resistance === 'high') score += 25;
-            else if (task.resistance === 'medium') score += 15;
-        } else if (currentEnergy >= 40) {
-            // Medium energy → prefer medium tasks
-            if (task.resistance === 'medium') score += 25;
-            else if (task.resistance === 'low') score += 15;
-        } else {
-            // Low energy → prefer easy tasks
-            if (task.resistance === 'low') score += 30;
-            else if (task.resistance === 'medium') score += 10;
-            else score -= 10; // Avoid hard tasks when tired
-        }
+        // 2. Difficulty based on resistance
+        if (task.resistance === 'medium') score += 20;
+        else if (task.resistance === 'low') score += 15;
+        else if (task.resistance === 'high') score += 10;
 
         // 3. Duration preference (shorter tasks for momentum)
         if (task.baseDuration <= 30) {
@@ -79,19 +67,19 @@ export function recommendNextTask(
 /**
  * Get recommendation message based on task
  */
-export function getRecommendationMessage(task: Task, currentEnergy?: number): string {
+export function getRecommendationMessage(task: Task): string {
     const messages: Record<string, string[]> = {
-        high_energy_hard: [
-            "에너지가 넘치네! 어려운 거 도전해볼까?",
-            "지금 컨디션 좋은데, 중요한 거 먼저 해치워!",
-            "집중력 최고조! 이거 끝내버리자!"
+        hard_task: [
+            "도전적인 작업이네! 집중해서 해보자!",
+            "중요한 거 먼저 해치워!",
+            "집중력 발휘할 시간이야!"
         ],
-        medium_energy_medium: [
+        medium_task: [
             "이 정도면 적당할 것 같아!",
             "무난하게 시작해보자!",
             "딱 지금 하기 좋은 작업이야!"
         ],
-        low_energy_easy: [
+        easy_task: [
             "가벼운 걸로 워밍업 하자!",
             "쉬운 거부터 천천히~",
             "부담 없이 시작해볼까?"
@@ -103,15 +91,14 @@ export function getRecommendationMessage(task: Task, currentEnergy?: number): st
         ]
     };
 
-    const energy = currentEnergy ?? 50;
-    let key = 'medium_energy_medium';
+    let key = 'medium_task';
 
     if (task.baseDuration <= 30) {
         key = 'quick_win';
-    } else if (energy >= 70 && task.resistance === 'high') {
-        key = 'high_energy_hard';
-    } else if (energy < 40 && task.resistance === 'low') {
-        key = 'low_energy_easy';
+    } else if (task.resistance === 'high') {
+        key = 'hard_task';
+    } else if (task.resistance === 'low') {
+        key = 'easy_task';
     }
 
     const options = messages[key];

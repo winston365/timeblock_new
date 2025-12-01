@@ -35,7 +35,6 @@ import TopToolbar from './components/TopToolbar';
 import LeftSidebar from './components/LeftSidebar';
 import CenterContent from './components/CenterContent';
 import RightPanel from './components/RightPanel';
-import InsightPanel from '@/features/insight/InsightPanel';
 import { TimeBlockXPBar } from './components/TimeBlockXPBar';
 import { DailyXPBar } from './components/DailyXPBar';
 import { WaifuAside } from './components/WaifuAside';
@@ -114,7 +113,7 @@ export default function AppShell() {
   // ============================================================================
   // 탭 상태
   // ============================================================================
-  const [activeTab, setActiveTab] = useState<'today' | 'energy' | 'completed' | 'inbox'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'completed' | 'inbox'>('today');
   const [rightPanelTab, setRightPanelTab] = useState<'shop' | 'inventory'>('shop');
 
   // ============================================================================
@@ -208,7 +207,6 @@ export default function AppShell() {
           collapsed={effectiveLeftCollapsed} 
         />
         <CenterContent activeTab={activeTab} dailyData={null} />
-        <InsightPanel collapsed={effectiveRightCollapsed} />
         <RightPanel
           activeTab={rightPanelTab}
           onTabChange={setRightPanelTab}

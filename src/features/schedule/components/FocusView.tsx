@@ -76,8 +76,6 @@ export function FocusView({
     const [pendingNextTaskId, setPendingNextTaskId] = useState<string | null>(null);
     const [now, setNow] = useState(Date.now());
 
-    const currentEnergy = 50;
-
     // Music player hook
     const {
         selectedMusicFolder,
@@ -116,7 +114,7 @@ export function FocusView({
         return currentHourTasks.find(t => !t.completed) || null;
     }, [currentHourTasks]);
     const recommendationMessage = recommendedTask
-        ? getRecommendationMessage(recommendedTask, currentEnergy)
+        ? getRecommendationMessage(recommendedTask)
         : '';
     const initialUpcomingTasks = useMemo(() => {
         return currentHourTasks.filter(t => !t.completed && t.id !== recommendedTask?.id);

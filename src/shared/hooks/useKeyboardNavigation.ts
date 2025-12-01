@@ -233,7 +233,7 @@ export function useArrowKeyNavigation<T extends HTMLElement>({
  * @example
  * ```tsx
  * const { activeTab, setActiveTab, tabListProps, getTabProps, getPanelProps } = useTabNavigation({
- *   tabs: ['today', 'stats', 'energy'],
+ *   tabs: ['today', 'stats', 'completed'],
  *   defaultTab: 'today'
  * });
  * ```

@@ -13,7 +13,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDailyData, useGameState } from '@/shared/hooks';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
-import { useEnergy } from '@/features/energy/hooks/useEnergy';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { callAIWithContext, getInsightPrompt } from '@/shared/services/ai/aiService';
@@ -58,7 +57,6 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
   const { dailyData } = useDailyData();
   const { gameState, addXP } = useGameState();
   const { waifuState } = useWaifu();
-  const { currentEnergy } = useEnergy();
   const { settings, loadData: loadSettingsData } = useSettingsStore();
   const { show: showWaifu } = useWaifuCompanionStore();
 
@@ -259,7 +257,6 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
         dailyData,
         gameState,
         waifuState,
-        currentEnergy,
         apiKey: settings.geminiApiKey,
         type: 'insight',
         additionalInstructions: getInsightPrompt(),

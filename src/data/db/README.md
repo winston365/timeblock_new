@@ -19,7 +19,6 @@ db/
 | `templates` | `id` | 작업 템플릿 |
 | `shopItems` | `id` | 상점 아이템 |
 | `waifuState` | `key` | 와이푸 상태 (호감도, 포즈) |
-| `energyLevels` | `id` | 시간대별 에너지 레벨 |
 | `settings` | `key` | 앱 설정 |
 | `chatHistory` | `id` | Gemini 채팅 히스토리 |
 | `dailyTokenUsage` | `date` | 일별 토큰 사용량 |

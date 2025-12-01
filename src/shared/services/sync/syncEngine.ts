@@ -25,7 +25,6 @@ import {
     shopItemsStrategy,
     globalInboxStrategy,
     completedInboxStrategy,
-    energyLevelsStrategy,
     tokenUsageStrategy,
     settingsStrategy,
 } from './firebase/strategies';
@@ -184,16 +183,7 @@ export class SyncEngine {
             await Promise.all(syncPromises);
         });
 
-        // 6. EnergyLevels (Key-based sync but syncs array per date)
-        this.registerHooks(db.energyLevels, async (_primKey, obj) => {
-            const date = obj.date;
-            if (date) {
-                const levels = await db.energyLevels.where('date').equals(date).toArray();
-                await syncToFirebase(energyLevelsStrategy, levels, date);
-            }
-        });
-
-        // 7. DailyTokenUsage (Key-based sync)
+        // 6. DailyTokenUsage (Key-based sync)
         this.registerHooks(db.dailyTokenUsage, async (primKey, obj, op) => {
             if (op === 'delete') {
                 await syncToFirebase(tokenUsageStrategy, null as any, primKey as string);
@@ -357,36 +347,7 @@ export class SyncEngine {
             }, 'completedInbox:all');
         });
 
-        // 6. EnergyLevels Listener
-        const energyLevelsRef = ref(database, `users/${userId}/energyLevels`);
-        onValue(energyLevelsRef, (snapshot) => {
-            const data = snapshot.val();
-            if (!data) return;
-
-            // 각 날짜별로 개별 작업 생성
-            Object.entries(data).forEach(([date, syncData]: [string, any]) => {
-                if (syncData.deviceId === deviceId) return;
-
-                if (Array.isArray(syncData.data)) {
-                    this.applyRemoteUpdate(async () => {
-                        await db.energyLevels.where('date').equals(date).delete();
-                        const levelsWithId = syncData.data.map((level: any) => ({
-                            ...level,
-                            id: `${date}_${level.timestamp}`,
-                            date
-                        }));
-
-                        const uniqueLevels = Array.from(
-                            new Map(levelsWithId.map((item: any) => [item.id, item])).values()
-                        ) as any[];
-
-                        await db.energyLevels.bulkPut(uniqueLevels);
-                    }, `energyLevels:${date}`);
-                }
-            });
-        });
-
-        // 7. TokenUsage Listener
+        // 6. TokenUsage Listener
         const tokenUsageRef = ref(database, `users/${userId}/tokenUsage`);
         onValue(tokenUsageRef, (snapshot) => {
             const data = snapshot.val();

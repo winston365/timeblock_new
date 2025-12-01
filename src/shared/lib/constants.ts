@@ -52,12 +52,6 @@ export const WAIFU_POSES = {
 };
 
 // ============================================================================
-// 에너지 관련
-// ============================================================================
-export const ENERGY_MIN = 0;
-export const ENERGY_MAX = 100;
-
-// ============================================================================
 // 자동 메시지 기본 설정
 // ============================================================================
 export const DEFAULT_AUTO_MESSAGE_INTERVAL = 3; // 3분
@@ -80,7 +74,6 @@ export const STORAGE_KEYS = {
   TEMPLATES: 'templates',
   SHOP_ITEMS: 'shopItems',
   WAIFU_STATE: 'waifuState',
-  ENERGY_LEVELS: 'energyLevels_', // + YYYY-MM-DD
   GEMINI_CHAT_HISTORY: 'geminiChatHistory_', // + YYYY-MM-DD
   SETTINGS: 'settings',
 };

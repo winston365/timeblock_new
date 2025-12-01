@@ -170,36 +170,7 @@ export function useAppInitialization() {
                                     }
                                 }
 
-                                // 3.4 EnergyLevels 저장
-                                if (firebaseData.energyLevels) {
-                                    const energyDates = Object.keys(firebaseData.energyLevels);
-                                    const energyLevelUpdatePromises: Promise<unknown>[] = [];
-                                    for (const energyDate of energyDates) {
-                                        const energyLevels = firebaseData.energyLevels[energyDate];
-                                        if (Array.isArray(energyLevels) && energyLevels.length > 0) {
-                                            energyLevelUpdatePromises.push(
-                                                db.energyLevels.where('date').equals(energyDate).delete().then(() => {
-                                                    const levelsWithId = energyLevels.map(level => ({
-                                                        ...level,
-                                                        id: `${energyDate}_${level.timestamp}`,
-                                                        date: energyDate,
-                                                    }));
-
-                                                    // 중복 제거 (ID 기준)
-                                                    type EnergyLevelWithId = typeof levelsWithId[number];
-                                                    const uniqueLevels = Array.from(
-                                                        new Map(levelsWithId.map((levelItem: EnergyLevelWithId) => [levelItem.id, levelItem])).values()
-                                                    );
-
-                                                    return db.energyLevels.bulkPut(uniqueLevels);
-                                                })
-                                            );
-                                        }
-                                    }
-                                    await Promise.all(energyLevelUpdatePromises);
-                                }
-
-                                // 3.5 ShopItems 저장
+                                // 3.4 ShopItems 저장
                                 if (firebaseData.shopItems && Array.isArray(firebaseData.shopItems)) {
                                     await db.shopItems.clear();
                                     if (firebaseData.shopItems.length > 0) {

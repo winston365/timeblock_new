@@ -177,7 +177,8 @@ export default function WeatherWidget() {
                         onClick={() => setIsExpanded(false)}
                     />
 
-                    <div className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] min-h-[500px] rounded-3xl overflow-hidden shadow-2xl z-50 bg-gradient-to-br ${bgGradient} text-white ring-1 ring-white/20 flex`}>
+                    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4`}>
+                        <div className={`w-[900px] min-h-[500px] rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br ${bgGradient} text-white ring-1 ring-white/20 flex`}>
 
                         {/* 왼쪽 컬럼: 날씨 정보 */}
                         <div className="w-[420px] flex flex-col border-r border-white/10 relative">
@@ -314,6 +315,7 @@ export default function WeatherWidget() {
                             </div>
                         </div>
 
+                        </div>
                     </div>
                 </>
             )}
