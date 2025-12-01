@@ -1,3 +1,12 @@
+/**
+ * GlobalModals - 전역 모달 컴포넌트
+ *
+ * @role 애플리케이션 전역에서 사용되는 모달 컴포넌트들을 관리
+ * @input 없음 (uiStore에서 모달 상태 관리)
+ * @output 모달 컴포넌트들 (Gemini채팅, 대량추가, 설정, 템플릿 등)
+ * @dependencies uiStore, dailyDataStore, GeminiFullscreenChat, BulkAddModal, SettingsModal, TemplatesModal
+ */
+
 import { useEffect } from 'react';
 import { useUIStore } from '@/shared/stores/uiStore';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
@@ -11,7 +20,13 @@ import BulkAddModal from '@/features/tasks/BulkAddModal';
 import SettingsModal from '@/features/settings/SettingsModal';
 import TemplatesModal from '@/features/template/TemplatesModal';
 import { RealityCheckModal } from '@/features/feedback/RealityCheckModal';
+import { MemoMissionModal } from '@/shared/components/MemoMissionModal';
 
+/**
+ * 전역 모달 컴포넌트
+ * F1 단축키로 대량 할 일 추가 모달을 열 수 있음
+ * @returns 애플리케이션 전역 모달 컴포넌트
+ */
 export default function GlobalModals() {
     const { modals, closeModal, openModal } = useUIStore();
     const { updateQuestProgress } = useGameState();
@@ -82,6 +97,7 @@ export default function GlobalModals() {
                 onTaskCreate={handleTaskCreateFromTemplate}
             />
             <RealityCheckModal />
+            <MemoMissionModal />
         </>
     );
 }

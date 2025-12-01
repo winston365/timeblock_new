@@ -1,3 +1,11 @@
+/**
+ * @file xpParticleStore.ts
+ * @role XP 획득 시 파티클 애니메이션 상태 관리
+ * @input 파티클 생성 좌표, XP 양
+ * @output 활성 파티클 목록, 타겟 위치, 파티클 조작 함수
+ * @dependencies zustand
+ */
+
 import { create } from 'zustand';
 
 interface Particle {

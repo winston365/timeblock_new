@@ -1,7 +1,9 @@
 /**
- * 점화 제한 체크 유틸리티
- * 
- * @role 점화 사용 가능 여부 확인 및 제한 로직
+ * @file ignitionLimits.ts
+ * @role 점화 사용 가능 여부 확인 및 제한 로직 유틸리티
+ * @input GameState, 점화 설정값
+ * @output 점화 가능 여부, 쿨다운 상태, XP 요구사항
+ * @dependencies GameState 타입, SETTING_DEFAULTS, IGNITION_DEFAULTS
  */
 
 import type { GameState } from '@/shared/types/domain';

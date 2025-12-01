@@ -1,9 +1,9 @@
 /**
- * TaskBreakdownModal
- *
- * @role AI가 생성한 작업 세분화 결과를 보여주고, 사용자가 수정해 활용하도록 돕는 모달
+ * @file TaskBreakdownModal.tsx
+ * @role AI가 생성한 작업 세분화 결과를 보여주고 사용자가 수정할 수 있는 모달
  * @input isOpen, onClose, onConfirm, initialText (AI 생성 결과)
- * @output 입력 텍스트, 선택된 작업 목록(체크박스 포함), 확인/취소 버튼
+ * @output 입력 텍스트, 선택 가능한 작업 목록 (체크박스), 확인/취소 버튼 UI
+ * @dependencies useTaskBreakdownStore, useSettingsStore, useWaifu
  */
 
 import { useEffect, useId, useRef, useState } from 'react';

@@ -1,3 +1,11 @@
+/**
+ * @file GlobalTaskBreakdown.tsx
+ * @role 전역 AI 작업 세분화 컴포넌트 (TaskBreakdownModal 래퍼)
+ * @input useTaskBreakdownStore에서 세분화 상태
+ * @output TaskBreakdownModal을 렌더링하고 확인 시 작업 추가 처리
+ * @dependencies useTaskBreakdownStore, useDailyData, useInboxStore
+ */
+
 import { useEffect } from 'react';
 import { useTaskBreakdownStore } from './stores/breakdownStore';
 import TaskBreakdownModal from './TaskBreakdownModal';
@@ -17,7 +25,9 @@ export default function GlobalTaskBreakdown() {
     const { addToast } = useXPToastStore();
     const { show: showWaifu } = useWaifuCompanionStore();
 
-    // Show toast when AI starts analyzing
+    /**
+     * AI 분석 시작 시 토스트 표시
+     */
     useEffect(() => {
         if (isLoading) {
             addToast(0, '🧠 AI가 작업을 분석 중입니다...');

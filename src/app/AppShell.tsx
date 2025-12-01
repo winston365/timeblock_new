@@ -53,6 +53,7 @@ import { RealityCheckModal } from '@/features/feedback/RealityCheckModal';
 import GlobalTaskBreakdown from '@/features/tasks/GlobalTaskBreakdown';
 import { XPParticleOverlay } from '@/features/gamification/components/XPParticleOverlay';
 import FloatingIgnitionTrigger from '@/features/ignition/components/FloatingIgnitionTrigger';
+import { MemoMissionModal } from '@/shared/components/MemoMissionModal';
 
 /**
  * 앱 셸 컴포넌트 - 전체 앱 레이아웃 및 초기화
@@ -258,6 +259,7 @@ export default function AppShell() {
       <RealityCheckModal />
       <GlobalTaskBreakdown />
       <XPParticleOverlay />
+      <MemoMissionModal />
       {!isFocusMode && <FloatingIgnitionTrigger />}
     </div>
   );

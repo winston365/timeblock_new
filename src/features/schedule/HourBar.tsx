@@ -1,7 +1,9 @@
 /**
- * HourBar - 1시간 단위 작업 구간 UI
- *
- * @role 타임블록 안의 1시간 구간을 시각화하고 작업을 빠르게 추가/정리한다.
+ * @file HourBar.tsx
+ * @role 1시간 단위 작업 구간 UI 컴포넌트
+ * @input hour (시간), blockId, tasks, tagId, 콜백 핸들러들
+ * @output 시간 범위 표시, 작업 카드 목록, 인라인 입력, 태그 선택 UI
+ * @dependencies TaskCard, useDragDropManager, dexieClient
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';

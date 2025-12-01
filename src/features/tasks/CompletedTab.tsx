@@ -1,7 +1,9 @@
 /**
- * CompletedTab
- *
+ * @file CompletedTab.tsx
  * @role 완료된 작업을 날짜별 타임라인 형태로 표시하는 탭
+ * @input useCompletedTasksStore에서 완료된 작업 데이터
+ * @output 날짜별 그룹화된 완료 작업 목록, XP 합계 UI
+ * @dependencies useCompletedTasksStore, calculateTaskXP, formatTime
  */
 
 import { useEffect } from 'react';

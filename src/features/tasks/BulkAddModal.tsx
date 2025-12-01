@@ -1,11 +1,9 @@
 /**
- * BulkAddModal
- *
- * @role 여러 작업을 한 번에 추가할 수 있는 대량 추가 모달 컴포넌트 (F1 단축키로 열기)
- * @input isOpen (boolean), onClose (function), onAddTasks (function)
- * @output 텍스트 입력 영역, 기본 설정 옵션, 파싱된 작업 미리보기, 추가 버튼을 포함한 모달 UI
- * @external_dependencies
- *   - TIME_BLOCKS, RESISTANCE_MULTIPLIERS: 도메인 타입 및 상수
+ * @file BulkAddModal.tsx
+ * @role 여러 작업을 한 번에 추가할 수 있는 대량 추가 모달 (F1 단축키)
+ * @input isOpen, onClose, onAddTasks
+ * @output 텍스트 입력 영역, 기본 설정, 파싱된 작업 미리보기, 추가 버튼 UI
+ * @dependencies TIME_BLOCKS, createTaskFromPartial
  */
 
 import { useState, useRef, useEffect, useId } from 'react';

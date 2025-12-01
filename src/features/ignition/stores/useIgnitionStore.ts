@@ -1,3 +1,11 @@
+/**
+ * @file useIgnitionStore.ts
+ * @role 점화 시스템 상태 관리 Zustand 스토어
+ * @input 사용자 상호작용, 설정값, 게임 상태
+ * @output 점화 UI 상태, 스피너/타이머 상태, 히스토리
+ * @dependencies zustand, gameStateRepository, settingsStore
+ */
+
 import { create } from 'zustand';
 import type { GameState, Task } from '@/shared/types/domain';
 import { checkIgnitionAvailability } from '../utils/ignitionLimits';

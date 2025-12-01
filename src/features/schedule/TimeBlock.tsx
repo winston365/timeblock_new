@@ -1,12 +1,9 @@
 /**
- * TimeBlock
- *
- * @role 시간대별 작업 목록을 표시하고 관리하는 타임블록 컴포넌트. 드래그앤드롭, 인라인 작업 생성, 잠금 기능 제공
- * @input block (시간대 정보), tasks (작업 목록), state (블록 상태), 각종 핸들러 함수들
- * @output 시간대 헤더, 작업 카드 목록, 인라인 입력 필드, 진행률 바를 포함한 블록 UI
- * @external_dependencies
- *   - TaskCard: 개별 작업 표시
- *   - utils: XP 계산 함수
+ * @file TimeBlock.tsx
+ * @role 시간대별 작업 목록을 표시하고 관리하는 타임블록 컴포넌트
+ * @input block (시간대 정보), tasks (작업 목록), state (블록 상태)
+ * @output 시간대 헤더, 작업 카드 목록, 인라인 입력 필드, 진행률 바 UI
+ * @dependencies TaskCard, TimeBlockHeader, TimeBlockContent, useDragDrop
  */
 
 import { useState, useEffect, memo, useMemo } from 'react';

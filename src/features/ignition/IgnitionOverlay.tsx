@@ -1,7 +1,9 @@
 /**
- * IgnitionOverlay - 점화 오버레이 메인 컴포넌트
- * 
- * @role 점화 시스템 UI 컨테이너 (SpinnerView / TimerView 전환)
+ * @file IgnitionOverlay.tsx
+ * @role 점화 시스템 메인 오버레이 컴포넌트 (SpinnerView / TimerView 전환)
+ * @input useIgnitionStore에서 점화 상태, useIgnitionPool에서 작업 풀
+ * @output 점화 스피너 또는 타이머 화면 UI
+ * @dependencies useIgnitionStore, useIgnitionPool, SpinnerView, TimerView
  * @refactored 2024-01 - 컴포넌트 분리 (SpinnerView, TimerView), 로직 분리 (useIgnitionPool)
  */
 
@@ -27,6 +29,13 @@ import { generateMicroStep } from '@/shared/services/ai/geminiApi';
 // Types
 import type { Task } from '@/shared/types/domain';
 
+/**
+ * 점화 오버레이 메인 컴포넌트
+ * 사용자가 시작하기 어려울 때 러넷 방식으로 작업을 선택하고
+ * 3분 타이머를 통해 집중을 도움주는 기능입니다.
+ *
+ * @returns {JSX.Element | null} 점화 오버레이 UI (isOpen이 false면 null)
+ */
 export default function IgnitionOverlay() {
   // ============================================================================
   // Store State

@@ -1,6 +1,16 @@
+/**
+ * DailyXPBar - 일일 XP 진행률 바
+ *
+ * @role 하루 전체 타임블록 XP 누적량을 시각적으로 표시
+ * @input timeBlockXP - 타임블록별 XP 누적값, goalPerBlock - 타임블록당 목표 XP
+ * @output XP 진행률 바 UI
+ * @dependencies TIME_BLOCKS
+ */
+
 import { memo } from 'react';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 
+/** DailyXPBar 컴포넌트 Props */
 interface DailyXPBarProps {
   /** 타임블록별 XP 누적값 */
   timeBlockXP?: Record<string, number>;
@@ -8,6 +18,11 @@ interface DailyXPBarProps {
   goalPerBlock?: number;
 }
 
+/**
+ * 일일 XP 진행률 바 컴포넌트
+ * @param props - DailyXPBarProps
+ * @returns XP 진행률을 나타내는 UI 컴포넌트
+ */
 function DailyXPBarComponent({
   timeBlockXP,
   goalPerBlock = 200,

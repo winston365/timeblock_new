@@ -1,7 +1,9 @@
 /**
- * CompletionCelebrationModal
- *
+ * @file CompletionCelebrationModal.tsx
  * @role 집중 타이머를 성공적으로 마쳤을 때 축하 UI를 표시
+ * @input task, xpGained, timerBonus, onClose
+ * @output 축하 메시지와 XP 획득 정보를 보여주는 모달 UI
+ * @dependencies react-dom/createPortal, Task 타입
  */
 
 import { createPortal } from 'react-dom';

@@ -1,14 +1,9 @@
 /**
- * InboxTab
- *
- * @role 시간 블록에 배치되지 않은 작업들을 관리하는 인박스 탭 컴포넌트
- * @input 없음
- * @output 인박스 작업 목록, 추가/편집/삭제 버튼, 드래그앤드롭 영역을 포함한 UI
- * @external_dependencies
- *   - useDailyData: 일일 데이터 및 작업 관리 훅
- *   - TaskCard: 개별 작업 카드 컴포넌트 (Tailwind)
- *   - TaskModal: 작업 추가/편집 모달 컴포넌트
- *   - useInboxStore: 인박스 상태 관리 스토어
+ * @file InboxTab.tsx
+ * @role 시간 블록에 배치되지 않은 작업들을 관리하는 인박스 탭
+ * @input useInboxStore에서 인박스 작업 데이터
+ * @output 인박스 작업 목록, 추가/편집/삭제 버튼, 드래그앤드롭 영역 UI
+ * @dependencies useInboxStore, TaskCard, TaskModal, useDragDropManager
  */
 
 import { useState, useEffect } from 'react';

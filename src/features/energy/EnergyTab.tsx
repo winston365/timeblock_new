@@ -1,4 +1,12 @@
-﻿import { useState, useMemo } from 'react';
+﻿/**
+ * @file EnergyTab.tsx
+ * @role 에너지 레벨 기록 및 시각화 탭 컴포넌트
+ * @input 없음 (useEnergy 훅에서 데이터 로드)
+ * @output 에너지 입력 폼, 상태 카드, 라인 차트, 히트맵, 기록 목록 UI
+ * @dependencies useEnergy 훅, EnergyLevel 타입
+ */
+
+import { useState, useMemo } from 'react';
 import { useEnergy } from '@/features/energy/hooks/useEnergy';
 
 const ACTIVITY_OPTIONS = [
@@ -16,6 +24,12 @@ const ACTIVITY_OPTIONS = [
 
 const TIME_BLOCKS = ['5-8', '8-11', '11-14', '14-17', '17-19', '19-24'];
 
+/**
+ * 에너지 탭 메인 컴포넌트
+ * 사용자의 에너지 레벨을 시간대별로 기록하고 시각화합니다.
+ *
+ * @returns {JSX.Element} 에너지 탭 UI
+ */
 export default function EnergyTab() {
   const {
     energyLevels,

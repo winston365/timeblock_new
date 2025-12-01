@@ -1,7 +1,9 @@
 /**
- * ScheduleView
- *
- * 타임블록 메인 화면 (일정/태스크 전체 보기)
+ * @file ScheduleView.tsx
+ * @role 타임블록 메인 화면 (일정/태스크 전체 보기)
+ * @input useDailyData에서 로드된 일일 데이터
+ * @output 타임블록 목록, 작업 모달, 집중 모드, 점화 오버레이 UI
+ * @dependencies useDailyData, TimeBlock, TaskModal, FocusView, IgnitionOverlay
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -29,6 +31,12 @@ const DEFAULT_WARMUP_PRESET: WarmupPresetItem[] = [
   { text: '물 마시기', baseDuration: 5, resistance: 'low' },
 ];
 
+/**
+ * 스케줄 뷰 메인 컴포넌트
+ * 하루의 타임블록을 보여주고 작업 관리 기능을 제공합니다.
+ *
+ * @returns {JSX.Element} 스케줄 뷰 UI
+ */
 export default function ScheduleView() {
   const {
     dailyData,

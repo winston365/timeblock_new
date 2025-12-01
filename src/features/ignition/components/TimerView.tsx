@@ -1,7 +1,9 @@
 /**
- * TimerView Component
- * 
- * @role 점화 타이머 화면 (선택된 작업 정보, AI 마이크로스텝, 타이머, 버튼)
+ * @file TimerView.tsx
+ * @role 점화 타이머 화면 컴포넌트
+ * @input selectedTask, microStepText, timerState, timeLeft, 콜백 함수들
+ * @output 선택된 작업 정보, AI 마이크로스텝, 타이머 디스플레이 UI
+ * @dependencies TaskModalInline, Task 타입
  */
 
 import type { Task, TimeBlockId } from '@/shared/types/domain';

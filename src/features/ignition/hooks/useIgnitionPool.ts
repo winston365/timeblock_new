@@ -1,9 +1,9 @@
 /**
- * useIgnitionPool Hook
- * 
- * @role 점화 스피너용 작업 풀 생성 및 가중치 계산
+ * @file useIgnitionPool.ts
+ * @role 점화 스피너용 작업 풀 생성 및 가중치 계산 훅
  * @input dailyData, inboxTasks
- * @output weightedPool, totalWeight, sortedTasks
+ * @output weightedPool(가중치 적용된 작업 풀), totalWeight, sortedTasks
+ * @dependencies useDailyData, inboxRepository
  */
 
 import { useMemo, useEffect, useState } from 'react';

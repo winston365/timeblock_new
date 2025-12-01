@@ -1,3 +1,11 @@
+/**
+ * @file energyStore.ts
+ * @role 에너지 레벨 상태 관리 Zustand 스토어
+ * @input energyRepository에서 로드된 에너지 데이터
+ * @output 에너지 상태, 로딩/에러 상태, CRUD 액션
+ * @dependencies zustand, energyRepository
+ */
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { EnergyLevel } from '@/shared/types/domain';

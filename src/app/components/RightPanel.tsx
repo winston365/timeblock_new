@@ -11,13 +11,23 @@ import ShopPanel from '@/features/shop/ShopPanel';
 import InventoryPanel from '@/features/inventory/InventoryPanel';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 
+/** RightPanel 컴포넌트 Props */
 interface RightPanelProps {
+  /** 현재 활성 탭 */
   activeTab: 'shop' | 'inventory';
+  /** 탭 변경 콜백 */
   onTabChange: (tab: 'shop' | 'inventory') => void;
+  /** 상점 구매 성공 시 콜백 */
   onShopPurchaseSuccess?: (message: string, waifuMessage?: string) => void;
+  /** 패널 접힘 상태 */
   collapsed?: boolean;
 }
 
+/**
+ * 우측 패널 컴포넌트
+ * @param props - RightPanelProps
+ * @returns 퀸스트/포인트 패널 UI
+ */
 export default function RightPanel({
   activeTab,
   onTabChange,

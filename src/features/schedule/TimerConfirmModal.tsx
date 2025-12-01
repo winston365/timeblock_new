@@ -1,7 +1,9 @@
 /**
- * TimerConfirmModal
- *
- * @role 타이머 사용 여부를 확인하는 Tailwind 기반 모달
+ * @file TimerConfirmModal.tsx
+ * @role 타이머 사용 여부를 확인하는 모달
+ * @input taskName, onConfirm(타이머 사용 여부 콜백)
+ * @output 타이머 사용 확인 모달 UI
+ * @dependencies react-dom/createPortal
  */
 
 import { createPortal } from 'react-dom';

@@ -1,7 +1,9 @@
 /**
- * MemoModal
- *
+ * @file MemoModal.tsx
  * @role 메모 내용을 크게 보고 편집할 수 있는 전용 모달
+ * @input memo (기존 메모), onSave, onClose
+ * @output 전체 화면 메모 편집 모달 UI
+ * @dependencies react-dom/createPortal
  */
 
 import { useState, useEffect, useRef } from 'react';

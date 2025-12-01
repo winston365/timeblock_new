@@ -19,11 +19,261 @@ import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { IDLE_FOCUS_DEFAULTS } from '@/shared/constants/defaults';
 
 // ============================================================================
+// 에러 타입 정의
+// ============================================================================
+
+interface ServiceError {
+    code: string;
+    message: string;
+    context?: Record<string, unknown>;
+    originalError?: unknown;
+}
+
+function createServiceError(
+    code: string,
+    message: string,
+    context?: Record<string, unknown>,
+    originalError?: unknown
+): ServiceError {
+    return { code, message, context, originalError };
+}
+
+// ============================================================================
 // 상수 정의
 // ============================================================================
 
 const COUNTDOWN_SECONDS = 5; // 카운트다운 시간
 const ACTIVITY_THROTTLE_MS = 1000; // 활동 감지 throttle (1초)
+
+// ============================================================================
+// 순수 함수 (Core Logic) - I/O 없음
+// ============================================================================
+
+/**
+ * 비활동 threshold를 분 단위에서 밀리초로 변환
+ * @pure
+ */
+function calculateThresholdMs(minutes: number): number {
+    return minutes * 60 * 1000;
+}
+
+/**
+ * 활동 이벤트가 throttle 조건을 만족하는지 판단
+ * @pure
+ */
+function shouldProcessActivity(
+    lastActivityTime: number,
+    currentTime: number,
+    throttleMs: number
+): boolean {
+    return currentTime - lastActivityTime >= throttleMs;
+}
+
+/**
+ * 비활동 감지 시 FocusMode로 전환해야 하는지 판단
+ * @pure
+ */
+function shouldActivateFocusMode(
+    isFocusModeActive: boolean,
+    isFeatureEnabled: boolean
+): { shouldActivate: boolean; skipReason: string | null } {
+    if (isFocusModeActive) {
+        return { shouldActivate: false, skipReason: 'Already in FocusMode' };
+    }
+    if (!isFeatureEnabled) {
+        return { shouldActivate: false, skipReason: 'Feature disabled in settings' };
+    }
+    return { shouldActivate: true, skipReason: null };
+}
+
+// ============================================================================
+// Shell 함수 (I/O 래퍼) - Store 접근 및 에러 처리
+// ============================================================================
+
+/**
+ * 설정에서 threshold 분 값을 읽어옴 (I/O)
+ * @shell
+ */
+function readThresholdMinutesFromSettings(): number {
+    try {
+        const settings = useSettingsStore.getState().settings;
+        return settings?.idleFocusModeMinutes ?? IDLE_FOCUS_DEFAULTS.minutes;
+    } catch (error) {
+        const serviceError = createServiceError(
+            'SETTINGS_READ_ERROR',
+            'Failed to read idleFocusModeMinutes from settings',
+            { fallbackValue: IDLE_FOCUS_DEFAULTS.minutes },
+            error
+        );
+        console.error('[IdleFocusMode]', serviceError);
+        return IDLE_FOCUS_DEFAULTS.minutes;
+    }
+}
+
+/**
+ * FocusMode 활성화 상태 읽기 (I/O)
+ * @shell
+ */
+function readFocusModeState(): boolean {
+    try {
+        return useFocusModeStore.getState().isFocusMode;
+    } catch (error) {
+        const serviceError = createServiceError(
+            'FOCUS_STORE_READ_ERROR',
+            'Failed to read isFocusMode from store',
+            { fallbackValue: false },
+            error
+        );
+        console.error('[IdleFocusMode]', serviceError);
+        return false;
+    }
+}
+
+/**
+ * 기능 활성화 여부 읽기 (I/O)
+ * @shell
+ */
+function readIdleFocusModeEnabled(): boolean {
+    try {
+        const settings = useSettingsStore.getState().settings;
+        return settings?.idleFocusModeEnabled ?? false;
+    } catch (error) {
+        const serviceError = createServiceError(
+            'SETTINGS_READ_ERROR',
+            'Failed to read idleFocusModeEnabled from settings',
+            { fallbackValue: false },
+            error
+        );
+        console.error('[IdleFocusMode]', serviceError);
+        return false;
+    }
+}
+
+/**
+ * FocusMode 활성화 (I/O)
+ * @shell
+ */
+function writeFocusModeState(enabled: boolean): void {
+    try {
+        const { setFocusMode } = useFocusModeStore.getState();
+        setFocusMode(enabled);
+    } catch (error) {
+        const serviceError = createServiceError(
+            'FOCUS_STORE_WRITE_ERROR',
+            'Failed to set FocusMode state',
+            { attemptedValue: enabled },
+            error
+        );
+        console.error('[IdleFocusMode]', serviceError);
+        throw serviceError;
+    }
+}
+
+/**
+ * 토스트 표시 - 카운트다운 (I/O)
+ * @shell
+ */
+function showCountdownToast(remainingSeconds: number): string | null {
+    try {
+        return toast.loading(
+            `🎯 ${remainingSeconds}초 후 집중 모드로 전환합니다...`,
+            {
+                duration: Infinity,
+                id: 'idle-focus-countdown',
+            }
+        );
+    } catch (error) {
+        const serviceError = createServiceError(
+            'TOAST_ERROR',
+            'Failed to show countdown toast',
+            { remainingSeconds },
+            error
+        );
+        console.error('[IdleFocusMode]', serviceError);
+        return null;
+    }
+}
+
+/**
+ * 토스트 업데이트 - 카운트다운 (I/O)
+ * @shell
+ */
+function updateCountdownToast(remainingSeconds: number): void {
+    try {
+        toast.loading(
+            `🎯 ${remainingSeconds}초 후 집중 모드로 전환합니다...`,
+            { id: 'idle-focus-countdown' }
+        );
+    } catch (error) {
+        const serviceError = createServiceError(
+            'TOAST_ERROR',
+            'Failed to update countdown toast',
+            { remainingSeconds },
+            error
+        );
+        console.error('[IdleFocusMode]', serviceError);
+    }
+}
+
+/**
+ * 토스트 닫기 (I/O)
+ * @shell
+ */
+function dismissToast(toastId: string): void {
+    try {
+        toast.dismiss(toastId);
+    } catch (error) {
+        const serviceError = createServiceError(
+            'TOAST_ERROR',
+            'Failed to dismiss toast',
+            { toastId },
+            error
+        );
+        console.error('[IdleFocusMode]', serviceError);
+    }
+}
+
+/**
+ * 성공 토스트 표시 (I/O)
+ * @shell
+ */
+function showSuccessToast(message: string, icon: string): void {
+    try {
+        toast.success(message, {
+            duration: 3000,
+            icon,
+        });
+    } catch (error) {
+        const serviceError = createServiceError(
+            'TOAST_ERROR',
+            'Failed to show success toast',
+            { message },
+            error
+        );
+        console.error('[IdleFocusMode]', serviceError);
+    }
+}
+
+/**
+ * 정보 토스트 표시 (I/O)
+ * @shell
+ */
+function showInfoToast(message: string, icon: string): void {
+    try {
+        toast(message, {
+            duration: 2000,
+            icon,
+        });
+    } catch (error) {
+        const serviceError = createServiceError(
+            'TOAST_ERROR',
+            'Failed to show info toast',
+            { message },
+            error
+        );
+        console.error('[IdleFocusMode]', serviceError);
+    }
+}
 
 // ============================================================================
 // Service 클래스
@@ -42,9 +292,8 @@ class IdleFocusModeService {
      * 사용자 설정값을 항상 존중함 (분 단위 → 밀리초 변환)
      */
     private getThresholdMs(): number {
-        const settings = useSettingsStore.getState().settings;
-        const minutes = settings?.idleFocusModeMinutes ?? IDLE_FOCUS_DEFAULTS.minutes;
-        const thresholdMs = minutes * 60 * 1000;
+        const minutes = readThresholdMinutesFromSettings();
+        const thresholdMs = calculateThresholdMs(minutes);
         
         console.log(`[IdleFocusMode] getThresholdMs: ${minutes}분 = ${thresholdMs}ms`);
         return thresholdMs;
@@ -108,18 +357,19 @@ class IdleFocusModeService {
      * 비활동 감지 시 호출
      */
     private onIdleDetected(): void {
-        // 이미 FocusMode면 무시
-        const { isFocusMode } = useFocusModeStore.getState();
-        if (isFocusMode) {
-            console.log('[IdleFocusMode] Already in FocusMode, skipping');
-            this.startIdleTimer();
-            return;
-        }
+        const isFocusModeActive = readFocusModeState();
+        const isFeatureEnabled = readIdleFocusModeEnabled();
+        
+        const { shouldActivate, skipReason } = shouldActivateFocusMode(
+            isFocusModeActive,
+            isFeatureEnabled
+        );
 
-        // 설정에서 활성화 여부 재확인
-        const settings = useSettingsStore.getState().settings;
-        if (!settings?.idleFocusModeEnabled) {
-            console.log('[IdleFocusMode] Feature disabled in settings, skipping');
+        if (!shouldActivate) {
+            console.log(`[IdleFocusMode] ${skipReason}, skipping`);
+            if (isFocusModeActive) {
+                this.startIdleTimer();
+            }
             return;
         }
 
@@ -135,13 +385,7 @@ class IdleFocusModeService {
         let remaining = COUNTDOWN_SECONDS;
 
         // 초기 토스트 표시
-        this.countdownToastId = toast.loading(
-            `🎯 ${remaining}초 후 집중 모드로 전환합니다...`,
-            {
-                duration: Infinity,
-                id: 'idle-focus-countdown',
-            }
-        );
+        this.countdownToastId = showCountdownToast(remaining);
 
         this.countdownTimer = setInterval(() => {
             remaining--;
@@ -152,10 +396,7 @@ class IdleFocusModeService {
                 this.activateFocusMode();
             } else {
                 // 카운트다운 업데이트
-                toast.loading(
-                    `🎯 ${remaining}초 후 집중 모드로 전환합니다...`,
-                    { id: 'idle-focus-countdown' }
-                );
+                updateCountdownToast(remaining);
             }
         }, 1000);
     }
@@ -172,7 +413,7 @@ class IdleFocusModeService {
         }
 
         if (this.countdownToastId) {
-            toast.dismiss('idle-focus-countdown');
+            dismissToast('idle-focus-countdown');
             this.countdownToastId = null;
         }
     }
@@ -181,15 +422,13 @@ class IdleFocusModeService {
      * FocusMode 활성화
      */
     private activateFocusMode(): void {
-        const { setFocusMode } = useFocusModeStore.getState();
-        setFocusMode(true);
-
-        toast.success('🎯 집중 모드가 활성화되었습니다!', {
-            duration: 3000,
-            icon: '🔥',
-        });
-
-        console.log('[IdleFocusMode] FocusMode activated');
+        try {
+            writeFocusModeState(true);
+            showSuccessToast('🎯 집중 모드가 활성화되었습니다!', '🔥');
+            console.log('[IdleFocusMode] FocusMode activated');
+        } catch (error) {
+            console.error('[IdleFocusMode] Failed to activate FocusMode:', error);
+        }
 
         // 다음 비활동 감지를 위해 타이머 리셋
         this.startIdleTimer();
@@ -199,14 +438,34 @@ class IdleFocusModeService {
      * 활동 감지 이벤트 리스너 등록
      */
     private attachActivityListeners(): void {
-        document.addEventListener('keydown', this.handleActivity);
+        try {
+            document.addEventListener('keydown', this.handleActivity);
+        } catch (error) {
+            const serviceError = createServiceError(
+                'EVENT_LISTENER_ERROR',
+                'Failed to attach activity listeners',
+                {},
+                error
+            );
+            console.error('[IdleFocusMode]', serviceError);
+        }
     }
 
     /**
      * 활동 감지 이벤트 리스너 제거
      */
     private detachActivityListeners(): void {
-        document.removeEventListener('keydown', this.handleActivity);
+        try {
+            document.removeEventListener('keydown', this.handleActivity);
+        } catch (error) {
+            const serviceError = createServiceError(
+                'EVENT_LISTENER_ERROR',
+                'Failed to detach activity listeners',
+                {},
+                error
+            );
+            console.error('[IdleFocusMode]', serviceError);
+        }
     }
 
     /**
@@ -217,9 +476,9 @@ class IdleFocusModeService {
             return;
         }
 
-        // Throttle: 1초 이내 중복 호출 무시
+        // Throttle 체크 - 순수 함수 사용
         const now = Date.now();
-        if (now - this.lastActivityTime < ACTIVITY_THROTTLE_MS) {
+        if (!shouldProcessActivity(this.lastActivityTime, now, ACTIVITY_THROTTLE_MS)) {
             return;
         }
         this.lastActivityTime = now;
@@ -228,11 +487,8 @@ class IdleFocusModeService {
         if (this.isInCountdown) {
             console.log('[IdleFocusMode] Activity during countdown - cancelling');
             this.cancelCountdown();
-            toast.dismiss('idle-focus-countdown');
-            toast('⏸️ 집중 모드 전환이 취소되었습니다', {
-                duration: 2000,
-                icon: '👋',
-            });
+            dismissToast('idle-focus-countdown');
+            showInfoToast('⏸️ 집중 모드 전환이 취소되었습니다', '👋');
         }
 
         // 타이머 새로 시작

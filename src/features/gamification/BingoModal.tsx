@@ -1,3 +1,11 @@
+/**
+ * @file BingoModal.tsx
+ * @role 데일리 빙고 게임 모달 컴포넌트
+ * @input open, onClose, cells(빙고 셀 설정), maxLines, lineRewardXP, initialProgress
+ * @output 3x3 빙고 그리드, 진행 상태, 완료된 라인 표시 UI
+ * @dependencies useGameStateStore, Firebase sync, dexieClient
+ */
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { DEFAULT_BINGO_CELLS, SETTING_DEFAULTS } from '@/shared/constants/defaults';

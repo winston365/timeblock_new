@@ -1,3 +1,12 @@
+/**
+ * LeftSidebar - 좌측 사이드바 네비게이션
+ *
+ * @role 목표, 에너지, 완료, 인박스 탭을 포함한 좌측 사이드바
+ * @input activeTab - 현재 활성 탭, onTabChange - 탭 변경 핸들러, collapsed - 접힘 상태
+ * @output 탭 네비게이션 및 콘텐츠 UI
+ * @dependencies InboxTab, CompletedTab, EnergyTab, GoalPanel, GoalModal, goalStore
+ */
+
 import { useEffect, useMemo, useState } from 'react';
 import InboxTab from '@/features/tasks/InboxTab';
 import CompletedTab from '@/features/tasks/CompletedTab';
@@ -7,12 +16,17 @@ import GoalModal from '@/features/goals/GoalModal';
 import type { DailyGoal } from '@/shared/types/domain';
 import { useGoalStore } from '@/shared/stores/goalStore';
 
+/** LeftSidebar 컴포넌트 Props */
 interface LeftSidebarProps {
+  /** 현재 활성 탭 */
   activeTab: 'today' | 'energy' | 'completed' | 'inbox';
+  /** 탭 변경 콜백 */
   onTabChange: (tab: 'today' | 'energy' | 'completed' | 'inbox') => void;
+  /** 사이드바 접힘 상태 */
   collapsed?: boolean;
 }
 
+/** 탭 정의 */
 const tabs = [
   { id: 'today' as const, icon: '📋', label: '목표' },
   { id: 'energy' as const, icon: '⚡️', label: '에너지' },
@@ -20,6 +34,11 @@ const tabs = [
   { id: 'inbox' as const, icon: '📥', label: '인박스' },
 ];
 
+/**
+ * 좌측 사이드바 컴포넌트
+ * @param props - LeftSidebarProps
+ * @returns 탭 네비게이션 및 콘텐츠 UI
+ */
 export default function LeftSidebar({ activeTab, onTabChange, collapsed = false }: LeftSidebarProps) {
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<DailyGoal | undefined>(undefined);

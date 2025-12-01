@@ -1,4 +1,12 @@
-import React, { useEffect } from 'react';
+/**
+ * @file XPParticleOverlay.tsx
+ * @role XP 획득 시 화면에 파티클 애니메이션을 표시하는 오버레이
+ * @input useXPParticleStore에서 파티클 데이터
+ * @output 화면 전역에 표시되는 XP 파티클 애니메이션
+ * @dependencies framer-motion, xpParticleStore
+ */
+
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useXPParticleStore } from '@/features/gamification/stores/xpParticleStore';
 

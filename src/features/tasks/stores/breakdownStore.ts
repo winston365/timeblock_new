@@ -1,3 +1,11 @@
+/**
+ * @file breakdownStore.ts
+ * @role AI 작업 세분화 상태 관리 Zustand 스토어
+ * @input 작업 데이터, API 키, 호감도
+ * @output 세분화 모달 상태 (isOpen, isLoading, breakdownText), 트리거 함수
+ * @dependencies zustand, generateTaskBreakdown
+ */
+
 import { create } from 'zustand';
 import { Task } from '@/shared/types/domain';
 import { generateTaskBreakdown } from '@/shared/services/ai/geminiApi';

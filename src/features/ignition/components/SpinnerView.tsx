@@ -1,7 +1,9 @@
 /**
- * SpinnerView Component
- * 
- * @role 점화 스피너 화면 (확률 분포 패널 + 스피너 + 히스토리)
+ * @file SpinnerView.tsx
+ * @role 점화 스피너 화면 컴포넌트
+ * @input weightedPool, totalWeight, sortedTasks, history, pendingSelection
+ * @output 확률 분포 패널, 스피너 컴포넌트, 최근 기록 패널 UI
+ * @dependencies TaskSpinner, WeightedTask 타입
  */
 
 import { useCallback } from 'react';

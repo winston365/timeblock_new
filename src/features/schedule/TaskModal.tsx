@@ -1,11 +1,9 @@
 /**
- * TaskModal
- *
- * @role 작업 추가/수정을 위한 모달 폼 컴포넌트. 제목, 메모, 예상 시간, 난이도 입력 제공
- * @input task (수정할 작업 또는 null), initialBlockId (초기 블록 ID), onSave (저장 핸들러), onClose (닫기 핸들러)
- * @output 작업 입력 폼 모달
- * @external_dependencies
- *   - utils: 조정된 시간 계산 함수
+ * @file TaskModal.tsx
+ * @role 작업 추가/수정을 위한 모달 폼 컴포넌트
+ * @input task (수정할 작업 또는 null), initialBlockId, onSave, onClose
+ * @output 작업 입력 폼 모달 (제목, 메모, 예상 시간, 난이도, 준비물)
+ * @dependencies useSettingsStore, loadGlobalGoals, MemoModal, useTaskBreakdownStore
  */
 
 import { useState, useEffect, useRef } from 'react';

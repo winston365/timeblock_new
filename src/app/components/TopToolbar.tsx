@@ -1,5 +1,10 @@
 /**
- * TopToolbar - 상단 툴바 (에너지/XP/와이푸 상태 + 주요 액션)
+ * TopToolbar - 상단 툴바
+ *
+ * @role 에너지/XP/와이푸 상태 표시 및 주요 액션 버튼 제공
+ * @input gameState - 게임 상태, 콜백 함수들
+ * @output 툴바 UI (통계, 빙고, 와이푸, 템플릿, AI채팅, 설정 버튼)
+ * @dependencies 다수 스토어 및 서비스
  */
 
 import { useState } from 'react';
@@ -29,13 +34,23 @@ import { getLocalDate } from '@/shared/lib/utils';
 import { db } from '@/data/db/dexieClient';
 import type { BingoProgress } from '@/shared/types/domain';
 
+/** TopToolbar 컴포넌트 Props */
 interface TopToolbarProps {
+  /** 게임 상태 데이터 */
   gameState: GameState | null;
+  /** Gemini 채팅 모달 열기 콜백 */
   onOpenGeminiChat?: () => void;
+  /** 템플릿 모달 열기 콜백 */
   onOpenTemplates?: () => void;
+  /** 설정 모달 열기 콜백 */
   onOpenSettings?: () => void;
 }
 
+/**
+ * 상단 툴바 컴포넌트
+ * @param props - TopToolbarProps
+ * @returns 툴바 UI
+ */
 export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplates, onOpenSettings }: TopToolbarProps) {
   const { currentEnergy } = useEnergy();
   const { waifuState, currentMood } = useWaifu();
