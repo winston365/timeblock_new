@@ -66,6 +66,7 @@ export default function TaskCard({
   const [isDragging, setIsDragging] = useState(false);
   const [showMemoModal, setShowMemoModal] = useState(false);
   const [showMemoMissionModal, setShowMemoMissionModal] = useState(false);
+  const [initialMemoLength, setInitialMemoLength] = useState(0);
   const [memoMissionStartTime, setMemoMissionStartTime] = useState<number | null>(null);
   const [memoMissionElapsed, setMemoMissionElapsed] = useState(0);
   const [memoMissionText, setMemoMissionText] = useState(task.memo || '');
@@ -109,10 +110,10 @@ export default function TaskCard({
   const durationOptions = [5, 10, 15, 30, 45, 60];
   const hasOpenPicker = showDurationPicker || showResistancePicker;
   const memoMissionCharCount = memoMissionText.length;
-  const memoMissionTrimmedCount = memoMissionText.trim().length;
+  const memoMissionAddedCount = Math.max(0, memoMissionCharCount - initialMemoLength);
   const memoMissionTimeMet = memoMissionElapsed >= 60;
-  const memoMissionTextMet = memoMissionTrimmedCount >= 30;
-  const memoMissionReward = memoMissionTrimmedCount >= 200 ? 40 : 20;
+  const memoMissionTextMet = memoMissionAddedCount >= 30;
+  const memoMissionReward = memoMissionAddedCount >= 200 ? 40 : 20;
   const memoMissionEligible = memoMissionTimeMet && memoMissionTextMet;
   const memoMissionProgress = Math.min((memoMissionElapsed / 60) * 100, 100);
 
@@ -193,7 +194,9 @@ export default function TaskCard({
     setShowMemoMissionModal(true);
     setMemoMissionStartTime(Date.now());
     setMemoMissionElapsed(0);
-    setMemoMissionText(task.memo || '');
+    const currentMemo = task.memo || '';
+    setMemoMissionText(currentMemo);
+    setInitialMemoLength(currentMemo.length);
   };
 
   const handleCloseMemoMission = () => {
@@ -305,10 +308,10 @@ export default function TaskCard({
               <div className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2">
                 <div className="flex items-center gap-2">
                   <span>{memoMissionTextMet ? '✅' : '✍️'}</span>
-                  <span>30자 이상 작성</span>
+                  <span>추가 30자 이상</span>
                 </div>
                 <span className={memoMissionTextMet ? 'text-emerald-200 font-semibold' : 'text-white/70'}>
-                  {memoMissionCharCount}자
+                  +{memoMissionAddedCount}자
                 </span>
               </div>
               <div className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2">
@@ -328,7 +331,7 @@ export default function TaskCard({
               <div className="space-y-1">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">20XP Chance</p>
                 <h3 className="text-xl font-bold text-[var(--color-text)]">1분 메모 챌린지</h3>
-                <p className="text-sm text-[var(--color-text-tertiary)]">1분 이상, 30자 이상 → 20XP / 200자 이상 → 40XP</p>
+                <p className="text-sm text-[var(--color-text-tertiary)]">1분 이상, 추가 30자 이상 → 20XP / 추가 200자 이상 → 40XP</p>
               </div>
               <button
                 type="button"
@@ -351,10 +354,10 @@ export default function TaskCard({
             <div className="flex flex-wrap items-center justify-between gap-3 text-[12px] text-[var(--color-text-tertiary)]">
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-[var(--color-bg-tertiary)] px-2 py-1 font-semibold text-[var(--color-text)]">
-                  {memoMissionCharCount}자
+                  +{memoMissionAddedCount}자 (총 {memoMissionCharCount}자)
                 </span>
                 <span className={memoMissionTextMet ? 'text-emerald-400' : 'text-[var(--color-text-tertiary)]'}>
-                  {memoMissionTextMet ? '글자 조건 달성!' : '30자 이상 작성하면 조건 충족'}
+                  {memoMissionTextMet ? '글자 조건 달성!' : '추가 30자 이상 작성하면 조건 충족'}
                 </span>
               </div>
               <div className="flex items-center gap-2">

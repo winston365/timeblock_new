@@ -41,7 +41,7 @@ export function FocusTimer({
 
     return (
         <motion.div
-            className={`relative flex items-center justify-center transition-all duration-700`}
+            className={`relative flex items-center justify-center`}
             animate={isRunning ? {
                 scale: [1, 1.02, 1],
             } : {
@@ -88,20 +88,22 @@ export function FocusTimer({
 
             {/* Text Content */}
             <div className="absolute flex flex-col items-center text-center">
-                {children ? children : (
-                    <>
-                        <span className="text-sm font-medium text-white/50">남은 시간</span>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-5xl font-bold text-white tracking-tighter">
-                                {Math.floor(remainingMinutes / 60) > 0 && (
-                                    <span className="mr-2">{Math.floor(remainingMinutes / 60)}<span className="text-2xl text-white/50">시간</span></span>
-                                )}
-                                {remainingMinutes % 60}
-                            </span>
-                            <span className="text-2xl font-medium text-white/50">분</span>
-                        </div>
-                    </>
-                )}
+                {
+                    children ? children : (
+                        <>
+                            <span className="text-sm font-medium text-white/50">남은 시간</span>
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-5xl font-bold text-white tracking-tighter">
+                                    {Math.floor(remainingMinutes / 60) > 0 && (
+                                        <span className="mr-2">{Math.floor(remainingMinutes / 60)}<span className="text-2xl text-white/50">시간</span></span>
+                                    )}
+                                    {remainingMinutes % 60}
+                                </span>
+                                <span className="text-2xl font-medium text-white/50">분</span>
+                            </div>
+                        </>
+                    )
+                }
             </div>
         </motion.div>
     );
