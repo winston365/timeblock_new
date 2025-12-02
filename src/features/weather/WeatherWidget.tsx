@@ -14,7 +14,7 @@
  *   - lucide-react: 아이콘
  */
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useWeatherStore } from './stores/weatherStore';
 import { getWeatherInsight, type WeatherInsightResult, type OutfitCard } from './services/weatherService';
 import { RefreshCw, Sparkles } from 'lucide-react';
@@ -33,6 +33,20 @@ export default function WeatherWidget() {
     const autoRefreshSlots = useMemo(() => new Set([9, 11, 12, 15]), []);
     const lastAutoHourRef = useRef<number | null>(null);
     const lastUpdatedDateRef = useRef<string | null>(null);
+
+    // ESC 키로 모달 닫기
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            setIsExpanded(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (isExpanded) {
+            document.addEventListener('keydown', handleKeyDown);
+            return () => document.removeEventListener('keydown', handleKeyDown);
+        }
+    }, [isExpanded, handleKeyDown]);
 
     const formatLastUpdated = () => {
         if (!lastUpdated) return '업데이트: -';
