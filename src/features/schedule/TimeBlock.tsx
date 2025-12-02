@@ -181,7 +181,7 @@ const TimeBlock = memo(function TimeBlock({
 
   // Updated container styles: subtle gradient glow + status spine
   const blockClassName = [
-    'relative flex min-h-[72px] flex-col rounded-2xl border transition-all duration-300',
+    'relative flex min-h-[80px] flex-col rounded-2xl border transition-all duration-300',
     'bg-[var(--color-bg-surface)]',
     isCurrentBlock
       ? 'border-transparent shadow-[0_10px_30px_rgba(0,0,0,0.3)]'

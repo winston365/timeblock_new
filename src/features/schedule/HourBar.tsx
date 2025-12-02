@@ -308,7 +308,7 @@ export default function HourBar({
 
   const containerClasses = [
     'rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] transition hover:border-[var(--color-primary)]',
-    isCollapsed ? 'px-2 py-1.5' : 'px-3 py-2'
+    isCollapsed ? 'px-3 py-2' : 'px-4 py-3'
   ].join(' ');
 
   const plannedFill = useMemo(() => {
@@ -341,21 +341,21 @@ export default function HourBar({
       data-hour={hour}
     >
       <div
-        className={`${isCollapsed ? 'mb-0.5' : 'mb-1.5'} flex cursor-pointer flex-wrap items-center justify-between gap-2 rounded-md px-1.5 py-0.5 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-tertiary)]/40`}
+        className={`${isCollapsed ? 'mb-1' : 'mb-2'} flex cursor-pointer flex-wrap items-center justify-between gap-3 rounded-md px-2 py-1 text-base font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-tertiary)]/40`}
         onClick={toggleCollapse}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={toggleCollapse}
-            className="flex items-center justify-center rounded p-0.5 text-[var(--color-text-tertiary)] transition hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)]"
+            className="flex items-center justify-center rounded p-1 text-[var(--color-text-tertiary)] transition hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)]"
             aria-label={isCollapsed ? '펼치기' : '접기'}
           >
             <span className={`transform transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}>
               ▼
             </span>
           </button>
-          <span className="text-sm font-semibold text-[var(--color-text)]">{formatHourRange()}</span>
+          <span className="text-base font-bold text-[var(--color-text)]">{formatHourRange()}</span>
           <div className="relative">
             <button
               type="button"
@@ -436,9 +436,9 @@ export default function HourBar({
             )}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1 text-right text-xs font-medium sm:flex-row sm:items-center sm:gap-2">
+        <div className="flex flex-col items-end gap-1.5 text-right text-sm font-medium sm:flex-row sm:items-center sm:gap-3">
           {hourStatus.type === 'current' ? (
-            <span className="flex items-center gap-1 font-semibold text-[var(--color-primary)]">
+            <span className="flex items-center gap-1.5 font-semibold text-[var(--color-primary)]">
               <span role="img" aria-label="clock">
                 ⏱
               </span>
@@ -446,16 +446,16 @@ export default function HourBar({
             </span>
           ) : (
             <span
-              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusBadgeClasses[hourStatus.type]}`}
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClasses[hourStatus.type]}`}
             >
               {hourStatus.label}
             </span>
           )}
           {hourStatus.type === 'upcoming' && hourStatus.detail && (
-            <span className="text-[11px] font-normal text-[var(--color-text-tertiary)]">{hourStatus.detail}</span>
+            <span className="text-xs font-normal text-[var(--color-text-tertiary)]">{hourStatus.detail}</span>
           )}
           {!isLocked && (
-            <span className="text-[11px] font-normal text-[var(--color-text-tertiary)]">
+            <span className="text-xs font-normal text-[var(--color-text-tertiary)]">
               Enter로 바로 작업을 추가할 수 있어요
             </span>
           )}

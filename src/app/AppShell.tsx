@@ -40,6 +40,7 @@ import { DailyXPBar } from './components/DailyXPBar';
 import { WaifuAside } from './components/WaifuAside';
 import { AppToaster } from './components/AppToaster';
 import { LoadingScreen } from './components/LoadingScreen';
+import { TimelineView } from '@/features/schedule/TimelineView';
 
 // Modal Components
 import GeminiFullscreenChat from '@/features/gemini/GeminiFullscreenChat';
@@ -80,9 +81,11 @@ export default function AppShell() {
   const {
     effectiveLeftCollapsed,
     effectiveRightCollapsed,
+    effectiveTimelineVisible,
     gridTemplateColumns,
     toggleLeftSidebar,
     toggleRightPanels,
+    toggleTimeline,
   } = usePanelLayout(isFocusMode);
 
   // 모달 상태 관리
@@ -181,6 +184,8 @@ export default function AppShell() {
             onOpenGeminiChat={modals.openGeminiChat}
             onOpenTemplates={modals.openTemplates}
             onOpenSettings={modals.openSettings}
+            timelineVisible={effectiveTimelineVisible}
+            onToggleTimeline={toggleTimeline}
           />
           <DailyXPBar
             timeBlockXP={gameState?.timeBlockXP}
@@ -206,6 +211,7 @@ export default function AppShell() {
           onTabChange={setActiveTab} 
           collapsed={effectiveLeftCollapsed} 
         />
+        {effectiveTimelineVisible ? <TimelineView /> : <div className="w-0 overflow-hidden" />}
         <CenterContent activeTab={activeTab} dailyData={null} />
         <RightPanel
           activeTab={rightPanelTab}

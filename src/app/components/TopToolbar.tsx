@@ -45,6 +45,10 @@ interface TopToolbarProps {
   onOpenTemplates?: () => void;
   /** 설정 모달 열기 콜백 */
   onOpenSettings?: () => void;
+  /** 타임라인 뷰 표시 상태 */
+  timelineVisible?: boolean;
+  /** 타임라인 뷰 토글 콜백 */
+  onToggleTimeline?: () => void;
 }
 
 /**
@@ -52,7 +56,7 @@ interface TopToolbarProps {
  * @param props - TopToolbarProps
  * @returns 툴바 UI
  */
-export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplates, onOpenSettings }: TopToolbarProps) {
+export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplates, onOpenSettings, timelineVisible, onToggleTimeline }: TopToolbarProps) {
   const { waifuState, currentMood } = useWaifu();
   const { show } = useWaifuCompanionStore();
   const { isLoading: aiAnalyzing, cancelBreakdown } = useTaskBreakdownStore();
@@ -292,6 +296,17 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
 
           {/* Schedule View 컨트롤 (압축형) */}
           <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-1.5 py-0.5">
+            <button
+              type="button"
+              onClick={onToggleTimeline}
+              className={`rounded px-2 py-1 text-xs transition ${timelineVisible
+                ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
+                }`}
+              title={timelineVisible ? '타임라인 숨기기' : '타임라인 보기'}
+            >
+              📅
+            </button>
             <button
               type="button"
               onClick={openWarmupModal}

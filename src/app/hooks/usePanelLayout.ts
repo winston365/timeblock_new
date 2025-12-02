@@ -5,6 +5,7 @@
  * @role 패널 레이아웃 상태 관리
  * @responsibilities
  *   - 좌/우 패널 접힘 상태 관리
+ *   - 타임라인 뷰 표시/숨김 상태 관리
  *   - Dexie systemState 영속화
  *   - 반응형 레이아웃 (창 크기에 따른 자동 패널 접기)
  *   - 집중 모드 적용
@@ -23,21 +24,28 @@ interface PanelLayoutState {
   leftSidebarCollapsed: boolean;
   /** 우측 패널 접힘 상태 (사용자 설정) */
   rightPanelsCollapsed: boolean;
+  /** 타임라인 뷰 표시 상태 */
+  timelineVisible: boolean;
   /** 실제 좌측 접힘 상태 (집중 모드 적용) */
   effectiveLeftCollapsed: boolean;
   /** 실제 우측 접힘 상태 (집중 모드 적용) */
   effectiveRightCollapsed: boolean;
+  /** 실제 타임라인 표시 상태 (집중 모드 적용) */
+  effectiveTimelineVisible: boolean;
   /** CSS Grid 템플릿 컬럼 값 */
   gridTemplateColumns: string;
   /** 좌측 사이드바 토글 함수 */
   toggleLeftSidebar: () => void;
   /** 우측 패널 토글 함수 */
   toggleRightPanels: () => void;
+  /** 타임라인 뷰 토글 함수 */
+  toggleTimeline: () => void;
 }
 
 // Dexie systemState 키
 const LEFT_SIDEBAR_KEY = 'leftSidebarCollapsed';
 const RIGHT_PANELS_KEY = 'rightPanelsCollapsed';
+const TIMELINE_VISIBLE_KEY = 'timelineVisible';
 
 /**
  * 패널 레이아웃 관리 훅
@@ -53,6 +61,7 @@ export function usePanelLayout(isFocusMode: boolean): PanelLayoutState {
   // 패널 접힘 상태 (초기값 false, Dexie에서 로드 후 업데이트)
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [rightPanelsCollapsed, setRightPanelsCollapsed] = useState(false);
+  const [timelineVisible, setTimelineVisible] = useState(true); // 기본값: 표시
   const [initialized, setInitialized] = useState(false);
 
   // Dexie에서 초기값 로드
@@ -61,12 +70,17 @@ export function usePanelLayout(isFocusMode: boolean): PanelLayoutState {
       try {
         const leftState = await db.systemState.get(LEFT_SIDEBAR_KEY);
         const rightState = await db.systemState.get(RIGHT_PANELS_KEY);
+        const timelineState = await db.systemState.get(TIMELINE_VISIBLE_KEY);
         
         if (leftState?.value === true) {
           setLeftSidebarCollapsed(true);
         }
         if (rightState?.value === true) {
           setRightPanelsCollapsed(true);
+        }
+        // 타임라인은 명시적으로 false인 경우에만 숨김 (기본 true)
+        if (timelineState?.value === false) {
+          setTimelineVisible(false);
         }
       } catch (error) {
         console.error('Failed to load panel layout from Dexie:', error);
@@ -126,20 +140,23 @@ export function usePanelLayout(isFocusMode: boolean): PanelLayoutState {
   // Focus Mode 적용
   const effectiveLeftCollapsed = leftSidebarCollapsed || isFocusMode;
   const effectiveRightCollapsed = rightPanelsCollapsed || isFocusMode;
+  const effectiveTimelineVisible = timelineVisible && !isFocusMode;
 
-  // Grid 템플릿 계산
+  // Grid 템플릿 계산 (타임라인 + 3컬럼 = 4컬럼 레이아웃)
   const gridTemplateColumns = useMemo(() => {
+    const timelineWidth = effectiveTimelineVisible ? '360px' : '0';
+    
     if (effectiveLeftCollapsed && effectiveRightCollapsed) {
-      return '0 1fr 0 0';
+      return `0 ${timelineWidth} 1fr 0`;
     }
     if (effectiveLeftCollapsed) {
-      return '0 minmax(600px, 1fr) 320px 336px';
+      return `0 ${timelineWidth} 1fr 340px`;
     }
     if (effectiveRightCollapsed) {
-      return '380px minmax(600px, 1fr) 0 0';
+      return `320px ${timelineWidth} 1fr 0`;
     }
-    return '380px minmax(600px, 1fr) 320px 336px';
-  }, [effectiveLeftCollapsed, effectiveRightCollapsed]);
+    return `320px ${timelineWidth} 1fr 340px`;
+  }, [effectiveLeftCollapsed, effectiveRightCollapsed, effectiveTimelineVisible]);
 
   // 토글 핸들러
   const toggleLeftSidebar = useCallback(() => {
@@ -158,13 +175,24 @@ export function usePanelLayout(isFocusMode: boolean): PanelLayoutState {
     });
   }, [saveToSystemState]);
 
+  const toggleTimeline = useCallback(() => {
+    setTimelineVisible(prev => {
+      const newValue = !prev;
+      saveToSystemState(TIMELINE_VISIBLE_KEY, newValue);
+      return newValue;
+    });
+  }, [saveToSystemState]);
+
   return {
     leftSidebarCollapsed,
     rightPanelsCollapsed,
+    timelineVisible,
     effectiveLeftCollapsed,
     effectiveRightCollapsed,
+    effectiveTimelineVisible,
     gridTemplateColumns,
     toggleLeftSidebar,
     toggleRightPanels,
+    toggleTimeline,
   };
 }
