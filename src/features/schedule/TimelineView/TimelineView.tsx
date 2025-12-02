@@ -32,6 +32,16 @@ import TaskModal from '@/features/schedule/TaskModal';
 /** 시간 초과 경고 임계값 (분) */
 const OVERTIME_THRESHOLD = 50;
 
+/** 3시간 블록 배경색 (오전/오후/저녁) */
+const BLOCK_BACKGROUND_COLORS: Record<number, string> = {
+  5: 'bg-blue-500/5',    // 이른 아침 (05-08)
+  8: 'bg-sky-500/5',     // 오전 (08-11)
+  11: 'bg-amber-500/5',  // 점심 (11-14)
+  14: 'bg-orange-500/5', // 오후 (14-17)
+  17: 'bg-purple-500/5', // 저녁 (17-20)
+  20: 'bg-indigo-500/5', // 밤 (20-23)
+};
+
 /** 컨텍스트 메뉴 상태 */
 interface ContextMenuState {
   x: number;
@@ -327,52 +337,75 @@ function TimelineViewComponent() {
             const isOvertime = overtimeHours.has(hour);
             const hourGroup = hourGroups.find(g => g.hour === hour);
             const overtimeMinutes = hourGroup ? hourGroup.totalDuration - 60 : 0;
+            const hasNoTasks = !hourGroup || hourGroup.tasks.length === 0;
+            
+            // 3시간 블록 배경색 계산
+            const blockStart = BLOCK_BOUNDARIES.find((b, i) => 
+              hour >= b && (i === BLOCK_BOUNDARIES.length - 1 || hour < BLOCK_BOUNDARIES[i + 1])
+            ) ?? 5;
+            const blockBgColor = BLOCK_BACKGROUND_COLORS[blockStart] || '';
 
             return (
               <div
                 key={hour}
-                className={`absolute left-0 right-0 transition-colors duration-150 ${
-                  isDragOver ? 'bg-[var(--color-primary)]/10' : ''
-                } ${isOvertime ? 'bg-red-500/10' : ''}`}
+                className={`absolute left-0 right-0 transition-colors duration-150 ${blockBgColor} ${
+                  isDragOver ? 'bg-[var(--color-primary)]/15' : ''
+                } ${isOvertime ? 'bg-red-500/15' : ''}`}
                 style={{ top: `${top}px`, height: `${HOUR_HEIGHT}px` }}
                 onDragOver={(e) => handleDragOver(e, hour)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, hour)}
               >
-                {/* 구분선 */}
+                {/* 시간 구분선 */}
                 <div
                   className={`absolute left-0 right-0 top-0 ${
                     isBlockBoundary
-                      ? 'border-t-2 border-[var(--color-border)]'
-                      : 'border-t border-[var(--color-border)]/30'
+                      ? 'border-t-2 border-[var(--color-text-tertiary)]/40'
+                      : 'border-t border-[var(--color-border)]/40'
                   }`}
+                />
+                {/* 30분 보조선 */}
+                <div 
+                  className="absolute left-6 right-0 border-t border-dashed border-[var(--color-border)]/20"
+                  style={{ top: `${HOUR_HEIGHT / 2}px` }}
                 />
                 {/* 시간 레이블 */}
                 <div
-                  className={`absolute left-0.5 top-0.5 text-[9px] font-medium ${
+                  className={`absolute left-0.5 top-0.5 text-[10px] font-semibold ${
                     isBlockBoundary
-                      ? 'text-[var(--color-text-secondary)]'
-                      : 'text-[var(--color-text-tertiary)]'
+                      ? 'text-[var(--color-text-primary)]'
+                      : 'text-[var(--color-text-secondary)]'
                   }`}
                 >
                   {String(hour).padStart(2, '0')}
+                  {isBlockBoundary && <span className="text-[8px] ml-0.5 opacity-60">:00</span>}
                 </div>
                 {/* 시간 초과 경고 표시 */}
                 {isOvertime && (
                   <div 
-                    className="absolute right-1 top-0.5 text-[9px] text-red-500 font-medium flex items-center gap-0.5 animate-pulse"
+                    className="absolute right-1 top-0.5 text-[9px] text-red-400 font-medium flex items-center gap-0.5 animate-pulse"
                     title={`${hourGroup?.totalDuration}분 계획됨 (+${overtimeMinutes}분 초과)`}
                   >
                     <span>⚠️</span>
                     <span>+{overtimeMinutes}분</span>
                   </div>
                 )}
-                {/* 빈 영역 클릭 */}
+                {/* 빈 시간대 표시 및 클릭 영역 */}
                 <div
-                  className="absolute left-6 right-0 top-0 bottom-0 cursor-pointer hover:bg-[var(--color-primary)]/5 transition-colors duration-150"
+                  className="absolute left-6 right-0 top-0 bottom-0 cursor-pointer group transition-colors duration-150"
                   onClick={() => handleEmptyHourClick(hour)}
                   title={`${hour}시에 작업 추가`}
-                />
+                >
+                  {/* 빈 시간대 힌트 */}
+                  {hasNoTasks && (
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <div className="flex items-center gap-1 text-[10px] text-[var(--color-text-tertiary)] bg-[var(--color-bg-secondary)]/80 px-2 py-1 rounded-md">
+                        <span className="text-[var(--color-primary)]">+</span>
+                        <span>작업 추가</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}

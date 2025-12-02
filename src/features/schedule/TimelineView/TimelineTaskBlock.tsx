@@ -18,30 +18,34 @@ interface TimelineTaskBlockProps {
   onContextMenu?: (task: Task, e: React.MouseEvent) => void;
 }
 
-// 저항도별 색상 (파스텔 톤)
-const RESISTANCE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+// 저항도별 색상 (다크모드 최적화 - 글래스모피즘)
+const RESISTANCE_COLORS: Record<string, { bg: string; border: string; text: string; glow: string }> = {
   low: {
-    bg: 'bg-emerald-200/80',
-    border: 'border-emerald-300',
-    text: 'text-emerald-900',
+    bg: 'bg-emerald-500/20 backdrop-blur-sm',
+    border: 'border-emerald-400/50',
+    text: 'text-emerald-200',
+    glow: 'shadow-emerald-500/20',
   },
   medium: {
-    bg: 'bg-amber-200/80',
-    border: 'border-amber-300',
-    text: 'text-amber-900',
+    bg: 'bg-amber-500/20 backdrop-blur-sm',
+    border: 'border-amber-400/50',
+    text: 'text-amber-200',
+    glow: 'shadow-amber-500/20',
   },
   high: {
-    bg: 'bg-rose-200/80',
-    border: 'border-rose-300',
-    text: 'text-rose-900',
+    bg: 'bg-rose-500/20 backdrop-blur-sm',
+    border: 'border-rose-400/50',
+    text: 'text-rose-200',
+    glow: 'shadow-rose-500/20',
   },
 };
 
-// 완료된 작업 스타일
+// 완료된 작업 스타일 (다크모드 최적화)
 const COMPLETED_STYLE = {
-  bg: 'bg-gray-200/60',
-  border: 'border-gray-300',
-  text: 'text-gray-500',
+  bg: 'bg-gray-500/15 backdrop-blur-sm',
+  border: 'border-gray-500/30',
+  text: 'text-gray-400',
+  glow: '',
 };
 
 /**
@@ -86,9 +90,9 @@ function TimelineTaskBlockComponent({
       onClick={handleClick}
       onDragStart={handleDragStart}
       onContextMenu={handleContextMenu}
-      className={`absolute left-1 right-1 rounded-md border ${colors.bg} ${colors.border} overflow-hidden cursor-pointer select-none
-        transition-all duration-200 ease-out
-        hover:shadow-lg hover:z-10 hover:scale-[1.02] hover:-translate-y-0.5
+      className={`absolute left-1 right-1 rounded-lg border ${colors.bg} ${colors.border} overflow-hidden cursor-pointer select-none
+        transition-all duration-200 ease-out shadow-md ${colors.glow}
+        hover:shadow-xl hover:z-10 hover:scale-[1.02] hover:-translate-y-0.5 hover:brightness-110
         active:scale-[0.98] active:shadow-md`}
       style={{
         top: `${top}px`,
@@ -100,23 +104,24 @@ function TimelineTaskBlockComponent({
       {/* 목표 연결 스트라이프 */}
       {goalColor && (
         <div 
-          className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
+          className="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg"
           style={{ backgroundColor: goalColor }}
         />
       )}
       
-      <div className={`h-full px-1.5 py-0.5 ${colors.text} ${goalColor ? 'pl-2.5' : ''}`}>
-        <div className="flex items-start gap-1">
+      <div className={`h-full px-2 py-1 ${colors.text} ${goalColor ? 'pl-3' : ''}`}>
+        <div className="flex items-start gap-1.5">
+          {task.completed && <span className="text-xs">✓</span>}
           {task.emoji && <span className="text-xs">{task.emoji}</span>}
           <span
-            className={`text-[10px] font-medium leading-tight line-clamp-2 ${task.completed ? 'line-through opacity-60' : ''}`}
+            className={`text-[11px] font-medium leading-tight line-clamp-2 ${task.completed ? 'line-through opacity-50' : ''}`}
           >
             {task.text}
           </span>
         </div>
-        {height >= 30 && (
-          <div className="mt-0.5 text-[9px] opacity-70 flex items-center gap-1">
-            <span>{duration}분</span>
+        {height >= 35 && (
+          <div className="mt-1 text-[10px] opacity-60 flex items-center gap-1.5">
+            <span className="bg-white/10 px-1 rounded">{duration}분</span>
             {task.goalId && <span>🎯</span>}
           </div>
         )}
