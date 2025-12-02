@@ -22,6 +22,8 @@ import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { callGeminiAPI } from '@/shared/services/ai/geminiApi';
 import { db } from '@/data/db/dexieClient';
 import type { DailyData, Task } from '@/shared/types/domain';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // ============================================================================
 // Types
@@ -444,17 +446,30 @@ function AIAnalysisSection({ report, isGenerating, onRegenerate }: AIAnalysisSec
         </button>
       </div>
 
-      <div className="rounded-2xl bg-slate-800/50 border border-slate-700/50 p-5 backdrop-blur-sm">
+      <div className="rounded-2xl bg-slate-800/50 border border-slate-700/50 p-5 backdrop-blur-sm max-h-[400px] overflow-y-auto scrollbar-thin">
         {isGenerating ? (
           <div className="flex flex-col items-center justify-center py-12 gap-4">
             <div className="w-12 h-12 rounded-full border-4 border-amber-500/30 border-t-amber-400 animate-spin" />
             <p className="text-sm text-slate-400">AI가 분석 중입니다...</p>
           </div>
         ) : (
-          <div className="prose prose-invert prose-sm max-w-none">
-            <div className="whitespace-pre-wrap text-sm text-slate-300 leading-relaxed">
+          <div className="prose prose-sm prose-invert max-w-none
+            prose-headings:text-slate-100 prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
+            prose-h1:text-lg prose-h2:text-base prose-h3:text-sm
+            prose-p:text-slate-300 prose-p:my-2 prose-p:leading-relaxed
+            prose-strong:text-amber-400 prose-strong:font-bold
+            prose-em:text-slate-400 prose-em:italic
+            prose-ul:my-2 prose-ul:pl-4 prose-ol:my-2 prose-ol:pl-4
+            prose-li:text-slate-300 prose-li:my-1
+            prose-code:text-amber-400 prose-code:bg-slate-700/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-mono
+            prose-pre:bg-slate-900/50 prose-pre:border prose-pre:border-slate-700 prose-pre:rounded-xl prose-pre:p-3 prose-pre:my-2
+            prose-blockquote:border-l-2 prose-blockquote:border-amber-400 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-slate-400
+            prose-a:text-blue-400 prose-a:underline
+            prose-hr:border-slate-700 prose-hr:my-3
+          ">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {report.aiAnalysis}
-            </div>
+            </ReactMarkdown>
           </div>
         )}
       </div>
@@ -533,19 +548,21 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
     setIsRegenerating(false);
   }, [loadReport]);
 
-  // Load report when modal opens or date changes
-  useEffect(() => {
-    if (open) {
-      loadReport();
-    }
-  }, [open, targetDate, loadReport]);
+  // Handle date selection - generates report only when button is clicked
+  const handleDateSelect = useCallback((date: ReportDate) => {
+    setReportDate(date);
+    // Clear previous report to show fresh state
+    setReport(null);
+    setError(null);
+  }, []);
 
-  // Reset state when modal closes
+  // Reset state when modal closes (but don't auto-load on open)
   useEffect(() => {
     if (!open) {
       setCurrentPage('overview');
       setReport(null);
       setError(null);
+      setReportDate('today');
     }
   }, [open]);
 
@@ -557,9 +574,6 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
       if (e.key === 'Escape') {
         onClose();
         return;
-      }
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        setReportDate(prev => prev === 'today' ? 'yesterday' : 'today');
       }
     };
 
@@ -600,59 +614,76 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
           </button>
         </div>
 
-        {/* Date Toggle */}
-        <div className="flex items-center justify-center gap-4 px-6 py-3 bg-slate-900/50 border-b border-slate-800/50">
-          <button
-            onClick={() => setReportDate('yesterday')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
-              reportDate === 'yesterday'
-                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <ChevronLeft size={16} />
-            어제
-          </button>
-          <div className="flex items-center gap-2 text-slate-500">
-            <Calendar size={14} />
-            <span className="text-xs">{targetDate}</span>
+        {/* Date Selection - Click to generate report */}
+        <div className="flex flex-col items-center gap-4 px-6 py-6 bg-slate-900/50 border-b border-slate-800/50">
+          <p className="text-sm text-slate-400">보고서를 생성할 날짜를 선택하세요</p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => {
+                handleDateSelect('yesterday');
+                // Trigger report generation after state update
+                setTimeout(() => loadReport(false), 0);
+              }}
+              disabled={isLoading}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium transition ${
+                reportDate === 'yesterday' && report
+                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                  : 'bg-slate-800 text-slate-300 border border-slate-700 hover:border-blue-500/50 hover:text-blue-400'
+              } disabled:opacity-50`}
+            >
+              <ChevronLeft size={16} />
+              어제 보고서
+            </button>
+            <button
+              onClick={() => {
+                handleDateSelect('today');
+                // Trigger report generation after state update
+                setTimeout(() => loadReport(false), 0);
+              }}
+              disabled={isLoading}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium transition ${
+                reportDate === 'today' && report
+                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                  : 'bg-slate-800 text-slate-300 border border-slate-700 hover:border-blue-500/50 hover:text-blue-400'
+              } disabled:opacity-50`}
+            >
+              오늘 보고서
+              <ChevronRight size={16} />
+            </button>
           </div>
-          <button
-            onClick={() => setReportDate('today')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
-              reportDate === 'today'
-                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            오늘
-            <ChevronRight size={16} />
-          </button>
+          {report && (
+            <div className="flex items-center gap-2 text-slate-500 text-xs">
+              <Calendar size={12} />
+              <span>선택된 날짜: {formatDate(targetDate)}</span>
+            </div>
+          )}
         </div>
 
-        {/* Page Tabs */}
-        <div className="flex items-center gap-1 px-6 py-3 bg-slate-900/30 border-b border-slate-800/50">
-          {pages.map((page) => {
-            const config = PAGE_CONFIG[page];
-            const Icon = config.icon;
-            const isActive = currentPage === page;
-            
-            return (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
-                  isActive
-                    ? `bg-slate-800 ${config.color} border border-slate-700`
-                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-                }`}
-              >
-                <Icon size={14} />
-                {config.label}
-              </button>
-            );
-          })}
-        </div>
+        {/* Page Tabs - Only show when report exists */}
+        {report && (
+          <div className="flex items-center gap-1 px-6 py-3 bg-slate-900/30 border-b border-slate-800/50">
+            {pages.map((page) => {
+              const config = PAGE_CONFIG[page];
+              const Icon = config.icon;
+              const isActive = currentPage === page;
+              
+              return (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
+                    isActive
+                      ? `bg-slate-800 ${config.color} border border-slate-700`
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+                  }`}
+                >
+                  <Icon size={14} />
+                  {config.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
@@ -660,6 +691,7 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               <div className="w-16 h-16 rounded-full border-4 border-blue-500/30 border-t-blue-400 animate-spin" />
               <p className="text-sm text-slate-400">보고서를 생성하고 있습니다...</p>
+              <p className="text-xs text-slate-500">AI가 데이터를 분석 중입니다. 잠시만 기다려주세요...</p>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
@@ -685,9 +717,29 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
               )}
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <span className="text-4xl">📊</span>
-              <p className="text-sm text-slate-500">보고서를 생성해주세요.</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-6">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 blur-3xl rounded-full"></div>
+                <span className="relative text-6xl">📊</span>
+              </div>
+              <div className="text-center space-y-2">
+                <h3 className="text-lg font-semibold text-slate-200">AI 하루 요약</h3>
+                <p className="text-sm text-slate-500">위에서 어제 또는 오늘 보고서 버튼을 클릭하여<br/>AI가 생성한 상세 분석 보고서를 확인하세요.</p>
+              </div>
+              <div className="flex flex-col items-center gap-3 text-xs text-slate-600">
+                <div className="flex items-center gap-2">
+                  <BarChart3 size={14} />
+                  <span>XP 통계 및 달성률</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckSquare size={14} />
+                  <span>완료/미완료 작업 목록</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} />
+                  <span>AI 패턴 분석 및 개선 제안</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -702,30 +754,32 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleRegenerate}
-              disabled={isLoading || isRegenerating}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 text-sm font-medium text-white hover:bg-slate-700 transition disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={isRegenerating ? 'animate-spin' : ''} />
-              새로 생성
-            </button>
             {report && (
-              <div className="flex items-center">
+              <>
                 <button
-                  onClick={() => downloadReport(report, 'md')}
-                  className="flex items-center gap-2 px-4 py-2 rounded-l-xl bg-gradient-to-r from-blue-500 to-blue-600 text-sm font-medium text-white hover:from-blue-600 hover:to-blue-700 transition"
+                  onClick={handleRegenerate}
+                  disabled={isLoading || isRegenerating}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 text-sm font-medium text-white hover:bg-slate-700 transition disabled:opacity-50"
                 >
-                  <Download size={14} />
-                  MD
+                  <RefreshCw size={14} className={isRegenerating ? 'animate-spin' : ''} />
+                  새로 생성
                 </button>
-                <button
-                  onClick={() => downloadReport(report, 'txt')}
-                  className="flex items-center gap-2 px-4 py-2 rounded-r-xl bg-gradient-to-r from-purple-500 to-purple-600 text-sm font-medium text-white hover:from-purple-600 hover:to-purple-700 transition border-l border-purple-400/30"
-                >
-                  TXT
-                </button>
-              </div>
+                <div className="flex items-center">
+                  <button
+                    onClick={() => downloadReport(report, 'md')}
+                    className="flex items-center gap-2 px-4 py-2 rounded-l-xl bg-gradient-to-r from-blue-500 to-blue-600 text-sm font-medium text-white hover:from-blue-600 hover:to-blue-700 transition"
+                  >
+                    <Download size={14} />
+                    MD
+                  </button>
+                  <button
+                    onClick={() => downloadReport(report, 'txt')}
+                    className="flex items-center gap-2 px-4 py-2 rounded-r-xl bg-gradient-to-r from-purple-500 to-purple-600 text-sm font-medium text-white hover:from-purple-600 hover:to-purple-700 transition border-l border-purple-400/30"
+                  >
+                    TXT
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>
