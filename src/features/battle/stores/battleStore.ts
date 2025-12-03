@@ -11,7 +11,7 @@
  */
 
 import { create } from 'zustand';
-import type { BattleMission, BattleSettings, DailyBattleState, DailyBossProgress, BossImageSettings } from '@/shared/types/domain';
+import type { BattleMission, BattleSettings, DailyBattleState, DailyBossProgress, BossImageSettings, BossDifficulty } from '@/shared/types/domain';
 import {
   loadBattleMissions,
   saveBattleMissions,
@@ -22,8 +22,10 @@ import {
   loadBossImageSettings,
   saveBossImageSettings,
   DEFAULT_BATTLE_SETTINGS,
+  addToDefeatedBossHistory,
+  loadDefeatedBossHistory,
 } from '@/data/repositories/battleRepository';
-import { selectRandomBosses, getBossById } from '../data/bossData';
+import { getBossById, groupBossesByDifficulty } from '../data/bossData';
 import { getLocalDate } from '@/shared/lib/utils';
 import { getBossXpByDifficulty } from '../utils/xp';
 
@@ -112,121 +114,186 @@ function computeUpdatedSettings_core(settings: BattleSettings, updates: Partial<
   return { ...settings, ...updates, bossDifficultyXP: mergedDifficultyXP };
 }
 
+/**
+ * 보스 HP 계산 (난이도별 XP의 절반)
+ * @param difficulty 보스 난이도
+ * @param settings 전투 설정
+ * @returns HP (분 단위)
+ */
+function computeBossHP(difficulty: BossDifficulty, settings: BattleSettings): number {
+  const xp = settings.bossDifficultyXP[difficulty];
+  return Math.floor(xp * 0.5);
+}
+
+/**
+ * @deprecated dailyBossCount 기반 시스템은 더 이상 사용되지 않음
+ * 23마리 풀 시스템으로 대체됨
+ */
 function computeUpdatedDailyStateForBossCount_core(
   dailyState: DailyBattleState,
-  newCount: number,
-  settings: BattleSettings,
+  _newCount: number,
+  _settings: BattleSettings,
 ) {
-  const currentCount = dailyState.bosses.length;
-
-  if (newCount > currentCount) {
-    const diff = newCount - currentCount;
-    const existingIds = dailyState.bosses.map(b => b.bossId);
-    const newBosses = selectRandomBosses(diff, existingIds);
-
-    const addedBosses = newBosses.map(boss => ({
-      bossId: boss.id,
-      maxHP: settings.bossBaseHP,
-      currentHP: settings.bossBaseHP,
-      completedMissions: [],
-    }));
-
-    const nextState = {
-      ...dailyState,
-      bosses: [...dailyState.bosses, ...addedBosses],
-    };
-
-    return { changed: true, nextState };
-  }
-
-  if (newCount < currentCount) {
-    const updatedBosses = dailyState.bosses.slice(0, newCount);
-    const newIndex = Math.min(dailyState.currentBossIndex, newCount - 1);
-    const newTotalDefeated = updatedBosses.filter(b => b.defeatedAt).length;
-
-    const nextState = {
-      ...dailyState,
-      bosses: updatedBosses,
-      currentBossIndex: newIndex,
-      totalDefeated: newTotalDefeated,
-    };
-
-    return { changed: true, nextState };
-  }
-
+  // deprecated - 더 이상 동적으로 보스 수를 변경하지 않음
   return { changed: false, nextState: dailyState };
 }
 
+/**
+ * 새로운 일일 전투 상태 생성 (23마리 풀 시스템)
+ * - 모든 보스를 난이도별로 분류하여 remainingBosses에 저장
+ * - easy 난이도에서 랜덤 1마리 자동 스폰
+ */
 function computeNewDailyState_core(
   settings: BattleSettings,
   today: string,
-  excludeIds: string[],
 ): DailyBattleState {
-  const selectedBosses = selectRandomBosses(settings.dailyBossCount, excludeIds);
+  // 23마리 보스를 난이도별로 분류
+  const remainingBosses = groupBossesByDifficulty();
+  
+  // easy 풀에서 랜덤 1마리 선택하여 첫 보스로 스폰
+  const easyBossIds = remainingBosses.easy;
+  const randomIndex = Math.floor(Math.random() * easyBossIds.length);
+  const firstBossId = easyBossIds[randomIndex];
+  const firstBoss = getBossById(firstBossId)!;
+  const firstBossHP = computeBossHP(firstBoss.difficulty, settings);
+  
+  // 선택된 보스를 풀에서 제거
+  remainingBosses.easy = easyBossIds.filter(id => id !== firstBossId);
 
   return {
     date: today,
     currentBossIndex: 0,
-    bosses: selectedBosses.map(boss => ({
-      bossId: boss.id,
-      maxHP: settings.bossBaseHP,
-      currentHP: settings.bossBaseHP,
+    bosses: [{
+      bossId: firstBossId,
+      maxHP: firstBossHP,
+      currentHP: firstBossHP,
       completedMissions: [],
-    })),
+    }],
     totalDefeated: 0,
+    remainingBosses,
+    defeatedBossIds: [],
+    completedMissionIds: [],
   };
 }
 
+/**
+ * 난이도별 보스 스폰 결과 계산
+ */
+function computeSpawnBossResult_core(
+  dailyState: DailyBattleState,
+  difficulty: BossDifficulty,
+  settings: BattleSettings,
+): { updatedState: DailyBattleState | null; spawnedBossId: string | null } {
+  const pool = dailyState.remainingBosses[difficulty];
+  
+  // 해당 난이도에 남은 보스가 없으면 실패
+  if (!pool || pool.length === 0) {
+    return { updatedState: null, spawnedBossId: null };
+  }
+  
+  // 랜덤 선택
+  const randomIndex = Math.floor(Math.random() * pool.length);
+  const selectedBossId = pool[randomIndex];
+  const boss = getBossById(selectedBossId);
+  
+  if (!boss) {
+    return { updatedState: null, spawnedBossId: null };
+  }
+  
+  const bossHP = computeBossHP(difficulty, settings);
+  
+  // 풀에서 제거
+  const updatedRemainingBosses = {
+    ...dailyState.remainingBosses,
+    [difficulty]: pool.filter(id => id !== selectedBossId),
+  };
+  
+  // 새 보스 추가
+  const newBossProgress: DailyBossProgress = {
+    bossId: selectedBossId,
+    maxHP: bossHP,
+    currentHP: bossHP,
+    completedMissions: [],
+  };
+  
+  const updatedState: DailyBattleState = {
+    ...dailyState,
+    currentBossIndex: dailyState.bosses.length, // 새 보스가 현재 보스
+    bosses: [...dailyState.bosses, newBossProgress],
+    remainingBosses: updatedRemainingBosses,
+  };
+  
+  return { updatedState, spawnedBossId: selectedBossId };
+}
+
+/**
+ * 미션 완료 결과 계산 (데미지 누적 시스템)
+ * - 미션은 하루에 한 번만 사용 가능
+ * - HP가 0 이하가 되면 보스 처치
+ */
 function computeCompleteMissionResult_core(
   dailyState: DailyBattleState | null,
   missions: BattleMission[],
   settings: BattleSettings,
   missionId: string,
   timestamp: string,
-) {
+): {
+  updatedState: DailyBattleState | null;
+  result: { bossDefeated: boolean; xpEarned: number; damageDealt: number };
+  defeatedBossId: string | null;
+} {
+  const emptyResult = {
+    updatedState: null,
+    result: { bossDefeated: false, xpEarned: 0, damageDealt: 0 },
+    defeatedBossId: null,
+  };
+
   if (!dailyState) {
-    return {
-      updatedState: null,
-      result: { bossDefeated: false, xpEarned: 0 },
-      defeatedBossId: null,
-    };
+    return emptyResult;
   }
 
   const currentBoss = dailyState.bosses[dailyState.currentBossIndex];
   if (!currentBoss || currentBoss.defeatedAt) {
-    return { updatedState: null, result: { bossDefeated: false, xpEarned: 0 }, defeatedBossId: null };
+    return emptyResult;
   }
 
-  if (currentBoss.completedMissions.includes(missionId)) {
-    return { updatedState: null, result: { bossDefeated: false, xpEarned: 0 }, defeatedBossId: null };
+  // 이미 오늘 사용한 미션인지 확인 (하루 1회 제한)
+  if (dailyState.completedMissionIds.includes(missionId)) {
+    return emptyResult;
   }
 
   const mission = missions.find(m => m.id === missionId);
   if (!mission) {
-    return { updatedState: null, result: { bossDefeated: false, xpEarned: 0 }, defeatedBossId: null };
+    return emptyResult;
   }
 
-  const xpEarned = getBossXpByDifficulty(settings, currentBoss.bossId);
+  const damageDealt = mission.damage;
+  const newHP = Math.max(0, currentBoss.currentHP - damageDealt);
+  const bossDefeated = newHP <= 0;
+  const xpEarned = bossDefeated ? getBossXpByDifficulty(settings, currentBoss.bossId) : 0;
 
   const updatedBosses = [...dailyState.bosses];
   updatedBosses[dailyState.currentBossIndex] = {
     ...currentBoss,
-    currentHP: 0,
+    currentHP: newHP,
     completedMissions: [...currentBoss.completedMissions, missionId],
-    defeatedAt: timestamp,
+    ...(bossDefeated ? { defeatedAt: timestamp } : {}),
   };
 
   const updatedState: DailyBattleState = {
     ...dailyState,
     bosses: updatedBosses,
-    totalDefeated: dailyState.totalDefeated + 1,
-    currentBossIndex: Math.min(dailyState.currentBossIndex + 1, dailyState.bosses.length - 1),
+    completedMissionIds: [...dailyState.completedMissionIds, missionId],
+    ...(bossDefeated ? {
+      totalDefeated: dailyState.totalDefeated + 1,
+      defeatedBossIds: [...dailyState.defeatedBossIds, currentBoss.bossId],
+    } : {}),
   };
 
   return {
     updatedState,
-    result: { bossDefeated: true, xpEarned },
-    defeatedBossId: currentBoss.bossId,
+    result: { bossDefeated, xpEarned, damageDealt },
+    defeatedBossId: bossDefeated ? currentBoss.bossId : null,
   };
 }
 
@@ -236,12 +303,16 @@ interface BattleStore {
   settings: BattleSettings;
   dailyState: DailyBattleState | null;
   bossImageSettings: BossImageSettings;
+  defeatedBossHistory: string[];
   loading: boolean;
   error: Error | null;
 
   // 처치 연출 상태
   showDefeatOverlay: boolean;
   defeatedBossId: string | null;
+  
+  // 처치 후 보스 선택 대기 상태
+  awaitingBossSelection: boolean;
 
   // 초기화
   initialize: () => Promise<void>;
@@ -264,17 +335,21 @@ interface BattleStore {
 
   // 전투 액션
   startNewDay: () => Promise<void>;
-  completeMission: (missionId: string) => Promise<{ bossDefeated: boolean; xpEarned: number }>;
+  completeMission: (missionId: string) => Promise<{ bossDefeated: boolean; xpEarned: number; damageDealt: number }>;
+  spawnBossByDifficulty: (difficulty: BossDifficulty) => Promise<boolean>;
   resetMissionsForNextBoss: () => void;
 
   // 처치 연출
   showBossDefeat: (bossId: string) => void;
   hideBossDefeat: () => void;
+  setAwaitingBossSelection: (awaiting: boolean) => void;
 
   // 유틸리티
   getCurrentBoss: () => DailyBossProgress | null;
   getActiveMissions: () => BattleMission[];
   isAllBossesDefeated: () => boolean;
+  getRemainingBossCount: (difficulty: BossDifficulty) => number;
+  getTotalRemainingBossCount: () => number;
 }
 
 export const useBattleStore = create<BattleStore>((set, get) => ({
@@ -282,10 +357,12 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
   settings: DEFAULT_BATTLE_SETTINGS,
   dailyState: null,
   bossImageSettings: {},
+  defeatedBossHistory: [],
   loading: false,
   error: null,
   showDefeatOverlay: false,
   defeatedBossId: null,
+  awaitingBossSelection: false,
 
   // =========================================================================
   // 초기화
@@ -294,13 +371,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
   initialize: async () => {
     set({ loading: true, error: null });
     try {
-      const [missions, settings, bossImageSettings] = await Promise.all([
+      const [missions, settings, bossImageSettings, defeatedBossHistory] = await Promise.all([
         loadBattleMissions(),
         loadBattleSettings(),
         loadBossImageSettings(),
+        loadDefeatedBossHistory(),
       ]);
 
-      set({ missions, settings, bossImageSettings });
+      set({ missions, settings, bossImageSettings, defeatedBossHistory });
 
       // 오늘의 전투 상태 확인
       const loadedDailyState = await loadDailyBattleState();
@@ -545,14 +623,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const { settings } = get();
     const today = getLocalDate();
 
-    // 최근 7일 사용된 보스 ID 가져오기 (향후 구현)
-    const excludeIds: string[] = [];
-
-    const newState = computeNewDailyState_core(settings, today, excludeIds);
+    const newState = computeNewDailyState_core(settings, today);
 
     try {
       await saveDailyBattleState(newState);
-      set({ dailyState: newState });
+      set({ dailyState: newState, awaitingBossSelection: false });
     } catch (error) {
       const formattedError = createBattleStoreError(
         'BATTLE_NEW_DAY_ERROR',
@@ -562,6 +637,35 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       );
       logBattleStoreError('startNewDay failed', formattedError);
       set({ error: formattedError });
+      throw formattedError;
+    }
+  },
+
+  spawnBossByDifficulty: async (difficulty: BossDifficulty) => {
+    const { dailyState, settings } = get();
+    
+    if (!dailyState) {
+      return false;
+    }
+    
+    const computation = computeSpawnBossResult_core(dailyState, difficulty, settings);
+    
+    if (!computation.updatedState) {
+      return false;
+    }
+    
+    try {
+      await saveDailyBattleState(computation.updatedState);
+      set({ dailyState: computation.updatedState, awaitingBossSelection: false });
+      return true;
+    } catch (error) {
+      const formattedError = createBattleStoreError(
+        'BATTLE_SPAWN_BOSS_ERROR',
+        'Failed to spawn boss by difficulty',
+        { difficulty },
+        error,
+      );
+      logBattleStoreError('spawnBossByDifficulty failed', formattedError);
       throw formattedError;
     }
   },
@@ -583,8 +687,18 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     try {
       await saveDailyBattleState(computation.updatedState);
       set({ dailyState: computation.updatedState });
+      
       if (computation.defeatedBossId) {
+        // 보스 처치 시 히스토리에 저장 (도감 확장 준비)
+        await addToDefeatedBossHistory(computation.defeatedBossId);
+        // 로컬 상태도 업데이트
+        const currentHistory = get().defeatedBossHistory;
+        if (!currentHistory.includes(computation.defeatedBossId)) {
+          set({ defeatedBossHistory: [...currentHistory, computation.defeatedBossId] });
+        }
         get().showBossDefeat(computation.defeatedBossId);
+        // 보스 선택 대기 상태로 전환
+        set({ awaitingBossSelection: true });
       }
     } catch (error) {
       const formattedError = createBattleStoreError(
@@ -617,6 +731,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     set({ showDefeatOverlay: false, defeatedBossId: null });
   },
 
+  setAwaitingBossSelection: (awaiting: boolean) => {
+    set({ awaitingBossSelection: awaiting });
+  },
+
   // =========================================================================
   // 유틸리티
   // =========================================================================
@@ -634,21 +752,35 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const { missions, dailyState } = get();
     if (!dailyState) return [];
 
-    const currentBoss = dailyState.bosses[dailyState.currentBossIndex];
-    if (!currentBoss) return [];
-
-    // 활성화된 미션 중 아직 완료하지 않은 것만
+    // 오늘 사용하지 않은 활성 미션만 반환
     return missions
-      .filter(m => m.enabled && !currentBoss.completedMissions.includes(m.id))
+      .filter(m => m.enabled && !dailyState.completedMissionIds.includes(m.id))
       .sort((a, b) => a.order - b.order);
   },
 
   isAllBossesDefeated: () => {
     const { dailyState } = get();
     if (!dailyState) return false;
-    return dailyState.bosses.every(boss => boss.defeatedAt);
+    // 모든 난이도의 보스가 소진되었는지 확인
+    const totalRemaining = Object.values(dailyState.remainingBosses).reduce((sum, arr) => sum + arr.length, 0);
+    return totalRemaining === 0 && dailyState.bosses.every(boss => boss.defeatedAt);
+  },
+
+  getRemainingBossCount: (difficulty: BossDifficulty) => {
+    const { dailyState } = get();
+    if (!dailyState) return 0;
+    return dailyState.remainingBosses[difficulty]?.length ?? 0;
+  },
+
+  getTotalRemainingBossCount: () => {
+    const { dailyState } = get();
+    if (!dailyState) return 0;
+    return Object.values(dailyState.remainingBosses).reduce((sum, arr) => sum + arr.length, 0);
   },
 }));
 
 // 보스 정보 헬퍼 함수 (컴포넌트에서 사용)
 export { getBossById };
+
+// HP 계산 헬퍼 함수 export
+export { computeBossHP };

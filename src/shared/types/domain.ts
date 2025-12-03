@@ -564,15 +564,23 @@ export interface DailyBattleState {
   currentBossIndex: number;      // 현재 보스 순번 (0부터)
   bosses: DailyBossProgress[];
   totalDefeated: number;         // 오늘 처치한 보스 수
+  /** 난이도별 남은 보스 ID 목록 (풀 시스템) */
+  remainingBosses: Record<BossDifficulty, string[]>;
+  /** 오늘 처치한 보스 ID 목록 (도감용) */
+  defeatedBossIds: string[];
+  /** 오늘 사용한 미션 ID 목록 (중복 사용 방지) */
+  completedMissionIds: string[];
 }
 
 /**
  * 전투 설정
  */
 export interface BattleSettings {
-  // 보스 설정
-  dailyBossCount: number;        // 하루 보스 수 (1~5, 기본: 3)
-  bossBaseHP: number;            // 보스 기본 체력 (30~120분, 기본: 60)
+  // 보스 설정 (deprecated - HP는 이제 bossDifficultyXP * 0.5로 계산)
+  /** @deprecated HP는 이제 난이도별 XP의 절반으로 자동 계산됩니다 */
+  dailyBossCount: number;        // 하루 보스 수 - deprecated (23마리 풀 시스템으로 대체)
+  /** @deprecated HP는 이제 난이도별 XP의 절반으로 자동 계산됩니다 */
+  bossBaseHP: number;            // 보스 기본 체력 - deprecated (난이도별 HP로 대체)
 
   // 미션 설정
   missions: BattleMission[];     // 미션 목록 (Firebase 동기화)

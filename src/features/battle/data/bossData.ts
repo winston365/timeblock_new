@@ -31,7 +31,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_02',
     name: '악마 페리스',
     image: 'boss_02.png',
-    difficulty: 'normal',
+    difficulty: 'easy',
     defeatQuote: '「なんで私がこんな目にぃぃ！」',
     quotes: [
       '「はぁ…やればいいんでしょ、やれば！」',
@@ -47,7 +47,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_03',
     name: '마소우 시즈카',
     image: 'boss_03.png',
-    difficulty: 'easy',
+    difficulty: 'normal',
     defeatQuote: '「私の魔法が……通じないなんて……」',
     quotes: [
       '「黒色破壊光線（ブラック・ディストラクション・ビーム）！！」',
@@ -63,7 +63,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_04',
     name: '바위 골렘',
     image: 'boss_04.png',
-    difficulty: 'normal',
+    difficulty: 'easy',
     defeatQuote: '「ガラガラガラ……」',
     quotes: [
       '「ゴオオオォォォ……」',
@@ -81,7 +81,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_05',
     name: '노스',
     image: 'boss_05.png',
-    difficulty: 'hard',
+    difficulty: 'easy',
     defeatQuote: '「ノスッ！？」',
     quotes: [
       '「ノスノス！」',
@@ -97,7 +97,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_06',
     name: '하니킹',
     image: 'boss_06.png',
-    difficulty: 'easy',
+    difficulty: 'epic',
     defeatQuote: '「馬鹿なハニ！ 余が負けるとは……」',
     quotes: [
       '「無礼者め、ひれ伏すがいいハニ！」',
@@ -113,7 +113,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_07',
     name: '미네르바',
     image: 'boss_07.png',
-    difficulty: 'normal',
+    difficulty: 'easy',
     defeatQuote: '뼈만 남았지만... 왕의 위엄은 영원하다...',
     quotes: [
       '망자의 왕이 다스린다.',
@@ -129,7 +129,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_08',
     name: '코린',
     image: 'boss_08.png',
-    difficulty: 'normal',
+    difficulty: 'easy',
     defeatQuote: '우가가... 배고파서 힘이 안 났어...',
     quotes: [
       '배고픈 거인이 화났다!',
@@ -161,7 +161,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_10',
     name: '노스',
     image: 'boss_10.png',
-    difficulty: 'epic',
+    difficulty: 'normal',
     defeatQuote: '재에서... 다시 태어나리라...',
     quotes: [
       '불꽃은 영원을 노래한다.',
@@ -177,7 +177,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_11',
     name: 'Mineva Margaret',
     image: 'boss_11.png',
-    difficulty: 'epic',
+    difficulty: 'normal',
     defeatQuote: '「見事だ……」',
     quotes: [
       '「私の槍からは逃げられん！」',
@@ -227,7 +227,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_14',
     name: '자비엘',
     image: 'boss_14.png',
-    difficulty: 'normal',
+    difficulty: 'epic',
     defeatQuote: '「人間風情に……この我が……！」',
     quotes: [
       '「絶望せよ、人間ども。」',
@@ -261,7 +261,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_16',
     name: '파스텔 카라',
     image: 'boss_16.png',
-    difficulty: 'epic',
+    difficulty: 'hard',
     defeatQuote: '「男なんかに……屈するなんて……」',
     quotes: [
       '「汚らわしい男が、近寄るな！」',
@@ -277,7 +277,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_17',
     name: '마스조웨',
     image: 'boss_17.png',
-    difficulty: 'normal',
+    difficulty: 'hard',
     defeatQuote: '내 눈이... 안 보여...',
     quotes: [
       '눈이 모든 것을 꿰뚫는다.',
@@ -295,7 +295,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_18',
     name: '여신 ALICE',
     image: 'boss_18.png',
-    difficulty: 'hard',
+    difficulty: 'epic',
     defeatQuote: '「致命的なエラーが発生しました。」',
     quotes: [
       '「システム干渉を確認。排除します。」',
@@ -311,7 +311,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_19',
     name: '카라',
     image: 'boss_19.png',
-    difficulty: 'epic',
+    difficulty: 'hard',
     defeatQuote: '「森が……汚れちゃう……」',
     quotes: [
       '「森を荒らす者は許さない！」',
@@ -341,10 +341,10 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_21',
-    name: '폭풍의 정령',
+    name: '마왕 가이',
     image: 'boss_21.png',
-    difficulty: 'hard',
-    defeatQuote: '바람이... 멈췄다...',
+    difficulty: 'epic',
+    defeatQuote: 'やっと……終わるのか……この狂気が……',
     quotes: [
       '폭풍을 견딜 준비가 됐나?',
       '바람이 네 편이 아닐 거다.',
@@ -375,18 +375,18 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_23',
-    name: '천상의 수호자',
+    name: '도쿠간류 마사무네(강화형)',
     image: 'boss_23.png',
     difficulty: 'epic',
-    defeatQuote: '나의 임무는... 여기까지다...',
+    defeatQuote: '「我が野望が……ここで潰えるか……」',
     quotes: [
-      '천상에서 내려온 심판이다.',
-      '빛의 방패가 모든 것을 막는다.',
-      '하늘의 명령을 전한다.',
+      '「天下布武！ 我が野望の糧となれ！」',
+      '「この独眼竜の前に敵は無し！」',
+      '「貴様の力、そのようなものか？」',
     ],
     defeatQuotes: [
-      '나의 임무는... 여기까지다...',
-      '명령이 끝났으니 물러나겠다...',
+      '「我が野望が……ここで潰えるか……」',
+      '「バカな……この独眼竜が……」',
     ],
   },
 ];
@@ -425,3 +425,26 @@ export function selectRandomBosses(count: number, excludeIds: string[] = []): Bo
 export function getBossesByDifficulty(difficulty: Boss['difficulty']): Boss[] {
   return BOSSES.filter(boss => boss.difficulty === difficulty);
 }
+
+/**
+ * 난이도별 보스 ID 목록 생성 (풀 시스템용)
+ * @returns 난이도별 보스 ID 배열 레코드
+ */
+export function groupBossesByDifficulty(): Record<Boss['difficulty'], string[]> {
+  return {
+    easy: BOSSES.filter(b => b.difficulty === 'easy').map(b => b.id),
+    normal: BOSSES.filter(b => b.difficulty === 'normal').map(b => b.id),
+    hard: BOSSES.filter(b => b.difficulty === 'hard').map(b => b.id),
+    epic: BOSSES.filter(b => b.difficulty === 'epic').map(b => b.id),
+  };
+}
+
+/**
+ * 난이도별 보스 수 조회
+ */
+export const BOSS_COUNT_BY_DIFFICULTY = {
+  easy: BOSSES.filter(b => b.difficulty === 'easy').length,    // 2
+  normal: BOSSES.filter(b => b.difficulty === 'normal').length, // 7
+  hard: BOSSES.filter(b => b.difficulty === 'hard').length,    // 7
+  epic: BOSSES.filter(b => b.difficulty === 'epic').length,    // 7
+} as const;

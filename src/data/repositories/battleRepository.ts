@@ -25,6 +25,7 @@ const MISSIONS_KEY = 'battleMissions';
 const SETTINGS_KEY = 'battleSettings';
 const BOSS_IMAGE_SETTINGS_KEY = 'bossImageSettings';
 const DAILY_STATE_KEY_PREFIX = 'battleState:';
+const DEFEATED_BOSS_HISTORY_KEY = 'defeatedBossHistory';
 
 // ============================================================================
 // Default Values
@@ -363,5 +364,41 @@ export async function cleanupOldBattleStates(): Promise<void> {
     }
   } catch (error) {
     console.error('Failed to cleanup old battle states:', error);
+  }
+}
+
+// ============================================================================
+// Defeated Boss History (도감 확장 준비)
+// ============================================================================
+
+/**
+ * 처치한 보스 히스토리 로드 (전체 기록)
+ */
+export async function loadDefeatedBossHistory(): Promise<string[]> {
+  try {
+    const stored = await db.systemState.get(DEFEATED_BOSS_HISTORY_KEY);
+    if (stored?.value && Array.isArray(stored.value)) {
+      return stored.value as string[];
+    }
+    return [];
+  } catch (error) {
+    console.error('Failed to load defeated boss history:', error);
+    return [];
+  }
+}
+
+/**
+ * 처치한 보스 히스토리에 추가
+ */
+export async function addToDefeatedBossHistory(bossId: string): Promise<void> {
+  try {
+    const current = await loadDefeatedBossHistory();
+    // 중복 방지 (이미 처치한 보스는 추가하지 않음)
+    if (!current.includes(bossId)) {
+      const updated = [...current, bossId];
+      await db.systemState.put({ key: DEFEATED_BOSS_HISTORY_KEY, value: updated });
+    }
+  } catch (error) {
+    console.error('Failed to add to defeated boss history:', error);
   }
 }

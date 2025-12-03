@@ -36,6 +36,8 @@ import { bingoProgressStrategy } from '@/shared/services/sync/firebase/strategie
 import { getLocalDate } from '@/shared/lib/utils';
 import { db } from '@/data/db/dexieClient';
 import type { BingoProgress } from '@/shared/types/domain';
+import BossAlbumModal from '@/features/battle/components/BossAlbumModal';
+import { useBattleStore } from '@/features/battle/stores/battleStore';
 
 /** TopToolbar 컴포넌트 Props */
 interface TopToolbarProps {
@@ -68,9 +70,14 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   const [showDailySummary, setShowDailySummary] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
+  const [showBossAlbum, setShowBossAlbum] = useState(false);
   const [bingoProgress, setBingoProgress] = useState<BingoProgress | null>(null);
   const { settings } = useSettingsStore();
   const isNormalWaifu = settings?.waifuMode === 'normal';
+
+  // Battle store for boss album
+  const { dailyState: battleDailyState } = useBattleStore();
+  const todayDefeatedCount = battleDailyState?.defeatedBossIds?.length ?? 0;
 
   // Schedule View 상태 (워밍업, 지금모드, 지난블록)
   const { isFocusMode, toggleFocusMode } = useFocusModeStore();
@@ -371,6 +378,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
           <IgnitionButton />
           {renderCTA('goals', '🎯 목표', () => setShowGoals(true))}
           {renderCTA('inbox', '📥 인박스', () => setShowInbox(true))}
+          {renderCTA('boss-album', '🏆 보스', () => setShowBossAlbum(true), todayDefeatedCount > 0 ? `⚔️ ${todayDefeatedCount}` : undefined)}
           {renderCTA('stats', '📊 통계', () => setShowStats(true))}
           {renderCTA('daily-summary', '📝 AI 요약', () => setShowDailySummary(true))}
           {renderCTA('bingo', '🟦 빙고', () => setShowBingo(true), `🟦 ${bingoProgress?.completedCells.length ?? 0}/9`)}
@@ -384,6 +392,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
       {showDailySummary && <DailySummaryModal open={showDailySummary} onClose={() => setShowDailySummary(false)} />}
       {showInbox && <InboxModal open={showInbox} onClose={() => setShowInbox(false)} />}
       {showGoals && <GoalsModal open={showGoals} onClose={() => setShowGoals(false)} />}
+      {showBossAlbum && <BossAlbumModal isOpen={showBossAlbum} onClose={() => setShowBossAlbum(false)} />}
       {showBingo && (
         <BingoModal
           open={showBingo}

@@ -48,14 +48,6 @@ function clampValue_core(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function computeDailyBossCount(value: number) {
-  return clampValue_core(value, 1, 23);
-}
-
-function computeBossBaseHP(value: number) {
-  return clampValue_core(value, 30, 120);
-}
-
 function computeBossDifficultyXP_core(value: number) {
   return clampValue_core(value, 10, 500);
 }
@@ -127,26 +119,6 @@ export function BattleTab() {
     void initializeBattleSettingsShell(initialize);
   }, [initialize]);
 
-  const handleDailyBossCountChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const rawValue = Number(event.target.value);
-    const safeValue = computeDailyBossCount(rawValue);
-    updateSettingsShell(
-      updateSettings,
-      { dailyBossCount: safeValue },
-      { field: 'dailyBossCount', rawValue },
-    );
-  };
-
-  const handleBossBaseHPChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const rawValue = Number(event.target.value);
-    const safeValue = computeBossBaseHP(rawValue);
-    updateSettingsShell(
-      updateSettings,
-      { bossBaseHP: safeValue },
-      { field: 'bossBaseHP', rawValue },
-    );
-  };
-
   const handleDifficultyXpChange = (difficulty: BossDifficulty) => (event: ChangeEvent<HTMLInputElement>) => {
     const rawValue = Number(event.target.value);
     const safeValue = computeBossDifficultyXP_core(rawValue);
@@ -203,39 +175,31 @@ export function BattleTab() {
       <section className={sectionClass}>
         <h3>⚔️ 보스 설정</h3>
         <p className={sectionDescriptionClass}>
-          하루에 등장하는 보스 수와 체력을 설정합니다.
+          23마리의 보스가 난이도별로 풀에서 등장합니다. 앱 시작 시 Easy 보스 1마리가 자동 스폰됩니다.
         </p>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className={formGroupClass}>
-            <label>
-              하루 보스 수
-              <span className="ml-2 text-xs text-[var(--color-text-tertiary)]">(1~23)</span>
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={23}
-              value={settings.dailyBossCount}
-              onChange={handleDailyBossCountChange}
-              className={inputClass}
-            />
-          </div>
-
-          <div className={formGroupClass}>
-            <label>
-              보스 체력 (분)
-              <span className="ml-2 text-xs text-[var(--color-text-tertiary)]">(30~120)</span>
-            </label>
-            <input
-              type="number"
-              min={30}
-              max={120}
-              step={5}
-              value={settings.bossBaseHP}
-              onChange={handleBossBaseHPChange}
-              className={inputClass}
-            />
+        <div className="rounded-lg bg-[var(--color-bg-elevated)] p-4 border border-[var(--color-border)]">
+          <h4 className="text-sm font-medium text-[var(--color-text)] mb-2">📊 보스 HP 계산</h4>
+          <p className="text-xs text-[var(--color-text-secondary)] mb-3">
+            보스 HP = 처치 XP × 0.5 (예: 40 XP 보스 → HP 20분)
+          </p>
+          <div className="grid grid-cols-4 gap-2 text-xs text-center">
+            <div className="bg-green-500/10 rounded p-2">
+              <div className="text-green-400 font-bold">Easy</div>
+              <div className="text-[var(--color-text-tertiary)]">2마리</div>
+            </div>
+            <div className="bg-blue-500/10 rounded p-2">
+              <div className="text-blue-400 font-bold">Normal</div>
+              <div className="text-[var(--color-text-tertiary)]">7마리</div>
+            </div>
+            <div className="bg-orange-500/10 rounded p-2">
+              <div className="text-orange-400 font-bold">Hard</div>
+              <div className="text-[var(--color-text-tertiary)]">7마리</div>
+            </div>
+            <div className="bg-purple-500/10 rounded p-2">
+              <div className="text-purple-400 font-bold">Epic</div>
+              <div className="text-[var(--color-text-tertiary)]">7마리</div>
+            </div>
           </div>
         </div>
       </section>
@@ -244,7 +208,7 @@ export function BattleTab() {
       <section className={sectionClass}>
         <h3>🏆 보상 설정</h3>
         <p className={sectionDescriptionClass}>
-          난이도별 보스 처치 XP를 설정합니다.
+          난이도별 보스 처치 XP를 설정합니다. HP = XP × 0.5로 자동 계산됩니다.
         </p>
 
         <div className="grid grid-cols-2 gap-4">
@@ -253,6 +217,9 @@ export function BattleTab() {
               <label className="flex items-center gap-2">
                 <span>{entry.label}</span>
                 <span className="text-[10px] text-[var(--color-text-tertiary)]">{entry.range}</span>
+                <span className="text-[10px] text-[var(--color-primary)]">
+                  (HP: {Math.floor((settings.bossDifficultyXP?.[entry.key] ?? DIFFICULTY_XP_DEFAULTS[entry.key]) * 0.5)}분)
+                </span>
               </label>
               <input
                 type="number"

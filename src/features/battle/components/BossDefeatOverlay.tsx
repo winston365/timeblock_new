@@ -1,51 +1,79 @@
 /**
  * BossDefeatOverlay - 보스 처치 연출 오버레이
  *
- * @role 보스 처치 시 화려한 축하 연출
- * @input 처치된 보스 정보, XP 보상
+ * @role 보스 처치 시 화려한 축하 연출 + 다음 보스 난이도 선택
+ * @input 처치된 보스 정보, XP 보상, 남은 보스 수
  * @output 풀스크린 오버레이 애니메이션
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import type { Boss } from '@/shared/types/domain';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import type { Boss, BossDifficulty } from '@/shared/types/domain';
 import { pickRandomQuote } from '../utils/quotes';
 
 interface BossDefeatOverlayProps {
   boss: Boss;
   xpEarned: number;
   onClose: () => void;
-  /** 자동 닫힘 시간 (ms) */
-  autoCloseDelay?: number;
+  /** 남은 보스 수 (난이도별) */
+  remainingCounts?: Record<BossDifficulty, number>;
+  /** 난이도 선택 시 콜백 */
+  onSelectDifficulty?: (difficulty: BossDifficulty) => void;
 }
 
 export function BossDefeatOverlay({
   boss,
   xpEarned,
   onClose,
-  autoCloseDelay = 4000,
+  remainingCounts,
+  onSelectDifficulty,
 }: BossDefeatOverlayProps) {
-  const [stage, setStage] = useState<'flash' | 'reveal' | 'quote' | 'reward'>('flash');
+  const [stage, setStage] = useState<'flash' | 'reveal' | 'quote' | 'reward' | 'select'>('flash');
   const defeatQuote = useMemo(
     () => pickRandomQuote(boss.defeatQuotes, boss.defeatQuote),
     [boss.defeatQuotes, boss.defeatQuote, boss.id],
   );
 
+  // 남은 보스가 있는지 확인
+  const hasRemainingBosses = useMemo(() => {
+    if (!remainingCounts) return false;
+    return Object.values(remainingCounts).some(count => count > 0);
+  }, [remainingCounts]);
+
   useEffect(() => {
-    // 단계별 애니메이션 타이밍
     const timers: NodeJS.Timeout[] = [];
 
     timers.push(setTimeout(() => setStage('reveal'), 300));
     timers.push(setTimeout(() => setStage('quote'), 1200));
     timers.push(setTimeout(() => setStage('reward'), 2200));
-    timers.push(setTimeout(() => onClose(), autoCloseDelay));
+    
+    // 남은 보스가 있으면 선택 단계로, 없으면 자동 닫힘
+    if (hasRemainingBosses && onSelectDifficulty) {
+      timers.push(setTimeout(() => setStage('select'), 3500));
+    } else {
+      timers.push(setTimeout(() => onClose(), 4000));
+    }
 
     return () => timers.forEach(clearTimeout);
-  }, [autoCloseDelay, onClose]);
+  }, [onClose, hasRemainingBosses, onSelectDifficulty]);
+
+  const handleSelectDifficulty = useCallback((difficulty: BossDifficulty) => {
+    if (onSelectDifficulty) {
+      onSelectDifficulty(difficulty);
+    }
+    onClose();
+  }, [onSelectDifficulty, onClose]);
+
+  const difficulties: Array<{ key: BossDifficulty; label: string; emoji: string; color: string }> = [
+    { key: 'easy', label: '쉬움', emoji: '🟢', color: 'green' },
+    { key: 'normal', label: '보통', emoji: '🟡', color: 'yellow' },
+    { key: 'hard', label: '어려움', emoji: '🔴', color: 'red' },
+    { key: 'epic', label: '에픽', emoji: '🟣', color: 'purple' },
+  ];
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
-      onClick={onClose}
+      onClick={stage === 'select' ? undefined : onClose}
       role="dialog"
       aria-modal="true"
       aria-label="보스 처치 완료"
@@ -83,12 +111,10 @@ export function BossDefeatOverlay({
         <div
           className={`transform transition-all duration-700 delay-200 ${
             stage === 'flash' || stage === 'reveal' ? 'scale-0 rotate-180' : 'scale-100 rotate-0'
-          }`}
+          } ${stage === 'select' ? 'scale-75' : ''}`}
         >
           <div className="relative">
-            {/* 글로우 */}
             <div className="absolute inset-0 animate-ping rounded-full bg-red-500/30 blur-xl" />
-            {/* 스컬 아이콘 */}
             <div className="relative flex h-28 w-28 items-center justify-center rounded-full border-4 border-red-500 bg-gradient-to-br from-red-900 to-red-700 text-6xl shadow-2xl">
               💀
             </div>
@@ -98,9 +124,11 @@ export function BossDefeatOverlay({
         {/* 처치 대사 */}
         <div
           className={`max-w-md transform transition-all duration-500 ${
-            stage === 'quote' || stage === 'reward'
+            (stage === 'quote' || stage === 'reward') && stage !== 'select'
               ? 'translate-y-0 opacity-100'
-              : 'translate-y-4 opacity-0'
+              : stage === 'select' 
+                ? 'scale-75 opacity-50' 
+                : 'translate-y-4 opacity-0'
           }`}
         >
           <blockquote className="rounded-lg border border-gray-700 bg-gray-900/80 px-6 py-4 italic text-gray-300 shadow-lg">
@@ -113,8 +141,8 @@ export function BossDefeatOverlay({
         {/* XP 보상 */}
         <div
           className={`transform transition-all duration-500 ${
-            stage === 'reward' ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-8 scale-75 opacity-0'
-          }`}
+            stage === 'reward' || stage === 'select' ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-8 scale-75 opacity-0'
+          } ${stage === 'select' ? 'scale-75' : ''}`}
         >
           <div className="flex items-center gap-3 rounded-full border border-yellow-500/50 bg-yellow-500/20 px-6 py-3 shadow-lg">
             <span className="text-3xl">⭐</span>
@@ -127,18 +155,68 @@ export function BossDefeatOverlay({
           </div>
         </div>
 
-        {/* 닫기 안내 */}
-        <p
-          className={`text-xs text-gray-500 transition-opacity duration-500 ${
-            stage === 'reward' ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
-          화면을 클릭하면 닫힙니다
-        </p>
+        {/* 난이도 선택 단계 */}
+        {stage === 'select' && remainingCounts && (
+          <div className="transform animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <p className="text-sm text-gray-300 mb-4">다음 보스 난이도를 선택하세요</p>
+            <div className="grid grid-cols-2 gap-3 w-80">
+              {difficulties.map(({ key, label, emoji, color }) => {
+                const count = remainingCounts[key] ?? 0;
+                const isDisabled = count === 0;
+
+                return (
+                  <button
+                    key={key}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isDisabled) handleSelectDifficulty(key);
+                    }}
+                    disabled={isDisabled}
+                    className={`
+                      flex items-center justify-between rounded-xl border-2 px-4 py-3 transition-all
+                      ${isDisabled
+                        ? 'border-gray-700 bg-gray-800/50 opacity-40 cursor-not-allowed'
+                        : `border-${color}-500/50 bg-${color}-500/20 hover:border-${color}-500 hover:bg-${color}-500/30 hover:scale-105 active:scale-95`
+                      }
+                    `}
+                    style={!isDisabled ? {
+                      borderColor: color === 'green' ? '#22c55e80' : color === 'yellow' ? '#eab30880' : color === 'red' ? '#ef444480' : '#a855f780',
+                      backgroundColor: color === 'green' ? '#22c55e20' : color === 'yellow' ? '#eab30820' : color === 'red' ? '#ef444420' : '#a855f720',
+                    } : undefined}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-xl">{emoji}</span>
+                      <span className={`font-bold ${isDisabled ? 'text-gray-500' : 'text-white'}`}>
+                        {label}
+                      </span>
+                    </span>
+                    <span className={`text-sm font-mono ${isDisabled ? 'text-gray-600' : 'text-gray-300'}`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-500 mt-4">
+              또는 아무 곳이나 클릭하여 나중에 선택
+            </p>
+          </div>
+        )}
+
+        {/* 닫기 안내 (선택 단계 아닐 때만) */}
+        {stage !== 'select' && (
+          <p
+            className={`text-xs text-gray-500 transition-opacity duration-500 ${
+              stage === 'reward' ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            화면을 클릭하면 닫힙니다
+          </p>
+        )}
       </div>
 
-      {/* 파티클 효과 (간단한 CSS 애니메이션) */}
-      {stage !== 'flash' && (
+      {/* 파티클 효과 */}
+      {stage !== 'flash' && stage !== 'select' && (
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           {[...Array(20)].map((_, i) => (
             <div
