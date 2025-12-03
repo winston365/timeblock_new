@@ -76,6 +76,9 @@ const electronAPI = {
     ipcRenderer.on('pip-action-msg', subscription);
     return () => ipcRenderer.removeListener('pip-action-msg', subscription);
   },
+
+  // 메인 윈도우 최상위 설정
+  setMainAlwaysOnTop: (enabled: boolean): Promise<boolean> => ipcRenderer.invoke('set-main-always-on-top', enabled),
 };
 
 // ============================================================================

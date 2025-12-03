@@ -57,6 +57,8 @@ const settingsConfig: RepositoryConfig<Settings> = {
     aiBreakdownTrigger: 'high_difficulty',
     autoEmojiEnabled: false,
     timeSlotTags: DEFAULT_TIME_SLOT_TAGS,
+    isAlwaysOnTopEnabled: false,
+    alwaysOnTopToggleKey: 'Ctrl+Shift+T',
     // 점화 시스템 - 중앙화된 기본값 사용
     ignitionInactivityMinutes: SETTING_DEFAULTS.ignitionInactivityMinutes,
     ignitionDurationMinutes: SETTING_DEFAULTS.ignitionDurationMinutes,
@@ -83,6 +85,8 @@ const settingsConfig: RepositoryConfig<Settings> = {
       aiBreakdownTrigger: data.aiBreakdownTrigger || 'high_difficulty',
       autoEmojiEnabled: data.autoEmojiEnabled ?? false,
       timeSlotTags: Array.isArray(data.timeSlotTags) ? data.timeSlotTags : DEFAULT_TIME_SLOT_TAGS,
+      isAlwaysOnTopEnabled: data.isAlwaysOnTopEnabled ?? false,
+      alwaysOnTopToggleKey: data.alwaysOnTopToggleKey || 'Ctrl+Shift+T',
       // 점화 시스템 - 중앙화된 기본값 사용
       ignitionInactivityMinutes: data.ignitionInactivityMinutes ?? SETTING_DEFAULTS.ignitionInactivityMinutes,
       ignitionDurationMinutes: data.ignitionDurationMinutes ?? SETTING_DEFAULTS.ignitionDurationMinutes,

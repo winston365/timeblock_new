@@ -118,6 +118,26 @@ export function ShortcutsTab({ localSettings, setLocalSettings }: ShortcutsTabPr
                 </small>
             </div>
 
+            <div className={formGroupClass}>
+                <label htmlFor="always-on-top-key">
+                    📌 창 최상위 토글
+                </label>
+                <input
+                    id="always-on-top-key"
+                    type="text"
+                    className={inputClass}
+                    placeholder="Ctrl+Shift+T (기본값)"
+                    value={localSettings?.alwaysOnTopToggleKey || ''}
+                    onChange={(e) =>
+                        setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, alwaysOnTopToggleKey: e.target.value }) : prev)
+                    }
+                    onKeyDown={(e) => handleKeyDown(e, 'alwaysOnTopToggleKey')}
+                />
+                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                    오른쪽 얇은 하늘색 바 또는 단축키로 창 최상위 고정을 토글합니다.
+                </small>
+            </div>
+
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
                 <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">📋 기본 단축키 목록</h4>
                 <div className="grid gap-2 text-xs">
@@ -137,6 +157,12 @@ export function ShortcutsTab({ localSettings, setLocalSettings }: ShortcutsTabPr
                         <span className="text-[var(--color-text-secondary)]">우측 패널 토글</span>
                         <kbd className="rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-2 py-1 font-mono text-[var(--color-text)]">
                             {localSettings?.rightPanelToggleKey || 'Ctrl+Shift+B'}
+                        </kbd>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                        <span className="text-[var(--color-text-secondary)]">창 최상위 토글</span>
+                        <kbd className="rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-2 py-1 font-mono text-[var(--color-text)]">
+                            {localSettings?.alwaysOnTopToggleKey || 'Ctrl+Shift+T'}
                         </kbd>
                     </div>
                 </div>

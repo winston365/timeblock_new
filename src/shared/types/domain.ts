@@ -438,6 +438,8 @@ export interface Settings {
   leftPanelToggleKey?: string; // 좌측 패널 토글 단축키 (기본: 'Ctrl+B')
   rightPanelToggleKey?: string; // 우측 패널 토글 단축키 (기본: 'Ctrl+Shift+B')
   bulkAddModalKey?: string; // 대량 추가 모달 단축키 (기본: 'F1')
+  alwaysOnTopToggleKey?: string; // 창 최상위 토글 단축키 (기본: 'Ctrl+Shift+T')
+  isAlwaysOnTopEnabled?: boolean; // 창 최상위 상태
 
   // 통계 목표 설정
   weeklyXPGoal?: number; // 주간 XP 목표 (기본값 없음)

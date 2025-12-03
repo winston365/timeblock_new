@@ -10,7 +10,7 @@
  *   - 하위 컴포넌트로 UI 분리
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useGameState } from '@/shared/hooks';
 import { createTaskFromTemplate } from '@/data/repositories/templateRepository';
 import { useAppInitialization } from './hooks/useAppInitialization';
@@ -65,7 +65,7 @@ export default function AppShell() {
   const { isInitialized: dbInitialized, error: initError } = useAppInitialization();
   const { isFocusMode } = useFocusModeStore();
   const { gameState, updateQuestProgress } = useGameState();
-  const { settings } = useSettingsStore();
+  const { settings, updateSettings } = useSettingsStore();
 
   // ============================================================================
   // Custom Hooks
@@ -105,12 +105,47 @@ export default function AppShell() {
     waifuContainerClass,
   } = useWaifuVisibility();
 
+  // 창 최상위 상태
+  const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(settings?.isAlwaysOnTopEnabled ?? false);
+
+  const applyAlwaysOnTop = useCallback(async (enabled: boolean) => {
+    setIsAlwaysOnTop(enabled);
+
+    try {
+      await updateSettings({ isAlwaysOnTopEnabled: enabled });
+    } catch (err) {
+      console.error('Failed to persist always-on-top setting', err);
+    }
+
+    if (window.electronAPI?.setMainAlwaysOnTop) {
+      window.electronAPI.setMainAlwaysOnTop(enabled).catch((err: unknown) => {
+        console.error('Failed to set always-on-top in main process', err);
+      });
+    }
+  }, [updateSettings]);
+
+  const handleToggleAlwaysOnTop = useCallback(() => {
+    applyAlwaysOnTop(!isAlwaysOnTop);
+  }, [applyAlwaysOnTop, isAlwaysOnTop]);
+
+  useEffect(() => {
+    if (settings?.isAlwaysOnTopEnabled !== undefined) {
+      setIsAlwaysOnTop(settings.isAlwaysOnTopEnabled);
+      if (window.electronAPI?.setMainAlwaysOnTop) {
+        window.electronAPI.setMainAlwaysOnTop(settings.isAlwaysOnTopEnabled).catch((err: unknown) => {
+          console.error('Failed to sync always-on-top state', err);
+        });
+      }
+    }
+  }, [settings?.isAlwaysOnTopEnabled]);
+
   // 키보드 단축키
   useKeyboardShortcuts({
     settings,
     onBulkAdd: modals.openBulkAdd,
     onToggleLeftPanel: toggleLeftSidebar,
     onToggleRightPanel: toggleRightPanels,
+    onToggleAlwaysOnTop: handleToggleAlwaysOnTop,
   });
 
   // ============================================================================
@@ -174,6 +209,20 @@ export default function AppShell() {
     <div className="flex h-screen flex-col bg-[var(--color-bg-base)] text-[var(--color-text)]">
       {/* Skip Link */}
       <a href="#main-content" className="skip-to-content">스케줄로 이동</a>
+
+      {/* 창 최상위 표시/토글 바 */}
+      <button
+        type="button"
+        onClick={handleToggleAlwaysOnTop}
+        aria-pressed={isAlwaysOnTop}
+        title={isAlwaysOnTop ? '창 최상위 해제 (Ctrl+Shift+T)' : '창 최상위 고정 (Ctrl+Shift+T)'}
+        className={`group fixed right-0 top-0 z-50 flex h-screen w-[10px] items-center justify-center transition-colors duration-150 ${isAlwaysOnTop ? 'bg-sky-400/80 hover:bg-sky-300' : 'bg-sky-200/0 hover:bg-sky-200/60'}`}
+      >
+        <span className="pointer-events-none absolute right-full mr-2 hidden whitespace-nowrap rounded-md bg-[var(--color-bg-tertiary)] px-2 py-1 text-xs font-semibold text-[var(--color-text)] shadow-lg group-hover:block">
+          {isAlwaysOnTop ? '창 최상위 해제' : '창 최상위 고정'}
+        </span>
+        <span className="sr-only">{isAlwaysOnTop ? '창 최상위 해제' : '창 최상위 고정'}</span>
+      </button>
       
       {/* Top Bar */}
       {!isFocusMode && (

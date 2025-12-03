@@ -26,6 +26,8 @@ interface KeyboardShortcutsConfig {
   onToggleLeftPanel: () => void;
   /** 우측 패널 토글 콜백 */
   onToggleRightPanel: () => void;
+  /** 창 최상위 토글 콜백 */
+  onToggleAlwaysOnTop?: () => void;
 }
 
 /**
@@ -100,6 +102,7 @@ export function useKeyboardShortcuts({
   onBulkAdd,
   onToggleLeftPanel,
   onToggleRightPanel,
+  onToggleAlwaysOnTop,
 }: KeyboardShortcutsConfig): void {
   const handleKeyDown = useCallback((keyboardEvent: KeyboardEvent) => {
     // 입력 필드에서는 단축키 비활성화
@@ -128,7 +131,15 @@ export function useKeyboardShortcuts({
       onToggleRightPanel();
       return;
     }
-  }, [settings, onBulkAdd, onToggleLeftPanel, onToggleRightPanel]);
+
+    // 창 최상위 토글 (기본: Ctrl+Shift+T)
+    const alwaysOnTopKey = settings?.alwaysOnTopToggleKey || 'Ctrl+Shift+T';
+    if (onToggleAlwaysOnTop && matchesShortcut(keyboardEvent, alwaysOnTopKey)) {
+      keyboardEvent.preventDefault();
+      onToggleAlwaysOnTop();
+      return;
+    }
+  }, [settings, onBulkAdd, onToggleLeftPanel, onToggleRightPanel, onToggleAlwaysOnTop]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);

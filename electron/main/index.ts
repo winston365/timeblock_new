@@ -683,3 +683,14 @@ ipcMain.handle('pip-action', (_pipActionEvent, pipActionType, pipActionPayload) 
     }
   }
 });
+
+/**
+ * 메인 창 최상위 고정 설정
+ */
+ipcMain.handle('set-main-always-on-top', (_event, enabled: boolean) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setAlwaysOnTop(!!enabled);
+    return mainWindow.isAlwaysOnTop();
+  }
+  return false;
+});
