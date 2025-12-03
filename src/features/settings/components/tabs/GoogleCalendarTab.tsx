@@ -24,8 +24,8 @@ import type { GoogleCalendarSettings } from '@/shared/services/calendar/googleCa
 import { toast } from 'react-hot-toast';
 
 // 하드코딩된 OAuth credentials (개인용 앱)
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-const GOOGLE_CLIENT_SECRET = import.meta.env.VITE_GOOGLE_CLIENT_SECRET || '';
+const GOOGLE_CLIENT_ID = '907237023842-ssrh0av5k3g9davc1bcj2vfgnmkg371e.apps.googleusercontent.com';
+const GOOGLE_CLIENT_SECRET = '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';
 
 /**
  * Google Calendar 연동 탭 컴포넌트
