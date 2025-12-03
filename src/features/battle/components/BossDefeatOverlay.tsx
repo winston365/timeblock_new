@@ -6,8 +6,9 @@
  * @output 풀스크린 오버레이 애니메이션
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Boss } from '@/shared/types/domain';
+import { pickRandomQuote } from '../utils/quotes';
 
 interface BossDefeatOverlayProps {
   boss: Boss;
@@ -24,6 +25,10 @@ export function BossDefeatOverlay({
   autoCloseDelay = 4000,
 }: BossDefeatOverlayProps) {
   const [stage, setStage] = useState<'flash' | 'reveal' | 'quote' | 'reward'>('flash');
+  const defeatQuote = useMemo(
+    () => pickRandomQuote(boss.defeatQuotes, boss.defeatQuote),
+    [boss.defeatQuotes, boss.defeatQuote, boss.id],
+  );
 
   useEffect(() => {
     // 단계별 애니메이션 타이밍
@@ -100,7 +105,7 @@ export function BossDefeatOverlay({
         >
           <blockquote className="rounded-lg border border-gray-700 bg-gray-900/80 px-6 py-4 italic text-gray-300 shadow-lg">
             <span className="text-2xl text-gray-500">"</span>
-            {boss.defeatQuote}
+            {defeatQuote}
             <span className="text-2xl text-gray-500">"</span>
           </blockquote>
         </div>

@@ -78,10 +78,11 @@ export function BossHealthBar({ currentHP, maxHP, difficulty }: BossHealthBarPro
 
         {/* 체력바 */}
         <div
-          className={`relative h-full transition-all duration-500 ease-out ${getHealthColor(percentage, difficulty)}`}
+          className={`relative h-full ${getHealthColor(percentage, difficulty)}`}
           style={{
             width: `${percentage}%`,
             background: getHealthGradient(percentage, difficulty),
+            transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease',
           }}
         >
           {/* 광택 효과 */}

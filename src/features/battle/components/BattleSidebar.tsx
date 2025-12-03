@@ -5,13 +5,15 @@
  * @description 2/3 보스 이미지 + 1/3 현재 미션 (보스 1:1 미션 매칭)
  */
 
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import { useBattleStore, getBossById } from '../stores/battleStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { BossDisplay } from './BossDisplay';
 import { BossDefeatOverlay } from './BossDefeatOverlay';
+import { DamageFloatingText } from './DamageFloatingText';
 import { playAttackSound, playBossDefeatSound } from '../services/battleSoundService';
 import type { BattleMission } from '@/shared/types/domain';
+import { getBossXpByDifficulty } from '../utils/xp';
 
 export function BattleSidebar() {
   const {
@@ -30,27 +32,47 @@ export function BattleSidebar() {
   } = useBattleStore();
 
   const addXP = useGameStateStore(state => state.addXP);
+  const missionCompleteCooldownRef = useRef(0);
+  const MISSION_COMPLETE_COOLDOWN_MS = 250;
+
+  // 데미지 플로팅 텍스트 상태
+  const [showDamageFloat, setShowDamageFloat] = useState(false);
+  const [lastDamage, setLastDamage] = useState(0);
 
   // 초기화
   useEffect(() => {
     initialize();
   }, [initialize]);
 
-  // 현재 보스에 배정된 미션 가져오기 (보스 인덱스 = 미션 인덱스)
+  // 활성 미션 및 현재 미션 메모이제이션
+  const enabledMissionsMemo = useMemo(
+    () => missions.filter(m => m.enabled).sort((a, b) => a.order - b.order),
+    [missions],
+  );
+
   const currentMission = useMemo((): BattleMission | null => {
     if (!dailyState) return null;
-    const enabledMissions = missions.filter(m => m.enabled).sort((a, b) => a.order - b.order);
-    return enabledMissions[dailyState.currentBossIndex] || null;
-  }, [missions, dailyState]);
+    return enabledMissionsMemo[dailyState.currentBossIndex] || null;
+  }, [enabledMissionsMemo, dailyState]);
 
   // 미션 완료 핸들러 (원킬 판정)
   const handleCompleteMission = useCallback(async () => {
     if (!currentMission) return;
 
+    const now = Date.now();
+    if (now - missionCompleteCooldownRef.current < MISSION_COMPLETE_COOLDOWN_MS) {
+      return;
+    }
+    missionCompleteCooldownRef.current = now;
+
     // 효과음 재생 (설정에 따라)
     if (settings.battleSoundEffects) {
       playAttackSound();
     }
+
+    // 데미지 플로팅 텍스트 표시
+    setLastDamage(currentMission.damage);
+    setShowDamageFloat(true);
 
     const result = await completeMission(currentMission.id);
 
@@ -64,6 +86,37 @@ export function BattleSidebar() {
       addXP(result.xpEarned, 'boss_defeat');
     }
   }, [completeMission, addXP, currentMission, settings.battleSoundEffects]);
+
+  // 현재 보스 정보 (모든 Hook은 조건문 이전에 호출해야 함)
+  const currentBossProgress = dailyState ? getCurrentBoss() : null;
+  const currentBoss = useMemo(
+    () => (currentBossProgress ? getBossById(currentBossProgress.bossId) : null),
+    [currentBossProgress],
+  );
+  // dailyState를 의존성으로 사용하여 안정적인 메모이제이션
+  const allDefeated = useMemo(() => {
+    if (!dailyState) return false;
+    return dailyState.bosses.every(boss => boss.defeatedAt);
+  }, [dailyState]);
+  const defeatedBoss = useMemo(
+    () => (defeatedBossId ? getBossById(defeatedBossId) : null),
+    [defeatedBossId],
+  );
+  const defeatedBossXp = useMemo(
+    () => (defeatedBossId ? getBossXpByDifficulty(settings, defeatedBossId) : 0),
+    [defeatedBossId, settings],
+  );
+  const isCurrentBossDefeated = currentBossProgress?.defeatedAt !== undefined;
+  const totalDefeatedXP = useMemo(() => {
+    if (!dailyState) return 0;
+    return dailyState.bosses
+      .filter(b => b.defeatedAt)
+      .reduce((sum, boss) => sum + getBossXpByDifficulty(settings, boss.bossId), 0);
+  }, [dailyState, settings]);
+  const enabledMissionsList = useMemo(
+    () => missions.filter(m => m.enabled),
+    [missions],
+  );
 
   // 로딩 상태
   if (loading) {
@@ -105,22 +158,6 @@ export function BattleSidebar() {
     );
   }
 
-  // 현재 보스 정보
-  const currentBossProgress = getCurrentBoss();
-  const currentBoss = currentBossProgress ? getBossById(currentBossProgress.bossId) : null;
-  const allDefeated = isAllBossesDefeated();
-  const defeatedBoss = defeatedBossId ? getBossById(defeatedBossId) : null;
-  const isCurrentBossDefeated = currentBossProgress?.defeatedAt !== undefined;
-
-  // 디버그 로그
-  console.log('[BattleSidebar] State:', {
-    dailyState,
-    currentBossProgress,
-    currentBoss,
-    missions: missions.length,
-    enabledMissions: missions.filter(m => m.enabled).length,
-  });
-
   // 모든 보스 처치 완료
   if (allDefeated) {
     return (
@@ -149,7 +186,7 @@ export function BattleSidebar() {
         <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/30 px-6 py-3 text-center">
           <p className="text-xs text-yellow-400 mb-1">획득 XP</p>
           <p className="text-2xl font-black text-yellow-300">
-            +{dailyState.totalDefeated * settings.bossDefeatXP} XP
+            +{totalDefeatedXP} XP
           </p>
         </div>
       </div>
@@ -157,8 +194,7 @@ export function BattleSidebar() {
   }
 
   // 미션이 없을 때
-  const enabledMissions = missions.filter(m => m.enabled);
-  if (enabledMissions.length === 0) {
+  if (enabledMissionsList.length === 0) {
     return (
       <div className="grid h-full p-3 gap-3" style={{ gridTemplateRows: 'minmax(0, 1fr) 120px' }}>
         {/* 보스 영역 */}
@@ -198,6 +234,13 @@ export function BattleSidebar() {
             maxHP={currentBossProgress.maxHP}
             isDefeated={isCurrentBossDefeated}
           />
+          {/* 데미지 플로팅 텍스트 */}
+          {showDamageFloat && (
+            <DamageFloatingText
+              damage={lastDamage}
+              onComplete={() => setShowDamageFloat(false)}
+            />
+          )}
         </div>
       )}
 
@@ -301,7 +344,7 @@ export function BattleSidebar() {
       {showDefeatOverlay && defeatedBoss && (
         <BossDefeatOverlay
           boss={defeatedBoss}
-          xpEarned={settings.bossDefeatXP}
+          xpEarned={defeatedBossXp}
           onClose={hideBossDefeat}
         />
       )}

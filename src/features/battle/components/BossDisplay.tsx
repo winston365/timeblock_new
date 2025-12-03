@@ -5,10 +5,11 @@
  * @description 사이드바의 2/3를 차지하는 큰 보스 이미지
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Boss } from '@/shared/types/domain';
 import { useBattleStore } from '../stores/battleStore';
 import { getBossImageSrc } from '../utils/assets';
+import { pickRandomQuote } from '../utils/quotes';
 
 type BattleStoreState = ReturnType<typeof useBattleStore.getState>;
 type BossImageSetting = ReturnType<BattleStoreState['getBossImageSetting']>;
@@ -117,6 +118,10 @@ function computeShouldShowEmoji_core(showImage: boolean, imageError: boolean, ha
   return !showImage || imageError || !hasBossImage;
 }
 
+function computeBattleQuote_core(quotes: string[] | undefined, defeatQuote: string) {
+  return pickRandomQuote(quotes, defeatQuote);
+}
+
 function useBattleSettingsShell() {
   try {
     return useBattleStore(state => state.settings);
@@ -182,6 +187,10 @@ export function BossDisplay({
   const difficultyStyle = computeDifficultyStyles(boss.difficulty);
   const hpPercent = computeHpPercent_core(currentHP, maxHP);
   const bossImageSrc = getBossImageSrc(boss.image);
+  const battleQuote = useMemo(
+    () => computeBattleQuote_core(boss.quotes, boss.defeatQuote),
+    [boss.id, boss.quotes, boss.defeatQuote],
+  );
 
   // 저장된 이미지 설정 가져오기 (없으면 bossData의 기본값 사용)
   const savedImageSetting = readBossImageSettingShell(getBossImageSetting, boss.id);
@@ -206,6 +215,13 @@ export function BossDisplay({
 
         {/* 보스 이미지 */}
         <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+          {battleQuote && (
+            <div className="pointer-events-none absolute left-6 right-6 top-6 z-20 text-center drop-shadow-lg">
+              <div className="inline-block rounded-full bg-black/50 px-4 py-2 text-sm text-gray-100 backdrop-blur">
+                “{battleQuote}”
+              </div>
+            </div>
+          )}
           {!shouldShowEmoji ? (
             <img
               src={bossImageSrc}
@@ -261,20 +277,31 @@ export function BossDisplay({
           <div className="mb-2">
             <div className="flex items-center justify-between text-xs mb-1">
               <span className="font-bold text-red-400">HP</span>
-              <span className="font-mono text-gray-400">
+              <span className="font-mono text-gray-400 transition-all duration-300">
                 {currentHP} / {maxHP}
               </span>
             </div>
-            <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-800">
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-800 relative">
+              {/* 배경 글로우 (체력 감소 시) */}
+              {hpPercent < 30 && hpPercent > 0 && (
+                <div className="absolute inset-0 animate-pulse bg-red-500/20 rounded-full" />
+              )}
+              {/* HP 바 본체 */}
               <div
-                className={`h-full transition-all duration-500 ${hpPercent > 50
+                className={`h-full relative ${hpPercent > 50
                   ? 'bg-gradient-to-r from-green-600 to-green-400'
                   : hpPercent > 25
                     ? 'bg-gradient-to-r from-yellow-600 to-yellow-400'
                     : 'bg-gradient-to-r from-red-600 to-red-400'
                   }`}
-                style={{ width: `${hpPercent}%` }}
-              />
+                style={{
+                  width: `${hpPercent}%`,
+                  transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease',
+                }}
+              >
+                {/* 광택 효과 */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
+              </div>
             </div>
           </div>
 

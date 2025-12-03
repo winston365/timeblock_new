@@ -25,6 +25,210 @@ import {
 } from '@/data/repositories/battleRepository';
 import { selectRandomBosses, getBossById } from '../data/bossData';
 import { getLocalDate } from '@/shared/lib/utils';
+import { getBossXpByDifficulty } from '../utils/xp';
+
+interface BattleStoreError {
+  code: string;
+  message: string;
+  context?: Record<string, unknown>;
+  originalError?: unknown;
+}
+
+function createBattleStoreError(
+  code: string,
+  message: string,
+  context?: Record<string, unknown>,
+  originalError?: unknown,
+): Error & BattleStoreError {
+  const error = new Error(message) as Error & BattleStoreError;
+  error.code = code;
+  error.context = context;
+  error.originalError = originalError;
+  return error;
+}
+
+function logBattleStoreError(context: string, error: Error & BattleStoreError) {
+  console.error(`[BattleStore] ${context}`, error);
+}
+
+function computeDailyStateForToday_core(dailyState: DailyBattleState | null, today: string) {
+  if (dailyState && dailyState.date === today) {
+    return { dailyStateForToday: dailyState, shouldStartNewDay: false };
+  }
+
+  return { dailyStateForToday: null, shouldStartNewDay: true };
+}
+
+function computeNewMission_core(params: {
+  text: string;
+  damage: number;
+  order: number;
+  idSeed: number;
+  timestamp: string;
+}): BattleMission {
+  const { text, damage, order, idSeed, timestamp } = params;
+  return {
+    id: `mission_${idSeed}`,
+    text,
+    damage,
+    order,
+    enabled: true,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+function computeUpdatedMissions_core(
+  missions: BattleMission[],
+  missionId: string,
+  updates: Partial<BattleMission>,
+  timestamp: string,
+) {
+  return missions.map(m =>
+    m.id === missionId
+      ? { ...m, ...updates, updatedAt: timestamp }
+      : m
+  );
+}
+
+function computeDeletedAndReorderedMissions_core(missions: BattleMission[], missionId: string) {
+  const filtered = missions.filter(m => m.id !== missionId);
+  return filtered.map((m, idx) => ({ ...m, order: idx }));
+}
+
+function computeReorderedMissions_core(missions: BattleMission[], timestamp: string) {
+  return missions.map((m, idx) => ({
+    ...m,
+    order: idx,
+    updatedAt: timestamp,
+  }));
+}
+
+function computeUpdatedSettings_core(settings: BattleSettings, updates: Partial<BattleSettings>) {
+  const mergedDifficultyXP = updates.bossDifficultyXP
+    ? { ...settings.bossDifficultyXP, ...updates.bossDifficultyXP }
+    : settings.bossDifficultyXP;
+
+  return { ...settings, ...updates, bossDifficultyXP: mergedDifficultyXP };
+}
+
+function computeUpdatedDailyStateForBossCount_core(
+  dailyState: DailyBattleState,
+  newCount: number,
+  settings: BattleSettings,
+) {
+  const currentCount = dailyState.bosses.length;
+
+  if (newCount > currentCount) {
+    const diff = newCount - currentCount;
+    const existingIds = dailyState.bosses.map(b => b.bossId);
+    const newBosses = selectRandomBosses(diff, existingIds);
+
+    const addedBosses = newBosses.map(boss => ({
+      bossId: boss.id,
+      maxHP: settings.bossBaseHP,
+      currentHP: settings.bossBaseHP,
+      completedMissions: [],
+    }));
+
+    const nextState = {
+      ...dailyState,
+      bosses: [...dailyState.bosses, ...addedBosses],
+    };
+
+    return { changed: true, nextState };
+  }
+
+  if (newCount < currentCount) {
+    const updatedBosses = dailyState.bosses.slice(0, newCount);
+    const newIndex = Math.min(dailyState.currentBossIndex, newCount - 1);
+    const newTotalDefeated = updatedBosses.filter(b => b.defeatedAt).length;
+
+    const nextState = {
+      ...dailyState,
+      bosses: updatedBosses,
+      currentBossIndex: newIndex,
+      totalDefeated: newTotalDefeated,
+    };
+
+    return { changed: true, nextState };
+  }
+
+  return { changed: false, nextState: dailyState };
+}
+
+function computeNewDailyState_core(
+  settings: BattleSettings,
+  today: string,
+  excludeIds: string[],
+): DailyBattleState {
+  const selectedBosses = selectRandomBosses(settings.dailyBossCount, excludeIds);
+
+  return {
+    date: today,
+    currentBossIndex: 0,
+    bosses: selectedBosses.map(boss => ({
+      bossId: boss.id,
+      maxHP: settings.bossBaseHP,
+      currentHP: settings.bossBaseHP,
+      completedMissions: [],
+    })),
+    totalDefeated: 0,
+  };
+}
+
+function computeCompleteMissionResult_core(
+  dailyState: DailyBattleState | null,
+  missions: BattleMission[],
+  settings: BattleSettings,
+  missionId: string,
+  timestamp: string,
+) {
+  if (!dailyState) {
+    return {
+      updatedState: null,
+      result: { bossDefeated: false, xpEarned: 0 },
+      defeatedBossId: null,
+    };
+  }
+
+  const currentBoss = dailyState.bosses[dailyState.currentBossIndex];
+  if (!currentBoss || currentBoss.defeatedAt) {
+    return { updatedState: null, result: { bossDefeated: false, xpEarned: 0 }, defeatedBossId: null };
+  }
+
+  if (currentBoss.completedMissions.includes(missionId)) {
+    return { updatedState: null, result: { bossDefeated: false, xpEarned: 0 }, defeatedBossId: null };
+  }
+
+  const mission = missions.find(m => m.id === missionId);
+  if (!mission) {
+    return { updatedState: null, result: { bossDefeated: false, xpEarned: 0 }, defeatedBossId: null };
+  }
+
+  const xpEarned = getBossXpByDifficulty(settings, currentBoss.bossId);
+
+  const updatedBosses = [...dailyState.bosses];
+  updatedBosses[dailyState.currentBossIndex] = {
+    ...currentBoss,
+    currentHP: 0,
+    completedMissions: [...currentBoss.completedMissions, missionId],
+    defeatedAt: timestamp,
+  };
+
+  const updatedState: DailyBattleState = {
+    ...dailyState,
+    bosses: updatedBosses,
+    totalDefeated: dailyState.totalDefeated + 1,
+    currentBossIndex: Math.min(dailyState.currentBossIndex + 1, dailyState.bosses.length - 1),
+  };
+
+  return {
+    updatedState,
+    result: { bossDefeated: true, xpEarned },
+    defeatedBossId: currentBoss.bossId,
+  };
+}
 
 interface BattleStore {
   // 상태
@@ -99,19 +303,29 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       set({ missions, settings, bossImageSettings });
 
       // 오늘의 전투 상태 확인
-      const dailyState = await loadDailyBattleState();
+      const loadedDailyState = await loadDailyBattleState();
       const today = getLocalDate();
+      const { dailyStateForToday, shouldStartNewDay } = computeDailyStateForToday_core(loadedDailyState, today);
 
-      if (dailyState && dailyState.date === today) {
-        set({ dailyState, loading: false });
-      } else {
-        // 새로운 날 - 전투 시작
-        await get().startNewDay();
-        set({ loading: false });
+      if (dailyStateForToday) {
+        set({ dailyState: dailyStateForToday, loading: false });
+        return;
       }
+
+      // 새로운 날 - 전투 시작
+      if (shouldStartNewDay) {
+        await get().startNewDay();
+      }
+      set({ loading: false });
     } catch (error) {
-      console.error('BattleStore: Failed to initialize', error);
-      set({ error: error as Error, loading: false });
+      const formattedError = createBattleStoreError(
+        'BATTLE_INIT_ERROR',
+        'Failed to initialize battle store',
+        {},
+        error,
+      );
+      logBattleStoreError('initialize failed', formattedError);
+      set({ error: formattedError, loading: false });
     }
   },
 
@@ -124,55 +338,101 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const missions = await loadBattleMissions();
       set({ missions });
     } catch (error) {
-      console.error('BattleStore: Failed to load missions', error);
+      const formattedError = createBattleStoreError(
+        'BATTLE_MISSIONS_LOAD_ERROR',
+        'Failed to load battle missions',
+        {},
+        error,
+      );
+      logBattleStoreError('loadMissions failed', formattedError);
     }
   },
 
   addMission: async (text, damage) => {
     const { settings, missions } = get();
-    const newMission: BattleMission = {
-      id: `mission_${Date.now()}`,
+    const now = new Date();
+    const newMission = computeNewMission_core({
       text,
       damage: damage ?? settings.defaultMissionDamage,
       order: missions.length,
-      enabled: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+      idSeed: now.getTime(),
+      timestamp: now.toISOString(),
+    });
 
     const updatedMissions = [...missions, newMission];
-    await saveBattleMissions(updatedMissions);
-    set({ missions: updatedMissions });
-    return newMission;
+    try {
+      await saveBattleMissions(updatedMissions);
+      set({ missions: updatedMissions });
+      return newMission;
+    } catch (error) {
+      const formattedError = createBattleStoreError(
+        'BATTLE_MISSION_ADD_ERROR',
+        'Failed to add battle mission',
+        { missionId: newMission.id },
+        error,
+      );
+      logBattleStoreError('addMission failed', formattedError);
+      throw formattedError;
+    }
   },
 
   updateMission: async (missionId, updates) => {
     const { missions } = get();
-    const updatedMissions = missions.map(m =>
-      m.id === missionId
-        ? { ...m, ...updates, updatedAt: new Date().toISOString() }
-        : m
+    const updatedMissions = computeUpdatedMissions_core(
+      missions,
+      missionId,
+      updates,
+      new Date().toISOString(),
     );
-    await saveBattleMissions(updatedMissions);
-    set({ missions: updatedMissions });
+
+    try {
+      await saveBattleMissions(updatedMissions);
+      set({ missions: updatedMissions });
+    } catch (error) {
+      const formattedError = createBattleStoreError(
+        'BATTLE_MISSION_UPDATE_ERROR',
+        'Failed to update battle mission',
+        { missionId, updates },
+        error,
+      );
+      logBattleStoreError('updateMission failed', formattedError);
+      throw formattedError;
+    }
   },
 
   deleteMission: async (missionId) => {
     const { missions } = get();
-    const filtered = missions.filter(m => m.id !== missionId);
-    const reordered = filtered.map((m, idx) => ({ ...m, order: idx }));
-    await saveBattleMissions(reordered);
-    set({ missions: reordered });
+    const reordered = computeDeletedAndReorderedMissions_core(missions, missionId);
+    try {
+      await saveBattleMissions(reordered);
+      set({ missions: reordered });
+    } catch (error) {
+      const formattedError = createBattleStoreError(
+        'BATTLE_MISSION_DELETE_ERROR',
+        'Failed to delete battle mission',
+        { missionId },
+        error,
+      );
+      logBattleStoreError('deleteMission failed', formattedError);
+      throw formattedError;
+    }
   },
 
   reorderMissions: async (missions) => {
-    const reordered = missions.map((m, idx) => ({
-      ...m,
-      order: idx,
-      updatedAt: new Date().toISOString(),
-    }));
-    await saveBattleMissions(reordered);
-    set({ missions: reordered });
+    const reordered = computeReorderedMissions_core(missions, new Date().toISOString());
+    try {
+      await saveBattleMissions(reordered);
+      set({ missions: reordered });
+    } catch (error) {
+      const formattedError = createBattleStoreError(
+        'BATTLE_MISSION_REORDER_ERROR',
+        'Failed to reorder battle missions',
+        { missionCount: missions.length },
+        error,
+      );
+      logBattleStoreError('reorderMissions failed', formattedError);
+      throw formattedError;
+    }
   },
 
   toggleMission: async (missionId) => {
@@ -192,61 +452,56 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const settings = await loadBattleSettings();
       set({ settings });
     } catch (error) {
-      console.error('BattleStore: Failed to load settings', error);
+      const formattedError = createBattleStoreError(
+        'BATTLE_SETTINGS_LOAD_ERROR',
+        'Failed to load battle settings',
+        {},
+        error,
+      );
+      logBattleStoreError('loadSettings failed', formattedError);
     }
   },
 
   updateSettings: async (updates) => {
     const { settings, dailyState } = get();
-    const updated = { ...settings, ...updates };
-    await saveBattleSettings(updated);
-    set({ settings: updated });
+    const updatedSettings = computeUpdatedSettings_core(settings, updates);
+
+    try {
+      await saveBattleSettings(updatedSettings);
+      set({ settings: updatedSettings });
+    } catch (error) {
+      const formattedError = createBattleStoreError(
+        'BATTLE_SETTINGS_UPDATE_ERROR',
+        'Failed to update battle settings',
+        { updates },
+        error,
+      );
+      logBattleStoreError('updateSettings failed', formattedError);
+      throw formattedError;
+    }
 
     // dailyBossCount가 변경되었고, 오늘 전투가 진행 중이라면 보스 목록 동기화
     if (updates.dailyBossCount !== undefined && dailyState) {
-      const newCount = updates.dailyBossCount;
-      const currentCount = dailyState.bosses.length;
+      const { changed, nextState } = computeUpdatedDailyStateForBossCount_core(
+        dailyState,
+        updates.dailyBossCount,
+        settings,
+      );
 
-      if (newCount > currentCount) {
-        // 보스 추가: 부족한 수만큼 랜덤 보스 선택 (이미 있는 보스 제외)
-        const diff = newCount - currentCount;
-        const existingIds = dailyState.bosses.map(b => b.bossId);
-        const newBosses = selectRandomBosses(diff, existingIds);
-
-        const addedBosses = newBosses.map(boss => ({
-          bossId: boss.id,
-          maxHP: settings.bossBaseHP,
-          currentHP: settings.bossBaseHP,
-          completedMissions: [],
-        }));
-
-        const updatedState = {
-          ...dailyState,
-          bosses: [...dailyState.bosses, ...addedBosses],
-        };
-
-        await saveDailyBattleState(updatedState);
-        set({ dailyState: updatedState });
-      } else if (newCount < currentCount) {
-        // 보스 감소: 뒤에서부터 제거 (현재 진행 중인 보스 인덱스 고려)
-        // 만약 현재 보스 인덱스가 새 카운트보다 크거나 같으면, 마지막 보스로 조정
-        const updatedBosses = dailyState.bosses.slice(0, newCount);
-        const newIndex = Math.min(dailyState.currentBossIndex, newCount - 1);
-
-        // 만약 줄어든 보스 수보다 더 많이 처치했다면? 
-        // -> totalDefeated는 재계산 필요할 수 있음. 
-        // 하지만 단순하게 defeatedAt이 있는 보스 수로 totalDefeated 재계산이 안전함.
-        const newTotalDefeated = updatedBosses.filter(b => b.defeatedAt).length;
-
-        const updatedState = {
-          ...dailyState,
-          bosses: updatedBosses,
-          currentBossIndex: newIndex,
-          totalDefeated: newTotalDefeated,
-        };
-
-        await saveDailyBattleState(updatedState);
-        set({ dailyState: updatedState });
+      if (changed && nextState) {
+        try {
+          await saveDailyBattleState(nextState);
+          set({ dailyState: nextState });
+        } catch (error) {
+          const formattedError = createBattleStoreError(
+            'BATTLE_DAILY_STATE_SAVE_ERROR',
+            'Failed to persist updated daily battle state',
+            { dailyBossCount: updates.dailyBossCount },
+            error,
+          );
+          logBattleStoreError('updateSettings daily state sync failed', formattedError);
+          throw formattedError;
+        }
       }
     }
   },
@@ -261,8 +516,20 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       ...bossImageSettings,
       [bossId]: { imagePosition, imageScale },
     };
-    await saveBossImageSettings(updated);
-    set({ bossImageSettings: updated });
+
+    try {
+      await saveBossImageSettings(updated);
+      set({ bossImageSettings: updated });
+    } catch (error) {
+      const formattedError = createBattleStoreError(
+        'BATTLE_BOSS_IMAGE_SAVE_ERROR',
+        'Failed to update boss image settings',
+        { bossId, imagePosition, imageScale },
+        error,
+      );
+      logBattleStoreError('updateBossImageSetting failed', formattedError);
+      throw formattedError;
+    }
   },
 
   getBossImageSetting: (bossId) => {
@@ -281,71 +548,56 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // 최근 7일 사용된 보스 ID 가져오기 (향후 구현)
     const excludeIds: string[] = [];
 
-    // 랜덤 보스 선택
-    const selectedBosses = selectRandomBosses(settings.dailyBossCount, excludeIds);
+    const newState = computeNewDailyState_core(settings, today, excludeIds);
 
-    const newState: DailyBattleState = {
-      date: today,
-      currentBossIndex: 0,
-      bosses: selectedBosses.map(boss => ({
-        bossId: boss.id,
-        maxHP: settings.bossBaseHP,
-        currentHP: settings.bossBaseHP,
-        completedMissions: [],
-      })),
-      totalDefeated: 0,
-    };
-
-    await saveDailyBattleState(newState);
-    set({ dailyState: newState });
+    try {
+      await saveDailyBattleState(newState);
+      set({ dailyState: newState });
+    } catch (error) {
+      const formattedError = createBattleStoreError(
+        'BATTLE_NEW_DAY_ERROR',
+        'Failed to start a new battle day',
+        { date: today },
+        error,
+      );
+      logBattleStoreError('startNewDay failed', formattedError);
+      set({ error: formattedError });
+      throw formattedError;
+    }
   },
 
   completeMission: async (missionId) => {
     const { dailyState, missions, settings } = get();
-    if (!dailyState) return { bossDefeated: false, xpEarned: 0 };
+    const computation = computeCompleteMissionResult_core(
+      dailyState,
+      missions,
+      settings,
+      missionId,
+      new Date().toISOString(),
+    );
 
-    const currentBoss = dailyState.bosses[dailyState.currentBossIndex];
-    if (!currentBoss || currentBoss.defeatedAt) {
-      return { bossDefeated: false, xpEarned: 0 };
+    if (!computation.updatedState) {
+      return computation.result;
     }
 
-    // 이미 완료된 미션인지 확인
-    if (currentBoss.completedMissions.includes(missionId)) {
-      return { bossDefeated: false, xpEarned: 0 };
+    try {
+      await saveDailyBattleState(computation.updatedState);
+      set({ dailyState: computation.updatedState });
+      if (computation.defeatedBossId) {
+        get().showBossDefeat(computation.defeatedBossId);
+      }
+    } catch (error) {
+      const formattedError = createBattleStoreError(
+        'BATTLE_MISSION_COMPLETE_ERROR',
+        'Failed to complete battle mission',
+        { missionId },
+        error,
+      );
+      logBattleStoreError('completeMission failed', formattedError);
+      throw formattedError;
     }
 
-    const mission = missions.find(m => m.id === missionId);
-    if (!mission) return { bossDefeated: false, xpEarned: 0 };
-
-    // 원킬 판정: HP를 0으로 설정
-    const bossDefeated = true;
-
-    // 상태 업데이트
-    const updatedBosses = [...dailyState.bosses];
-    updatedBosses[dailyState.currentBossIndex] = {
-      ...currentBoss,
-      currentHP: 0, // 원킬
-      completedMissions: [...currentBoss.completedMissions, missionId],
-      defeatedAt: new Date().toISOString(),
-    };
-
-    const updatedState: DailyBattleState = {
-      ...dailyState,
-      bosses: updatedBosses,
-      totalDefeated: dailyState.totalDefeated + 1,
-      currentBossIndex: Math.min(dailyState.currentBossIndex + 1, dailyState.bosses.length - 1),
-    };
-
-    await saveDailyBattleState(updatedState);
-    set({ dailyState: updatedState });
-
-    // XP 보상
-    const xpEarned = settings.bossDefeatXP;
-
-    // 처치 연출 표시
-    get().showBossDefeat(currentBoss.bossId);
-
-    return { bossDefeated, xpEarned };
+    return computation.result;
   },
 
   resetMissionsForNextBoss: () => {

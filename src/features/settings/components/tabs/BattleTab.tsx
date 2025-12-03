@@ -14,6 +14,7 @@
 
 import { useEffect } from 'react';
 import type { ChangeEvent } from 'react';
+import type { BossDifficulty } from '@/shared/types/domain';
 import { useBattleStore } from '@/features/battle/stores/battleStore';
 import {
   sectionClass,
@@ -55,9 +56,16 @@ function computeBossBaseHP(value: number) {
   return clampValue_core(value, 30, 120);
 }
 
-function computeBossDefeatXP(value: number) {
-  return clampValue_core(value, 50, 200);
+function computeBossDifficultyXP_core(value: number) {
+  return clampValue_core(value, 10, 500);
 }
+
+const DIFFICULTY_XP_DEFAULTS: Record<BossDifficulty, number> = {
+  easy: 20,
+  normal: 40,
+  hard: 80,
+  epic: 120,
+};
 
 // Shell: shared update + error handling
 function updateSettingsShell(
@@ -109,12 +117,11 @@ async function initializeBattleSettingsShell(
  * 전투 설정 탭 컴포넌트
  */
 export function BattleTab() {
-  const { settings, loading, initialize, updateSettings } = useBattleStore(state => ({
-    settings: state.settings,
-    loading: state.loading,
-    initialize: state.initialize,
-    updateSettings: state.updateSettings,
-  }));
+  // 개별 selector 사용으로 getSnapshot 캐싱 경고 방지
+  const settings = useBattleStore(state => state.settings);
+  const loading = useBattleStore(state => state.loading);
+  const initialize = useBattleStore(state => state.initialize);
+  const updateSettings = useBattleStore(state => state.updateSettings);
 
   useEffect(() => {
     void initializeBattleSettingsShell(initialize);
@@ -140,13 +147,14 @@ export function BattleTab() {
     );
   };
 
-  const handleBossDefeatXPChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleDifficultyXpChange = (difficulty: BossDifficulty) => (event: ChangeEvent<HTMLInputElement>) => {
     const rawValue = Number(event.target.value);
-    const safeValue = computeBossDefeatXP(rawValue);
+    const safeValue = computeBossDifficultyXP_core(rawValue);
+    const currentMap = settings.bossDifficultyXP ?? DIFFICULTY_XP_DEFAULTS;
     updateSettingsShell(
       updateSettings,
-      { bossDefeatXP: safeValue },
-      { field: 'bossDefeatXP', rawValue },
+      { bossDifficultyXP: { ...currentMap, [difficulty]: safeValue } },
+      { field: `bossDifficultyXP.${difficulty}`, rawValue },
     );
   };
 
@@ -173,6 +181,13 @@ export function BattleTab() {
       { field: 'battleSoundEffects', rawValue: event.target.checked },
     );
   };
+
+  const difficultyXpEntries: Array<{ key: BossDifficulty; label: string; range: string }> = [
+    { key: 'easy', label: '쉬움', range: '기본 20 XP' },
+    { key: 'normal', label: '보통', range: '기본 40 XP' },
+    { key: 'hard', label: '어려움', range: '기본 80 XP' },
+    { key: 'epic', label: '에픽', range: '기본 120 XP' },
+  ];
 
   if (loading) {
     return (
@@ -229,23 +244,27 @@ export function BattleTab() {
       <section className={sectionClass}>
         <h3>🏆 보상 설정</h3>
         <p className={sectionDescriptionClass}>
-          보스 처치 시 획득하는 XP를 설정합니다.
+          난이도별 보스 처치 XP를 설정합니다.
         </p>
 
-        <div className={formGroupClass}>
-          <label>
-            보스 처치 XP
-            <span className="ml-2 text-xs text-[var(--color-text-tertiary)]">(50~200)</span>
-          </label>
-          <input
-            type="number"
-            min={50}
-            max={200}
-            step={10}
-            value={settings.bossDefeatXP}
-            onChange={handleBossDefeatXPChange}
-            className={inputClass}
-          />
+        <div className="grid grid-cols-2 gap-4">
+          {difficultyXpEntries.map(entry => (
+            <div key={entry.key} className={formGroupClass}>
+              <label className="flex items-center gap-2">
+                <span>{entry.label}</span>
+                <span className="text-[10px] text-[var(--color-text-tertiary)]">{entry.range}</span>
+              </label>
+              <input
+                type="number"
+                min={10}
+                max={500}
+                step={5}
+                value={settings.bossDifficultyXP?.[entry.key] ?? DIFFICULTY_XP_DEFAULTS[entry.key]}
+                onChange={handleDifficultyXpChange(entry.key)}
+                className={inputClass}
+              />
+            </div>
+          ))}
         </div>
       </section>
 

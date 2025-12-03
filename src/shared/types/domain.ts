@@ -525,7 +525,9 @@ export interface Boss {
   name: string;                  // "불의 드래곤"
   image: string;                 // "boss_01_dragon.png"
   difficulty: BossDifficulty;
-  defeatQuote: string;           // 처치 시 대사
+  defeatQuote: string;           // 처치 시 대사 (단일)
+  quotes?: string[];             // 전투 중 대사
+  defeatQuotes?: string[];       // 처치 시 랜덤 대사
   imagePosition?: string;        // 이미지 위치 (CSS object-position, 예: "center 20%")
   imageScale?: number;           // 이미지 크기 (CSS transform scale, 예: 1.2)
 }
@@ -577,7 +579,8 @@ export interface BattleSettings {
   defaultMissionDamage: number;  // 새 미션 기본 데미지 (5~30분, 기본: 15)
 
   // 보상 설정
-  bossDefeatXP: number;          // 보스 처치 XP (50~200, 기본: 100)
+  bossDefeatXP: number;          // 보스 처치 XP (deprecated: fallback용)
+  bossDifficultyXP: Record<BossDifficulty, number>; // 난이도별 XP
 
   // UI 설정
   showBattleInSidebar: boolean;  // 사이드바에 전투 표시 (기본: true)
