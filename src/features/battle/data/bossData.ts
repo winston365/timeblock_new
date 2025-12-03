@@ -79,12 +79,12 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_05',
-    name: '노스',
+    name: '마인 노스(공격)',
     image: 'boss_05.png',
     difficulty: 'easy',
     defeatQuote: '「ノスッ！？」',
     quotes: [
-      '「ノスノス！」',
+      '꿈인가? 아니면 현실인가... 뭐, 상관없나.',
       '「肉……肉だぁ……」',
       '「ノスッ！！」',
     ],
@@ -113,7 +113,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_07',
     name: '미네르바',
     image: 'boss_07.png',
-    difficulty: 'easy',
+    difficulty: 'normal',
     defeatQuote: '뼈만 남았지만... 왕의 위엄은 영원하다...',
     quotes: [
       '망자의 왕이 다스린다.',
@@ -295,7 +295,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_18',
     name: '여신 ALICE',
     image: 'boss_18.png',
-    difficulty: 'epic',
+    difficulty: 'hard',
     defeatQuote: '「致命的なエラーが発生しました。」',
     quotes: [
       '「システム干渉を確認。排除します。」',
@@ -311,7 +311,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_19',
     name: '카라',
     image: 'boss_19.png',
-    difficulty: 'hard',
+    difficulty: 'normal',
     defeatQuote: '「森が……汚れちゃう……」',
     quotes: [
       '「森を荒らす者は許さない！」',
@@ -325,7 +325,7 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_20',
-    name: '여신 엘리스',
+    name: '여신 엘리스(epic)',
     image: 'boss_20.png',
     difficulty: 'epic',
     defeatQuote: '「世界の理（ことわり）には逆らえません。」',
@@ -346,20 +346,20 @@ export const BOSSES: Boss[] = [
     difficulty: 'epic',
     defeatQuote: 'やっと……終わるのか……この狂気が……',
     quotes: [
-      '폭풍을 견딜 준비가 됐나?',
-      '바람이 네 편이 아닐 거다.',
-      '번개가 앞을 막는다!',
+      '来るがいい。千年の絶望に届く刃があるならな。',
+      '魔人の王の力、見るがいい！',
+      '雷が前を阻む！',
     ],
     defeatQuotes: [
-      '바람이... 멈췄다...',
-      '폭풍이 잠시 잦아들 뿐...',
+      'やっと……終わるのか……この狂気が……',
+      'ミッキー…ごめん。荷物を託すよ',
     ],
   },
   {
     id: 'boss_22',
     name: '가르티아',
     image: 'boss_22.png',
-    difficulty: 'normal',
+    difficulty: 'hard',
     defeatQuote: '「もう……食べられないよぉ……」',
     quotes: [
       '「いただきまぁ～す！」',
