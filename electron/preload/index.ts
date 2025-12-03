@@ -20,7 +20,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 // ============================================================================
 
 /**
- * Renderer에 노출할 안전한 API
+ * Electron API 정의
  */
 const electronAPI = {
   // 플랫폼 정보
@@ -79,6 +79,29 @@ const electronAPI = {
 
   // 메인 윈도우 최상위 설정
   setMainAlwaysOnTop: (enabled: boolean): Promise<boolean> => ipcRenderer.invoke('set-main-always-on-top', enabled),
+
+  // Google OAuth (Authorization Code Flow with PKCE)
+  googleOAuthLogin: (clientId: string, clientSecret: string): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }> => ipcRenderer.invoke('google-oauth-login', clientId, clientSecret),
+
+  googleOAuthWaitCallback: (): Promise<{
+    success: boolean;
+    accessToken?: string;
+    refreshToken?: string;
+    expiresIn?: number;
+    email?: string;
+    error?: string;
+  }> => ipcRenderer.invoke('google-oauth-wait-callback'),
+
+  googleOAuthRefresh: (clientId: string, clientSecret: string, refreshToken: string): Promise<{
+    success: boolean;
+    accessToken?: string;
+    expiresIn?: number;
+    error?: string;
+  }> => ipcRenderer.invoke('google-oauth-refresh', clientId, clientSecret, refreshToken),
 };
 
 // ============================================================================

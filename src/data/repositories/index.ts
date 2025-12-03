@@ -18,6 +18,7 @@ export * from './chatHistoryRepository';
 export * from './inboxRepository';
 export * from './globalGoalRepository';
 export * from './systemRepository';
+export * from './tempScheduleRepository';
 
 // 통합 Task 서비스 (dailyData + inbox 자동 감지)
 export {

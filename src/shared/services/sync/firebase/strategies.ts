@@ -24,10 +24,10 @@ import type {
   ShopItem,
   WarmupPresetItem,
   Settings,
-  BingoProgress,
   BattleMission,
   BattleSettings,
   BossImageSettings,
+  WeeklyGoal,
 } from '@/shared/types/domain';
 
 // ============================================================================
@@ -218,20 +218,6 @@ export const settingsStrategy: SyncStrategy<Settings> = {
 };
 
 // ============================================================================
-// Bingo Progress 전략 (Last-Write-Wins)
-// ============================================================================
-
-/**
- * BingoProgress 동기화 전략 (Last-Write-Wins)
- * 빙고 진행 상태를 Firebase와 동기화합니다.
- * @type {SyncStrategy<BingoProgress>}
- */
-export const bingoProgressStrategy: SyncStrategy<BingoProgress> = {
-  collection: 'bingoProgress',
-  getSuccessMessage: (_, key) => `Bingo progress synced (${key || 'today'})`,
-};
-
-// ============================================================================
 // Battle Missions 전략 (Last-Write-Wins)
 // ============================================================================
 
@@ -274,4 +260,19 @@ export const bossImageSettingsStrategy: SyncStrategy<BossImageSettings> = {
   collection: 'bossImageSettings',
   getSuccessMessage: (data) =>
     `Boss image settings synced (${Object.keys(data).length} bosses configured)`,
+};
+
+// ============================================================================
+// Weekly Goals 전략 (Last-Write-Wins)
+// ============================================================================
+
+/**
+ * WeeklyGoals 동기화 전략 (Last-Write-Wins)
+ * 주간 장기목표를 Firebase와 동기화합니다.
+ * @type {SyncStrategy<WeeklyGoal[]>}
+ */
+export const weeklyGoalStrategy: SyncStrategy<WeeklyGoal[]> = {
+  collection: 'weeklyGoals',
+  getSuccessMessage: (data) =>
+    `WeeklyGoals synced (${data.length} goals, ${data.filter(g => g.currentProgress >= g.target).length} completed)`,
 };

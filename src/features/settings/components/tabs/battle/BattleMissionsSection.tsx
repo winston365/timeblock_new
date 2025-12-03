@@ -5,7 +5,6 @@ import type { BattleMission } from '@/shared/types/domain';
 import {
   sectionClass,
   sectionDescriptionClass,
-  formGroupClass,
   inputClass,
   primaryButtonClass,
 } from '../styles';
@@ -22,6 +21,7 @@ export function BattleMissionsSection() {
   const [newMissionText, setNewMissionText] = useState('');
   const [newMissionDamage, setNewMissionDamage] = useState(15);
   const [editingMission, setEditingMission] = useState<BattleMission | null>(null);
+  const [editingMissionId, setEditingMissionId] = useState<string | null>(null); // 편집 중인 ID 따로 추적
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [orderedMissions, setOrderedMissions] = useState<BattleMission[]>([]);
   const orderedMissionsRef = useRef<BattleMission[]>([]);
@@ -32,9 +32,12 @@ export function BattleMissionsSection() {
   );
 
   useEffect(() => {
-    setOrderedMissions(sortedMissions);
-    orderedMissionsRef.current = sortedMissions;
-  }, [sortedMissions]);
+    // 편집 중이 아닐 때만 목록 업데이트 (편집 중 상태 유실 방지)
+    if (!editingMissionId) {
+      setOrderedMissions(sortedMissions);
+      orderedMissionsRef.current = sortedMissions;
+    }
+  }, [sortedMissions, editingMissionId]);
 
   const handleAddMission = async () => {
     if (!newMissionText.trim()) return;
@@ -52,6 +55,7 @@ export function BattleMissionsSection() {
       damage: editingMission.damage,
     });
     setEditingMission(null);
+    setEditingMissionId(null);
   };
 
   const handleDeleteMission = async (missionId: string) => {
@@ -158,11 +162,11 @@ export function BattleMissionsSection() {
                   className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-primary)]"
                 />
 
-                {editingMission?.id === mission.id ? (
+                {editingMissionId === mission.id ? (
                   <input
                     type="text"
-                    value={editingMission.text}
-                    onChange={(e) => setEditingMission({ ...editingMission, text: e.target.value })}
+                    value={editingMission?.text ?? ''}
+                    onChange={(e) => setEditingMission(prev => prev ? { ...prev, text: e.target.value } : null)}
                     onBlur={handleUpdateMission}
                     onKeyDown={(e) => e.key === 'Enter' && handleUpdateMission()}
                     className={`${inputClass} flex-1 py-1`}
@@ -170,31 +174,41 @@ export function BattleMissionsSection() {
                   />
                 ) : (
                   <span
-                    className={`flex-1 text-sm ${
+                    className={`flex-1 text-sm cursor-pointer hover:text-[var(--color-primary)] ${
                       mission.enabled
                         ? 'text-[var(--color-text)]'
                         : 'text-[var(--color-text-tertiary)] line-through'
                     }`}
-                    onClick={() => setEditingMission(mission)}
+                    onClick={() => {
+                      setEditingMission({ ...mission });
+                      setEditingMissionId(mission.id);
+                    }}
                   >
                     {mission.text}
                   </span>
                 )}
 
-                {editingMission?.id === mission.id ? (
+                {editingMissionId === mission.id ? (
                   <input
                     type="number"
                     min={5}
                     max={60}
-                    value={editingMission.damage}
+                    value={editingMission?.damage ?? mission.damage}
                     onChange={(e) =>
-                      setEditingMission({ ...editingMission, damage: Number(e.target.value) })
+                      setEditingMission(prev => prev ? { ...prev, damage: Number(e.target.value) } : null)
                     }
                     onBlur={handleUpdateMission}
+                    onKeyDown={(e) => e.key === 'Enter' && handleUpdateMission()}
                     className={`${inputClass} w-16 py-1 text-center`}
                   />
                 ) : (
-                  <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-semibold text-red-400">
+                  <span 
+                    className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-semibold text-red-400 cursor-pointer hover:bg-red-500/30"
+                    onClick={() => {
+                      setEditingMission({ ...mission });
+                      setEditingMissionId(mission.id);
+                    }}
+                  >
                     💥 {mission.damage}분
                   </span>
                 )}

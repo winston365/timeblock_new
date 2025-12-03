@@ -10,7 +10,7 @@
  */
 
 import { db } from '../db/dexieClient';
-import type { BattleMission, BattleSettings, DailyBattleState, BossImageSettings } from '@/shared/types/domain';
+import type { BattleMission, BattleSettings, DailyBattleState, BossImageSettings, DailyBattleStats, BossDifficulty } from '@/shared/types/domain';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
@@ -26,6 +26,7 @@ const SETTINGS_KEY = 'battleSettings';
 const BOSS_IMAGE_SETTINGS_KEY = 'bossImageSettings';
 const DAILY_STATE_KEY_PREFIX = 'battleState:';
 const DEFEATED_BOSS_HISTORY_KEY = 'defeatedBossHistory';
+const BATTLE_STATS_KEY = 'battleStats'; // 날짜별 통계
 
 // ============================================================================
 // Default Values
@@ -400,5 +401,99 @@ export async function addToDefeatedBossHistory(bossId: string): Promise<void> {
     }
   } catch (error) {
     console.error('Failed to add to defeated boss history:', error);
+  }
+}
+
+// ============================================================================
+// Battle Stats (날짜별 통계)
+// ============================================================================
+
+/**
+ * 전체 통계 로드 (날짜별 Map)
+ */
+export async function loadBattleStats(): Promise<Record<string, DailyBattleStats>> {
+  try {
+    const stored = await db.systemState.get(BATTLE_STATS_KEY);
+    if (stored?.value && typeof stored.value === 'object') {
+      return stored.value as Record<string, DailyBattleStats>;
+    }
+    return {};
+  } catch (error) {
+    console.error('Failed to load battle stats:', error);
+    return {};
+  }
+}
+
+/**
+ * 날짜별 통계 저장
+ */
+export async function saveBattleStats(stats: Record<string, DailyBattleStats>): Promise<void> {
+  try {
+    await db.systemState.put({ key: BATTLE_STATS_KEY, value: stats });
+  } catch (error) {
+    console.error('Failed to save battle stats:', error);
+    throw error;
+  }
+}
+
+/**
+ * 오늘 통계 업데이트 (보스 처치 시 호출)
+ */
+export async function updateTodayBattleStats(
+  bossId: string,
+  difficulty: BossDifficulty
+): Promise<void> {
+  try {
+    const today = getLocalDate();
+    const allStats = await loadBattleStats();
+    
+    const todayStats: DailyBattleStats = allStats[today] ?? {
+      date: today,
+      defeatedCount: 0,
+      defeatedBossIds: [],
+      byDifficulty: { easy: 0, normal: 0, hard: 0, epic: 0 },
+    };
+    
+    // 이미 기록된 보스인지 확인 (중복 방지)
+    if (!todayStats.defeatedBossIds.includes(bossId)) {
+      todayStats.defeatedCount += 1;
+      todayStats.defeatedBossIds.push(bossId);
+      todayStats.byDifficulty[difficulty] += 1;
+      
+      allStats[today] = todayStats;
+      await saveBattleStats(allStats);
+    }
+  } catch (error) {
+    console.error('Failed to update today battle stats:', error);
+  }
+}
+
+/**
+ * 최근 N일 통계 가져오기
+ */
+export async function getRecentBattleStats(days: number = 14): Promise<DailyBattleStats[]> {
+  try {
+    const allStats = await loadBattleStats();
+    const result: DailyBattleStats[] = [];
+    
+    // 최근 N일 날짜 생성
+    const today = new Date();
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().slice(0, 10);
+      
+      result.push(allStats[dateStr] ?? {
+        date: dateStr,
+        defeatedCount: 0,
+        defeatedBossIds: [],
+        byDifficulty: { easy: 0, normal: 0, hard: 0, epic: 0 },
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Failed to get recent battle stats:', error);
+    return [];
   }
 }

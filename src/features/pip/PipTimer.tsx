@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { formatTimerCompact, formatTime as formatClockTime } from '@/shared/lib/utils';
 
 type PipStatus = 'running' | 'paused' | 'break' | 'idle' | 'ready';
 
@@ -27,25 +28,13 @@ interface PipTimerState {
 }
 
 /**
- * 초 단위 시간을 "분:초" 형식으로 변환
- * @param seconds - 변환할 초 단위 시간
- * @returns 포맷된 시간 문자열 (ex: "5:03")
- */
-const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.max(0, seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-};
-
-/**
  * 타임스탬프를 "HH:MM" 형식의 시계 문자열로 변환
  * @param timestamp - 변환할 타임스탬프 (밀리초)
  * @returns 포맷된 시간 문자열 또는 타임스탬프가 없으면 null
  */
 const formatClock = (timestamp?: number) => {
     if (!timestamp) return null;
-    const date = new Date(timestamp);
-    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    return formatClockTime(new Date(timestamp));
 };
 
 /**
@@ -268,7 +257,7 @@ export default function PipTimer() {
                         {/* 시간 및 상태 */}
                         <div className="flex w-full flex-col items-start overflow-hidden">
                             <div className="text-[54px] font-black leading-none tracking-tight text-white drop-shadow-sm tabular-nums" aria-live="polite">
-                                {formatTime(state.remainingTime)}
+                                {formatTimerCompact(state.remainingTime)}
                             </div>
                             <div className="mt-2 flex w-full items-center gap-2 text-[11px] font-semibold text-white/85 whitespace-nowrap">
                                 {expectedEndLabel && (
@@ -328,7 +317,7 @@ export default function PipTimer() {
                             <div className="flex items-center justify-between">
                                 <span className="font-semibold">휴식 남은 시간</span>
                                 <span className="text-xs text-white/80">
-                                    {breakSeconds !== null ? `${formatTime(breakSeconds)} 남음` : '—'}
+                                    {breakSeconds !== null ? `${formatTimerCompact(breakSeconds)} 남음` : '—'}
                                 </span>
                             </div>
                         </div>

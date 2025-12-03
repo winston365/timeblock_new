@@ -24,6 +24,7 @@ import {
   DEFAULT_BATTLE_SETTINGS,
   addToDefeatedBossHistory,
   loadDefeatedBossHistory,
+  updateTodayBattleStats,
 } from '@/data/repositories/battleRepository';
 import { BOSSES, getBossById, groupBossesByDifficulty } from '../data/bossData';
 import { getLocalDate } from '@/shared/lib/utils';
@@ -185,6 +186,37 @@ function computeUpdatedSettings_core(settings: BattleSettings, updates: Partial<
 }
 
 /**
+ * 순차 진행 단계별 난이도 매핑
+ * phase 0: easy, 1: normal, 2: hard(1회차), 3: hard(2회차), 4: epic, 5+: 자유선택
+ */
+const SEQUENTIAL_PHASE_DIFFICULTY: (BossDifficulty | null)[] = [
+  'easy',    // phase 0
+  'normal',  // phase 1
+  'hard',    // phase 2
+  'hard',    // phase 3 (2회차)
+  'epic',    // phase 4
+  null,      // phase 5+ (자유선택)
+];
+
+/**
+ * 현재 순차 진행 단계에서 다음 스폰할 난이도 반환
+ * @returns null이면 자유선택 모드
+ */
+function getNextSequentialDifficulty(phase: number): BossDifficulty | null {
+  if (phase >= SEQUENTIAL_PHASE_DIFFICULTY.length - 1) {
+    return null; // 자유선택 모드
+  }
+  return SEQUENTIAL_PHASE_DIFFICULTY[phase] ?? null;
+}
+
+/**
+ * 순차 진행 완료 여부 (phase 5 이상)
+ */
+function isSequentialPhaseComplete(phase: number | undefined): boolean {
+  return (phase ?? 0) >= 5;
+}
+
+/**
  * 보스 HP 계산 (난이도별 XP의 절반)
  * @param difficulty 보스 난이도
  * @param settings 전투 설정
@@ -243,22 +275,24 @@ function computeNewDailyState_core(
     remainingBosses,
     defeatedBossIds: [],
     completedMissionIds: [],
+    sequentialPhase: 0, // 순차 진행 시작 (easy)
   };
 }
 
 /**
  * 난이도별 보스 스폰 결과 계산
+ * - 오버킬 데미지가 있으면 새 보스 HP에 적용
  */
 function computeSpawnBossResult_core(
   dailyState: DailyBattleState,
   difficulty: BossDifficulty,
   settings: BattleSettings,
-): { updatedState: DailyBattleState | null; spawnedBossId: string | null } {
+): { updatedState: DailyBattleState | null; spawnedBossId: string | null; overkillApplied: number } {
   const pool = dailyState.remainingBosses?.[difficulty];
   
   // 해당 난이도에 남은 보스가 없으면 실패
   if (!pool || pool.length === 0) {
-    return { updatedState: null, spawnedBossId: null };
+    return { updatedState: null, spawnedBossId: null, overkillApplied: 0 };
   }
   
   // 랜덤 선택
@@ -267,10 +301,16 @@ function computeSpawnBossResult_core(
   const boss = getBossById(selectedBossId);
   
   if (!boss) {
-    return { updatedState: null, spawnedBossId: null };
+    return { updatedState: null, spawnedBossId: null, overkillApplied: 0 };
   }
   
   const bossHP = computeBossHP(difficulty, settings);
+  
+  // 오버킬 데미지 적용
+  const overkillDamage = dailyState.overkillDamage ?? 0;
+  const appliedOverkill = Math.min(overkillDamage, bossHP); // 최대 HP까지만 적용
+  const initialHP = Math.max(0, bossHP - overkillDamage);
+  const remainingOverkill = Math.max(0, overkillDamage - bossHP); // 남은 오버킬 (추가 이월)
   
   // 풀에서 제거
   const updatedRemainingBosses = {
@@ -282,25 +322,36 @@ function computeSpawnBossResult_core(
   const newBossProgress: DailyBossProgress = {
     bossId: selectedBossId,
     maxHP: bossHP,
-    currentHP: bossHP,
+    currentHP: initialHP,
     completedMissions: [],
+    // 스폰 시 HP가 0이면 즉시 처치
+    ...(initialHP <= 0 ? { defeatedAt: new Date().toISOString() } : {}),
   };
   
   const bosses = dailyState.bosses ?? [];
+  const isInstantDefeat = initialHP <= 0;
+  
   const updatedState: DailyBattleState = {
     ...dailyState,
     currentBossIndex: bosses.length, // 새 보스가 현재 보스
     bosses: [...bosses, newBossProgress],
     remainingBosses: updatedRemainingBosses,
+    overkillDamage: remainingOverkill, // 남은 오버킬 저장
+    // 스폰 시 즉시 처치되면 처치 정보 업데이트
+    ...(isInstantDefeat ? {
+      totalDefeated: (dailyState.totalDefeated ?? 0) + 1,
+      defeatedBossIds: [...(dailyState.defeatedBossIds ?? []), selectedBossId],
+    } : {}),
   };
   
-  return { updatedState, spawnedBossId: selectedBossId };
+  return { updatedState, spawnedBossId: selectedBossId, overkillApplied: appliedOverkill };
 }
 
 /**
  * 미션 완료 결과 계산 (데미지 누적 시스템)
  * - 미션은 하루에 한 번만 사용 가능
  * - HP가 0 이하가 되면 보스 처치
+ * - 오버킬 데미지는 다음 보스에 이월
  */
 function computeCompleteMissionResult_core(
   dailyState: DailyBattleState | null,
@@ -310,12 +361,12 @@ function computeCompleteMissionResult_core(
   timestamp: string,
 ): {
   updatedState: DailyBattleState | null;
-  result: { bossDefeated: boolean; xpEarned: number; damageDealt: number };
+  result: { bossDefeated: boolean; xpEarned: number; damageDealt: number; overkillDamage: number };
   defeatedBossId: string | null;
 } {
   const emptyResult = {
     updatedState: null,
-    result: { bossDefeated: false, xpEarned: 0, damageDealt: 0 },
+    result: { bossDefeated: false, xpEarned: 0, damageDealt: 0, overkillDamage: 0 },
     defeatedBossId: null,
   };
 
@@ -345,6 +396,8 @@ function computeCompleteMissionResult_core(
   const damageDealt = mission.damage;
   const newHP = Math.max(0, currentBoss.currentHP - damageDealt);
   const bossDefeated = newHP <= 0;
+  // 오버킬 데미지 계산 (보스 HP보다 많은 데미지)
+  const overkillDamage = bossDefeated ? Math.max(0, damageDealt - currentBoss.currentHP) : 0;
   const xpEarned = bossDefeated ? getBossXpByDifficulty(settings, currentBoss.bossId) : 0;
 
   const updatedBosses = [...(dailyState.bosses ?? [])];
@@ -359,15 +412,17 @@ function computeCompleteMissionResult_core(
     ...dailyState,
     bosses: updatedBosses,
     completedMissionIds: [...completedMissionIds, missionId],
+    // 오버킬 데미지 저장 (다음 보스 스폰 시 적용)
     ...(bossDefeated ? {
       totalDefeated: (dailyState.totalDefeated ?? 0) + 1,
       defeatedBossIds: [...defeatedBossIds, currentBoss.bossId],
+      overkillDamage: (dailyState.overkillDamage ?? 0) + overkillDamage,
     } : {}),
   };
 
   return {
     updatedState,
-    result: { bossDefeated, xpEarned, damageDealt },
+    result: { bossDefeated, xpEarned, damageDealt, overkillDamage },
     defeatedBossId: bossDefeated ? currentBoss.bossId : null,
   };
 }
@@ -388,6 +443,10 @@ interface BattleStore {
   
   // 처치 후 보스 선택 대기 상태
   awaitingBossSelection: boolean;
+
+  // 오버킬 데미지 상태
+  lastOverkillDamage: number; // 마지막 처치 시 발생한 오버킬
+  lastOverkillApplied: number; // 마지막 스폰 시 적용된 오버킬
 
   // 초기화
   initialize: () => Promise<void>;
@@ -410,7 +469,7 @@ interface BattleStore {
 
   // 전투 액션
   startNewDay: () => Promise<void>;
-  completeMission: (missionId: string) => Promise<{ bossDefeated: boolean; xpEarned: number; damageDealt: number }>;
+  completeMission: (missionId: string) => Promise<{ bossDefeated: boolean; xpEarned: number; damageDealt: number; overkillDamage: number }>;
   spawnBossByDifficulty: (difficulty: BossDifficulty) => Promise<boolean>;
   resetMissionsForNextBoss: () => void;
 
@@ -438,6 +497,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
   showDefeatOverlay: false,
   defeatedBossId: null,
   awaitingBossSelection: false,
+  lastOverkillDamage: 0,
+  lastOverkillApplied: 0,
 
   // =========================================================================
   // 초기화
@@ -735,7 +796,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     
     try {
       await saveDailyBattleState(computation.updatedState);
-      set({ dailyState: computation.updatedState, awaitingBossSelection: false });
+      set({ 
+        dailyState: computation.updatedState, 
+        awaitingBossSelection: false,
+        lastOverkillApplied: computation.overkillApplied,
+      });
       return true;
     } catch (error) {
       const formattedError = createBattleStoreError(
@@ -763,21 +828,55 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       return computation.result;
     }
 
+    let finalState = computation.updatedState;
+
     try {
-      await saveDailyBattleState(computation.updatedState);
-      set({ dailyState: computation.updatedState });
+      // 보스 처치 시 순차 진행 단계 업데이트 및 자동 스폰
+      if (computation.result.bossDefeated) {
+        const currentPhase = finalState.sequentialPhase ?? 0;
+        const nextPhase = currentPhase + 1;
+        finalState = { ...finalState, sequentialPhase: nextPhase };
+        
+        // 순차 진행 중이면 자동 스폰 (phase 5 미만)
+        const nextDifficulty = getNextSequentialDifficulty(nextPhase);
+        if (nextDifficulty) {
+          // 다음 난이도로 자동 스폰
+          const spawnResult = computeSpawnBossResult_core(finalState, nextDifficulty, settings);
+          if (spawnResult.updatedState) {
+            finalState = spawnResult.updatedState;
+            // 자동 스폰 시 sequentialPhase 유지
+            finalState = { ...finalState, sequentialPhase: nextPhase };
+          }
+        }
+      }
+
+      await saveDailyBattleState(finalState);
+      set({ 
+        dailyState: finalState,
+        // 오버킬 데미지 저장 (처치 시만)
+        ...(computation.result.bossDefeated ? { lastOverkillDamage: computation.result.overkillDamage } : {}),
+      });
       
       if (computation.defeatedBossId) {
         // 보스 처치 시 히스토리에 저장 (도감 확장 준비)
         await addToDefeatedBossHistory(computation.defeatedBossId);
+        
+        // 통계 업데이트
+        const defeatedBoss = getBossById(computation.defeatedBossId);
+        if (defeatedBoss) {
+          await updateTodayBattleStats(computation.defeatedBossId, defeatedBoss.difficulty);
+        }
+        
         // 로컬 상태도 업데이트
         const currentHistory = get().defeatedBossHistory;
         if (!currentHistory.includes(computation.defeatedBossId)) {
           set({ defeatedBossHistory: [...currentHistory, computation.defeatedBossId] });
         }
         get().showBossDefeat(computation.defeatedBossId);
-        // 보스 선택 대기 상태로 전환
-        set({ awaitingBossSelection: true });
+        
+        // 순차 진행 완료 후(phase 5+)만 보스 선택 대기 상태로 전환
+        const isSequentialComplete = isSequentialPhaseComplete(finalState.sequentialPhase);
+        set({ awaitingBossSelection: isSequentialComplete });
       }
     } catch (error) {
       const formattedError = createBattleStoreError(

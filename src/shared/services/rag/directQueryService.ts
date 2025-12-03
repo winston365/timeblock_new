@@ -9,6 +9,7 @@ import { db } from '@/data/db/dexieClient';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 import type { Task } from '@/shared/types/domain';
 import type { ParsedQuery } from './queryParser';
+import { getLocalDate } from '@/shared/lib/utils';
 
 export interface QueryResult {
     tasks: TaskWithDate[];
@@ -222,7 +223,7 @@ function getDatesBetween(startDate: string, endDate: string): string[] {
     const end = new Date(endDate);
 
     while (current <= end) {
-        dates.push(current.toISOString().split('T')[0]);
+        dates.push(getLocalDate(current));
         current.setDate(current.getDate() + 1);
     }
 

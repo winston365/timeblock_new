@@ -13,11 +13,35 @@
 import { db } from '../db/dexieClient';
 import type { Template, Task, TimeBlockId, Resistance, RecurrenceType } from '@/shared/types/domain';
 import { TIME_BLOCKS, RESISTANCE_MULTIPLIERS } from '@/shared/types/domain';
-import { generateId } from '@/shared/lib/utils';
-import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
+import { generateId, getLocalDate } from '@/shared/lib/utils';
+import { withFirebaseFetch } from '@/shared/utils/firebaseGuard';
 import { fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { templateStrategy } from '@/shared/services/sync/firebase/strategies';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
+
+// ============================================================================
+// Template 정제 (Sanitization)
+// ============================================================================
+
+/**
+ * Template 필드 정제 (undefined → 기본값)
+ * 
+ * Firebase에서 로드한 데이터나 구버전 데이터의 누락 필드를 기본값으로 채웁니다.
+ * 
+ * @param template - 정제할 Template 객체
+ * @returns 정제된 Template 객체
+ */
+function sanitizeTemplate(template: Template): Template {
+  return {
+    ...template,
+    preparation1: template.preparation1 ?? '',
+    preparation2: template.preparation2 ?? '',
+    preparation3: template.preparation3 ?? '',
+    category: template.category ?? '',
+    isFavorite: template.isFavorite ?? false,
+    imageUrl: template.imageUrl ?? '',
+  };
+}
 // ============================================================================
 // Template CRUD
 // ============================================================================
@@ -37,37 +61,19 @@ export async function loadTemplates(): Promise<Template[]> {
     const templates = await db.templates.toArray();
 
     if (templates.length > 0) {
-      // preparation 필드의 undefined를 빈 문자열로 정제, category와 isFavorite 기본값 설정
-      return templates.map(template => ({
-        ...template,
-        preparation1: template.preparation1 ?? '',
-        preparation2: template.preparation2 ?? '',
-        preparation3: template.preparation3 ?? '',
-        category: template.category ?? '',
-        isFavorite: template.isFavorite ?? false,
-        imageUrl: template.imageUrl ?? '',
-      }));
+      return templates.map(sanitizeTemplate);
     }
 
-    // 2. Firebase에서 조회 (IndexedDB 실패 시)
-    if (isFirebaseInitialized()) {
-      const firebaseTemplates = await fetchFromFirebase<Template[]>(templateStrategy);
+    // 2. Firebase에서 조회 (IndexedDB가 비어있을 때만)
+    const firebaseTemplates = await withFirebaseFetch(
+      () => fetchFromFirebase<Template[]>(templateStrategy),
+      null
+    );
 
-      if (firebaseTemplates && firebaseTemplates.length > 0) {
-        // preparation 필드 정제
-        const sanitizedTemplates = firebaseTemplates.map(template => ({
-          ...template,
-          preparation1: template.preparation1 ?? '',
-          preparation2: template.preparation2 ?? '',
-          preparation3: template.preparation3 ?? '',
-          category: template.category ?? '',
-          isFavorite: template.isFavorite ?? false,
-          imageUrl: template.imageUrl ?? '',
-        }));
-
-        addSyncLog('firebase', 'load', `Loaded ${sanitizedTemplates.length} templates from Firebase`);
-        return sanitizedTemplates;
-      }
+    if (firebaseTemplates && firebaseTemplates.length > 0) {
+      const sanitizedTemplates = firebaseTemplates.map(sanitizeTemplate);
+      addSyncLog('firebase', 'load', `Loaded ${sanitizedTemplates.length} templates from Firebase`);
+      return sanitizedTemplates;
     }
 
     return [];
@@ -239,18 +245,7 @@ export async function deleteTemplate(id: string): Promise<void> {
 export async function getTemplate(id: string): Promise<Template | undefined> {
   try {
     const template = await db.templates.get(id);
-
-    if (!template) {
-      return undefined;
-    }
-
-    // preparation 필드의 undefined를 빈 문자열로 정제
-    return {
-      ...template,
-      preparation1: template.preparation1 ?? '',
-      preparation2: template.preparation2 ?? '',
-      preparation3: template.preparation3 ?? '',
-    };
+    return template ? sanitizeTemplate(template) : undefined;
   } catch (error) {
     console.error('Failed to get template:', error);
     return undefined;
@@ -341,14 +336,7 @@ function getResistanceMultiplier(resistance: Resistance): number {
 export async function getAutoGenerateTemplates(): Promise<Template[]> {
   try {
     const templates = await db.templates.where('autoGenerate').equals(1).toArray();
-
-    // preparation 필드의 undefined를 빈 문자열로 정제
-    return templates.map(template => ({
-      ...template,
-      preparation1: template.preparation1 ?? '',
-      preparation2: template.preparation2 ?? '',
-      preparation3: template.preparation3 ?? '',
-    }));
+    return templates.map(sanitizeTemplate);
   } catch (error) {
     console.error('Failed to get auto-generate templates:', error);
     return [];
@@ -409,7 +397,7 @@ function shouldGenerateToday(template: Template, today: string): boolean {
 export async function generateTasksFromAutoTemplates(): Promise<Task[]> {
   try {
     const autoTemplates = await getAutoGenerateTemplates();
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const today = getLocalDate();
     const tasksToGenerate: Task[] = [];
 
     for (const template of autoTemplates) {

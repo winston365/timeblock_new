@@ -79,6 +79,7 @@ export interface Task {
   preparation3?: string; // 준비 사항 3 (예상 방해물 또는 대처 환경)
   timerUsed?: boolean; // 타이머 사용 여부 (몰입 작업)
   goalId?: string | null; // 연결된 목표 ID
+  deadline?: string; // 데드라인 날짜 (YYYY-MM-DD, 기본: 오늘)
 }
 
 /**
@@ -183,14 +184,6 @@ export interface GameState {
 
   // 인벤토리
   inventory: Record<string, number>; // 아이템 인벤토리 (itemId -> quantity)
-
-  // 점화 시스템
-  dailyFreeIgnitions: number; // 일일 무료 횟수 (기본: 3)
-  usedIgnitions: number; // 오늘 사용한 횟수
-  lastIgnitionTime: number | null; // 마지막 일반 점화 시간 (타임스탬프)
-  lastBonusIgnitionTime: number | null; // 마지막 보너스 점화 시간 (타임스탬프)
-  lastIgnitionResetDate: string; // 마지막 리셋 날짜 (YYYY-MM-DD)
-  ignitionHistory: Task[]; // 점화/JustDoIt 룰렛 히스토리 (최근 n개)
 }
 
 // ============================================================================
@@ -359,22 +352,6 @@ export interface ChatHistory {
 }
 
 // ============================================================================
-// Bingo
-// ============================================================================
-
-export interface BingoCellConfig {
-  id: string;
-  text: string;
-  xp: number;
-}
-
-export interface BingoProgress {
-  date: string; // YYYY-MM-DD
-  completedCells: string[];
-  completedLines: number[];
-}
-
-// ============================================================================
 // Token Usage
 // ============================================================================
 
@@ -405,6 +382,7 @@ export interface Settings {
   geminiApiKey: string;
   geminiModel?: string; // Gemini 모델명 (기본: gemini-3-pro-preview)
   githubToken?: string; // GitHub API 호출용 토큰 (로컬 저장)
+  weatherApiKey?: string; // WeatherAPI.com API 키 (날씨 조회용)
   firebaseConfig?: {
     apiKey: string;
     authDomain: string;
@@ -424,16 +402,7 @@ export interface Settings {
   timeSlotTags?: TimeSlotTagTemplate[]; // 시간대 속성 템플릿
   dontDoChecklist?: DontDoChecklistItem[]; // 하지않기 체크리스트 항목
   barkApiKey?: string; // Bark 알림 API 키
-  ignitionInactivityMinutes?: number; // 점화 버튼 비활동 시간 (분, 기본: 45)
-  ignitionDurationMinutes?: number; // 점화 길이 (분, 기본 3)
-  ignitionCooldownMinutes?: number; // 점화 쿨다운 (분, 기본 5)
-  ignitionXPCost?: number; // 점화 XP 비용 (기본 50 XP)
-  justDoItCooldownMinutes?: number; // '그냥해보자!' 쿨다운 (분, 기본 15)
 
-  // 빙고 설정
-  bingoCells?: BingoCellConfig[]; // 3x3 빙고 셀 설정
-  bingoMaxLines?: number; // 최대 인정 빙고 라인 수 (기본 4)
-  bingoLineRewardXP?: number; // 라인당 XP 보상 (기본 100)
   // 단축키 설정
   leftPanelToggleKey?: string; // 좌측 패널 토글 단축키 (기본: 'Ctrl+B')
   rightPanelToggleKey?: string; // 우측 패널 토글 단축키 (기본: 'Ctrl+Shift+B')
@@ -511,6 +480,57 @@ export interface AIInsight {
 }
 
 // ============================================================================
+// Weekly Goal (장기목표)
+// ============================================================================
+
+/**
+ * 일별 진행 기록 (히스토리용)
+ */
+export interface WeeklyGoalDailyProgress {
+  date: string; // YYYY-MM-DD
+  progress: number; // 해당 날의 누적 진행도
+  dayOfWeek: number; // 요일 (0=일요일, 1=월요일)
+}
+
+/**
+ * 주간 목표 기록 (히스토리)
+ */
+export interface WeeklyGoalHistory {
+  weekStartDate: string; // 주 시작일 (월요일, YYYY-MM-DD)
+  target: number; // 해당 주 목표값
+  finalProgress: number; // 최종 달성값
+  completed: boolean; // 목표 달성 여부
+  dailyProgress: WeeklyGoalDailyProgress[]; // 일별 진행 기록
+}
+
+/**
+ * 장기목표 (주간 목표)
+ * @description 1주일 단위로 초기화되는 목표 (월~일 기준)
+ */
+export interface WeeklyGoal {
+  id: string; // 고유 ID
+  title: string; // 목표 제목 (예: "토익 단어 암기")
+  target: number; // 목표 숫자 (예: 500)
+  unit: string; // 단위 (예: "개", "페이지", "분")
+  currentProgress: number; // 현재 진행도
+  
+  // 메타데이터
+  icon?: string; // 아이콘 (이모지)
+  color?: string; // 색상
+  order: number; // 정렬 순서
+  
+  // 주간 기준
+  weekStartDate: string; // 현재 주 시작일 (월요일, YYYY-MM-DD)
+  
+  // 히스토리 (지난주 기록 포함)
+  history: WeeklyGoalHistory[];
+  
+  // 타임스탬프
+  createdAt: string; // 생성 시각 (ISO 8601)
+  updatedAt: string; // 수정 시각 (ISO 8601)
+}
+
+// ============================================================================
 // Battle System (보스 전투 시스템)
 // ============================================================================
 
@@ -572,6 +592,13 @@ export interface DailyBattleState {
   defeatedBossIds: string[];
   /** 오늘 사용한 미션 ID 목록 (중복 사용 방지) */
   completedMissionIds: string[];
+  /** 오버킬 데미지 (다음 보스에 이월될 데미지) */
+  overkillDamage?: number;
+  /** 
+   * 순차 진행 단계 (0~5)
+   * 0: easy, 1: normal, 2: hard(1회차), 3: hard(2회차), 4: epic, 5: 완료(자유선택)
+   */
+  sequentialPhase?: number;
 }
 
 /**
@@ -606,4 +633,15 @@ export interface BossImageSettings {
     imagePosition: string;  // e.g., "50% 30%"
     imageScale: number;     // e.g., 1.2
   };
+}
+
+/**
+ * 날짜별 보스 처치 통계 (도감 통계용)
+ */
+export interface DailyBattleStats {
+  date: string;                  // YYYY-MM-DD
+  defeatedCount: number;         // 처치한 보스 수
+  defeatedBossIds: string[];     // 처치한 보스 ID 목록
+  /** 난이도별 처치 수 */
+  byDifficulty: Record<BossDifficulty, number>;
 }

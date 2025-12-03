@@ -76,15 +76,15 @@ const record = await db.systemState.get('myKey');
 #### 2. **NO Hardcoded Fallback Values**
 ```typescript
 // ❌ WRONG - Inconsistent defaults
-const cooldown = settings?.ignitionCooldownMinutes ?? 5;
+const focusInterval = settings?.focusTimerMinutes ?? 25;
 
 // ✅ CORRECT - Centralized defaults
 import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
-const cooldown = settings?.ignitionCooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes;
+const focusInterval = settings?.focusTimerMinutes ?? SETTING_DEFAULTS.focusTimerMinutes;
 ```
 
 **Location**: `src/shared/constants/defaults.ts`
-**Available**: `SETTING_DEFAULTS`, `IGNITION_DEFAULTS`, `IDLE_FOCUS_DEFAULTS`, `GAME_STATE_DEFAULTS`
+**Available**: `SETTING_DEFAULTS`, `IDLE_FOCUS_DEFAULTS`, `GAME_STATE_DEFAULTS`
 
 #### 3. **NO Direct Firebase/Storage Calls from UI or Stores**
 All data operations **MUST** go through the **Repository Pattern** (`src/data/repositories/`).
@@ -132,7 +132,6 @@ features/
   ├── waifu/         # AI companion
   ├── gamification/  # XP, quests, achievements
   ├── gemini/        # AI chat integration
-  ├── ignition/      # 3-minute ignition system
   └── ...
 ```
 

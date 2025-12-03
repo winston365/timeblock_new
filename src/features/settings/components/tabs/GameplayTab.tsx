@@ -1,44 +1,24 @@
 /**
  * GameplayTab
  *
- * @role 게임플레이 관련 설정 (점화, 통계 목표, 타임블록 XP, 와이푸, 비활동 집중모드) 탭
+ * @role 게임플레이 관련 설정 (통계 목표, 타임블록 XP, 와이푸, 비활동 집중모드) 탭
  * @input GameplayTabProps (localSettings, setLocalSettings)
- * @output 점화 설정, XP 목표, 와이푸 설정 UI 렌더링
+ * @output XP 목표, 와이푸 설정 UI 렌더링
  * @external_dependencies 없음 (순수 UI 컴포넌트)
  */
 
 import type { BaseTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass } from './styles';
-import { SETTING_DEFAULTS, IDLE_FOCUS_DEFAULTS, IGNITION_DEFAULTS, DEFAULT_BINGO_CELLS } from '@/shared/constants/defaults';
+import { IDLE_FOCUS_DEFAULTS } from '@/shared/constants/defaults';
 
 /**
  * 게임플레이 관련 설정을 관리하는 탭 컴포넌트입니다.
  * @param props - 탭 props
  * @param props.localSettings - 현재 로컬 설정 상태
  * @param props.setLocalSettings - 로컬 설정 상태 업데이트 함수
- * @returns 점화, XP 목표, 빙고, 와이푸 설정 등 게임플레이 설정 UI
+ * @returns XP 목표, 와이푸 설정 등 게임플레이 설정 UI
  */
 export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
-    const bingoCells = (localSettings?.bingoCells && localSettings.bingoCells.length === 9 ? localSettings.bingoCells : DEFAULT_BINGO_CELLS).map(cell => ({ ...cell }));
-    const bingoMaxLines = localSettings?.bingoMaxLines ?? SETTING_DEFAULTS.bingoMaxLines;
-    const bingoLineRewardXP = localSettings?.bingoLineRewardXP ?? SETTING_DEFAULTS.bingoLineRewardXP;
-
-    /**
-     * 빙고 셀의 개별 필드를 업데이트합니다.
-     * @param cellIndex - 빙고 셀 인덱스 (0-8)
-     * @param fieldKey - 업데이트할 필드명 ('text' 또는 'xp')
-     * @param fieldValue - 업데이트할 값
-     */
-    const updateBingoCell = (cellIndex: number, fieldKey: 'text' | 'xp', fieldValue: string | number) => {
-        setLocalSettings((prev: Settings | null) => {
-            if (!prev) return prev;
-            const updatedCells = prev.bingoCells && prev.bingoCells.length === 9 ? [...prev.bingoCells] : DEFAULT_BINGO_CELLS.map(cell => ({ ...cell }));
-            const targetCell = updatedCells[cellIndex];
-            if (!targetCell) return prev;
-            updatedCells[cellIndex] = { ...targetCell, [fieldKey]: fieldValue };
-            return { ...prev, bingoCells: updatedCells };
-        });
-    };
 
     return (
         <div className={sectionClass}>
@@ -96,147 +76,6 @@ export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
             <div className={infoBoxClass}>
                 <strong>💡 작동 방식:</strong> 비활동 감지 시 5초 카운트다운 토스트가 표시됩니다.
                 카운트다운 중 마우스를 움직이면 취소됩니다. 이미 집중 모드인 경우 전환되지 않습니다.
-            </div>
-
-            <div className="my-4 border-t border-[var(--color-border)]" />
-
-            <h3>🟦 데일리 빙고</h3>
-            <p className={sectionDescriptionClass}>
-                툴바의 빙고 버튼으로 여는 3x3 빙고판을 설정합니다. 셀을 완수하면 셀별 XP를 받고, 빙고 1줄마다 {bingoLineRewardXP} XP(최대 {bingoMaxLines}줄) 보상!
-            </p>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-                {bingoCells.map((bingoCell, cellIndex) => (
-                    <div key={bingoCell.id || cellIndex} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3">
-                        <div className="text-[11px] font-semibold text-[var(--color-text-tertiary)] mb-1">칸 #{cellIndex + 1}</div>
-                        <input
-                            type="text"
-                            className={`${inputClass} mb-2`}
-                            value={bingoCell.text}
-                            onChange={(e) => updateBingoCell(cellIndex, 'text', e.target.value)}
-                            placeholder="예: 물 한 컵 마시기"
-                        />
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="number"
-                                min={0}
-                                max={500}
-                                className={`${inputClass} flex-1`}
-                                value={bingoCell.xp}
-                                onChange={(e) => updateBingoCell(cellIndex, 'xp', parseInt(e.target.value) || 0)}
-                            />
-                            <span className="text-xs text-[var(--color-text-secondary)]">XP</span>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            <div className={infoBoxClass}>
-                <strong>제한:</strong> 하루에 최대 {bingoMaxLines} 빙고만 인정됩니다. 줄을 완성하면 자동으로 +{bingoLineRewardXP} XP를 지급합니다.
-            </div>
-
-            <div className="my-4 border-t border-[var(--color-border)]" />
-
-            <h3>🔥 점화 설정</h3>
-            <p className={sectionDescriptionClass}>
-                비활동 상태일 때 나타나는 점화 기능의 동작을 설정합니다.
-            </p>
-
-            <div className={formGroupClass}>
-                <label htmlFor="ignition-inactivity">
-                    비활동 시간 (분)
-                </label>
-                <input
-                    id="ignition-inactivity"
-                    type="number"
-                    min="5"
-                    max="180"
-                    className={inputClass}
-                    placeholder="45"
-                    value={localSettings?.ignitionInactivityMinutes ?? SETTING_DEFAULTS.ignitionInactivityMinutes}
-                    onChange={(e) => {
-                        const value = parseInt(e.target.value) || 45;
-                        const clampedValue = Math.max(5, Math.min(180, value));
-                        setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, ignitionInactivityMinutes: clampedValue }) : prev);
-                    }}
-                />
-                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                    마지막 작업 완료 후 이 시간이 지나면 점화 버튼이 나타납니다 (5-180분)
-                </small>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-                <div className={formGroupClass}>
-                    <label htmlFor="ignition-duration">점화 타이머 길이 (분)</label>
-                    <input
-                        id="ignition-duration"
-                        type="number"
-                        min="1"
-                        max="30"
-                        className={inputClass}
-                        value={localSettings?.ignitionDurationMinutes ?? IGNITION_DEFAULTS.durationMinutes}
-                        onChange={(e) => {
-                            const value = parseInt(e.target.value) || 3;
-                            const clamped = Math.max(1, Math.min(30, value));
-                            setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, ignitionDurationMinutes: clamped }) : prev);
-                        }}
-                    />
-                    <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">기본 타이머 길이 (1-30분)</small>
-                </div>
-
-                <div className={formGroupClass}>
-                    <label htmlFor="ignition-cooldown">점화 쿨다운 (분)</label>
-                    <input
-                        id="ignition-cooldown"
-                        type="number"
-                        min="1"
-                        max="120"
-                        className={inputClass}
-                        value={localSettings?.ignitionCooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes}
-                        onChange={(e) => {
-                            const value = parseInt(e.target.value) || 15;
-                            const clamped = Math.max(1, Math.min(120, value));
-                            setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, ignitionCooldownMinutes: clamped }) : prev);
-                        }}
-                    />
-                    <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">재사용 대기시간 (1-120분)</small>
-                </div>
-
-                <div className={formGroupClass}>
-                    <label htmlFor="just-do-it-cooldown">'그냥해보자!' 쿨다운 (분)</label>
-                    <input
-                        id="just-do-it-cooldown"
-                        type="number"
-                        min="1"
-                        max="120"
-                        className={inputClass}
-                        value={localSettings?.justDoItCooldownMinutes ?? SETTING_DEFAULTS.justDoItCooldownMinutes}
-                        onChange={(e) => {
-                            const value = parseInt(e.target.value) || 15;
-                            const clamped = Math.max(1, Math.min(120, value));
-                            setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, justDoItCooldownMinutes: clamped }) : prev);
-                        }}
-                    />
-                    <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">비활동 버튼 재사용 대기시간</small>
-                </div>
-
-                <div className={formGroupClass}>
-                    <label htmlFor="ignition-xp">점화 XP 비용</label>
-                    <input
-                        id="ignition-xp"
-                        type="number"
-                        min="0"
-                        max="500"
-                        className={inputClass}
-                        value={localSettings?.ignitionXPCost ?? IGNITION_DEFAULTS.xpCost}
-                        onChange={(e) => {
-                            const value = parseInt(e.target.value) || 0;
-                            const clamped = Math.max(0, Math.min(500, value));
-                            setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, ignitionXPCost: clamped }) : prev);
-                        }}
-                    />
-                    <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">무료 횟수 소진 후 XP 비용</small>
-                </div>
             </div>
 
             <div className="my-4 border-t border-[var(--color-border)]" />

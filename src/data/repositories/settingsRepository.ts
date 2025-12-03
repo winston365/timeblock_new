@@ -15,7 +15,7 @@
 import { db } from '../db/dexieClient';
 import type { Settings, TimeSlotTagTemplate } from '@/shared/types/domain';
 import { STORAGE_KEYS, DEFAULT_AUTO_MESSAGE_INTERVAL } from '@/shared/lib/constants';
-import { SETTING_DEFAULTS, DEFAULT_BINGO_CELLS } from '@/shared/constants/defaults';
+import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
 import { loadData, saveData, updateData, type RepositoryConfig } from './baseRepository';
 import { settingsStrategy } from '@/shared/services/sync/firebase/strategies';
 import { getDeviceId } from '@/shared/services/sync/firebase/syncUtils';
@@ -59,16 +59,6 @@ const settingsConfig: RepositoryConfig<Settings> = {
     timeSlotTags: DEFAULT_TIME_SLOT_TAGS,
     isAlwaysOnTopEnabled: false,
     alwaysOnTopToggleKey: 'Ctrl+Shift+T',
-    // 점화 시스템 - 중앙화된 기본값 사용
-    ignitionInactivityMinutes: SETTING_DEFAULTS.ignitionInactivityMinutes,
-    ignitionDurationMinutes: SETTING_DEFAULTS.ignitionDurationMinutes,
-    ignitionCooldownMinutes: SETTING_DEFAULTS.ignitionCooldownMinutes,
-    justDoItCooldownMinutes: SETTING_DEFAULTS.justDoItCooldownMinutes,
-    ignitionXPCost: SETTING_DEFAULTS.ignitionXPCost,
-    // 빙고
-    bingoCells: DEFAULT_BINGO_CELLS as Settings['bingoCells'],
-    bingoMaxLines: SETTING_DEFAULTS.bingoMaxLines,
-    bingoLineRewardXP: SETTING_DEFAULTS.bingoLineRewardXP,
     // 비활동 집중 모드 - 중앙화된 기본값 사용
     idleFocusModeEnabled: SETTING_DEFAULTS.idleFocusModeEnabled,
     idleFocusModeMinutes: SETTING_DEFAULTS.idleFocusModeMinutes,
@@ -87,16 +77,6 @@ const settingsConfig: RepositoryConfig<Settings> = {
       timeSlotTags: Array.isArray(data.timeSlotTags) ? data.timeSlotTags : DEFAULT_TIME_SLOT_TAGS,
       isAlwaysOnTopEnabled: data.isAlwaysOnTopEnabled ?? false,
       alwaysOnTopToggleKey: data.alwaysOnTopToggleKey || 'Ctrl+Shift+T',
-      // 점화 시스템 - 중앙화된 기본값 사용
-      ignitionInactivityMinutes: data.ignitionInactivityMinutes ?? SETTING_DEFAULTS.ignitionInactivityMinutes,
-      ignitionDurationMinutes: data.ignitionDurationMinutes ?? SETTING_DEFAULTS.ignitionDurationMinutes,
-      ignitionCooldownMinutes: data.ignitionCooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes,
-      justDoItCooldownMinutes: data.justDoItCooldownMinutes ?? SETTING_DEFAULTS.justDoItCooldownMinutes,
-      ignitionXPCost: data.ignitionXPCost ?? SETTING_DEFAULTS.ignitionXPCost,
-      // 빙고
-      bingoCells: Array.isArray(data.bingoCells) && data.bingoCells.length === 9 ? data.bingoCells : DEFAULT_BINGO_CELLS as Settings['bingoCells'],
-      bingoMaxLines: data.bingoMaxLines ?? SETTING_DEFAULTS.bingoMaxLines,
-      bingoLineRewardXP: data.bingoLineRewardXP ?? SETTING_DEFAULTS.bingoLineRewardXP,
       // 비활동 집중 모드 - 중앙화된 기본값 사용
       idleFocusModeEnabled: data.idleFocusModeEnabled ?? SETTING_DEFAULTS.idleFocusModeEnabled,
       idleFocusModeMinutes: data.idleFocusModeMinutes ?? SETTING_DEFAULTS.idleFocusModeMinutes,

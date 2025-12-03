@@ -13,6 +13,7 @@
  *   - inboxRepository: 인박스 데이터 영속성 관리
  *   - eventBus: Store 간 통신 (순환 의존성 해소)
  *   - taskCompletionService: 작업 완료 파이프라인
+ *   - storeUtils: 비동기 액션 래퍼
  */
 
 import { create } from 'zustand';
@@ -28,6 +29,7 @@ import { scheduleEmojiSuggestion } from '@/shared/services/ai/emojiSuggester';
 import { taskCompletionService } from '@/shared/services/gameplay/taskCompletion';
 import { getLocalDate } from '@/shared/lib/utils';
 import { eventBus } from '@/shared/lib/eventBus';
+import { withAsyncAction } from '@/shared/lib/storeUtils';
 
 interface InboxStore {
     // 상태
@@ -67,58 +69,31 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
 
     /**
      * 인박스 작업 데이터 로드
-     *
-     * @returns {Promise<void>}
-     * @throws {Error} 로드 실패 시
      */
     loadData: async () => {
-        set({ loading: true, error: null });
-        try {
+        return withAsyncAction(set, async () => {
             const tasks = await loadInboxTasks();
             // globalInbox에는 미완료 작업만 있어야 하지만, 안전을 위해 필터링
-            // (Repository 로직상 globalInbox <-> completedInbox 이동이 일어나므로)
-            set({ inboxTasks: tasks.filter(t => !t.completed), loading: false });
-        } catch (error) {
-            console.error('InboxStore: Failed to load tasks', error);
-            set({ error: error as Error, loading: false });
-        }
+            set({ inboxTasks: tasks.filter(t => !t.completed) });
+        }, { errorPrefix: 'InboxStore: loadData', rethrow: false });
     },
 
     /**
      * 인박스에 작업 추가
-     *
-     * @param {Task} task - 추가할 작업
-     * @returns {Promise<void>}
-     * @throws {Error} 추가 실패 시
      */
     addTask: async (task: Task) => {
-        set({ loading: true, error: null });
-        try {
+        return withAsyncAction(set, async () => {
             await addInboxTask(task);
             scheduleEmojiSuggestion(task.id, task.text);
-            // 낙관적 업데이트 또는 리로드
-            // 여기서는 리로드로 일관성 유지
             await get().loadData();
-        } catch (error) {
-            console.error('InboxStore: Failed to add task', error);
-            set({ error: error as Error, loading: false });
-            throw error;
-        }
+        }, { errorPrefix: 'InboxStore: addTask' });
     },
 
     /**
      * 인박스 작업 업데이트
-     *
-     * @param {string} taskId - 업데이트할 작업 ID
-     * @param {Partial<Task>} updates - 업데이트할 필드
-     * @returns {Promise<void>}
-     * @throws {Error} 업데이트 실패 시
-     * @sideEffects
-     *   - timeBlock 설정 시 dailyData로 자동 이동
      */
     updateTask: async (taskId: string, updates: Partial<Task>) => {
-        set({ loading: true, error: null });
-        try {
+        return withAsyncAction(set, async () => {
             // timeBlock이 설정되면 dailyData로 이동해야 함
             if (updates.timeBlock !== undefined && updates.timeBlock !== null) {
                 const { updateTask: updateTaskInDaily } = await import('@/data/repositories/dailyDataRepository');
@@ -130,45 +105,24 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
                 scheduleEmojiSuggestion(taskId, updates.text);
             }
             await get().loadData();
-        } catch (error) {
-            console.error('InboxStore: Failed to update task', error);
-            set({ error: error as Error, loading: false });
-            throw error;
-        }
+        }, { errorPrefix: 'InboxStore: updateTask' });
     },
 
     /**
      * 인박스 작업 삭제
-     *
-     * @param {string} taskId - 삭제할 작업 ID
-     * @returns {Promise<void>}
-     * @throws {Error} 삭제 실패 시
      */
     deleteTask: async (taskId: string) => {
-        set({ loading: true, error: null });
-        try {
+        return withAsyncAction(set, async () => {
             await deleteInboxTask(taskId);
             await get().loadData();
-        } catch (error) {
-            console.error('InboxStore: Failed to delete task', error);
-            set({ error: error as Error, loading: false });
-            throw error;
-        }
+        }, { errorPrefix: 'InboxStore: deleteTask' });
     },
 
     /**
      * 인박스 작업 완료 토글
-     *
-     * @param {string} taskId - 토글할 작업 ID
-     * @returns {Promise<void>}
-     * @throws {Error} 토글 실패 시
-     * @sideEffects
-     *   - 완료 시 XP/퀘스트/와이푸 호감도 업데이트
-     *   - 완료된 작업은 completedInbox로 이동
      */
     toggleTaskCompletion: async (taskId: string) => {
-        set({ loading: true, error: null });
-        try {
+        return withAsyncAction(set, async () => {
             const current = get().inboxTasks.find(t => t.id === taskId);
             const wasCompleted = current?.completed ?? false;
 
@@ -227,17 +181,11 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
             }
 
             await get().loadData();
-        } catch (error) {
-            console.error('InboxStore: Failed to toggle task completion', error);
-            set({ error: error as Error, loading: false });
-            throw error;
-        }
+        }, { errorPrefix: 'InboxStore: toggleTaskCompletion' });
     },
 
     /**
      * 수동 갱신 (강제 리로드)
-     *
-     * @returns {Promise<void>}
      */
     refresh: async () => {
         await get().loadData();
@@ -245,8 +193,6 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
 
     /**
      * 상태 초기화
-     *
-     * @returns {void}
      */
     reset: () => {
         set({ inboxTasks: [], loading: false, error: null });

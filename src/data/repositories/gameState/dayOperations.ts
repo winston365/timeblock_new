@@ -151,7 +151,7 @@ export async function migrateUncompletedInboxTasks(
  */
 export async function generateTasksFromAutoTemplates(): Promise<void> {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDate();
 
     // Step 1: Firebase Function 실행 여부 체크
     const { isFirebaseInitialized } = await import('@/shared/services/sync/firebaseService');

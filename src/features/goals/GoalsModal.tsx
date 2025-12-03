@@ -4,18 +4,22 @@
  * Role: 목표 관리를 위한 모달 컴포넌트
  * 
  * Responsibilities:
- * - GoalPanel을 모달 형태로 래핑
- * - 목표 목록 표시 및 관리
+ * - GoalPanel과 WeeklyGoalPanel을 탭으로 구분하여 표시
+ * - 오늘 목표 / 장기 목표 탭 전환
  * 
  * Key Dependencies:
- * - GoalPanel: 목표 패널 UI 컴포넌트
+ * - GoalPanel: 오늘 목표 패널 UI 컴포넌트
+ * - WeeklyGoalPanel: 장기 목표 패널 UI 컴포넌트
  * - GoalModal: 목표 추가/수정 모달
+ * - WeeklyGoalModal: 장기목표 추가/수정 모달
  */
 
 import { useState } from 'react';
 import GoalPanel from './GoalPanel';
 import GoalModal from './GoalModal';
-import type { DailyGoal } from '@/shared/types/domain';
+import WeeklyGoalPanel from './WeeklyGoalPanel';
+import WeeklyGoalModal from './WeeklyGoalModal';
+import type { DailyGoal, WeeklyGoal } from '@/shared/types/domain';
 
 interface GoalsModalProps {
   /** 모달 열림 상태 */
@@ -24,25 +28,44 @@ interface GoalsModalProps {
   onClose: () => void;
 }
 
+type TabType = 'daily' | 'weekly';
+
 /**
  * 목표 관리 모달 컴포넌트
- * GoalPanel을 전체 화면 모달 형태로 표시합니다.
+ * GoalPanel과 WeeklyGoalPanel을 탭으로 전환하여 표시합니다.
  * 
  * @param {GoalsModalProps} props - 모달 속성
  * @returns {JSX.Element | null} 목표 모달 UI 또는 null
  */
 export function GoalsModal({ open, onClose }: GoalsModalProps) {
-  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
-  const [editingGoal, setEditingGoal] = useState<DailyGoal | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState<TabType>('daily');
+  
+  // Daily Goal Modal State
+  const [isDailyGoalModalOpen, setIsDailyGoalModalOpen] = useState(false);
+  const [editingDailyGoal, setEditingDailyGoal] = useState<DailyGoal | undefined>(undefined);
 
-  const handleOpenGoalModal = (goal?: DailyGoal) => {
-    setEditingGoal(goal);
-    setIsGoalModalOpen(true);
+  // Weekly Goal Modal State
+  const [isWeeklyGoalModalOpen, setIsWeeklyGoalModalOpen] = useState(false);
+  const [editingWeeklyGoal, setEditingWeeklyGoal] = useState<WeeklyGoal | undefined>(undefined);
+
+  const handleOpenDailyGoalModal = (goal?: DailyGoal) => {
+    setEditingDailyGoal(goal);
+    setIsDailyGoalModalOpen(true);
   };
 
-  const handleCloseGoalModal = () => {
-    setIsGoalModalOpen(false);
-    setEditingGoal(undefined);
+  const handleCloseDailyGoalModal = () => {
+    setIsDailyGoalModalOpen(false);
+    setEditingDailyGoal(undefined);
+  };
+
+  const handleOpenWeeklyGoalModal = (goal?: WeeklyGoal) => {
+    setEditingWeeklyGoal(goal);
+    setIsWeeklyGoalModalOpen(true);
+  };
+
+  const handleCloseWeeklyGoalModal = () => {
+    setIsWeeklyGoalModalOpen(false);
+    setEditingWeeklyGoal(undefined);
   };
 
   if (!open) return null;
@@ -54,9 +77,9 @@ export function GoalsModal({ open, onClose }: GoalsModalProps) {
           {/* Header */}
           <header className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
             <div>
-              <div className="text-xs uppercase tracking-[0.12em] text-[var(--color-text-tertiary)]">Daily Goals</div>
-              <h2 className="text-xl font-bold">🎯 오늘의 목표</h2>
-              <p className="text-xs text-[var(--color-text-secondary)]">목표를 설정하고 진행 상황을 확인하세요.</p>
+              <div className="text-xs uppercase tracking-[0.12em] text-[var(--color-text-tertiary)]">Goals</div>
+              <h2 className="text-xl font-bold">🎯 목표 관리</h2>
+              <p className="text-xs text-[var(--color-text-secondary)]">오늘의 목표와 장기 목표를 관리하세요.</p>
             </div>
             <button
               type="button"
@@ -68,18 +91,53 @@ export function GoalsModal({ open, onClose }: GoalsModalProps) {
             </button>
           </header>
 
-          {/* Content - GoalPanel을 모달 내부에 렌더링 */}
+          {/* Tabs */}
+          <div className="flex border-b border-[var(--color-border)]">
+            <button
+              onClick={() => setActiveTab('daily')}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'daily'
+                  ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)]'
+                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+              }`}
+            >
+              📋 오늘 목표
+            </button>
+            <button
+              onClick={() => setActiveTab('weekly')}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'weekly'
+                  ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)]'
+                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+              }`}
+            >
+              📅 장기 목표
+            </button>
+          </div>
+
+          {/* Content */}
           <div className="flex-1 overflow-hidden p-4">
-            <GoalPanel onOpenModal={handleOpenGoalModal} />
+            {activeTab === 'daily' ? (
+              <GoalPanel onOpenModal={handleOpenDailyGoalModal} />
+            ) : (
+              <WeeklyGoalPanel onOpenModal={handleOpenWeeklyGoalModal} />
+            )}
           </div>
         </div>
       </div>
 
-      {/* 목표 추가/수정 모달 */}
+      {/* 오늘 목표 추가/수정 모달 */}
       <GoalModal 
-        isOpen={isGoalModalOpen} 
-        onClose={handleCloseGoalModal} 
-        goal={editingGoal} 
+        isOpen={isDailyGoalModalOpen} 
+        onClose={handleCloseDailyGoalModal} 
+        goal={editingDailyGoal} 
+      />
+
+      {/* 장기 목표 추가/수정 모달 */}
+      <WeeklyGoalModal
+        isOpen={isWeeklyGoalModalOpen}
+        onClose={handleCloseWeeklyGoalModal}
+        goal={editingWeeklyGoal}
       />
     </>
   );

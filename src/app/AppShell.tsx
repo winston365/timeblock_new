@@ -52,7 +52,6 @@ import TemplatesModal from '@/features/template/TemplatesModal';
 import { RealityCheckModal } from '@/features/feedback/RealityCheckModal';
 import GlobalTaskBreakdown from '@/features/tasks/GlobalTaskBreakdown';
 import { XPParticleOverlay } from '@/features/gamification/components/XPParticleOverlay';
-import FloatingIgnitionTrigger from '@/features/ignition/components/FloatingIgnitionTrigger';
 import { MemoMissionModal } from '@/shared/components/MemoMissionModal';
 
 /**
@@ -310,7 +309,6 @@ export default function AppShell() {
       <GlobalTaskBreakdown />
       <XPParticleOverlay />
       <MemoMissionModal />
-      {!isFocusMode && <FloatingIgnitionTrigger />}
     </div>
   );
 }

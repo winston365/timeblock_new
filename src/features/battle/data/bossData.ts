@@ -61,7 +61,7 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_04',
-    name: '헬만 기사',
+    name: '헬만 여기사',
     image: 'boss_04.webp',
     difficulty: 'easy',
     defeatQuote: '「ガラガラガラ……」',
@@ -225,7 +225,7 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_14',
-    name: '자비엘',
+    name: '마인 자비엘',
     image: 'boss_14.webp',
     difficulty: 'epic',
     defeatQuote: '「人間風情に……この我が……！」',
@@ -241,7 +241,7 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_15',
-    name: '아이젤',
+    name: '사도 아이젤',
     image: 'boss_15.webp',
     difficulty: 'hard',
     defeatQuote: '「ザビエル様……申し訳ありませぬ……」',
@@ -309,7 +309,7 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_19',
-    name: '카라',
+    name: '풀 카라',
     image: 'boss_19.webp',
     difficulty: 'normal',
     defeatQuote: '「森が……汚れちゃう……」',

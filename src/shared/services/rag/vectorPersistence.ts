@@ -17,6 +17,7 @@
 
 import { db, type RAGDocumentRecord } from '@/data/db/dexieClient';
 import type { RAGDocument } from './vectorStore';
+import { getLocalDate } from '@/shared/lib/utils';
 
 /**
  * 문자열의 간단한 해시 생성 (변경 감지용)
@@ -220,7 +221,7 @@ export class VectorPersistence {
         try {
             const cutoffDate = new Date();
             cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-            const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
+            const cutoffDateStr = getLocalDate(cutoffDate);
 
             const oldDocuments = await db.ragDocuments
                 .where('date')

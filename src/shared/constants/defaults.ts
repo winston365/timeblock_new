@@ -10,38 +10,14 @@
  * import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
  *
  * // 올바른 사용
- * const cooldown = settings?.ignitionCooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes;
+ * const goal = settings?.timeBlockXPGoal ?? SETTING_DEFAULTS.timeBlockXPGoal;
  *
  * // ❌ 잘못된 사용 (하드코딩된 기본값)
- * const cooldown = settings?.ignitionCooldownMinutes ?? 5;
+ * const goal = settings?.timeBlockXPGoal ?? 100;
  * ```
  *
  * @see copilot-instructions.md - "Default Values" 섹션
  */
-
-// ============================================================================
-// 점화(Ignition) 시스템 기본값
-// ============================================================================
-
-export const IGNITION_DEFAULTS = {
-  /** 일반 점화 쿨다운 (분) */
-  cooldownMinutes: 5,
-
-  /** '뭐라도 하자' 보너스 점화 쿨다운 (분) */
-  justDoItCooldownMinutes: 15,
-
-  /** 비활동 감지 시간 - 이 시간 후 '뭐라도 하자' 버튼 표시 (분) */
-  inactivityMinutes: 45,
-
-  /** 점화 타이머 기본 시간 (분) */
-  durationMinutes: 3,
-
-  /** 무료 횟수 소진 후 XP 비용 */
-  xpCost: 50,
-
-  /** 일일 무료 점화 횟수 */
-  dailyFreeIgnitions: 3,
-} as const;
 
 // ============================================================================
 // 비활동 감지 시스템 기본값
@@ -65,10 +41,6 @@ export const IDLE_FOCUS_DEFAULTS = {
 export const GAMEPLAY_DEFAULTS = {
   /** 타임블록당 XP 목표 */
   timeBlockXPGoal: 100,
-  /** 빙고 라인당 보상 XP */
-  bingoLineRewardXP: 100,
-  /** 인정 가능한 최대 빙고 라인 수 */
-  bingoMaxLines: 4,
 } as const;
 
 // ============================================================================
@@ -107,21 +79,12 @@ export const AI_DEFAULTS = {
  * settingsRepository, UI 컴포넌트 등에서 사용
  */
 export const SETTING_DEFAULTS = {
-  // 점화 시스템
-  ignitionCooldownMinutes: IGNITION_DEFAULTS.cooldownMinutes,
-  justDoItCooldownMinutes: IGNITION_DEFAULTS.justDoItCooldownMinutes,
-  ignitionInactivityMinutes: IGNITION_DEFAULTS.inactivityMinutes,
-  ignitionDurationMinutes: IGNITION_DEFAULTS.durationMinutes,
-  ignitionXPCost: IGNITION_DEFAULTS.xpCost,
-
   // 비활동 집중 모드
   idleFocusModeEnabled: IDLE_FOCUS_DEFAULTS.enabled,
   idleFocusModeMinutes: IDLE_FOCUS_DEFAULTS.minutes,
 
   // 게임플레이
   timeBlockXPGoal: GAMEPLAY_DEFAULTS.timeBlockXPGoal,
-  bingoLineRewardXP: GAMEPLAY_DEFAULTS.bingoLineRewardXP,
-  bingoMaxLines: GAMEPLAY_DEFAULTS.bingoMaxLines,
 
   // 와이푸
   waifuVisible: WAIFU_DEFAULTS.visible,
@@ -133,13 +96,23 @@ export const SETTING_DEFAULTS = {
 } as const;
 
 // ============================================================================
+// Task 기본값
+// ============================================================================
+
+export const TASK_DEFAULTS = {
+  /** 기본 소요 시간 (분) */
+  baseDuration: 15,
+  /** 기본 난이도 */
+  resistance: 'low' as const,
+  /** 데드라인 - 오늘 날짜 반환 함수 */
+  getDefaultDeadline: () => new Date().toISOString().split('T')[0],
+} as const;
+
+// ============================================================================
 // GameState 기본값
 // ============================================================================
 
 export const GAME_STATE_DEFAULTS = {
-  /** 일일 무료 점화 횟수 */
-  dailyFreeIgnitions: IGNITION_DEFAULTS.dailyFreeIgnitions,
-
   /** 초기 XP */
   totalXP: 0,
   dailyXP: 0,
@@ -148,22 +121,6 @@ export const GAME_STATE_DEFAULTS = {
   /** 연속 출석 */
   streak: 0,
 } as const;
-
-// ============================================================================
-// Bingo 기본값
-// ============================================================================
-
-export const DEFAULT_BINGO_CELLS = [
-  { id: 'b1', text: '물 한 컵 마시기', xp: 10 },
-  { id: 'b2', text: '5분 스트레칭', xp: 10 },
-  { id: 'b3', text: '할 일 1개 정리', xp: 10 },
-  { id: 'b4', text: '깊은 호흡 5회', xp: 10 },
-  { id: 'b5', text: '책상 정리 3분', xp: 10 },
-  { id: 'b6', text: '눈 운동 1분', xp: 10 },
-  { id: 'b7', text: '가벼운 산책 3분', xp: 10 },
-  { id: 'b8', text: '감사 1가지 적기', xp: 10 },
-  { id: 'b9', text: '알림 끄기', xp: 10 },
-] as const;
 
 // ============================================================================
 // 타입 유틸리티

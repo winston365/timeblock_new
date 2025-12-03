@@ -225,7 +225,7 @@ export async function suggestTagsWithAI(
     
     try {
         const { callGeminiAPI } = await import('@/shared/services/ai/geminiApi');
-        const { addTokenUsage } = await import('@/data/repositories/chatHistoryRepository');
+        const { trackTokenUsage } = await import('@/shared/utils/tokenUtils');
         
         const prompt = `
 작업 제목: "${taskText}"
@@ -243,9 +243,7 @@ JSON 배열로만 응답하세요:
         const { text, tokenUsage } = await callGeminiAPI(prompt, [], apiKey);
         
         // 토큰 사용량 기록
-        if (tokenUsage) {
-            addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens).catch(console.error);
-        }
+        trackTokenUsage(tokenUsage);
         
         // JSON 파싱
         const jsonMatch = text.match(/\[[\s\S]*?\]/);

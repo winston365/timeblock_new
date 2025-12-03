@@ -12,6 +12,7 @@
  */
 
 import { db } from '@/data/db/dexieClient';
+import { generateId } from '@/shared/lib/utils';
 
 export type SyncType = 'dexie' | 'firebase';
 export type SyncAction = 'save' | 'load' | 'sync' | 'error' | 'retry' | 'info';
@@ -115,7 +116,7 @@ export function addSyncLog(
   if (!isInitialized) {
     // 초기화 이전에는 메모리에 적재 후 병합 시 저장
     const entry: SyncLogEntry = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: generateId('log'),
       timestamp: Date.now(),
       type,
       action,
@@ -132,7 +133,7 @@ export function addSyncLog(
   }
 
   const entry: SyncLogEntry = {
-    id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: generateId('log'),
     timestamp: Date.now(),
     type,
     action,

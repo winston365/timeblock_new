@@ -8,7 +8,7 @@
  */
 import { loadSettings } from '@/data/repositories/settingsRepository';
 import { suggestTaskEmoji } from './geminiApi';
-import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
+import { trackTokenUsage } from '@/shared/utils/tokenUtils';
 import { updateAnyTask } from '@/shared/services/task';
 
 type EmojiSuggestionJob = {
@@ -54,9 +54,7 @@ async function runJobs() {
         geminiModel
       );
       const trimmedEmoji = suggestedEmoji.trim();
-      if (tokenUsage) {
-        addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens).catch(console.error);
-      }
+      trackTokenUsage(tokenUsage);
       if (trimmedEmoji) {
         taskTitleEmojiCache.set(queuedJob.taskTitle, trimmedEmoji);
         applyEmoji(queuedJob.taskId, trimmedEmoji);

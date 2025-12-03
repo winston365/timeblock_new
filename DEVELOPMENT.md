@@ -234,7 +234,6 @@ timeblock_new/
 │   │   ├── settings/           # ⚙️ 설정 (tabs/ 하위 모듈)
 │   │   ├── stats/              # 📊 통계 (tabs/ 하위 모듈)
 │   │   ├── shop/               # 🛒 XP 상점
-│   │   ├── ignition/           # 🔥 3분 점화 시스템
 │   │   ├── insight/            # 💡 AI 인사이트
 │   │   ├── weather/            # 🌤️ 날씨 정보
 │   │   ├── energy/             # ⚡ 에너지 추적
@@ -311,17 +310,16 @@ timeblock_new/
 - 모든 설정 관련 기본값은 `src/shared/constants/defaults.ts`에서 import:
   ```typescript
   // ❌ 금지
-  const cooldown = settings?.ignitionCooldownMinutes ?? 5;
+  const focusInterval = settings?.focusTimerMinutes ?? 25;
   
   // ✅ 올바른 방법
   import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
-  const cooldown = settings?.ignitionCooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes;
+  const focusInterval = settings?.focusTimerMinutes ?? SETTING_DEFAULTS.focusTimerMinutes;
   ```
 - **상수 종류**:
-  - `SETTING_DEFAULTS`: 사용자 설정 (ignitionCooldownMinutes, justDoItCooldownMinutes 등)
-  - `IGNITION_DEFAULTS`: 점화 시스템 (durationMinutes, xpCost, dailyFreeSpins)
+  - `SETTING_DEFAULTS`: 사용자 설정 (focusTimerMinutes 등)
   - `IDLE_FOCUS_DEFAULTS`: 비활동 집중모드 (enabled, minutes, countdownSeconds)
-  - `GAME_STATE_DEFAULTS`: 게임 상태 초기화 (dailyFreeIgnitions)
+  - `GAME_STATE_DEFAULTS`: 게임 상태 초기화
 
 ### 스키마 변경 시
 Dexie 스키마 변경 시 3곳 모두 업데이트:

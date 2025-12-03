@@ -7,6 +7,7 @@
  * @external_dependencies
  *   - zustand: 전역 상태 관리
  *   - globalGoalRepository: 데이터 영속성 관리
+ *   - storeUtils: 비동기 액션 래퍼
  */
 
 import { create } from 'zustand';
@@ -19,6 +20,7 @@ import {
     reorderGlobalGoals,
     recalculateGlobalGoalProgress,
 } from '@/data/repositories/globalGoalRepository';
+import { withAsyncAction, withBackgroundAction } from '@/shared/lib/storeUtils';
 
 interface GoalStore {
     // 상태
@@ -60,90 +62,64 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     error: null,
 
     loadGoals: async () => {
-        set({ loading: true, error: null });
-        try {
+        return withAsyncAction(set, async () => {
             const loadedGoals = await loadGlobalGoals();
-            set({ goals: loadedGoals.sort((goalA, goalB) => goalA.order - goalB.order), loading: false });
-        } catch (error) {
-            console.error('GoalStore: Failed to load goals', error);
-            set({ error: error as Error, loading: false });
-        }
+            set({ goals: loadedGoals.sort((goalA, goalB) => goalA.order - goalB.order) });
+        }, { errorPrefix: 'GoalStore: loadGoals', rethrow: false });
     },
 
     addGoal: async (data) => {
-        set({ loading: true, error: null });
-        try {
+        return withAsyncAction(set, async () => {
             const newGoal = await addGlobalGoal(data);
 
             // 낙관적 업데이트: 즉시 스토어에 추가
             const currentGoals = get().goals;
             set({
-                goals: [...currentGoals, newGoal].sort((goalA, goalB) => goalA.order - goalB.order),
-                loading: false
+                goals: [...currentGoals, newGoal].sort((goalA, goalB) => goalA.order - goalB.order)
             });
 
             return newGoal;
-        } catch (error) {
-            console.error('GoalStore: Failed to add goal', error);
-            set({ error: error as Error, loading: false });
-            throw error;
-        }
+        }, { errorPrefix: 'GoalStore: addGoal' });
     },
 
     updateGoal: async (goalId, updates) => {
-        set({ loading: true, error: null });
-        try {
+        return withAsyncAction(set, async () => {
             const updatedGoal = await updateGlobalGoal(goalId, updates);
 
             // 낙관적 업데이트: 즉시 스토어에 반영
             const currentGoals = get().goals;
             set({
-                goals: currentGoals.map(existingGoal => existingGoal.id === goalId ? updatedGoal : existingGoal),
-                loading: false
+                goals: currentGoals.map(existingGoal => existingGoal.id === goalId ? updatedGoal : existingGoal)
             });
 
             return updatedGoal;
-        } catch (error) {
-            console.error('GoalStore: Failed to update goal', error);
-            set({ error: error as Error, loading: false });
-            throw error;
-        }
+        }, { errorPrefix: 'GoalStore: updateGoal' });
     },
 
     deleteGoal: async (goalId) => {
-        set({ loading: true, error: null });
-        try {
+        return withAsyncAction(set, async () => {
             await deleteGlobalGoal(goalId);
 
             // 낙관적 업데이트: 즉시 스토어에서 제거
             const currentGoals = get().goals;
             set({
-                goals: currentGoals.filter(existingGoal => existingGoal.id !== goalId),
-                loading: false
+                goals: currentGoals.filter(existingGoal => existingGoal.id !== goalId)
             });
-        } catch (error) {
-            console.error('GoalStore: Failed to delete goal', error);
-            set({ error: error as Error, loading: false });
-            throw error;
-        }
+        }, { errorPrefix: 'GoalStore: deleteGoal' });
     },
 
     reorderGoals: async (goals) => {
-        set({ loading: true, error: null });
-        try {
+        return withAsyncAction(set, async () => {
             await reorderGlobalGoals(goals);
 
             // 낙관적 업데이트: 즉시 스토어에 반영
-            set({ goals: goals.sort((goalA, goalB) => goalA.order - goalB.order), loading: false });
-        } catch (error) {
-            console.error('GoalStore: Failed to reorder goals', error);
-            set({ error: error as Error, loading: false });
-            throw error;
-        }
+            set({ goals: goals.sort((goalA, goalB) => goalA.order - goalB.order) });
+        }, { errorPrefix: 'GoalStore: reorderGoals' });
     },
 
     recalculateProgress: async (goalId, date) => {
-        try {
+        // 백그라운드 작업: 로딩 상태 없이, 에러도 throw 안 함
+        return withBackgroundAction(set, async () => {
             const updatedGoal = await recalculateGlobalGoalProgress(goalId, date);
 
             // 낙관적 업데이트: 진행률 업데이트
@@ -151,10 +127,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
             set({
                 goals: currentGoals.map(existingGoal => existingGoal.id === goalId ? updatedGoal : existingGoal)
             });
-        } catch (error) {
-            console.error('GoalStore: Failed to recalculate progress', error);
-            // 진행률 재계산 실패는 치명적이지 않으므로 error 상태는 설정하지 않음
-        }
+        }, 'GoalStore: recalculateProgress');
     },
 
     refresh: async () => {

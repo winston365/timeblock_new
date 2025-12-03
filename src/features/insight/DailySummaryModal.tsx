@@ -83,10 +83,10 @@ const PAGE_CONFIG = {
 function getYesterday(): string {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  return yesterday.toISOString().split('T')[0];
+  return getLocalDate(yesterday);
 }
 
-function formatDate(dateStr: string): string {
+function formatDateKorean(dateStr: string): string {
   const date = new Date(dateStr);
   const options: Intl.DateTimeFormatOptions = { 
     year: 'numeric', 
@@ -122,7 +122,7 @@ async function generateAIAnalysis(
   const prompt = `당신은 생산성 코치입니다. 사용자의 하루 데이터를 분석하고 인사이트를 제공해주세요.
 
 ## 분석 대상 날짜
-${date} (${formatDate(date)})
+${date} (${formatDateKorean(date)})
 
 ## 데이터 요약
 - 총 작업: ${tasks.length}개
@@ -219,7 +219,7 @@ async function buildDailyReport(
 
 function downloadReport(report: DailyReport, format: 'txt' | 'md') {
   const dateStr = report.date;
-  const formattedDate = formatDate(dateStr);
+  const formattedDate = formatDateKorean(dateStr);
 
   let content = '';
 
@@ -603,7 +603,7 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">AI 하루 요약</h2>
-              <p className="text-xs text-slate-400">{formatDate(targetDate)}</p>
+              <p className="text-xs text-slate-400">{formatDateKorean(targetDate)}</p>
             </div>
           </div>
           <button
@@ -654,7 +654,7 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
           {report && (
             <div className="flex items-center gap-2 text-slate-500 text-xs">
               <Calendar size={12} />
-              <span>선택된 날짜: {formatDate(targetDate)}</span>
+              <span>선택된 날짜: {formatDateKorean(targetDate)}</span>
             </div>
           )}
         </div>

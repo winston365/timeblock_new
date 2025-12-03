@@ -10,11 +10,13 @@
  * @key_dependencies
  *   - zustand: 전역 상태 관리 라이브러리
  *   - settingsRepository: 설정 데이터 영속성 관리
+ *   - storeUtils: 비동기 액션 래퍼
  */
 
 import { create } from 'zustand';
 import type { Settings, WaifuMode, AIBreakdownTrigger, DontDoChecklistItem } from '../types/domain';
 import { loadSettings, updateSettings, updateLocalSettings } from '@/data/repositories/settingsRepository';
+import { withAsyncAction, withAsyncActionSafe } from '@/shared/lib/storeUtils';
 
 interface SettingsStore {
   // 상태
@@ -72,17 +74,11 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
    *   - 상태 업데이트
    */
   loadData: async () => {
-    set({ loading: true, error: null });
-    try {
+    return withAsyncAction(set, async () => {
       const settings = await loadSettings();
-      set({ settings, loading: false });
+      set({ settings });
       return settings;
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error('Failed to load settings');
-      set({ error: err, loading: false });
-      console.error('Settings store: Failed to load data', err);
-      throw err;
-    }
+    }, { errorPrefix: 'SettingsStore: load' });
   },
 
   /**
@@ -96,16 +92,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
    *   - 상태 업데이트
    */
   updateWaifuMode: async (mode: WaifuMode) => {
-    set({ loading: true, error: null });
-    try {
+    return withAsyncAction(set, async () => {
       const updatedSettings = await updateSettings({ waifuMode: mode });
-      set({ settings: updatedSettings, loading: false });
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error('Failed to update waifuMode');
-      set({ error: err, loading: false });
-      console.error('Settings store: Failed to update waifuMode', err);
-      throw err;
-    }
+      set({ settings: updatedSettings });
+    }, { errorPrefix: 'SettingsStore: updateWaifuMode' });
   },
 
   /**
@@ -119,16 +109,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
    *   - 상태 업데이트
    */
   updateApiKey: async (apiKey: string) => {
-    set({ loading: true, error: null });
-    try {
+    return withAsyncAction(set, async () => {
       const updatedSettings = await updateSettings({ geminiApiKey: apiKey });
-      set({ settings: updatedSettings, loading: false });
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error('Failed to update API key');
-      set({ error: err, loading: false });
-      console.error('Settings store: Failed to update API key', err);
-      throw err;
-    }
+      set({ settings: updatedSettings });
+    }, { errorPrefix: 'SettingsStore: updateApiKey' });
   },
 
   /**
@@ -143,20 +127,14 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
    *   - 상태 업데이트
    */
   updateAutoMessage: async (enabled: boolean, interval?: number) => {
-    set({ loading: true, error: null });
-    try {
+    return withAsyncAction(set, async () => {
       const updates: Partial<Settings> = { autoMessageEnabled: enabled };
       if (interval !== undefined) {
         updates.autoMessageInterval = interval;
       }
       const updatedSettings = await updateSettings(updates);
-      set({ settings: updatedSettings, loading: false });
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error('Failed to update auto message settings');
-      set({ error: err, loading: false });
-      console.error('Settings store: Failed to update auto message settings', err);
-      throw err;
-    }
+      set({ settings: updatedSettings });
+    }, { errorPrefix: 'SettingsStore: updateAutoMessage' });
   },
 
   /**
@@ -170,16 +148,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
    *   - 상태 업데이트
    */
   updateAIBreakdownTrigger: async (trigger: AIBreakdownTrigger) => {
-    set({ loading: true, error: null });
-    try {
+    return withAsyncAction(set, async () => {
       const updatedSettings = await updateSettings({ aiBreakdownTrigger: trigger });
-      set({ settings: updatedSettings, loading: false });
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error('Failed to update AI breakdown trigger');
-      set({ error: err, loading: false });
-      console.error('Settings store: Failed to update AI breakdown trigger', err);
-      throw err;
-    }
+      set({ settings: updatedSettings });
+    }, { errorPrefix: 'SettingsStore: updateAIBreakdownTrigger' });
   },
 
   /**
@@ -189,16 +161,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
    * @returns {Promise<void>}
    */
   updateSettings: async (updates: Partial<Settings>) => {
-    set({ loading: true, error: null });
-    try {
+    return withAsyncAction(set, async () => {
       const updatedSettings = await updateSettings(updates);
-      set({ settings: updatedSettings, loading: false });
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error('Failed to update settings');
-      set({ error: err, loading: false });
-      console.error('Settings store: Failed to update settings', err);
-      throw err;
-    }
+      set({ settings: updatedSettings });
+    }, { errorPrefix: 'SettingsStore: updateSettings' });
   },
 
   /**
@@ -208,16 +174,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
    * @returns {Promise<void>}
    */
   updateLocalSettings: async (updates: Partial<Settings>) => {
-    set({ loading: true, error: null });
-    try {
+    return withAsyncAction(set, async () => {
       const updatedSettings = await updateLocalSettings(updates);
-      set({ settings: updatedSettings, loading: false });
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error('Failed to update local settings');
-      set({ error: err, loading: false });
-      console.error('Settings store: Failed to update local settings', err);
-      throw err;
-    }
+      set({ settings: updatedSettings });
+    }, { errorPrefix: 'SettingsStore: updateLocalSettings' });
   },
 
   /**
@@ -248,7 +208,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
    * 하지않기 체크리스트 항목 추가
    */
   addDontDoItem: async (item: Omit<DontDoChecklistItem, 'id'>) => {
-    try {
+    return withAsyncActionSafe(set, async () => {
       const newItem: DontDoChecklistItem = {
         id: `dnd-${Date.now()}`,
         ...item,
@@ -257,55 +217,43 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       await get().updateSettings({
         dontDoChecklist: [...currentList, newItem],
       });
-    } catch (error) {
-      console.error('Failed to add don\'t-do item:', error);
-      throw error;
-    }
+    }, 'SettingsStore: addDontDoItem');
   },
 
   /**
    * 하지않기 체크리스트 항목 수정
    */
   updateDontDoItem: async (id: string, updates: Partial<DontDoChecklistItem>) => {
-    try {
+    return withAsyncActionSafe(set, async () => {
       const currentList = get().settings?.dontDoChecklist || [];
       await get().updateSettings({
         dontDoChecklist: currentList.map(item =>
           item.id === id ? { ...item, ...updates } : item
         ),
       });
-    } catch (error) {
-      console.error('Failed to update don\'t-do item:', error);
-      throw error;
-    }
+    }, 'SettingsStore: updateDontDoItem');
   },
 
   /**
    * 하지않기 체크리스트 항목 삭제
    */
   deleteDontDoItem: async (id: string) => {
-    try {
+    return withAsyncActionSafe(set, async () => {
       const currentList = get().settings?.dontDoChecklist || [];
       await get().updateSettings({
         dontDoChecklist: currentList.filter(item => item.id !== id),
       });
-    } catch (error) {
-      console.error('Failed to delete don\'t-do item:', error);
-      throw error;
-    }
+    }, 'SettingsStore: deleteDontDoItem');
   },
 
   /**
    * 하지않기 체크리스트 항목 순서 변경
    */
   reorderDontDoItems: async (items: DontDoChecklistItem[]) => {
-    try {
+    return withAsyncActionSafe(set, async () => {
       await get().updateSettings({
         dontDoChecklist: items.map((item, index) => ({ ...item, order: index })),
       });
-    } catch (error) {
-      console.error('Failed to reorder don\'t-do items:', error);
-      throw error;
-    }
+    }, 'SettingsStore: reorderDontDoItems');
   },
 }));

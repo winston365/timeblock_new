@@ -16,6 +16,7 @@ export { LogsTab } from './LogsTab';
 export { GameplayTab } from './GameplayTab';
 export { ScheduleTab } from './ScheduleTab';
 export { BattleTab } from './BattleTab';
+export { GoogleCalendarTab } from './GoogleCalendarTab';
 
 // Shared types and styles
 export * from './types';

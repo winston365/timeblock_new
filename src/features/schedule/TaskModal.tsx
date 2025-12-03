@@ -23,6 +23,7 @@ import { loadGlobalGoals } from '@/data/repositories';
 import { MemoModal } from './MemoModal';
 import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
 import { useTaskContextSuggestion } from './hooks/useTaskContextSuggestion';
+import { TASK_DEFAULTS } from '@/shared/constants/defaults';
 
 interface TaskModalProps {
   task: Task | null;
@@ -60,6 +61,7 @@ export default function TaskModal({
   const [preparation2, setPreparation2] = useState('');
   const [preparation3, setPreparation3] = useState('');
   const [goalId, setGoalId] = useState<string | null>(null);
+  const [deadline, setDeadline] = useState<string>(TASK_DEFAULTS.getDefaultDeadline());
   const [goals, setGoals] = useState<DailyGoal[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [memoRows, setMemoRows] = useState(2);
@@ -106,6 +108,7 @@ export default function TaskModal({
       setPreparation2(task.preparation2 || '');
       setPreparation3(task.preparation3 || '');
       setGoalId(task.goalId || null);
+      setDeadline(task.deadline || TASK_DEFAULTS.getDefaultDeadline());
 
       const lineCount = task.memo.split('\n').length;
       setMemoRows(Math.min(Math.max(lineCount, 2), 6));
@@ -224,10 +227,8 @@ export default function TaskModal({
 
     try {
       const { emoji, tokenUsage } = await suggestTaskEmoji(text, settings.geminiApiKey, settings.geminiModel);
-      if (tokenUsage) {
-        const { addTokenUsage } = await import('@/data/repositories/chatHistoryRepository');
-        addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens).catch(console.error);
-      }
+      const { trackTokenUsage } = await import('@/shared/utils/tokenUtils');
+      trackTokenUsage(tokenUsage);
       if (emoji) {
         setText(`${emoji} ${text}`);
       }
@@ -275,6 +276,7 @@ export default function TaskModal({
       preparation2: preparation2.trim(),
       preparation3: preparation3.trim(),
       goalId: goalId || null,
+      deadline,
     };
 
     // 1. 먼저 저장 수행
@@ -407,8 +409,8 @@ export default function TaskModal({
                   </div>
                 </div>
 
-                {/* Resistance & Goal */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Resistance & Deadline & Goal */}
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <label htmlFor="task-resistance" className="text-sm font-semibold text-[var(--color-text)]">
                       난이도
@@ -423,6 +425,18 @@ export default function TaskModal({
                       <option value="medium">🌊 보통 (x1.3)</option>
                       <option value="high">🌪️ 어려움 (x1.6)</option>
                     </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="task-deadline" className="text-sm font-semibold text-[var(--color-text)]">
+                      데드라인
+                    </label>
+                    <input
+                      id="task-deadline"
+                      type="date"
+                      value={deadline}
+                      onChange={(e) => setDeadline(e.target.value)}
+                      className={baseFieldClasses}
+                    />
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="task-goal" className="text-sm font-semibold text-[var(--color-text)]">

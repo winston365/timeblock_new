@@ -19,7 +19,8 @@
 import { useState, useEffect } from 'react';
 import { useGameState } from '@/shared/hooks/useGameState';
 import { useDailyData } from '@/shared/hooks/useDailyData';
-import type { Task } from '@/shared/types/domain';
+import type { Task, TimeBlockId } from '@/shared/types/domain';
+import { TIME_BLOCKS } from '@/shared/types/domain';
 import { createInboxTask, createTaskFromPartial, isTaskPrepared, isNewlyPrepared } from '@/shared/utils/taskFactory';
 import TaskCard from '@/features/schedule/TaskCard';
 import TaskModal from '@/features/schedule/TaskModal';
@@ -334,18 +335,44 @@ export default function InboxTab() {
         ) : (
           <div className="flex flex-col gap-3 pb-4">
             {filteredTasks.map(task => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onEdit={() => handleEditTask(task)}
-                onDelete={() => handleDeleteTask(task.id)}
-                onToggle={() => handleToggleTask(task.id)}
-                onUpdateTask={(updates) => updateTask(task.id, updates)}
-                onDragEnd={() => {
-                  setTimeout(() => loadData(), 300);
-                }}
-                compact
-              />
+              <div key={task.id} className="space-y-1">
+                <TaskCard
+                  task={task}
+                  onEdit={() => handleEditTask(task)}
+                  onDelete={() => handleDeleteTask(task.id)}
+                  onToggle={() => handleToggleTask(task.id)}
+                  onUpdateTask={(updates) => updateTask(task.id, updates)}
+                  onDragEnd={() => {
+                    setTimeout(() => loadData(), 300);
+                  }}
+                  compact
+                />
+                {/* 시간대 빠른 배치 버튼 */}
+                <div className="flex items-center gap-1 px-1">
+                  <span className="text-[10px] text-[var(--color-text-tertiary)] mr-1">⏰</span>
+                  {TIME_BLOCKS.map(block => (
+                    <button
+                      key={block.id}
+                      onClick={async () => {
+                        try {
+                          await updateTask(task.id, { 
+                            timeBlock: block.id as TimeBlockId, 
+                            hourSlot: block.start 
+                          });
+                          toast.success(`${block.label}에 배치됨`);
+                        } catch (err) {
+                          console.error('Failed to assign to block:', err);
+                          toast.error('시간대 배치 실패');
+                        }
+                      }}
+                      className="rounded px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-primary)]/20 hover:text-[var(--color-primary)] transition-colors"
+                      title={`${block.label}에 배치`}
+                    >
+                      {block.start}-{block.end}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}

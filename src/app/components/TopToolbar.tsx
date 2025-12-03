@@ -4,7 +4,7 @@
  *
  * @role 에너지/XP/와이푸 상태 표시 및 주요 액션 버튼 제공
  * @input gameState - 게임 상태, 콜백 함수들
- * @output 툴바 UI (통계, 빙고, 와이푸, 템플릿, AI채팅, 설정 버튼)
+ * @output 툴바 UI (통계, 와이푸, 템플릿, AI채팅, 설정 버튼)
  * @dependencies 다수 스토어 및 서비스
  */
 
@@ -20,7 +20,6 @@ import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
 import { useXPParticleStore } from '@/features/gamification/stores/xpParticleStore';
 import { useEffect, useRef } from 'react';
 import WeatherWidget from '@/features/weather/WeatherWidget';
-import IgnitionButton from '@/features/ignition/components/IgnitionButton';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { StatsModal } from '@/features/stats/StatsModal';
 import DailySummaryModal from '@/features/insight/DailySummaryModal';
@@ -29,15 +28,9 @@ import { GoalsModal } from '@/features/goals/GoalsModal';
 import { useFocusModeStore } from '@/features/schedule/stores/focusModeStore';
 import { useScheduleViewStore } from '@/features/schedule/stores/scheduleViewStore';
 import { TIME_BLOCKS } from '@/shared/types/domain';
-import { BingoModal, BINGO_PROGRESS_STORAGE_KEY } from '@/features/gamification/BingoModal';
-import { DEFAULT_BINGO_CELLS, SETTING_DEFAULTS } from '@/shared/constants/defaults';
-import { fetchFromFirebase, listenToFirebase } from '@/shared/services/sync/firebase/syncCore';
-import { bingoProgressStrategy } from '@/shared/services/sync/firebase/strategies';
-import { getLocalDate } from '@/shared/lib/utils';
-import { db } from '@/data/db/dexieClient';
-import type { BingoProgress } from '@/shared/types/domain';
 import BossAlbumModal from '@/features/battle/components/BossAlbumModal';
 import { useBattleStore } from '@/features/battle/stores/battleStore';
+import { TempScheduleModal } from '@/features/tempSchedule';
 
 /** TopToolbar 컴포넌트 Props */
 interface TopToolbarProps {
@@ -66,12 +59,11 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   const { isLoading: aiAnalyzing, cancelBreakdown } = useTaskBreakdownStore();
   const [hovered, setHovered] = useState<string | null>(null);
   const [showStats, setShowStats] = useState(false);
-  const [showBingo, setShowBingo] = useState(false);
   const [showDailySummary, setShowDailySummary] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
   const [showBossAlbum, setShowBossAlbum] = useState(false);
-  const [bingoProgress, setBingoProgress] = useState<BingoProgress | null>(null);
+  const [showTempSchedule, setShowTempSchedule] = useState(false);
   const { settings } = useSettingsStore();
   const isNormalWaifu = settings?.waifuMode === 'normal';
 
@@ -129,84 +121,6 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
 
   const baseButtonClass =
     'relative inline-flex items-center justify-center rounded-md border-0 px-3.5 py-2 text-xs font-bold text-white shadow transition duration-200 ease-out will-change-transform';
-
-  const bingoCells = Array.isArray(settings?.bingoCells) && settings.bingoCells.length === 9 ? settings.bingoCells : DEFAULT_BINGO_CELLS;
-  const bingoMaxLines = settings?.bingoMaxLines ?? SETTING_DEFAULTS.bingoMaxLines;
-  const bingoLineRewardXP = settings?.bingoLineRewardXP ?? SETTING_DEFAULTS.bingoLineRewardXP;
-  const today = getLocalDate();
-
-  // Load bingo progress summary (completed cells) and keep synced
-  useEffect(() => {
-    let mounted = true;
-    const storageKey = `${BINGO_PROGRESS_STORAGE_KEY}:${today}`;
-    const isValidProgress = (progress: any): progress is BingoProgress =>
-      progress && progress.date === today && Array.isArray(progress.completedCells) && Array.isArray(progress.completedLines);
-    const mergeProgress = (remoteProgress?: BingoProgress | null, localProgress?: BingoProgress | null): BingoProgress | null => {
-      const validProgressList = [remoteProgress, localProgress].filter(isValidProgress) as BingoProgress[];
-      if (validProgressList.length === 0) return null;
-      return {
-        date: today,
-        completedCells: Array.from(new Set(validProgressList.flatMap(progress => progress.completedCells))),
-        completedLines: Array.from(new Set(validProgressList.flatMap(progress => progress.completedLines))),
-      };
-    };
-    const cacheProgress = async (value: BingoProgress) => {
-      try {
-        await db.systemState.put({ key: storageKey, value });
-      } catch (error) {
-        console.error('Failed to cache bingo progress (Dexie):', error);
-      }
-    };
-
-    const load = async () => {
-      try {
-        const [remote, stored] = await Promise.all([
-          fetchFromFirebase(bingoProgressStrategy, today),
-          db.systemState.get(storageKey).catch(error => {
-            console.error('Failed to read local bingo summary (Dexie):', error);
-            return undefined;
-          }),
-        ]);
-
-        const merged = mergeProgress(remote, stored?.value as BingoProgress | undefined);
-        if (!mounted) return;
-
-        if (merged) {
-          setBingoProgress(merged);
-          await cacheProgress(merged);
-        } else {
-          setBingoProgress(null);
-        }
-      } catch (error) {
-        console.error('Failed to fetch bingo summary:', error);
-        if (mounted) {
-          setBingoProgress(null);
-        }
-      }
-    };
-
-    load();
-    const unsubscribe = listenToFirebase(bingoProgressStrategy, (remote) => {
-      if (!mounted || !isValidProgress(remote)) return;
-      db.systemState
-        .get(storageKey)
-        .then(stored => mergeProgress(remote as BingoProgress, stored?.value as BingoProgress | undefined))
-        .then(merged => {
-          if (!mounted || !merged) return;
-          setBingoProgress(merged);
-          cacheProgress(merged).catch(() => { });
-        })
-        .catch(() => {
-          setBingoProgress(remote as BingoProgress);
-          cacheProgress(remote as BingoProgress).catch(() => { });
-        });
-    }, today);
-
-    return () => {
-      mounted = false;
-      unsubscribe?.();
-    };
-  }, [today]);
 
   const renderCTA = (id: string, label: string, onClick?: () => void, badge?: string | number) => {
     const isHover = hovered === id;
@@ -374,14 +288,12 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
               </button>
             </div>
           )}
-          {/* 점화 버튼 */}
-          <IgnitionButton />
+          {renderCTA('temp-schedule', '📅 스케줄', () => setShowTempSchedule(true))}
           {renderCTA('goals', '🎯 목표', () => setShowGoals(true))}
           {renderCTA('inbox', '📥 인박스', () => setShowInbox(true))}
           {renderCTA('boss-album', '🏆 보스', () => setShowBossAlbum(true), todayDefeatedCount > 0 ? `⚔️ ${todayDefeatedCount}` : undefined)}
           {renderCTA('stats', '📊 통계', () => setShowStats(true))}
           {renderCTA('daily-summary', '📝 AI 요약', () => setShowDailySummary(true))}
-          {renderCTA('bingo', '🟦 빙고', () => setShowBingo(true), `🟦 ${bingoProgress?.completedCells.length ?? 0}/9`)}
           {!isNormalWaifu && renderCTA('waifu', '💬 와이푸', handleCallWaifu)}
           {renderCTA('templates', '📋 템플릿', onOpenTemplates)}
           {renderCTA('chat', '✨ AI 채팅', onOpenGeminiChat)}
@@ -393,17 +305,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
       {showInbox && <InboxModal open={showInbox} onClose={() => setShowInbox(false)} />}
       {showGoals && <GoalsModal open={showGoals} onClose={() => setShowGoals(false)} />}
       {showBossAlbum && <BossAlbumModal isOpen={showBossAlbum} onClose={() => setShowBossAlbum(false)} />}
-      {showBingo && (
-        <BingoModal
-          open={showBingo}
-          onClose={() => setShowBingo(false)}
-          cells={bingoCells}
-          maxLines={bingoMaxLines}
-          lineRewardXP={bingoLineRewardXP}
-          initialProgress={bingoProgress}
-          onProgressChange={(p) => setBingoProgress(p)}
-        />
-      )}
+      {showTempSchedule && <TempScheduleModal isOpen={showTempSchedule} onClose={() => setShowTempSchedule(false)} />}
     </>
   );
 }

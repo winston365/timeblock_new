@@ -54,7 +54,7 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
 
             if (result.status === 'missing-key') {
                 set({
-                    error: 'Gemini API 키가 설정되지 않았습니다. 설정 > API 키를 입력해 주세요.',
+                    error: 'WeatherAPI.com API 키가 설정되지 않았습니다. 설정 > Gemini AI 탭에서 API 키를 입력해 주세요.',
                     loading: false,
                     lastErrorAt: Date.now(),
                 });

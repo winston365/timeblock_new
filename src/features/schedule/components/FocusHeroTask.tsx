@@ -13,7 +13,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
-import { calculateTaskXP } from '@/shared/lib/utils';
+import { calculateTaskXP, formatTimerCompact } from '@/shared/lib/utils';
 
 /**
  * FocusHeroTask 컴포넌트 Props
@@ -116,12 +116,6 @@ export function FocusHeroTask({
     const totalSeconds = task.baseDuration * 60;
     const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
     const progress = Math.min(100, (elapsedSeconds / totalSeconds) * 100);
-
-    const formatTime = (seconds: number) => {
-        const m = Math.floor(seconds / 60);
-        const s = seconds % 60;
-        return `${m}:${s.toString().padStart(2, '0')}`;
-    };
 
     const handleResistanceChange = (resistance: Resistance) => {
         const multiplier = resistance === 'low' ? 1.0 : resistance === 'medium' ? 1.3 : 1.6;
@@ -261,7 +255,7 @@ export function FocusHeroTask({
                     <div className="mt-2 w-full rounded-2xl bg-white/5 p-6 border border-white/10">
                         <div className="flex items-center justify-between mb-4">
                             <span className="text-sm font-medium text-white/60">집중 중...</span>
-                            <span className="text-3xl font-bold text-white font-mono relative -translate-y-5">{formatTime(remainingSeconds)}</span>
+                            <span className="text-3xl font-bold text-white font-mono relative -translate-y-5">{formatTimerCompact(remainingSeconds)}</span>
                         </div>
 
                         {/* Celebration Message */}

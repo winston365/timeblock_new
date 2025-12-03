@@ -11,10 +11,11 @@
  *   - path: 경로 처리
  */
 
-import { app, BrowserWindow, dialog, ipcMain, globalShortcut, Notification, Tray, Menu } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, globalShortcut, Notification, Tray, Menu, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 
 // ============================================================================
 // 환경 변수 & 설정
@@ -693,4 +694,290 @@ ipcMain.handle('set-main-always-on-top', (_event, enabled: boolean) => {
     return mainWindow.isAlwaysOnTop();
   }
   return false;
+});
+
+// ============================================================================
+// Google OAuth (Authorization Code Flow with PKCE)
+// ============================================================================
+
+// PKCE 관련 임시 저장소
+let pendingOAuthState: {
+  codeVerifier: string;
+  state: string;
+  clientId: string;
+  clientSecret: string;
+} | null = null;
+
+/**
+ * PKCE용 코드 생성
+ */
+function generateCodeVerifier(): string {
+  return crypto.randomBytes(32).toString('base64url');
+}
+
+function generateCodeChallenge(verifier: string): string {
+  return crypto.createHash('sha256').update(verifier).digest('base64url');
+}
+
+function generateState(): string {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+/**
+ * Google OAuth 로그인 시작 (Authorization Code Flow with PKCE)
+ */
+ipcMain.handle('google-oauth-login', async (_event, clientId: string, clientSecret: string) => {
+  try {
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = generateCodeChallenge(codeVerifier);
+    const state = generateState();
+
+    // PKCE 정보 저장
+    pendingOAuthState = { codeVerifier, state, clientId, clientSecret };
+
+    const redirectUri = 'http://localhost:17365/oauth/callback';
+    const scope = [
+      'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/userinfo.email',
+    ].join(' ');
+
+    const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    authUrl.searchParams.set('client_id', clientId);
+    authUrl.searchParams.set('redirect_uri', redirectUri);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('scope', scope);
+    authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('code_challenge', codeChallenge);
+    authUrl.searchParams.set('code_challenge_method', 'S256');
+    authUrl.searchParams.set('access_type', 'offline'); // refresh_token 받기 위해 필수
+    authUrl.searchParams.set('prompt', 'consent'); // 항상 동의 화면 표시 (refresh_token 보장)
+
+    // 시스템 기본 브라우저로 열기
+    await shell.openExternal(authUrl.toString());
+
+    return { success: true, message: '브라우저에서 Google 로그인을 진행해주세요.' };
+  } catch (error: any) {
+    console.error('[GoogleOAuth] Login start failed:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * OAuth Callback 서버 (로컬호스트에서 code 수신)
+ */
+import http from 'http';
+
+let oauthCallbackServer: http.Server | null = null;
+
+function startOAuthCallbackServer(): Promise<{ code: string; state: string }> {
+  return new Promise((resolve, reject) => {
+    // 이미 서버가 실행 중이면 닫기
+    if (oauthCallbackServer) {
+      oauthCallbackServer.close();
+    }
+
+    oauthCallbackServer = http.createServer((req, res) => {
+      const url = new URL(req.url || '', 'http://localhost:17365');
+      
+      if (url.pathname === '/oauth/callback') {
+        const code = url.searchParams.get('code');
+        const state = url.searchParams.get('state');
+        const error = url.searchParams.get('error');
+
+        // 응답 HTML
+        const successHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>인증 완료</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+                     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+                     color: white; display: flex; align-items: center; justify-content: center;
+                     min-height: 100vh; margin: 0; }
+              .container { text-align: center; padding: 40px; background: rgba(255,255,255,0.05);
+                          border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); }
+              .icon { font-size: 64px; margin-bottom: 20px; }
+              h1 { margin-bottom: 10px; }
+              p { color: rgba(255,255,255,0.7); }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="icon">✅</div>
+              <h1>인증 완료!</h1>
+              <p>이 창을 닫고 TimeBlock 앱으로 돌아가세요.</p>
+            </div>
+          </body>
+          </html>
+        `;
+
+        const errorHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>인증 실패</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+                     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+                     color: white; display: flex; align-items: center; justify-content: center;
+                     min-height: 100vh; margin: 0; }
+              .container { text-align: center; padding: 40px; background: rgba(255,255,255,0.05);
+                          border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); }
+              .icon { font-size: 64px; margin-bottom: 20px; }
+              h1 { margin-bottom: 10px; }
+              p { color: rgba(255,255,255,0.7); }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="icon">❌</div>
+              <h1>인증 실패</h1>
+              <p>${error || '알 수 없는 오류가 발생했습니다.'}</p>
+            </div>
+          </body>
+          </html>
+        `;
+
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+
+        if (error || !code || !state) {
+          res.end(errorHtml);
+          reject(new Error(error || '인증 코드를 받지 못했습니다.'));
+        } else {
+          res.end(successHtml);
+          resolve({ code, state });
+        }
+
+        // 서버 종료 (약간의 딜레이 후)
+        setTimeout(() => {
+          if (oauthCallbackServer) {
+            oauthCallbackServer.close();
+            oauthCallbackServer = null;
+          }
+        }, 1000);
+      }
+    });
+
+    oauthCallbackServer.listen(17365, '127.0.0.1', () => {
+      console.log('[GoogleOAuth] Callback server listening on http://localhost:17365');
+    });
+
+    // 3분 타임아웃
+    setTimeout(() => {
+      if (oauthCallbackServer) {
+        oauthCallbackServer.close();
+        oauthCallbackServer = null;
+        reject(new Error('인증 시간이 초과되었습니다.'));
+      }
+    }, 3 * 60 * 1000);
+  });
+}
+
+/**
+ * OAuth 콜백 대기 및 토큰 교환
+ */
+ipcMain.handle('google-oauth-wait-callback', async () => {
+  try {
+    if (!pendingOAuthState) {
+      return { success: false, error: 'OAuth 세션이 없습니다. 다시 로그인해주세요.' };
+    }
+
+    // 콜백 서버 시작 및 대기
+    const { code, state } = await startOAuthCallbackServer();
+
+    // State 검증
+    if (state !== pendingOAuthState.state) {
+      pendingOAuthState = null;
+      return { success: false, error: 'State 불일치. 보안 오류일 수 있습니다.' };
+    }
+
+    // Authorization Code를 Access Token으로 교환
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: pendingOAuthState.clientId,
+        client_secret: pendingOAuthState.clientSecret,
+        code,
+        code_verifier: pendingOAuthState.codeVerifier,
+        grant_type: 'authorization_code',
+        redirect_uri: 'http://localhost:17365/oauth/callback',
+      }),
+    });
+
+    const tokenData = await tokenResponse.json() as {
+      access_token?: string;
+      refresh_token?: string;
+      expires_in?: number;
+      error?: string;
+      error_description?: string;
+    };
+
+    if (!tokenResponse.ok || tokenData.error) {
+      pendingOAuthState = null;
+      return { success: false, error: tokenData.error_description || tokenData.error || '토큰 교환 실패' };
+    }
+
+    // 사용자 이메일 가져오기
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    const userInfo = await userInfoResponse.json() as { email?: string };
+
+    pendingOAuthState = null;
+
+    return {
+      success: true,
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token,
+      expiresIn: tokenData.expires_in,
+      email: userInfo.email,
+    };
+  } catch (error: any) {
+    console.error('[GoogleOAuth] Callback handling failed:', error);
+    pendingOAuthState = null;
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Refresh Token으로 Access Token 갱신
+ */
+ipcMain.handle('google-oauth-refresh', async (_event, clientId: string, clientSecret: string, refreshToken: string) => {
+  try {
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    const tokenData = await tokenResponse.json() as {
+      access_token?: string;
+      expires_in?: number;
+      error?: string;
+      error_description?: string;
+    };
+
+    if (!tokenResponse.ok || tokenData.error) {
+      return { success: false, error: tokenData.error_description || tokenData.error || '토큰 갱신 실패' };
+    }
+
+    return {
+      success: true,
+      accessToken: tokenData.access_token,
+      expiresIn: tokenData.expires_in,
+    };
+  } catch (error: any) {
+    console.error('[GoogleOAuth] Token refresh failed:', error);
+    return { success: false, error: error.message };
+  }
 });

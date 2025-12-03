@@ -73,6 +73,8 @@ export function BattleSidebar() {
     error,
     showDefeatOverlay,
     defeatedBossId,
+    lastOverkillDamage,
+    lastOverkillApplied,
     initialize,
     spawnBossByDifficulty,
     hideBossDefeat,
@@ -84,10 +86,26 @@ export function BattleSidebar() {
   // 미션 모달 상태
   const [showMissionModal, setShowMissionModal] = useState(false);
 
+  // 오버킬 적용 토스트 상태
+  const [showOverkillToast, setShowOverkillToast] = useState(false);
+  const [displayedOverkill, setDisplayedOverkill] = useState(0);
+
   // 초기화
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // 오버킬 적용 토스트 표시
+  useEffect(() => {
+    if (lastOverkillApplied > 0 && !showDefeatOverlay) {
+      setDisplayedOverkill(lastOverkillApplied);
+      setShowOverkillToast(true);
+      const timer = setTimeout(() => {
+        setShowOverkillToast(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [lastOverkillApplied, showDefeatOverlay]);
 
   // 사용된 미션 ID 세트
   const usedMissionIds = useMemo(
@@ -130,6 +148,10 @@ export function BattleSidebar() {
   );
 
   const isCurrentBossDefeated = currentBossProgress?.defeatedAt !== undefined;
+
+  // 순차 진행 완료 여부 (phase 5 이상이면 자유선택)
+  const sequentialPhase = dailyState?.sequentialPhase ?? 0;
+  const isSequentialComplete = sequentialPhase >= 5;
 
   // 남은 보스 수
   const remainingCounts = useMemo(() => ({
@@ -215,6 +237,19 @@ export function BattleSidebar() {
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
+      {/* 오버킬 적용 토스트 */}
+      {showOverkillToast && displayedOverkill > 0 && (
+        <div className="shrink-0 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-orange-500/50 bg-gradient-to-r from-orange-500/20 to-red-500/20 px-4 py-2 shadow-lg">
+            <span className="text-xl">💥</span>
+            <div className="text-center">
+              <p className="text-xs font-bold text-orange-300">오버킬 데미지 적용!</p>
+              <p className="text-[10px] text-orange-400/80">이 보스 HP -{displayedOverkill}분</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 보스 영역 */}
       {currentBoss && currentBossProgress && !isCurrentBossDefeated && (
         <div className="flex-1 min-h-0 overflow-hidden rounded-xl relative">
@@ -227,8 +262,8 @@ export function BattleSidebar() {
         </div>
       )}
 
-      {/* 보스 처치됨 - 난이도 선택 */}
-      {isCurrentBossDefeated && totalRemaining > 0 && (
+      {/* 보스 처치됨 - 난이도 선택 (순차 진행 완료 후에만 표시) */}
+      {isCurrentBossDefeated && totalRemaining > 0 && isSequentialComplete && (
         <div className="flex-1 flex flex-col gap-3 justify-center">
           <div className="text-center">
             <span className="text-3xl">✅</span>
@@ -291,6 +326,9 @@ export function BattleSidebar() {
           onClose={hideBossDefeat}
           remainingCounts={remainingCounts}
           onSelectDifficulty={handleSelectDifficulty}
+          overkillDamage={lastOverkillDamage}
+          isSequentialComplete={isSequentialComplete}
+          nextSequentialPhase={sequentialPhase}
         />
       )}
 

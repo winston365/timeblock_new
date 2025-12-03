@@ -183,6 +183,18 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       // 🪄 이모지 추천 (비동기)
       scheduleEmojiSuggestion(task.id, task.text);
 
+      // 🗓️ Event Bus: task:created 이벤트 발행 (Google Calendar 동기화용)
+      if (task.timeBlock !== null) {
+        eventBus.emit('task:created', {
+          taskId: task.id,
+          text: task.text,
+          timeBlock: task.timeBlock,
+          goalId: task.goalId,
+        }, {
+          source: 'dailyDataStore.addTask',
+        });
+      }
+
       // ✅ 목표 연결 시 진행률 재계산
       if (task.goalId && task.timeBlock !== null && currentDate === today) {
         await useGoalStore.getState().recalculateProgress(task.goalId, today);
@@ -275,6 +287,16 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         await loadData(currentDate, true);
       }
 
+      // 🗓️ Event Bus: task:updated 이벤트 발행 (Google Calendar 동기화용)
+      eventBus.emit('task:updated', {
+        taskId,
+        updates: sanitizedUpdates,
+        previousTimeBlock: originalTask?.timeBlock ?? null,
+        newTimeBlock: sanitizedUpdates.timeBlock ?? originalTask?.timeBlock ?? null,
+      }, {
+        source: 'dailyDataStore.updateTask',
+      });
+
       // ✅ 목표 연결 변경 시 진행률 재계산
       const affectedGoalIds = new Set<string>();
       if (originalTask?.goalId) affectedGoalIds.add(originalTask.goalId);
@@ -334,6 +356,16 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     try {
       // ✅ Repository 호출
       await deleteTaskFromRepo(taskId, currentDate);
+
+      // 🗓️ Event Bus: task:deleted 이벤트 발행 (Google Calendar 동기화용)
+      if (deletedTask?.timeBlock !== null) {
+        eventBus.emit('task:deleted', {
+          taskId,
+          goalId: deletedTask?.goalId ?? null,
+        }, {
+          source: 'dailyDataStore.deleteTask',
+        });
+      }
 
       // ✅ 목표 연결 시 진행률 재계산
       if (deletedTask?.goalId && deletedTask.timeBlock !== null && currentDate === today) {

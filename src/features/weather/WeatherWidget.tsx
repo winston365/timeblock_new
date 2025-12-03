@@ -14,11 +14,12 @@
  *   - lucide-react: 아이콘
  */
 
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useWeatherStore } from './stores/weatherStore';
-import { getWeatherInsight, type WeatherInsightResult, type OutfitCard } from './services/weatherService';
-import { RefreshCw, Sparkles } from 'lucide-react';
+import { getWeatherInsightWithGemini, type WeatherInsightResult, type OutfitCard } from './services/weatherService';
+import { RefreshCw, Sparkles, Loader2 } from 'lucide-react';
 import type { HourlyWeather } from '@/shared/types/weather';
+import { getLocalDate } from '@/shared/lib/utils';
 
 /**
  * TopToolbar 날씨 위젯 컴포넌트
@@ -29,8 +30,10 @@ export default function WeatherWidget() {
     const { forecast, selectedDay, loading, error, fetchWeather, setSelectedDay, lastUpdated } = useWeatherStore();
     const [isExpanded, setIsExpanded] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [insight, setInsight] = useState<WeatherInsightResult | null>(null);
+    const [insightLoading, setInsightLoading] = useState(false);
     const safeForecast = Array.isArray(forecast) ? forecast : [];
-    const autoRefreshSlots = useMemo(() => new Set([9, 11, 12, 15]), []);
+    const autoRefreshSlots = new Set([9, 11, 12, 15]);
     const lastAutoHourRef = useRef<number | null>(null);
     const lastUpdatedDateRef = useRef<string | null>(null);
 
@@ -51,8 +54,8 @@ export default function WeatherWidget() {
     const formatLastUpdated = () => {
         if (!lastUpdated) return '업데이트: -';
         const date = new Date(lastUpdated);
-        const today = new Date().toISOString().split('T')[0];
-        const updated = date.toISOString().split('T')[0];
+        const today = getLocalDate();
+        const updated = getLocalDate(date);
         const timeStr = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
         const prefix = updated === today ? '오늘' : updated;
         return `업데이트: ${prefix} ${timeStr}`;
@@ -60,7 +63,7 @@ export default function WeatherWidget() {
 
     useEffect(() => {
         if (lastUpdated) {
-            lastUpdatedDateRef.current = new Date(lastUpdated).toISOString().split('T')[0];
+            lastUpdatedDateRef.current = getLocalDate(new Date(lastUpdated));
         }
     }, [lastUpdated]);
 
@@ -85,7 +88,7 @@ export default function WeatherWidget() {
     // 날짜 변경 감지: 자정 이후 today로 리셋
     useEffect(() => {
         const timer = setInterval(() => {
-            const today = new Date().toISOString().split('T')[0];
+            const today = getLocalDate();
             if (lastUpdatedDateRef.current && lastUpdatedDateRef.current !== today) {
                 lastUpdatedDateRef.current = today;
                 fetchWeather(true, 0).catch(console.error);
@@ -108,7 +111,40 @@ export default function WeatherWidget() {
     // 현재 선택된 날짜의 예보
     const currentForecast = safeForecast[selectedDay];
 
-    // 배경 그라데이션 결정
+    // Gemini AI 인사이트 로드 (비동기)
+    useEffect(() => {
+        if (!currentForecast || !isExpanded) return;
+        
+        const loadInsight = async () => {
+            setInsightLoading(true);
+            try {
+                const { current, hourly } = currentForecast;
+                const feelsLikeTemps = Array.isArray(hourly) 
+                    ? hourly.map(h => h.feelsLike).filter((t) => Number.isFinite(t)) 
+                    : [];
+                const tonightLow = feelsLikeTemps.length ? Math.min(...feelsLikeTemps) : undefined;
+                
+                const result = await getWeatherInsightWithGemini(
+                    current.temp, 
+                    current.feelsLike, 
+                    current.condition, 
+                    {
+                        humidity: current.humidity,
+                        chanceOfRain: current.chanceOfRain,
+                        tonightLow,
+                        hourlyTemps: feelsLikeTemps,
+                    }
+                );
+                setInsight(result);
+            } catch (err) {
+                console.error('[WeatherWidget] Insight loading error:', err);
+            } finally {
+                setInsightLoading(false);
+            }
+        };
+        
+        loadInsight();
+    }, [currentForecast, isExpanded, selectedDay]);
     const getBackgroundGradient = (condition: string = '') => {
         const c = condition.toLowerCase();
         if (c.includes('비') || c.includes('rain')) return 'from-slate-700 to-slate-900';
@@ -128,19 +164,6 @@ export default function WeatherWidget() {
 
         return `${day.dateLabel} (${weekdayLabel})`;
     };
-
-    const insight: WeatherInsightResult | null = useMemo(() => {
-        if (!currentForecast) return null;
-        const { current, hourly } = currentForecast;
-        const temps = Array.isArray(hourly) ? hourly.map(h => h.temp).filter((t) => Number.isFinite(t)) : [];
-        const tonightLow = temps.length ? Math.min(...temps) : undefined;
-
-        return getWeatherInsight(current.temp, current.feelsLike, current.condition, {
-            humidity: current.humidity,
-            chanceOfRain: current.chanceOfRain,
-            tonightLow,
-        });
-    }, [currentForecast]);
 
     // 로딩 상태
     if (loading && safeForecast.length === 0) {
@@ -284,10 +307,10 @@ export default function WeatherWidget() {
                                 </div>
                             </div>
 
-                            {/* 온도 차트 */}
+                            {/* 체감온도 차트 */}
                             <div className="bg-black/10 backdrop-blur-md border-t border-white/10 p-5">
                                 <div className="text-xs font-medium text-white/50 mb-3 px-1 uppercase tracking-wider">
-                                    Temperature
+                                    Feels Like
                                 </div>
                                 <TemperatureChart hourly={currentForecast.hourly} />
                             </div>
@@ -303,7 +326,7 @@ export default function WeatherWidget() {
                             {/* 푸터 */}
                             <div className="bg-black/20 p-3 text-center">
                                 <p className="text-[10px] text-white/30">
-                                    Powered by Gemini 2.5 Flash & Google Search
+                                    Powered by WeatherAPI.com
                                 </p>
                                 {lastUpdated && (
                                     <p className="text-[10px] text-white/40 mt-1">
@@ -324,11 +347,13 @@ export default function WeatherWidget() {
 
                             <div className="flex-1 p-6 overflow-y-auto custom-scrollbar relative bg-gradient-to-b from-white/5 via-white/2 to-transparent">
                                 {/* 로딩 오버레이 */}
-                                {isRefreshing && (
+                                {(insightLoading || isRefreshing) && (
                                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-20 rounded-lg">
                                         <div className="flex flex-col items-center gap-3">
-                                            <div className="w-10 h-10 border-3 border-amber-200/40 border-t-amber-300 animate-spin rounded-full"></div>
-                                            <span className="text-sm text-amber-100 font-medium">인사이트 업데이트 중...</span>
+                                            <Loader2 className="w-10 h-10 text-amber-300 animate-spin" />
+                                            <span className="text-sm text-amber-100 font-medium">
+                                                {insightLoading ? 'AI가 분석 중...' : '인사이트 업데이트 중...'}
+                                            </span>
                                         </div>
                                     </div>
                                 )}
@@ -354,18 +379,18 @@ export default function WeatherWidget() {
 function TemperatureChart({ hourly }: { hourly: HourlyWeather[] }) {
     if (hourly.length === 0) return null;
 
-    const maxTemp = Math.max(...hourly.map(h => h.temp));
-    const minTemp = Math.min(...hourly.map(h => h.temp));
+    const maxTemp = Math.max(...hourly.map(h => h.feelsLike));
+    const minTemp = Math.min(...hourly.map(h => h.feelsLike));
     const range = maxTemp - minTemp || 1;
 
     return (
         <div className="relative h-36 flex items-end gap-1">
             {hourly.map((hour, i) => {
-                const height = ((hour.temp - minTemp) / range) * 100;
+                const height = ((hour.feelsLike - minTemp) / range) * 100;
                 return (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
                         <span className="text-sm drop-shadow-md">{hour.icon}</span>
-                        <span className="text-xs text-white/70">{hour.temp}°</span>
+                        <span className="text-xs text-white/70">{hour.feelsLike}°</span>
                         <div className="flex-1 flex items-end w-full">
                             <div
                                 className="w-full bg-gradient-to-t from-blue-400 to-orange-300 rounded-t transition-all"

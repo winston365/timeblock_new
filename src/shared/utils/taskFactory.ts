@@ -12,6 +12,7 @@
 import { generateId, calculateAdjustedDuration } from '@/shared/lib/utils';
 import type { Task, Resistance, TimeBlockId } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
+import { TASK_DEFAULTS } from '@/shared/constants/defaults';
 
 // ============================================================================
 // Types
@@ -41,6 +42,8 @@ export interface CreateTaskOptions {
   preparation3?: string;
   /** 정렬 순서 */
   order?: number;
+  /** 데드라인 (YYYY-MM-DD) */
+  deadline?: string;
 }
 
 /**
@@ -112,6 +115,7 @@ export function createNewTask(text: string, options: CreateTaskOptions = {}): Ta
     preparation2: options.preparation2 ?? '',
     preparation3: options.preparation3 ?? '',
     goalId: options.goalId ?? null,
+    deadline: options.deadline ?? TASK_DEFAULTS.getDefaultDeadline(),
   };
 }
 
@@ -189,6 +193,7 @@ export function createTaskFromPartial(
     preparation2: data.preparation2 ?? defaults.preparation2 ?? '',
     preparation3: data.preparation3 ?? defaults.preparation3 ?? '',
     goalId: data.goalId ?? defaults.goalId ?? null,
+    deadline: data.deadline ?? defaults.deadline ?? TASK_DEFAULTS.getDefaultDeadline(),
   };
 }
 

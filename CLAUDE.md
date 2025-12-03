@@ -108,7 +108,6 @@ features/
   ├── settings/      # Settings & sync log modals (tabs/ submodule)
   ├── stats/         # Statistics dashboard (tabs/ submodule)
   ├── shop/          # XP shop
-  ├── ignition/      # 3-minute ignition system (micro-step)
   ├── insight/       # AI insight panel
   ├── weather/       # Weather integration (Google Search Grounding)
   ├── energy/        # Energy level tracking
@@ -230,7 +229,6 @@ Assets in `src/features/waifu/poses/` and `public/assets/waifu/poses/`, state ma
 - **Categories**: task-advice, motivation, qa, analysis
 - **Persona Context**: Build persona context using `src/shared/lib/personaUtils` before invoking `geminiApi.ts`
 - **Weather Integration**: `geminiWeather.ts` uses Google Search Grounding for real-time weather
-- **Ignition System**: `taskFeatures.ts` generates micro-steps for 3-minute ignition
 
 Service layer modularized in `src/shared/services/ai/gemini/` (apiClient, personaPrompts, taskFeatures, types) and `src/features/gemini/`.
 
@@ -348,14 +346,12 @@ const record = await db.systemState.get('myKey');
 **❌ DO NOT USE hardcoded fallback values**:
 ```typescript
 // ❌ WRONG - Hardcoded fallback leads to inconsistency
-const cooldown = settings?.ignitionCooldownMinutes ?? 5;
-const duration = settings?.ignitionDurationMinutes ?? 3;
+const focusInterval = settings?.focusTimerMinutes ?? 25;
 
 // ✅ CORRECT - Use centralized SETTING_DEFAULTS
-import { SETTING_DEFAULTS, IGNITION_DEFAULTS, IDLE_FOCUS_DEFAULTS, GAME_STATE_DEFAULTS } from '@/shared/constants/defaults';
+import { SETTING_DEFAULTS, IDLE_FOCUS_DEFAULTS, GAME_STATE_DEFAULTS } from '@/shared/constants/defaults';
 
-const cooldown = settings?.ignitionCooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes;
-const duration = settings?.ignitionDurationMinutes ?? IGNITION_DEFAULTS.durationMinutes;
+const focusInterval = settings?.focusTimerMinutes ?? SETTING_DEFAULTS.focusTimerMinutes;
 ```
 
 **Why centralized defaults?**
@@ -366,6 +362,5 @@ const duration = settings?.ignitionDurationMinutes ?? IGNITION_DEFAULTS.duration
 
 **Default Constants Location**: `src/shared/constants/defaults.ts`
 - `SETTING_DEFAULTS` - User settings fallbacks
-- `IGNITION_DEFAULTS` - Ignition system defaults
 - `IDLE_FOCUS_DEFAULTS` - Idle focus mode defaults
 - `GAME_STATE_DEFAULTS` - Game state initialization defaults

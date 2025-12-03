@@ -12,6 +12,7 @@
  *   - Optimistic Update 패턴 지원
  *   - 롤백 상태 생성
  *   - 유효성 검사 어설션
+ *   - 비동기 액션 래퍼 (로딩/에러 상태 관리)
  *
  * @dependencies
  *   - domain types: DailyData, Task, TimeBlockId, TIME_BLOCKS
@@ -21,26 +22,149 @@ import type { DailyData, Task, TimeBlockId } from '../types/domain';
 import { TIME_BLOCKS } from '../types/domain';
 
 // ============================================================================
+// 비동기 액션 래퍼 (Async Action Wrapper)
+// ============================================================================
+
+/**
+ * Store 비동기 상태 인터페이스
+ * 모든 Store에서 공통으로 사용되는 로딩/에러 상태
+ */
+export interface AsyncStoreState {
+  loading: boolean;
+  error: Error | null;
+}
+
+/**
+ * 비동기 액션 옵션 인터페이스
+ */
+export interface AsyncActionOptions {
+  /** 에러 로깅 시 사용할 접두사 (예: 'GoalStore') */
+  errorPrefix?: string;
+  /** 에러 발생 시 다시 throw 여부 (기본값: true) */
+  rethrow?: boolean;
+  /** 로딩 상태 설정 여부 (기본값: true) */
+  setLoading?: boolean;
+}
+
+/**
+ * Store 비동기 액션 래퍼
+ *
+ * 반복되는 try-catch, loading/error 상태 관리 패턴을 추상화합니다.
+ *
+ * @template T - 액션 함수의 반환 타입
+ * @param set - Zustand set 함수
+ * @param actionFn - 실행할 비동기 액션 함수
+ * @param options - 옵션 (errorPrefix, rethrow, setLoading)
+ * @returns 액션 실행 결과 또는 undefined (에러 시)
+ *
+ * @example
+ * // 기존 패턴
+ * loadData: async () => {
+ *   set({ loading: true, error: null });
+ *   try {
+ *     const data = await loadFromRepo();
+ *     set({ data, loading: false });
+ *   } catch (error) {
+ *     set({ error: error as Error, loading: false });
+ *     console.error('GoalStore: Failed to load', error);
+ *     throw error;
+ *   }
+ * }
+ *
+ * // 새 패턴
+ * loadData: async () => {
+ *   return withAsyncAction(set, async () => {
+ *     const data = await loadFromRepo();
+ *     set({ data });
+ *     return data;
+ *   }, { errorPrefix: 'GoalStore' });
+ * }
+ */
+export async function withAsyncAction<T>(
+  set: (state: Partial<AsyncStoreState & Record<string, any>>) => void,
+  actionFn: () => Promise<T>,
+  options: AsyncActionOptions = {}
+): Promise<T | undefined> {
+  const { errorPrefix, rethrow = true, setLoading = true } = options;
+
+  if (setLoading) {
+    set({ loading: true, error: null });
+  }
+
+  try {
+    const result = await actionFn();
+    if (setLoading) {
+      set({ loading: false });
+    }
+    return result;
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    set({ error: err, loading: false });
+
+    if (errorPrefix) {
+      console.error(`${errorPrefix}: Failed -`, error);
+    } else {
+      console.error('Store action failed:', error);
+    }
+
+    if (rethrow) {
+      throw err;
+    }
+    return undefined;
+  }
+}
+
+/**
+ * Store 비동기 액션 래퍼 (에러 throw 없음)
+ *
+ * 에러가 발생해도 throw하지 않고 undefined를 반환합니다.
+ * 비핵심 기능 (예: 카테고리 로드)에 적합합니다.
+ *
+ * @template T - 액션 함수의 반환 타입
+ * @param set - Zustand set 함수
+ * @param actionFn - 실행할 비동기 액션 함수
+ * @param errorPrefix - 에러 로깅 시 사용할 접두사
+ * @returns 액션 실행 결과 또는 undefined (에러 시)
+ */
+export async function withAsyncActionSafe<T>(
+  set: (state: Partial<AsyncStoreState & Record<string, any>>) => void,
+  actionFn: () => Promise<T>,
+  errorPrefix?: string
+): Promise<T | undefined> {
+  return withAsyncAction(set, actionFn, { errorPrefix, rethrow: false });
+}
+
+/**
+ * 로딩 상태 없이 비동기 액션 실행
+ *
+ * 백그라운드 작업 (예: 진행률 재계산)에 적합합니다.
+ *
+ * @template T - 액션 함수의 반환 타입
+ * @param set - Zustand set 함수
+ * @param actionFn - 실행할 비동기 액션 함수
+ * @param errorPrefix - 에러 로깅 시 사용할 접두사
+ * @returns 액션 실행 결과 또는 undefined (에러 시)
+ */
+export async function withBackgroundAction<T>(
+  set: (state: Partial<AsyncStoreState & Record<string, any>>) => void,
+  actionFn: () => Promise<T>,
+  errorPrefix?: string
+): Promise<T | undefined> {
+  return withAsyncAction(set, actionFn, { errorPrefix, rethrow: false, setLoading: false });
+}
+
+// ============================================================================
 // Firebase Sanitization
 // ============================================================================
 
 /**
  * Firebase는 undefined를 허용하지 않으므로 제거
  *
- * @param obj - 정리할 객체
- * @returns undefined가 제거된 객체
+ * @deprecated 이 함수 대신 `@/shared/utils/firebaseSanitizer`의 `sanitizeForFirebase`를 사용하세요.
+ *             해당 버전은 재귀적으로 중첩 객체를 처리하고, Firebase 키 검증도 수행합니다.
+ * @see src/shared/utils/firebaseSanitizer.ts
  */
-export function sanitizeForFirebase<T extends Record<string, any>>(obj: T): Partial<T> {
-  const sanitized: Partial<T> = {};
-
-  for (const key in obj) {
-    if (obj[key] !== undefined) {
-      sanitized[key] = obj[key];
-    }
-  }
-
-  return sanitized;
-}
+export { sanitizeForFirebase } from '@/shared/utils/firebaseSanitizer';
 
 // ============================================================================
 // TimeBlock & HourSlot 계산

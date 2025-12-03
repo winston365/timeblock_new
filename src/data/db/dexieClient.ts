@@ -24,8 +24,11 @@ import type {
   DailyTokenUsage,
   Task,
   DailyGoal,
-  AIInsight
+  AIInsight,
+  WeeklyGoal
 } from '@/shared/types/domain';
+import type { TempScheduleTask } from '@/shared/types/tempSchedule';
+import type { TaskCalendarMapping } from '@/shared/services/calendar/googleCalendarTypes';
 
 /**
  * RAG 벡터 문서 레코드 타입
@@ -75,6 +78,9 @@ export class TimeBlockDB extends Dexie {
   weather!: Table<{ id: string; data: any; timestamp: number; lastUpdatedDate: string }, string>;
   aiInsights!: Table<AIInsight, string>;
   ragDocuments!: Table<RAGDocumentRecord, string>; // ✅ RAG 벡터 영구 저장
+  weeklyGoals!: Table<WeeklyGoal, string>; // ✅ 장기목표 (주간 목표)
+  tempScheduleTasks!: Table<TempScheduleTask, string>; // ✅ 임시 스케줄 작업
+  taskCalendarMappings!: Table<TaskCalendarMapping, string>; // ✅ Task-Calendar 매핑
 
   constructor() {
     super('timeblock_db');
@@ -313,6 +319,72 @@ export class TimeBlockDB extends Dexie {
       weather: 'id',
       aiInsights: 'date',
       ragDocuments: 'id, type, date, completed, contentHash, indexedAt',
+    });
+
+    // 스키마 버전 14 - weeklyGoals 테이블 추가 (장기목표)
+    this.version(14).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      globalInbox: 'id, createdAt, completed',
+      completedInbox: 'id, completedAt, createdAt',
+      globalGoals: 'id, createdAt, order',
+      systemState: 'key',
+      images: 'id',
+      weather: 'id',
+      aiInsights: 'date',
+      ragDocuments: 'id, type, date, completed, contentHash, indexedAt',
+      weeklyGoals: 'id, weekStartDate, order', // ✅ 장기목표 테이블 추가
+    });
+
+    // 스키마 버전 15 - tempScheduleTasks 테이블 추가 (임시 스케줄 작업)
+    this.version(15).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      globalInbox: 'id, createdAt, completed',
+      completedInbox: 'id, completedAt, createdAt',
+      globalGoals: 'id, createdAt, order',
+      systemState: 'key',
+      images: 'id',
+      weather: 'id',
+      aiInsights: 'date',
+      ragDocuments: 'id, type, date, completed, contentHash, indexedAt',
+      weeklyGoals: 'id, weekStartDate, order',
+      tempScheduleTasks: 'id, scheduledDate, parentId, order, createdAt', // ✅ 임시 스케줄 작업
+    });
+
+    // 스키마 버전 16 - taskCalendarMappings 테이블 추가 (Google Calendar 연동)
+    this.version(16).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      globalInbox: 'id, createdAt, completed',
+      completedInbox: 'id, completedAt, createdAt',
+      globalGoals: 'id, createdAt, order',
+      systemState: 'key',
+      images: 'id',
+      weather: 'id',
+      aiInsights: 'date',
+      ragDocuments: 'id, type, date, completed, contentHash, indexedAt',
+      weeklyGoals: 'id, weekStartDate, order',
+      tempScheduleTasks: 'id, scheduledDate, parentId, order, createdAt',
+      taskCalendarMappings: 'taskId, calendarEventId, date, syncStatus', // ✅ Task-Calendar 매핑
     });
   }
 }

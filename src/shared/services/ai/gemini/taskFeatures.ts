@@ -1,20 +1,19 @@
 /**
  * taskFeatures.ts
  *
- * @fileoverview 작업 관련 AI 기능 (세분화, 이모지 추천, 마이크로 스텝)
+ * @fileoverview 작업 관련 AI 기능 (세분화, 이모지 추천)
  *
  * @role Gemini API를 활용한 작업 지원 기능 제공
  * @responsibilities
  *   - 작업 세분화: 하나의 작업을 5단계 세부할일로 분할
  *   - 이모지 추천: 작업 제목에 어울리는 이모지 제안
- *   - 마이크로 스텝: 3분 점화(Ignition)를 위한 소행동 생성
  *   - 토큰 사용량 추적 및 기록
  * @dependencies
  *   - ./apiClient: callGeminiAPI 함수
  *   - chatHistoryRepository: addTokenUsage 토큰 로깅
  */
 
-import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
+import { trackTokenUsage } from '@/shared/utils/tokenUtils';
 import { callGeminiAPI } from './apiClient';
 import type { TaskBreakdownParams } from './types';
 
@@ -108,9 +107,7 @@ export async function generateTaskBreakdown(
 
   try {
     const { text, tokenUsage } = await callGeminiAPI(systemPrompt, [], apiKey, model);
-    if (tokenUsage) {
-      addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens).catch(console.error);
-    }
+    trackTokenUsage(tokenUsage);
     return text.trim();
   } catch (error) {
     console.error('작업 세분화 실패:', error);
@@ -152,92 +149,5 @@ export async function suggestTaskEmoji(
   } catch (error) {
     console.error('이모지 추천 실패:', error);
     return { emoji: '📝' };
-  }
-}
-
-// ============================================================================
-// Micro Step (3분 점화)
-// ============================================================================
-
-/**
- * 3분 점화(Ignition)를 위한 마이크로 스텝 생성
- *
- * @param {string} taskText - 작업 제목
- * @param {string} apiKey - Gemini API 키
- * @param {string} [model] - Gemini 모델명 (선택, 기본값: gemini-2.5-flash)
- * @returns {Promise<string>} 3분 안에 할 수 있는 아주 사소한 행동 지침
- */
-export async function generateMicroStep(
-  taskText: string,
-  apiKey: string,
-  model?: string
-): Promise<string> {
-  const systemPrompt = `
-# 시스템 프롬프트: 3분 점화 코치
-🎯 역할
-너는 작업 앞에서 망설이는 후배에게 부담은 안 주지만, 그래도 '작업에 실제로 접속했다'고 느껴지는 소(小) 행동을 제안하는 따뜻한 선배 상담사야 💕
-한국어 반말 사용, 편안한 톤, 따뜻하게 챙겨주는 느낌, 적당한 이모지.
-
-🧠 구조
-1) 미니 인지 점검
-후배가 떠올릴 자동사고 1개 + 현실적인 대체사고 1개를 짧게 제시.
-톤은 '괜찮다, 흔한 반응이다' 식의 케어.
-
-2) 1분 소(小) 행동 점화 (3개 제안)
-이전 버전보다 레벨을 한 단계 올린 행동을 제안해.
-여전히 1분 안에 끝나지만, "이건 진짜 작업에 발 담궜다"는 느낌이 남아야 함.
-
-🔥 행동 난이도 가이드 (이 버전은 아래 구간만 사용)
-초미니 행동 ❌ (단어 1개, 클릭만 하기 등)
-
-소(小) 행동 ⭕ (1분 안에, 작업의 핵심에 아주 얕게 닿는 수준)
-예:
-문서에서 목차 2개만 적기
-수업 영상에서 15~20초만 들어보기
-코드 파일 하나 열어서 가장 위 5줄만 읽기
-해야 할 서류 양식에서 항목 1~2개만 채워보기
-정리할 공간의 한 구역(10%)만 정리하기
-참고자료 하나에서 핵심만 10초 훑어보기
-작성해야 할 글의 "도입 문장 초안" 한 줄만 적어보기
-필요한 앱/툴을 켜고, 작업에 필요한 버튼 1~2개 눌러보기
-
-❗ 금지
-"작업을 본격적으로 시작하세요"
-"완성하세요"
-1분 넘게 걸릴 활동
-
-📝 출력 형식
-1) 자동사고 & 대체사고
-자동사고: ~
-대체사고: ~
-
-2) 1분 점화 행동 (소(小) 행동 3개)
-제안 1
-제안 2
-제안 3
-
-🌷 예시 (작업: 리액트 공부)
-1) 자동사고 & 대체사고
-자동사고: "리액트는 시작하면 오래 붙잡혀…"
-대체사고: "오늘은 개념 하나만 짧게 보고 감만 잡아도 충분해♡"
-
-2) 1분 소(小) 행동
-지금 배우고 싶은 개념 단어 옆에, "왜 이걸 배우고 싶지?" 이유 한 줄만 적어봐 😊
-리액트 강의 영상을 켜고, 앞부분 20초만 들어보고 끄면 돼. 흐름만 잡는 거야.
-프로젝트 폴더에서 App.tsx 파일만 열어서 맨 위 코드 5줄만 읽어봐. 읽기만 하면 돼 💕
-
-
-# 사용자가 망설이고 있는 작업: "${taskText}"
-`;
-
-  try {
-    const { text, tokenUsage } = await callGeminiAPI(systemPrompt, [], apiKey, model);
-    if (tokenUsage) {
-      addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens).catch(console.error);
-    }
-    return text.trim();
-  } catch (error) {
-    console.error('마이크로 스텝 생성 실패:', error);
-    return `일단 ${taskText} 관련 파일이나 도구를 딱 3분만 쳐다볼까요?`;
   }
 }

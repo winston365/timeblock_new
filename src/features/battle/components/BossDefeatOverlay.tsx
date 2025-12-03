@@ -18,7 +18,23 @@ interface BossDefeatOverlayProps {
   remainingCounts?: Record<BossDifficulty, number>;
   /** 난이도 선택 시 콜백 */
   onSelectDifficulty?: (difficulty: BossDifficulty) => void;
+  /** 오버킬 데미지 (다음 보스에 이월될 데미지) */
+  overkillDamage?: number;
+  /** 순차 진행 완료 여부 (true면 난이도 선택 UI 표시) */
+  isSequentialComplete?: boolean;
+  /** 다음 순차 진행 단계 (0~5) */
+  nextSequentialPhase?: number;
 }
+
+/**
+ * 순차 진행 단계별 난이도 라벨
+ */
+const PHASE_LABELS: Record<number, { difficulty: string; emoji: string; label: string }> = {
+  1: { difficulty: 'normal', emoji: '🟡', label: '보통' },
+  2: { difficulty: 'hard', emoji: '🔴', label: '어려움' },
+  3: { difficulty: 'hard', emoji: '🔴', label: '어려움 (2회차)' },
+  4: { difficulty: 'epic', emoji: '🟣', label: '에픽' },
+};
 
 export function BossDefeatOverlay({
   boss,
@@ -26,6 +42,9 @@ export function BossDefeatOverlay({
   onClose,
   remainingCounts,
   onSelectDifficulty,
+  overkillDamage,
+  isSequentialComplete = false,
+  nextSequentialPhase = 5,
 }: BossDefeatOverlayProps) {
   const [stage, setStage] = useState<'flash' | 'reveal' | 'quote' | 'reward' | 'select'>('flash');
   const defeatQuote = useMemo(
@@ -39,6 +58,9 @@ export function BossDefeatOverlay({
     return Object.values(remainingCounts).some(count => count > 0);
   }, [remainingCounts]);
 
+  // 순차 진행 중 다음 단계 정보
+  const nextPhaseInfo = PHASE_LABELS[nextSequentialPhase];
+
   useEffect(() => {
     const timers: NodeJS.Timeout[] = [];
 
@@ -46,15 +68,16 @@ export function BossDefeatOverlay({
     timers.push(setTimeout(() => setStage('quote'), 1200));
     timers.push(setTimeout(() => setStage('reward'), 2200));
     
-    // 남은 보스가 있으면 선택 단계로, 없으면 자동 닫힘
-    if (hasRemainingBosses && onSelectDifficulty) {
+    // 순차 진행 완료 & 남은 보스가 있으면 선택 단계로
+    if (isSequentialComplete && hasRemainingBosses && onSelectDifficulty) {
       timers.push(setTimeout(() => setStage('select'), 3500));
     } else {
+      // 순차 진행 중이거나 보스 없으면 자동 닫힘
       timers.push(setTimeout(() => onClose(), 4000));
     }
 
     return () => timers.forEach(clearTimeout);
-  }, [onClose, hasRemainingBosses, onSelectDifficulty]);
+  }, [onClose, hasRemainingBosses, onSelectDifficulty, isSequentialComplete]);
 
   const handleSelectDifficulty = useCallback((difficulty: BossDifficulty) => {
     if (onSelectDifficulty) {
@@ -154,6 +177,65 @@ export function BossDefeatOverlay({
             </div>
           </div>
         </div>
+
+        {/* 오버킬 데미지 표시 */}
+        {overkillDamage !== undefined && overkillDamage > 0 && (stage === 'reward' || stage === 'select') && (
+          <div
+            className={`transform transition-all duration-500 delay-200 ${
+              stage === 'reward' || stage === 'select' ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-8 scale-75 opacity-0'
+            } ${stage === 'select' ? 'scale-75' : ''}`}
+          >
+            <div className="flex items-center gap-2 rounded-full border border-orange-500/50 bg-orange-500/20 px-4 py-2 shadow-lg animate-pulse">
+              <span className="text-xl">💥</span>
+              <div className="text-left">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-orange-400">
+                  Overkill Damage
+                </p>
+                <p className="text-sm font-bold text-orange-300">
+                  다음 보스 HP -{overkillDamage}분
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 순차 진행 중 다음 난이도 안내 */}
+        {!isSequentialComplete && nextPhaseInfo && stage === 'reward' && (
+          <div
+            className="transform transition-all duration-500 delay-300 translate-y-0 scale-100 opacity-100"
+          >
+            <div className="flex items-center gap-2 rounded-full border border-blue-500/50 bg-blue-500/20 px-4 py-2 shadow-lg">
+              <span className="text-xl">{nextPhaseInfo.emoji}</span>
+              <div className="text-left">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-blue-400">
+                  Next Challenge
+                </p>
+                <p className="text-sm font-bold text-blue-300">
+                  {nextPhaseInfo.label} 보스 등장!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 순차 진행 완료 축하 메시지 */}
+        {isSequentialComplete && nextSequentialPhase === 5 && stage === 'reward' && (
+          <div
+            className="transform transition-all duration-500 delay-300 translate-y-0 scale-100 opacity-100"
+          >
+            <div className="flex items-center gap-2 rounded-full border border-green-500/50 bg-green-500/20 px-4 py-2 shadow-lg animate-pulse">
+              <span className="text-xl">🏆</span>
+              <div className="text-left">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-green-400">
+                  Sequential Complete!
+                </p>
+                <p className="text-sm font-bold text-green-300">
+                  자유 선택 모드 해금!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 난이도 선택 단계 */}
         {stage === 'select' && remainingCounts && (

@@ -84,12 +84,6 @@ const gameStateConfig: RepositoryConfig<GameState> = {
     completedTasksHistory: [],
     dailyTimerCount: 0,
     inventory: {},
-    dailyFreeIgnitions: GAME_STATE_DEFAULTS.dailyFreeIgnitions,
-    usedIgnitions: 0,
-    lastIgnitionTime: null,
-    lastBonusIgnitionTime: null,
-    lastIgnitionResetDate: new Date().toISOString().split('T')[0],
-    ignitionHistory: [],
   }),
   sanitize: (data: GameState) => {
     const { level: _legacyLevel, ...rest } = data as GameState & { level?: number };
@@ -105,12 +99,6 @@ const gameStateConfig: RepositoryConfig<GameState> = {
       timeBlockXP: rest.timeBlockXP || {},
       dailyTimerCount: typeof rest.dailyTimerCount === 'number' ? rest.dailyTimerCount : 0,
       inventory: rest.inventory || {},
-      dailyFreeIgnitions: rest.dailyFreeIgnitions ?? GAME_STATE_DEFAULTS.dailyFreeIgnitions,
-      usedIgnitions: rest.usedIgnitions ?? 0,
-      lastIgnitionTime: rest.lastIgnitionTime ?? null,
-      lastBonusIgnitionTime: rest.lastBonusIgnitionTime ?? null,
-      lastIgnitionResetDate: rest.lastIgnitionResetDate ?? new Date().toISOString().split('T')[0],
-      ignitionHistory: Array.isArray(rest.ignitionHistory) ? rest.ignitionHistory : [],
     };
   },
   logPrefix: 'GameState',

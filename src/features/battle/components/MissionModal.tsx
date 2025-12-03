@@ -179,11 +179,14 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
     [dailyState?.completedMissionIds],
   );
 
-  // 활성 미션
-  const enabledMissionsList = useMemo(
-    () => missions.filter(m => m.enabled).sort((a, b) => a.order - b.order),
-    [missions],
-  );
+  // 활성 미션 (완료된 미션은 뒤로, 미완료 미션은 앞으로)
+  const enabledMissionsList = useMemo(() => {
+    const enabled = missions.filter(m => m.enabled).sort((a, b) => a.order - b.order);
+    // 완료 여부로 분리
+    const incomplete = enabled.filter(m => !usedMissionIds.has(m.id));
+    const completed = enabled.filter(m => usedMissionIds.has(m.id));
+    return [...incomplete, ...completed];
+  }, [missions, usedMissionIds]);
 
   // 사용 가능한 미션 수
   const availableMissionsCount = useMemo(

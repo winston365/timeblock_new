@@ -11,6 +11,7 @@
  */
 
 import { db } from '@/data/db/dexieClient';
+import { generateId } from '@/shared/lib/utils';
 
 // ============================================================================
 // Device ID Management (Dexie-based)
@@ -37,7 +38,7 @@ export async function initializeDeviceId(): Promise<string> {
   }
 
   // 새 ID 생성 및 저장
-  cachedDeviceId = `device-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  cachedDeviceId = generateId('device');
   
   try {
     await db.systemState.put({ key: DEVICE_ID_KEY, value: cachedDeviceId });
@@ -92,7 +93,7 @@ export function getDeviceId(): string {
   if (cachedDeviceId) return cachedDeviceId;
 
   // 캐시가 없으면 임시 ID 생성 (비동기 초기화 시작)
-  const tempId = `device-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  const tempId = generateId('device');
   
   // 비동기로 초기화 시도 (fire-and-forget)
   initializeDeviceId().catch(console.error);

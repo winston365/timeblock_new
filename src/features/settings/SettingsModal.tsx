@@ -38,6 +38,7 @@ import {
     GameplayTab,
     ScheduleTab,
     BattleTab,
+    GoogleCalendarTab,
 } from './components/tabs';
 
 const modalOverlayClass =
@@ -75,7 +76,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
     } = useSettingsStore();
 
     const [saving, setSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'gemini' | 'firebase' | 'appearance' | 'logs' | 'dontdo' | 'shortcuts' | 'gameplay' | 'schedule' | 'battle'>('appearance');
+    const [activeTab, setActiveTab] = useState<'gemini' | 'firebase' | 'appearance' | 'logs' | 'dontdo' | 'shortcuts' | 'gameplay' | 'schedule' | 'battle' | 'googlecalendar'>('appearance');
     const [currentTheme, setCurrentTheme] = useState<string>(() => {
         // eslint-disable-next-line no-restricted-globals -- theme is an allowed exception per CLAUDE.md
         return localStorage.getItem('theme') || '';
@@ -152,7 +153,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
         try {
             setSaving(true);
 
-            const secretKeys: (keyof Settings)[] = ['geminiApiKey', 'firebaseConfig', 'barkApiKey', 'githubToken'];
+            const secretKeys: (keyof Settings)[] = ['geminiApiKey', 'firebaseConfig', 'barkApiKey', 'githubToken', 'weatherApiKey'];
             const syncUpdates: Partial<Settings> = {};
             const secretUpdates: Partial<Settings> = {};
 
@@ -288,6 +289,10 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                             <span className="text-lg">🔥</span>
                             <span>Firebase</span>
                         </button>
+                        <button className={getTabButtonClass('googlecalendar')} onClick={() => setActiveTab('googlecalendar')}>
+                            <span className="text-lg">📆</span>
+                            <span>캘린더</span>
+                        </button>
                         <button className={getTabButtonClass('dontdo')} onClick={() => setActiveTab('dontdo')}>
                             <span className="text-lg">🚫</span>
                             <span>하지않기</span>
@@ -344,6 +349,9 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                                         localSettings={localSettings}
                                         setLocalSettings={setLocalSettings}
                                     />
+                                )}
+                                {activeTab === 'googlecalendar' && (
+                                    <GoogleCalendarTab />
                                 )}
                                 {activeTab === 'dontdo' && (
                                     <DontDoTab

@@ -26,6 +26,7 @@ import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { useDragDropManager } from '@/features/schedule/hooks/useDragDropManager';
 import { loadGlobalGoals } from '@/data/repositories';
 import { TIME_BLOCKS, type Task, type TimeBlockId, type DailyGoal } from '@/shared/types/domain';
+import { generateId } from '@/shared/lib/utils';
 import TimelineTaskBlock from './TimelineTaskBlock';
 import TaskModal from '@/features/schedule/TaskModal';
 
@@ -189,7 +190,7 @@ function TimelineViewComponent() {
       } else {
         // 새 작업 생성
         const newTask: Task = {
-          id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          id: generateId('task'),
           text: taskData.text || '',
           memo: taskData.memo || '',
           baseDuration: taskData.baseDuration || 15,
@@ -291,7 +292,7 @@ function TimelineViewComponent() {
     try {
       const newTask: Task = {
         ...originalTask,
-        id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        id: generateId('task'),
         completed: false,
         actualDuration: 0,
         createdAt: new Date().toISOString(),

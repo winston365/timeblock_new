@@ -155,7 +155,6 @@ timeblock_new/
 │   │   ├── settings/         # 설정 및 동기화 로그 (tabs/ 하위 모듈)
 │   │   ├── stats/            # 통계 대시보드 (tabs/ 하위 모듈)
 │   │   ├── shop/             # XP 상점
-│   │   ├── ignition/         # 3분 점화 시스템
 │   │   ├── insight/          # AI 인사이트 패널
 │   │   ├── weather/          # 날씨 정보 통합
 │   │   ├── energy/           # 에너지 레벨 추적

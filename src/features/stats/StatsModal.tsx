@@ -15,7 +15,7 @@ import { useGameState } from '@/shared/hooks/useGameState';
 import { useCompletedTasksStore } from '@/shared/stores/completedTasksStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { callGeminiAPI } from '@/shared/services/ai/geminiApi';
-import { addTokenUsage } from '@/data/repositories/chatHistoryRepository';
+import { trackTokenUsage } from '@/shared/utils/tokenUtils';
 import { db } from '@/data/db/dexieClient';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
@@ -361,10 +361,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
 
             const { text, tokenUsage } = await callGeminiAPI(prompt, [], settings.geminiApiKey, settings.geminiModel);
             setInsight(text);
-
-            if (tokenUsage) {
-                addTokenUsage(tokenUsage.promptTokens, tokenUsage.candidatesTokens).catch(console.error);
-            }
+            trackTokenUsage(tokenUsage);
 
             try {
                 await db.aiInsights.put({

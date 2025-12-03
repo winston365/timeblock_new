@@ -13,7 +13,7 @@
 import { db } from '../db/dexieClient';
 import type { DailyGoal } from '@/shared/types/domain';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
-import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
+import { withFirebaseSync, withFirebaseFetch } from '@/shared/utils/firebaseGuard';
 import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { globalGoalStrategy } from '@/shared/services/sync/firebase/strategies';
 import { generateId, getLocalDate } from '@/shared/lib/utils';
@@ -41,19 +41,17 @@ export async function loadGlobalGoals(): Promise<DailyGoal[]> {
       return loadedGoals;
     }
 
-    // 2. Firebase에서 조회 (초기 로드 또는 IndexedDB가 비어있을 때만)
-    // 주의: 페이지 새로고침 시 일시적으로 IndexedDB가 비어 보일 수 있으므로
-    // Firebase 데이터가 실제로 더 최신인지 확인하지 않고 복원할 경우 데이터 손실 가능
-    if (isFirebaseInitialized()) {
-      const firebaseGoals = await fetchFromFirebase<DailyGoal[]>(globalGoalStrategy);
+    // 2. Firebase에서 조회 (IndexedDB가 비어있을 때만)
+    const firebaseGoals = await withFirebaseFetch(
+      () => fetchFromFirebase<DailyGoal[]>(globalGoalStrategy),
+      null
+    );
 
-      if (firebaseGoals && firebaseGoals.length > 0) {
-        // IndexedDB가 완전히 비어있을 때만 Firebase 데이터로 복원
-        // (Store가 메모리에 데이터를 유지하므로, 실제 데이터 손실 시에만 이 경로 실행됨)
-        await db.globalGoals.bulkPut(firebaseGoals);
-        addSyncLog('firebase', 'load', `Restored ${firebaseGoals.length} goals from Firebase`);
-        return firebaseGoals;
-      }
+    if (firebaseGoals && firebaseGoals.length > 0) {
+      // IndexedDB가 완전히 비어있을 때만 Firebase 데이터로 복원
+      await db.globalGoals.bulkPut(firebaseGoals);
+      addSyncLog('firebase', 'load', `Restored ${firebaseGoals.length} goals from Firebase`);
+      return firebaseGoals;
     }
 
     // 3. 데이터가 없으면 빈 배열 반환
@@ -97,10 +95,10 @@ export async function addGlobalGoal(
     addSyncLog('dexie', 'save', `Added global goal: ${newGoal.title}`);
 
     // Firebase 동기화
-    if (isFirebaseInitialized()) {
+    withFirebaseSync(async () => {
       const allGoals = await db.globalGoals.toArray();
       await syncToFirebase(globalGoalStrategy, allGoals);
-    }
+    }, 'GlobalGoal:add');
 
     return newGoal;
   } catch (error) {
@@ -141,10 +139,10 @@ export async function updateGlobalGoal(goalId: string, updates: Partial<DailyGoa
     addSyncLog('dexie', 'save', `Updated global goal: ${goal.title}`);
 
     // Firebase 동기화
-    if (isFirebaseInitialized()) {
+    withFirebaseSync(async () => {
       const allGoals = await db.globalGoals.toArray();
       await syncToFirebase(globalGoalStrategy, allGoals);
-    }
+    }, 'GlobalGoal:update');
 
     return updatedGoal;
   } catch (error) {
@@ -171,10 +169,10 @@ export async function deleteGlobalGoal(goalId: string): Promise<void> {
     addSyncLog('dexie', 'save', `Deleted global goal: ${goalId}`);
 
     // Firebase 동기화
-    if (isFirebaseInitialized()) {
+    withFirebaseSync(async () => {
       const allGoals = await db.globalGoals.toArray();
       await syncToFirebase(globalGoalStrategy, allGoals);
-    }
+    }, 'GlobalGoal:delete');
 
     // 모든 dailyData에서 연결된 작업들의 goalId를 null로 설정
     const allDailyData = await db.dailyData.toArray();
@@ -274,9 +272,10 @@ export async function reorderGlobalGoals(goals: DailyGoal[]): Promise<void> {
     addSyncLog('dexie', 'save', `Reordered ${updatedGoals.length} global goals`);
 
     // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      await syncToFirebase(globalGoalStrategy, updatedGoals);
-    }
+    withFirebaseSync(
+      () => syncToFirebase(globalGoalStrategy, updatedGoals),
+      'GlobalGoal:reorder'
+    );
   } catch (error) {
     console.error('Failed to reorder global goals:', error);
     throw error;
@@ -309,9 +308,10 @@ export async function resetDailyGoalProgress(): Promise<void> {
     addSyncLog('dexie', 'save', `Reset progress for ${resetGoals.length} global goals`);
 
     // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      await syncToFirebase(globalGoalStrategy, resetGoals);
-    }
+    withFirebaseSync(
+      () => syncToFirebase(globalGoalStrategy, resetGoals),
+      'GlobalGoal:resetProgress'
+    );
 
     console.log(`✅ Reset progress for ${resetGoals.length} global goals`);
   } catch (error) {

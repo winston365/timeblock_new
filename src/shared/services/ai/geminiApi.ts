@@ -45,5 +45,4 @@ export {
 export {
   generateTaskBreakdown,
   suggestTaskEmoji,
-  generateMicroStep,
 } from './gemini';

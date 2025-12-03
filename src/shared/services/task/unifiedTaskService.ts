@@ -5,7 +5,7 @@
  * @responsibilities
  *   - Task는 timeBlock 값에 따라 두 저장소에 분리 저장됨
  *   - 이 서비스는 저장소를 추상화하여 단일 API 제공
- *   - 점화(Ignition), 통합 검색 등에서 사용
+ *   - 통합 검색 등에서 사용
  *   - Store도 함께 업데이트하여 UI 실시간 반영
  * @dependencies
  *   - dailyDataRepository: 날짜별 타임블록 작업

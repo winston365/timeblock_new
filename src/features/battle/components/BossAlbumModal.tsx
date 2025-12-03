@@ -15,10 +15,11 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { BOSSES } from '../data/bossData';
+import { BOSSES, getBossById } from '../data/bossData';
 import { useBattleStore } from '../stores/battleStore';
 import { getBossImageSrc } from '../utils/assets';
-import type { Boss, BossDifficulty } from '@/shared/types/domain';
+import { getRecentBattleStats } from '@/data/repositories/battleRepository';
+import type { Boss, BossDifficulty, DailyBattleStats } from '@/shared/types/domain';
 
 interface BossAlbumModalProps {
   isOpen: boolean;
@@ -192,12 +193,213 @@ function BossDetailOverlay({ boss, onClose }: BossDetailOverlayProps) {
 }
 
 /**
+ * 통계 탭 컴포넌트
+ */
+interface StatsTabProps {
+  recentStats: DailyBattleStats[];
+}
+
+function StatsTab({ recentStats }: StatsTabProps) {
+  // 최대 처치 수 (그래프 스케일링용)
+  const maxCount = useMemo(() => {
+    return Math.max(1, ...recentStats.map(s => s.defeatedCount));
+  }, [recentStats]);
+
+  // 총 처치 수
+  const totalDefeated = useMemo(() => {
+    return recentStats.reduce((sum, s) => sum + s.defeatedCount, 0);
+  }, [recentStats]);
+
+  // 난이도별 총 처치 수
+  const totalByDifficulty = useMemo(() => {
+    return recentStats.reduce(
+      (acc, s) => ({
+        easy: acc.easy + s.byDifficulty.easy,
+        normal: acc.normal + s.byDifficulty.normal,
+        hard: acc.hard + s.byDifficulty.hard,
+        epic: acc.epic + s.byDifficulty.epic,
+      }),
+      { easy: 0, normal: 0, hard: 0, epic: 0 }
+    );
+  }, [recentStats]);
+
+  // 난이도 색상
+  const difficultyColors: Record<BossDifficulty, string> = {
+    easy: 'bg-green-500',
+    normal: 'bg-blue-500',
+    hard: 'bg-orange-500',
+    epic: 'bg-purple-500',
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* 요약 통계 */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-slate-800/50 rounded-xl p-4 text-center border border-slate-700/50">
+          <p className="text-3xl font-black text-white">{totalDefeated}</p>
+          <p className="text-xs text-slate-400 mt-1">총 처치 (14일)</p>
+        </div>
+        <div className="bg-green-500/10 rounded-xl p-4 text-center border border-green-500/30">
+          <p className="text-2xl font-black text-green-400">{totalByDifficulty.easy}</p>
+          <p className="text-xs text-green-400/70 mt-1">🌱 Easy</p>
+        </div>
+        <div className="bg-blue-500/10 rounded-xl p-4 text-center border border-blue-500/30">
+          <p className="text-2xl font-black text-blue-400">{totalByDifficulty.normal}</p>
+          <p className="text-xs text-blue-400/70 mt-1">⚔️ Normal</p>
+        </div>
+        <div className="bg-orange-500/10 rounded-xl p-4 text-center border border-orange-500/30">
+          <p className="text-2xl font-black text-orange-400">{totalByDifficulty.hard}</p>
+          <p className="text-xs text-orange-400/70 mt-1">🔥 Hard</p>
+        </div>
+      </div>
+
+      {/* Epic 별도 표시 */}
+      {totalByDifficulty.epic > 0 && (
+        <div className="bg-purple-500/10 rounded-xl p-4 text-center border border-purple-500/30 max-w-xs mx-auto">
+          <p className="text-2xl font-black text-purple-400">{totalByDifficulty.epic}</p>
+          <p className="text-xs text-purple-400/70 mt-1">💀 Epic</p>
+        </div>
+      )}
+
+      {/* 날짜별 바 그래프 */}
+      <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/50">
+        <h4 className="text-sm font-bold text-white mb-4">📊 날짜별 처치 현황</h4>
+        
+        <div className="flex items-end gap-1 h-40">
+          {recentStats.map((stat) => {
+            const heightPercent = (stat.defeatedCount / maxCount) * 100;
+            const dateObj = new Date(stat.date);
+            const dayLabel = dateObj.getDate();
+            const isToday = stat.date === new Date().toISOString().slice(0, 10);
+            
+            return (
+              <div key={stat.date} className="flex-1 flex flex-col items-center gap-1">
+                {/* 막대 그래프 */}
+                <div className="w-full flex flex-col justify-end h-32 relative group">
+                  {stat.defeatedCount > 0 ? (
+                    <div 
+                      className="w-full rounded-t transition-all duration-300 hover:opacity-80 relative overflow-hidden"
+                      style={{ height: `${heightPercent}%` }}
+                    >
+                      {/* 난이도별 스택 바 */}
+                      <div className="absolute inset-0 flex flex-col-reverse">
+                        {stat.byDifficulty.epic > 0 && (
+                          <div 
+                            className={`${difficultyColors.epic} w-full`}
+                            style={{ height: `${(stat.byDifficulty.epic / stat.defeatedCount) * 100}%` }}
+                          />
+                        )}
+                        {stat.byDifficulty.hard > 0 && (
+                          <div 
+                            className={`${difficultyColors.hard} w-full`}
+                            style={{ height: `${(stat.byDifficulty.hard / stat.defeatedCount) * 100}%` }}
+                          />
+                        )}
+                        {stat.byDifficulty.normal > 0 && (
+                          <div 
+                            className={`${difficultyColors.normal} w-full`}
+                            style={{ height: `${(stat.byDifficulty.normal / stat.defeatedCount) * 100}%` }}
+                          />
+                        )}
+                        {stat.byDifficulty.easy > 0 && (
+                          <div 
+                            className={`${difficultyColors.easy} w-full`}
+                            style={{ height: `${(stat.byDifficulty.easy / stat.defeatedCount) * 100}%` }}
+                          />
+                        )}
+                      </div>
+                      
+                      {/* 툴팁 */}
+                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 hidden group-hover:block bg-black/90 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-10">
+                        {stat.defeatedCount}마리
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-1 bg-slate-700 rounded" />
+                  )}
+                </div>
+                
+                {/* 날짜 라벨 */}
+                <span className={`text-[10px] ${isToday ? 'text-yellow-400 font-bold' : 'text-slate-500'}`}>
+                  {dayLabel}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* 범례 */}
+        <div className="flex justify-center gap-4 mt-4 text-[10px]">
+          <span className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded bg-green-500" /> Easy
+          </span>
+          <span className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded bg-blue-500" /> Normal
+          </span>
+          <span className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded bg-orange-500" /> Hard
+          </span>
+          <span className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded bg-purple-500" /> Epic
+          </span>
+        </div>
+      </div>
+
+      {/* 처치한 보스 목록 (최근 기록) */}
+      <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/50">
+        <h4 className="text-sm font-bold text-white mb-3">🗡️ 최근 처치 기록</h4>
+        <div className="space-y-2 max-h-48 overflow-y-auto">
+          {recentStats
+            .filter(s => s.defeatedCount > 0)
+            .reverse()
+            .slice(0, 7)
+            .map((stat) => (
+              <div key={stat.date} className="flex items-center justify-between bg-slate-900/50 rounded-lg px-3 py-2">
+                <span className="text-xs text-slate-400">{stat.date}</span>
+                <div className="flex items-center gap-2">
+                  {stat.defeatedBossIds.slice(0, 5).map((bossId) => {
+                    const boss = getBossById(bossId);
+                    return boss ? (
+                      <img
+                        key={bossId}
+                        src={getBossImageSrc(boss.image)}
+                        alt={boss.name}
+                        className="w-6 h-6 rounded-full object-cover border border-slate-600"
+                        title={boss.name}
+                      />
+                    ) : null;
+                  })}
+                  {stat.defeatedBossIds.length > 5 && (
+                    <span className="text-xs text-slate-500">+{stat.defeatedBossIds.length - 5}</span>
+                  )}
+                  <span className="text-xs font-bold text-white ml-2">{stat.defeatedCount}마리</span>
+                </div>
+              </div>
+            ))}
+          {recentStats.every(s => s.defeatedCount === 0) && (
+            <p className="text-center text-slate-500 text-sm py-4">아직 처치 기록이 없습니다</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * 보스 도감 모달 컴포넌트 - 앨범 스타일
  */
 export default function BossAlbumModal({ isOpen, onClose }: BossAlbumModalProps) {
   const { dailyState, defeatedBossHistory } = useBattleStore();
   const [selectedBoss, setSelectedBoss] = useState<Boss | null>(null);
-  const [viewMode, setViewMode] = useState<'all' | 'today'>('all');
+  const [viewMode, setViewMode] = useState<'all' | 'today' | 'stats'>('all');
+  const [recentStats, setRecentStats] = useState<DailyBattleStats[]>([]);
+
+  // 통계 데이터 로드
+  useEffect(() => {
+    if (isOpen) {
+      getRecentBattleStats(14).then(setRecentStats);
+    }
+  }, [isOpen]);
 
   // 오늘 처치한 보스 ID 목록
   const todayDefeatedIds = useMemo(() => {
@@ -285,18 +487,18 @@ export default function BossAlbumModal({ isOpen, onClose }: BossAlbumModalProps)
 
           <div className="flex items-center gap-3">
             {/* 뷰 모드 토글 */}
-            {stats.defeatedToday > 0 && (
-              <div className="flex rounded-lg overflow-hidden border border-slate-700">
-                <button
-                  onClick={() => setViewMode('all')}
-                  className={`px-3 py-1.5 text-xs font-bold transition ${
-                    viewMode === 'all' 
-                      ? 'bg-slate-700 text-white' 
-                      : 'bg-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  전체
-                </button>
+            <div className="flex rounded-lg overflow-hidden border border-slate-700">
+              <button
+                onClick={() => setViewMode('all')}
+                className={`px-3 py-1.5 text-xs font-bold transition ${
+                  viewMode === 'all' 
+                    ? 'bg-slate-700 text-white' 
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                전체
+              </button>
+              {stats.defeatedToday > 0 && (
                 <button
                   onClick={() => setViewMode('today')}
                   className={`px-3 py-1.5 text-xs font-bold transition ${
@@ -307,8 +509,18 @@ export default function BossAlbumModal({ isOpen, onClose }: BossAlbumModalProps)
                 >
                   오늘 ({stats.defeatedToday})
                 </button>
-              </div>
-            )}
+              )}
+              <button
+                onClick={() => setViewMode('stats')}
+                className={`px-3 py-1.5 text-xs font-bold transition ${
+                  viewMode === 'stats' 
+                    ? 'bg-cyan-500 text-black' 
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                📊 통계
+              </button>
+            </div>
 
             {/* 닫기 버튼 */}
             <button
@@ -361,6 +573,13 @@ export default function BossAlbumModal({ isOpen, onClose }: BossAlbumModalProps)
                 />
               ))}
             </div>
+          </div>
+        )}
+
+        {/* 통계 뷰 */}
+        {viewMode === 'stats' && (
+          <div className="flex-1 overflow-y-auto pr-2">
+            <StatsTab recentStats={recentStats} />
           </div>
         )}
 

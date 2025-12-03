@@ -286,9 +286,9 @@ export default function TaskCard({
                 <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${RESISTANCE_COLORS[task.resistance]}`}>
                   {RESISTANCE_BADGE_LABEL[task.resistance]}
                 </span>
-                {!showMinimal && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/70 px-2 py-0.5 text-[var(--color-text-secondary)]">
-                    Prep <span className="tabular-nums">{preparationCount}</span>/3
+                {!showMinimal && task.deadline && (
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${task.deadline < new Date().toISOString().split('T')[0] ? 'border-rose-400/60 bg-rose-500/10 text-rose-200' : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/70 text-[var(--color-text-secondary)]'}`}>
+                    📅 {task.deadline.slice(5).replace('-', '/')}
                   </span>
                 )}
                 {linkedGoal && (
@@ -434,12 +434,12 @@ export default function TaskCard({
                     {RESISTANCE_EMOJI[task.resistance]} {RESISTANCE_BADGE_LABEL[task.resistance]}
                   </button>
                   <span
-                    className={`rounded-full border px-2 py-0.5 font-semibold ${preparationCount === 3
-                      ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-200'
+                    className={`rounded-full border px-2 py-0.5 font-semibold ${task.deadline && task.deadline < new Date().toISOString().split('T')[0]
+                      ? 'border-rose-400/60 bg-rose-500/10 text-rose-200'
                       : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 text-[var(--color-text-secondary)]'
                       }`}
                   >
-                    Prep {preparationCount}/3
+                    📅 {task.deadline ? task.deadline.slice(5).replace('-', '/') : '오늘'}
                   </span>
                   <button
                     type="button"

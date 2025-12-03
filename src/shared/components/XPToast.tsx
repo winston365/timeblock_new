@@ -40,25 +40,42 @@ export default function XPToast({ xp, message, t }: XPToastProps) {
   return (
     <div
       className={`${t.visible ? 'animate-enter' : 'animate-leave'
-        } pointer-events-auto flex w-full max-w-md rounded-2xl bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)] px-5 py-4 text-white shadow-lg ring-1 ring-black/5`}
+        } pointer-events-auto w-full max-w-sm overflow-hidden rounded-2xl bg-white/90 p-4 shadow-2xl ring-1 ring-black/5 backdrop-blur-xl dark:bg-gray-900/90 dark:ring-white/10`}
     >
-      <div className="flex items-center gap-3">
-        <div className="text-3xl animate-bounce">🎉</div>
-        <div className="flex flex-col gap-1">
-          <div className="text-base font-semibold">
-            {message || '축하합니다!'}
-          </div>
-          <div className="text-xl font-bold text-[#ffd700] drop-shadow">
-            +{xp} XP
-          </div>
+      <div className="flex items-start gap-4">
+        {/* Icon Area - App Icon Style */}
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20">
+          <span className="text-lg">✨</span>
         </div>
-      </div>
-      <div className="ml-auto flex border-l border-white/20 pl-4">
+
+        {/* Content Area */}
+        <div className="flex-1 pt-0.5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+              XP 획득
+            </h3>
+            <span className="ml-2 inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400">
+              +{xp} XP
+            </span>
+          </div>
+          <p className="mt-1 text-sm leading-snug text-gray-500 dark:text-gray-400">
+            {message || '목표를 달성했습니다!'}
+          </p>
+        </div>
+
+        {/* Close Button */}
         <button
           onClick={() => toast.dismiss(t.id)}
-          className="flex w-full items-center justify-center rounded-none rounded-r-lg border-none p-0 text-sm font-medium text-white hover:text-white/80 focus:outline-none focus:ring-0"
+          className="flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:hover:bg-gray-800 dark:hover:text-gray-300"
         >
-          Close
+          <span className="sr-only">Close</span>
+          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path
+              fillRule="evenodd"
+              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+              clipRule="evenodd"
+            />
+          </svg>
         </button>
       </div>
     </div>

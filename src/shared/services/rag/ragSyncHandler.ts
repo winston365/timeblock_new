@@ -21,6 +21,7 @@ import { ragService } from './ragService';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 import { loadInboxTasks } from '@/data/repositories/inboxRepository';
 import type { Task, DailyData } from '@/shared/types/domain';
+import { getLocalDate } from '@/shared/lib/utils';
 
 /**
  * RAG 인덱싱 동기화 핸들러 싱글턴 클래스
@@ -125,7 +126,7 @@ export class RAGSyncHandler {
             taskDate = task.completedAt.slice(0, 10);
         } else if (dateOrType === 'inbox' || dateOrType === 'completed_inbox') {
             // inbox나 completed_inbox 타입이지만 completedAt이 없는 경우
-            taskDate = new Date().toISOString().split('T')[0];
+            taskDate = getLocalDate();
         } else {
             // dailyData에서 온 작업 (dateOrType이 날짜 문자열)
             taskDate = dateOrType;

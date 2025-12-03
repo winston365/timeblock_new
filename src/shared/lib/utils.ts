@@ -56,15 +56,27 @@ export function formatDuration(minutes: number): string {
 }
 
 /**
- * 초를 "mm:ss" 형식으로 변환
+ * 초를 "mm:ss" 형식으로 변환 (분도 2자리 패딩)
  *
  * @param seconds - 변환할 시간 (초 단위)
- * @returns mm:ss 형식의 타이머 문자열
+ * @returns mm:ss 형식의 타이머 문자열 (예: "05:03")
  */
 export function formatTimer(seconds: number): string {
   const displayMinutes = Math.floor(seconds / 60);
-  const displaySeconds = seconds % 60;
+  const displaySeconds = Math.max(0, seconds % 60);
   return `${String(displayMinutes).padStart(2, '0')}:${String(displaySeconds).padStart(2, '0')}`;
+}
+
+/**
+ * 초를 "m:ss" 형식으로 변환 (분은 패딩 없음)
+ *
+ * @param seconds - 변환할 시간 (초 단위)
+ * @returns m:ss 형식의 타이머 문자열 (예: "5:03")
+ */
+export function formatTimerCompact(seconds: number): string {
+  const displayMinutes = Math.floor(seconds / 60);
+  const displaySeconds = Math.max(0, seconds % 60);
+  return `${displayMinutes}:${String(displaySeconds).padStart(2, '0')}`;
 }
 
 /**

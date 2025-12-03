@@ -14,7 +14,7 @@ import type { DailyGoal, DailyData } from '@/shared/types/domain';
 import { db } from '@/data/db/dexieClient';
 import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { dailyGoalStrategy, dailyDataStrategy } from '@/shared/services/sync/firebase/strategies';
-import { generateId } from '@/shared/lib/utils';
+import { generateId, getLocalDate } from '@/shared/lib/utils';
 
 /**
  * 일일 목표 로드 (날짜별)
@@ -87,7 +87,7 @@ async function copyGoalsFromPreviousDay(date: string): Promise<DailyGoal[]> {
     for (let i = 1; i <= 7; i++) {
       const previousDate = new Date(targetDate);
       previousDate.setDate(previousDate.getDate() - i);
-      const previousDateStr = previousDate.toISOString().split('T')[0];
+      const previousDateStr = getLocalDate(previousDate);
 
       const previousDailyData = await db.dailyData.get(previousDateStr);
       if (previousDailyData?.goals && previousDailyData.goals.length > 0) {

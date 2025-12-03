@@ -88,6 +88,32 @@ export function GeminiTab({ localSettings, setLocalSettings }: GeminiTabProps) {
                 </small>
             </div>
 
+            <div className={formGroupClass}>
+                <label htmlFor="weather-api-key">
+                    WeatherAPI.com API 키 (날씨 조회용)
+                </label>
+                <input
+                    id="weather-api-key"
+                    type="password"
+                    className={inputClass}
+                    placeholder="API 키를 입력하세요..."
+                    value={localSettings?.weatherApiKey || ''}
+                    onChange={(e) =>
+                        setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, weatherApiKey: e.target.value }) : prev)
+                    }
+                />
+                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                    <a
+                        href="https://www.weatherapi.com/signup.aspx"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        WeatherAPI.com에서 무료 API 키 발급받기 →
+                    </a>
+                    {' '}(서울 은평구 기준 날씨 조회)
+                </small>
+            </div>
+
             <div className={`${formGroupClass} flex-col items-start gap-2`}>
                 <div className="flex flex-col gap-1">
                     <span className="text-sm font-semibold text-[var(--color-text)]">작업 자동 이모지</span>
