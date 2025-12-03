@@ -111,6 +111,7 @@ function BossImagePreviewEditor() {
   };
 
   const positionString = getPositionString();
+  const bossImageSrc = `${import.meta.env.BASE_URL}assets/bosses/${selectedBoss.image}`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -133,7 +134,7 @@ function BossImagePreviewEditor() {
       {/* 프리뷰 영역 */}
       <div className="relative aspect-[3/4] w-full max-w-[280px] mx-auto overflow-hidden rounded-xl border border-[var(--color-border)] bg-gradient-to-b from-gray-900 to-black">
         <img
-          src={`/assets/bosses/${selectedBoss.image}`}
+          src={bossImageSrc}
           alt={selectedBoss.name}
           className="h-full w-full object-cover transition-all duration-300"
           style={{

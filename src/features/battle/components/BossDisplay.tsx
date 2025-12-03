@@ -95,6 +95,7 @@ export function BossDisplay({
   const showImage = settings.showBossImage ?? true;
   const difficultyStyle = getDifficultyStyles(boss.difficulty);
   const hpPercent = Math.max(0, (currentHP / maxHP) * 100);
+  const bossImageSrc = `${import.meta.env.BASE_URL}assets/bosses/${boss.image}`;
 
   // 저장된 이미지 설정 가져오기 (없으면 bossData의 기본값 사용)
   const savedImageSetting = getBossImageSetting(boss.id);
@@ -122,7 +123,7 @@ export function BossDisplay({
         <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
           {!shouldShowEmoji ? (
             <img
-              src={`/assets/bosses/${boss.image}`}
+              src={bossImageSrc}
               alt={boss.name}
               className={`h-full w-full object-cover transition-transform duration-300 ${isDefeated ? 'grayscale' : 'drop-shadow-2xl'
                 }`}
