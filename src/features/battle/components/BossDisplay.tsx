@@ -8,6 +8,26 @@
 import { useState } from 'react';
 import type { Boss } from '@/shared/types/domain';
 import { useBattleStore } from '../stores/battleStore';
+import { getBossImageSrc } from '../utils/assets';
+
+type BattleStoreState = ReturnType<typeof useBattleStore.getState>;
+type BossImageSetting = ReturnType<BattleStoreState['getBossImageSetting']>;
+
+interface BossDisplayError {
+  code: string;
+  message: string;
+  context?: Record<string, unknown>;
+  originalError?: unknown;
+}
+
+function createBossDisplayError(
+  code: string,
+  message: string,
+  context?: Record<string, unknown>,
+  originalError?: unknown,
+): BossDisplayError {
+  return { code, message, context, originalError };
+}
 
 interface BossDisplayProps {
   boss: Boss;
@@ -19,7 +39,7 @@ interface BossDisplayProps {
 /**
  * 난이도별 스타일 반환
  */
-function getDifficultyStyles(difficulty: Boss['difficulty']) {
+function computeDifficultyStyles(difficulty: Boss['difficulty']) {
   switch (difficulty) {
     case 'easy':
       return {
@@ -83,6 +103,72 @@ function getBossEmoji(bossId: string): string {
   return emojiMap[bossId] || '👾';
 }
 
+function computeHpPercent_core(currentHP: number, maxHP: number): number {
+  return Math.max(0, (currentHP / maxHP) * 100);
+}
+
+function computeImageConfig_core(savedImageSetting: BossImageSetting, boss: Boss) {
+  const imagePosition = savedImageSetting?.imagePosition || boss.imagePosition || 'center';
+  const imageScale = savedImageSetting?.imageScale ?? boss.imageScale ?? 1;
+  return { imagePosition, imageScale };
+}
+
+function computeShouldShowEmoji_core(showImage: boolean, imageError: boolean, hasBossImage: boolean) {
+  return !showImage || imageError || !hasBossImage;
+}
+
+function useBattleSettingsShell() {
+  try {
+    return useBattleStore(state => state.settings);
+  } catch (error) {
+    const formattedError = createBossDisplayError(
+      'BATTLE_STORE_SELECT_ERROR',
+      'Failed to read battle settings',
+      { selector: 'settings' },
+      error,
+    );
+    console.error('[BossDisplay]', formattedError);
+    return null;
+  }
+}
+
+function useBossImageGetterShell(): BattleStoreState['getBossImageSetting'] | null {
+  try {
+    return useBattleStore(state => state.getBossImageSetting);
+  } catch (error) {
+    const formattedError = createBossDisplayError(
+      'BATTLE_STORE_SELECT_ERROR',
+      'Failed to read boss image getter',
+      { selector: 'getBossImageSetting' },
+      error,
+    );
+    console.error('[BossDisplay]', formattedError);
+    return null;
+  }
+}
+
+function readBossImageSettingShell(
+  getBossImageSetting: BattleStoreState['getBossImageSetting'] | null,
+  bossId: string,
+): BossImageSetting {
+  if (!getBossImageSetting) {
+    return null;
+  }
+
+  try {
+    return getBossImageSetting(bossId);
+  } catch (error) {
+    const formattedError = createBossDisplayError(
+      'BOSS_IMAGE_SETTING_READ_ERROR',
+      'Failed to read boss image settings',
+      { bossId },
+      error,
+    );
+    console.error('[BossDisplay]', formattedError);
+    return null;
+  }
+}
+
 export function BossDisplay({
   boss,
   currentHP,
@@ -90,20 +176,19 @@ export function BossDisplay({
   isDefeated = false,
 }: BossDisplayProps) {
   const [imageError, setImageError] = useState(false);
-  const settings = useBattleStore(state => state.settings);
-  const getBossImageSetting = useBattleStore(state => state.getBossImageSetting);
-  const showImage = settings.showBossImage ?? true;
-  const difficultyStyle = getDifficultyStyles(boss.difficulty);
-  const hpPercent = Math.max(0, (currentHP / maxHP) * 100);
-  const bossImageSrc = `${import.meta.env.BASE_URL}assets/bosses/${boss.image}`;
+  const settings = useBattleSettingsShell();
+  const getBossImageSetting = useBossImageGetterShell();
+  const showImage = settings?.showBossImage ?? true;
+  const difficultyStyle = computeDifficultyStyles(boss.difficulty);
+  const hpPercent = computeHpPercent_core(currentHP, maxHP);
+  const bossImageSrc = getBossImageSrc(boss.image);
 
   // 저장된 이미지 설정 가져오기 (없으면 bossData의 기본값 사용)
-  const savedImageSetting = getBossImageSetting(boss.id);
-  const imagePosition = savedImageSetting?.imagePosition || boss.imagePosition || 'center';
-  const imageScale = savedImageSetting?.imageScale ?? boss.imageScale ?? 1;
+  const savedImageSetting = readBossImageSettingShell(getBossImageSetting, boss.id);
+  const { imagePosition, imageScale } = computeImageConfig_core(savedImageSetting, boss);
 
   // 이미지 숨김 설정이거나 이미지 에러 시 이모지 표시
-  const shouldShowEmoji = !showImage || imageError || !boss.image;
+  const shouldShowEmoji = computeShouldShowEmoji_core(showImage, imageError, Boolean(boss.image));
 
   return (
     <div className={`relative h-full w-full ${isDefeated ? 'opacity-50' : ''}`}>
