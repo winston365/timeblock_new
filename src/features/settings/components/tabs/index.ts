@@ -15,6 +15,7 @@ export { ShortcutsTab } from './ShortcutsTab';
 export { LogsTab } from './LogsTab';
 export { GameplayTab } from './GameplayTab';
 export { ScheduleTab } from './ScheduleTab';
+export { BattleTab } from './BattleTab';
 
 // Shared types and styles
 export * from './types';

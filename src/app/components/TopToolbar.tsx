@@ -24,6 +24,8 @@ import IgnitionButton from '@/features/ignition/components/IgnitionButton';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { StatsModal } from '@/features/stats/StatsModal';
 import DailySummaryModal from '@/features/insight/DailySummaryModal';
+import { InboxModal } from '@/features/tasks/InboxModal';
+import { GoalsModal } from '@/features/goals/GoalsModal';
 import { useFocusModeStore } from '@/features/schedule/stores/focusModeStore';
 import { useScheduleViewStore } from '@/features/schedule/stores/scheduleViewStore';
 import { TIME_BLOCKS } from '@/shared/types/domain';
@@ -64,6 +66,8 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   const [showStats, setShowStats] = useState(false);
   const [showBingo, setShowBingo] = useState(false);
   const [showDailySummary, setShowDailySummary] = useState(false);
+  const [showInbox, setShowInbox] = useState(false);
+  const [showGoals, setShowGoals] = useState(false);
   const [bingoProgress, setBingoProgress] = useState<BingoProgress | null>(null);
   const { settings } = useSettingsStore();
   const isNormalWaifu = settings?.waifuMode === 'normal';
@@ -234,13 +238,13 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
   return (
     <>
       <header
-        className="flex flex-col gap-[var(--spacing-sm)] border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-[var(--spacing-lg)] py-[calc(var(--spacing-sm)+2px)] text-[var(--color-text)] md:flex-row md:items-center"
+        className="flex h-auto min-h-[48px] max-h-[48px] shrink-0 items-center gap-[var(--spacing-sm)] overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-[var(--spacing-lg)] py-[calc(var(--spacing-sm)+2px)] text-[var(--color-text)]"
         role="banner"
       >
         <style>{`@keyframes dance6123 { to { background-position: var(--btn-width); } }`}</style>
-        <h1 className="text-sm font-semibold tracking-tight">하루 루틴 컨트롤러</h1>
+        <h1 className="shrink-0 text-sm font-semibold tracking-tight">하루 루틴 컨트롤러</h1>
 
-        <div className="flex flex-1 flex-wrap items-center gap-[var(--spacing-md)] text-[13px]">
+        <div className="flex flex-1 shrink-0 items-center gap-[var(--spacing-md)] text-[13px]">
           <div className={statItemClass}>
             <span>⭐ 오늘 XP:</span>
             <span
@@ -348,7 +352,7 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-[var(--spacing-xs)] md:ml-auto">
+        <div className="flex shrink-0 items-center gap-[var(--spacing-xs)] md:ml-auto">
           {/* AI 분석 인디케이터 */}
           {aiAnalyzing && (
             <div className="flex items-center gap-1.5 rounded-xl border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--color-primary)] animate-pulse">
@@ -365,6 +369,8 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
           )}
           {/* 점화 버튼 */}
           <IgnitionButton />
+          {renderCTA('goals', '🎯 목표', () => setShowGoals(true))}
+          {renderCTA('inbox', '📥 인박스', () => setShowInbox(true))}
           {renderCTA('stats', '📊 통계', () => setShowStats(true))}
           {renderCTA('daily-summary', '📝 AI 요약', () => setShowDailySummary(true))}
           {renderCTA('bingo', '🟦 빙고', () => setShowBingo(true), `🟦 ${bingoProgress?.completedCells.length ?? 0}/9`)}
@@ -376,6 +382,8 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
       </header>
       {showStats && <StatsModal open={showStats} onClose={() => setShowStats(false)} />}
       {showDailySummary && <DailySummaryModal open={showDailySummary} onClose={() => setShowDailySummary(false)} />}
+      {showInbox && <InboxModal open={showInbox} onClose={() => setShowInbox(false)} />}
+      {showGoals && <GoalsModal open={showGoals} onClose={() => setShowGoals(false)} />}
       {showBingo && (
         <BingoModal
           open={showBingo}

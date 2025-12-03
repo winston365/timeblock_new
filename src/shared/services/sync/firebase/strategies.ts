@@ -25,6 +25,9 @@ import type {
   WarmupPresetItem,
   Settings,
   BingoProgress,
+  BattleMission,
+  BattleSettings,
+  BossImageSettings,
 } from '@/shared/types/domain';
 
 // ============================================================================
@@ -226,4 +229,49 @@ export const settingsStrategy: SyncStrategy<Settings> = {
 export const bingoProgressStrategy: SyncStrategy<BingoProgress> = {
   collection: 'bingoProgress',
   getSuccessMessage: (_, key) => `Bingo progress synced (${key || 'today'})`,
+};
+
+// ============================================================================
+// Battle Missions 전략 (Last-Write-Wins)
+// ============================================================================
+
+/**
+ * BattleMissions 동기화 전략 (Last-Write-Wins)
+ * 전투 미션 목록을 Firebase와 동기화합니다.
+ * @type {SyncStrategy<BattleMission[]>}
+ */
+export const battleMissionsStrategy: SyncStrategy<BattleMission[]> = {
+  collection: 'battleMissions',
+  getSuccessMessage: (data) =>
+    `Battle missions synced (${data.length} missions, ${data.filter(m => m.enabled).length} enabled)`,
+};
+
+// ============================================================================
+// Battle Settings 전략 (Last-Write-Wins)
+// ============================================================================
+
+/**
+ * BattleSettings 동기화 전략 (Last-Write-Wins)
+ * 전투 설정을 Firebase와 동기화합니다.
+ * @type {SyncStrategy<BattleSettings>}
+ */
+export const battleSettingsStrategy: SyncStrategy<BattleSettings> = {
+  collection: 'battleSettings',
+  getSuccessMessage: (data) =>
+    `Battle settings synced (${data.dailyBossCount} bosses/day, ${data.bossBaseHP}min HP)`,
+};
+
+// ============================================================================
+// Boss Image Settings 전략 (Last-Write-Wins)
+// ============================================================================
+
+/**
+ * BossImageSettings 동기화 전략 (Last-Write-Wins)
+ * 보스별 이미지 위치/스케일 설정을 Firebase와 동기화합니다.
+ * @type {SyncStrategy<BossImageSettings>}
+ */
+export const bossImageSettingsStrategy: SyncStrategy<BossImageSettings> = {
+  collection: 'bossImageSettings',
+  getSuccessMessage: (data) =>
+    `Boss image settings synced (${Object.keys(data).length} bosses configured)`,
 };

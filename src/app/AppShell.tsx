@@ -116,7 +116,6 @@ export default function AppShell() {
   // ============================================================================
   // 탭 상태
   // ============================================================================
-  const [activeTab, setActiveTab] = useState<'today' | 'completed' | 'inbox'>('today');
   const [rightPanelTab, setRightPanelTab] = useState<'shop' | 'inventory'>('shop');
 
   // ============================================================================
@@ -207,12 +206,10 @@ export default function AppShell() {
         style={{ display: 'grid', gridTemplateColumns }}
       >
         <LeftSidebar 
-          activeTab={activeTab} 
-          onTabChange={setActiveTab} 
           collapsed={effectiveLeftCollapsed} 
         />
         {effectiveTimelineVisible ? <TimelineView /> : <div className="w-0 overflow-hidden" />}
-        <CenterContent activeTab={activeTab} dailyData={null} />
+        <CenterContent />
         <RightPanel
           activeTab={rightPanelTab}
           onTabChange={setRightPanelTab}

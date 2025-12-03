@@ -205,6 +205,7 @@ export async function deleteGlobalGoal(goalId: string): Promise<void> {
  * 목표의 계획/달성 시간 재계산
  *
  * @description 할일 추가/수정/삭제/완료 시 호출
+ *              ScheduleView에 있는 작업만 계산 (인박스 제외)
  * @param {string} goalId - 목표 ID
  * @param {string} date - 날짜 (YYYY-MM-DD)
  * @returns {Promise<DailyGoal>} 재계산된 목표
@@ -215,20 +216,16 @@ export async function recalculateGlobalGoalProgress(goalId: string, date: string
     throw new Error(`DailyData not found for date: ${date}`);
   }
 
-  // 해당 날짜의 연결된 작업들
-  const linkedTasks = dailyData.tasks.filter(task => task.goalId === goalId);
+  // 해당 날짜의 연결된 작업들 (ScheduleView에 배치된 작업만 = timeBlock이 있는 작업만)
+  const linkedTasks = dailyData.tasks.filter(task => 
+    task.goalId === goalId && task.timeBlock !== null
+  );
 
-  // inbox의 연결된 작업들도 포함
-  const inboxTasks = await db.globalInbox.toArray();
-  const linkedInboxTasks = inboxTasks.filter(task => task.goalId === goalId);
-
-  const allLinkedTasks = [...linkedTasks, ...linkedInboxTasks];
-
-  // 계획한 시간 = 모든 연결된 할일의 adjustedDuration 합계
-  const plannedMinutes = allLinkedTasks.reduce((sum, task) => sum + task.adjustedDuration, 0);
+  // 계획한 시간 = 스케줄에 배치된 연결된 할일의 adjustedDuration 합계
+  const plannedMinutes = linkedTasks.reduce((sum, task) => sum + task.adjustedDuration, 0);
 
   // 달성한 시간 = 완료된 할일의 actualDuration (없으면 adjustedDuration) 합계
-  const completedMinutes = allLinkedTasks
+  const completedMinutes = linkedTasks
     .filter(task => task.completed)
     .reduce((sum, task) => sum + (task.actualDuration || task.adjustedDuration), 0);
 

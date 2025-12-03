@@ -57,16 +57,16 @@ function TimelineViewComponent() {
   const { timelineItems, hourGroups, totalHeight, visibleStartHour, showPastBlocks, toggleShowPastBlocks } = useTimelineData();
   const { updateTask, addTask, deleteTask } = useDailyDataStore();
   const { setDragData, getDragData } = useDragDropManager();
-  
+
   const [currentTimePosition, setCurrentTimePosition] = useState<number | null>(null);
   const [goals, setGoals] = useState<DailyGoal[]>([]);
-  
+
   // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedHourSlot, setSelectedHourSlot] = useState<number | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<TimeBlockId>(null);
-  
+
   // 드래그 상태
   const [dragOverHour, setDragOverHour] = useState<number | null>(null);
 
@@ -116,7 +116,7 @@ function TimelineViewComponent() {
         setContextMenu(null);
       }
     };
-    
+
     if (contextMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -287,7 +287,7 @@ function TimelineViewComponent() {
   const handleDuplicateTask = useCallback(async () => {
     if (!contextMenu) return;
     const originalTask = contextMenu.task;
-    
+
     try {
       const newTask: Task = {
         ...originalTask,
@@ -306,7 +306,7 @@ function TimelineViewComponent() {
   }, [contextMenu, addTask]);
 
   return (
-    <div className="flex h-full flex-col border-r border-[var(--color-border)] bg-[var(--color-bg-base)]">
+    <div className="flex h-full min-h-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-bg-base)]">
       {/* 헤더 */}
       <div className="flex-shrink-0 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2 py-2">
         <h3 className="text-xs font-semibold text-[var(--color-text-secondary)]">
@@ -315,11 +315,10 @@ function TimelineViewComponent() {
         <button
           type="button"
           onClick={toggleShowPastBlocks}
-          className={`rounded px-1.5 py-0.5 text-[10px] transition-all duration-200 ${
-            showPastBlocks
+          className={`rounded px-1.5 py-0.5 text-[10px] transition-all duration-200 ${showPastBlocks
               ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
               : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-secondary)]'
-          }`}
+            }`}
           title={showPastBlocks ? '지난 블록 숨기기' : '지난 블록 보기'}
         >
           {showPastBlocks ? '📜' : '📜'}
@@ -338,9 +337,9 @@ function TimelineViewComponent() {
             const hourGroup = hourGroups.find(g => g.hour === hour);
             const overtimeMinutes = hourGroup ? hourGroup.totalDuration - 60 : 0;
             const hasNoTasks = !hourGroup || hourGroup.tasks.length === 0;
-            
+
             // 3시간 블록 배경색 계산
-            const blockStart = BLOCK_BOUNDARIES.find((b, i) => 
+            const blockStart = BLOCK_BOUNDARIES.find((b, i) =>
               hour >= b && (i === BLOCK_BOUNDARIES.length - 1 || hour < BLOCK_BOUNDARIES[i + 1])
             ) ?? 5;
             const blockBgColor = BLOCK_BACKGROUND_COLORS[blockStart] || '';
@@ -348,9 +347,8 @@ function TimelineViewComponent() {
             return (
               <div
                 key={hour}
-                className={`absolute left-0 right-0 transition-colors duration-150 ${blockBgColor} ${
-                  isDragOver ? 'bg-[var(--color-primary)]/15' : ''
-                } ${isOvertime ? 'bg-red-500/15' : ''}`}
+                className={`absolute left-0 right-0 transition-colors duration-150 ${blockBgColor} ${isDragOver ? 'bg-[var(--color-primary)]/15' : ''
+                  } ${isOvertime ? 'bg-red-500/15' : ''}`}
                 style={{ top: `${top}px`, height: `${HOUR_HEIGHT}px` }}
                 onDragOver={(e) => handleDragOver(e, hour)}
                 onDragLeave={handleDragLeave}
@@ -358,31 +356,29 @@ function TimelineViewComponent() {
               >
                 {/* 시간 구분선 */}
                 <div
-                  className={`absolute left-0 right-0 top-0 ${
-                    isBlockBoundary
+                  className={`absolute left-0 right-0 top-0 ${isBlockBoundary
                       ? 'border-t-2 border-[var(--color-text-tertiary)]/40'
                       : 'border-t border-[var(--color-border)]/40'
-                  }`}
+                    }`}
                 />
                 {/* 30분 보조선 */}
-                <div 
+                <div
                   className="absolute left-6 right-0 border-t border-dashed border-[var(--color-border)]/20"
                   style={{ top: `${HOUR_HEIGHT / 2}px` }}
                 />
                 {/* 시간 레이블 */}
                 <div
-                  className={`absolute left-0.5 top-0.5 text-[10px] font-semibold ${
-                    isBlockBoundary
+                  className={`absolute left-0.5 top-0.5 text-[10px] font-semibold ${isBlockBoundary
                       ? 'text-[var(--color-text-primary)]'
                       : 'text-[var(--color-text-secondary)]'
-                  }`}
+                    }`}
                 >
                   {String(hour).padStart(2, '0')}
                   {isBlockBoundary && <span className="text-[8px] ml-0.5 opacity-60">:00</span>}
                 </div>
                 {/* 시간 초과 경고 표시 */}
                 {isOvertime && (
-                  <div 
+                  <div
                     className="absolute right-1 top-0.5 text-[9px] text-red-400 font-medium flex items-center gap-0.5 animate-pulse"
                     title={`${hourGroup?.totalDuration}분 계획됨 (+${overtimeMinutes}분 초과)`}
                   >

@@ -162,7 +162,7 @@ function GoalProgressCard({ goal, tasks, onEdit, onDelete }: GoalProgressCardPro
             <div className="mt-3 space-y-1 border-t border-white/10 pt-2">
               {tasks.length === 0 ? (
                 <div className="py-1 text-center text-xs text-white/40">
-                  <p>연결된 작업이 없습니다</p>
+                  <p>스케줄에 배치된 작업이 없습니다</p>
                   {goal.plannedMinutes > 0 && (
                     <p className="mt-1 text-[10px] text-amber-500/70">
                       (데이터 불일치: 계획된 시간은 {goal.plannedMinutes}분입니다)
@@ -171,15 +171,10 @@ function GoalProgressCard({ goal, tasks, onEdit, onDelete }: GoalProgressCardPro
                 </div>
               ) : (
                 tasks.map(task => {
-                  // Determine location text
-                  let locationText = '';
-                  if (!task.timeBlock) {
-                    locationText = '📥 인박스';
-                  } else if (task.hourSlot !== undefined) {
-                    locationText = `🕒 ${task.hourSlot}시`;
-                  } else {
-                    locationText = '📅 일정';
-                  }
+                  // 위치 텍스트 (스케줄에 있는 작업만 표시됨)
+                  const locationText = task.hourSlot !== undefined
+                    ? `🕒 ${task.hourSlot}시`
+                    : '📅 일정';
 
                   return (
                     <div key={task.id} className="flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5">
@@ -272,8 +267,9 @@ export default function GoalPanel({ onOpenModal }: GoalPanelProps) {
       ) : (
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
           {goals.map((goal) => {
+            // ScheduleView에 배치된 작업만 표시 (timeBlock이 있는 작업)
             const relatedTasks = dailyData?.tasks.filter(task => {
-              return String(task.goalId) === String(goal.id);
+              return String(task.goalId) === String(goal.id) && task.timeBlock !== null;
             }) || [];
 
             return (

@@ -26,6 +26,7 @@ import {
     type XPHistoryEntry,
     type GoalProgress,
 } from './components/tabs';
+import CompletedTab from '@/features/tasks/CompletedTab';
 
 interface StatsModalProps {
     open: boolean;
@@ -51,7 +52,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
     const { settings } = useSettingsStore();
 
     // Tab state
-    const [activeTab, setActiveTab] = useState<'overview' | 'xp' | 'blocks' | 'insights'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'xp' | 'blocks' | 'completed' | 'insights'>('overview');
 
     // Filter states
     const [rangeDays, setRangeDays] = useState<7 | 14 | 30>(14);
@@ -96,7 +97,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
         setBlockVisibility(prev => ({ ...prev, [blockId]: visible }));
     }, []);
 
-    const handleTabChange = useCallback((tab: 'overview' | 'xp' | 'blocks' | 'insights') => {
+    const handleTabChange = useCallback((tab: 'overview' | 'xp' | 'blocks' | 'completed' | 'insights') => {
         setActiveTab(tab);
     }, []);
 
@@ -118,7 +119,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
 
             if (e.key === 'Tab') {
                 e.preventDefault();
-                const tabs: Array<'overview' | 'xp' | 'blocks' | 'insights'> = ['overview', 'xp', 'blocks', 'insights'];
+                const tabs: Array<'overview' | 'xp' | 'blocks' | 'completed' | 'insights'> = ['overview', 'xp', 'blocks', 'completed', 'insights'];
                 const currentIndex = tabs.indexOf(activeTab);
 
                 if (e.shiftKey) {
@@ -423,7 +424,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
 
                     {/* Tab Navigation */}
                     <div className="flex gap-2 px-6 pb-3">
-                        {(['overview', 'xp', 'blocks', 'insights'] as const).map(tab => (
+                        {(['overview', 'xp', 'blocks', 'completed', 'insights'] as const).map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => handleTabChange(tab)}
@@ -435,6 +436,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
                                 {tab === 'overview' && '📊 개요'}
                                 {tab === 'xp' && '📈 XP 분석'}
                                 {tab === 'blocks' && '⏰ 타임블록'}
+                                {tab === 'completed' && '✅ 완료'}
                                 {tab === 'insights' && '💡 인사이트'}
                             </button>
                         ))}
@@ -478,6 +480,12 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
                                 numberFormatter={numberFormatter}
                                 {...filterProps}
                             />
+                        )}
+
+                        {activeTab === 'completed' && (
+                            <div className="h-full min-h-[400px]">
+                                <CompletedTab />
+                            </div>
                         )}
 
                         {activeTab === 'insights' && (

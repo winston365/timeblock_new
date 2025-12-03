@@ -159,28 +159,28 @@ export interface GameState {
   totalXP: number;
   dailyXP: number;
   availableXP: number;
-  
+
   // 연속 출석
   streak: number;
   lastLogin: string; // YYYY-MM-DD
-  
+
   // 퀘스트 시스템
   dailyQuests: Quest[];
   questBonusClaimed: boolean;
-  
+
   // XP 히스토리
   xpHistory: Array<{ date: string; xp: number }>;
-  
+
   // 타임블록 XP
   timeBlockXP: Record<string, number>; // 블록별 XP
   timeBlockXPHistory: Array<{ date: string; blocks: Record<string, number> }>; // 블록별 XP 히스토리
-  
+
   // 완료 작업 히스토리
   completedTasksHistory: Task[];
-  
+
   // 타이머 사용 통계
   dailyTimerCount: number; // 오늘 타이머 사용 횟수 (몰입 작업 수)
-  
+
   // 인벤토리
   inventory: Record<string, number>; // 아이템 인벤토리 (itemId -> quantity)
 
@@ -420,7 +420,7 @@ export interface Settings {
   waifuImageChangeInterval?: number; // 와이푸 이미지 자동 변경 간격 (밀리초, 0=비활성화)
   templateCategories?: string[]; // 템플릿 카테고리 목록
   aiBreakdownTrigger: AIBreakdownTrigger; // AI 작업 세분화 트리거 조건
- autoEmojiEnabled?: boolean; // 작업 제목 기반 이모지 자동 추천 사용 여부
+  autoEmojiEnabled?: boolean; // 작업 제목 기반 이모지 자동 추천 사용 여부
   timeSlotTags?: TimeSlotTagTemplate[]; // 시간대 속성 템플릿
   dontDoChecklist?: DontDoChecklistItem[]; // 하지않기 체크리스트 항목
   barkApiKey?: string; // Bark 알림 API 키
@@ -506,4 +506,91 @@ export interface AIInsight {
   date: string; // YYYY-MM-DD (Primary Key)
   content: string; // 인사이트 내용
   createdAt: string; // 생성 시각 (ISO)
+}
+
+// ============================================================================
+// Battle System (보스 전투 시스템)
+// ============================================================================
+
+/**
+ * 보스 난이도
+ */
+export type BossDifficulty = 'easy' | 'normal' | 'hard' | 'epic';
+
+/**
+ * 보스 정의 (에셋 메타데이터)
+ */
+export interface Boss {
+  id: string;                    // "boss_01" ~ "boss_20"
+  name: string;                  // "불의 드래곤"
+  image: string;                 // "boss_01_dragon.png"
+  difficulty: BossDifficulty;
+  defeatQuote: string;           // 처치 시 대사
+  imagePosition?: string;        // 이미지 위치 (CSS object-position, 예: "center 20%")
+  imageScale?: number;           // 이미지 크기 (CSS transform scale, 예: 1.2)
+}
+
+/**
+ * 전투 미션 (설정에서 영구 등록, Firebase 동기화)
+ */
+export interface BattleMission {
+  id: string;
+  text: string;                  // "물 한 잔 마시기"
+  damage: number;                // 데미지 (분 단위, 기본 15)
+  order: number;                 // 표시 순서
+  enabled: boolean;              // 활성화 여부
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * 일일 보스 진행 상태
+ */
+export interface DailyBossProgress {
+  bossId: string;
+  maxHP: number;                 // 설정값에서 가져옴
+  currentHP: number;
+  completedMissions: string[];   // 완료한 미션 ID 목록
+  defeatedAt?: string;           // 처치 시각
+}
+
+/**
+ * 오늘의 전투 상태 (매일 초기화, Dexie에 저장)
+ */
+export interface DailyBattleState {
+  date: string;                  // YYYY-MM-DD
+  currentBossIndex: number;      // 현재 보스 순번 (0부터)
+  bosses: DailyBossProgress[];
+  totalDefeated: number;         // 오늘 처치한 보스 수
+}
+
+/**
+ * 전투 설정
+ */
+export interface BattleSettings {
+  // 보스 설정
+  dailyBossCount: number;        // 하루 보스 수 (1~5, 기본: 3)
+  bossBaseHP: number;            // 보스 기본 체력 (30~120분, 기본: 60)
+
+  // 미션 설정
+  missions: BattleMission[];     // 미션 목록 (Firebase 동기화)
+  defaultMissionDamage: number;  // 새 미션 기본 데미지 (5~30분, 기본: 15)
+
+  // 보상 설정
+  bossDefeatXP: number;          // 보스 처치 XP (50~200, 기본: 100)
+
+  // UI 설정
+  showBattleInSidebar: boolean;  // 사이드바에 전투 표시 (기본: true)
+  showBossImage: boolean;        // 보스 이미지 표시 (기본: true)
+  battleSoundEffects: boolean;   // 효과음 (기본: true)
+}
+
+/**
+ * 보스 이미지 커스텀 설정 (보스별 위치/스케일)
+ */
+export interface BossImageSettings {
+  [bossId: string]: {
+    imagePosition: string;  // e.g., "50% 30%"
+    imageScale: number;     // e.g., 1.2
+  };
 }

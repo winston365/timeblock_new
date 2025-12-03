@@ -1,66 +1,30 @@
 /**
- * LeftSidebar - 좌측 사이드바 네비게이션
+ * LeftSidebar - 좌측 사이드바
  *
- * @role 목표, 완료, 인박스 탭을 포함한 좌측 사이드바
- * @input activeTab - 현재 활성 탭, onTabChange - 탭 변경 핸들러, collapsed - 접힘 상태
- * @output 탭 네비게이션 및 콘텐츠 UI
- * @dependencies InboxTab, CompletedTab, GoalPanel, GoalModal, goalStore
+ * @role 전투 모드 패널을 포함한 좌측 사이드바
+ * @input collapsed - 접힘 상태
+ * @output 전투 모드 UI
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import InboxTab from '@/features/tasks/InboxTab';
-import CompletedTab from '@/features/tasks/CompletedTab';
-import GoalPanel from '@/features/goals/GoalPanel';
-import GoalModal from '@/features/goals/GoalModal';
-import type { DailyGoal } from '@/shared/types/domain';
-import { useGoalStore } from '@/shared/stores/goalStore';
+import { BattleSidebar } from '@/features/battle/components';
+import { useBattleStore } from '@/features/battle/stores/battleStore';
 
 /** LeftSidebar 컴포넌트 Props */
 interface LeftSidebarProps {
-  /** 현재 활성 탭 */
-  activeTab: 'today' | 'completed' | 'inbox';
-  /** 탭 변경 콜백 */
-  onTabChange: (tab: 'today' | 'completed' | 'inbox') => void;
   /** 사이드바 접힘 상태 */
   collapsed?: boolean;
 }
 
-/** 탭 정의 */
-const tabs = [
-  { id: 'today' as const, icon: '📋', label: '목표' },
-  { id: 'completed' as const, icon: '✅', label: '완료' },
-  { id: 'inbox' as const, icon: '📥', label: '인박스' },
-];
-
 /**
  * 좌측 사이드바 컴포넌트
  * @param props - LeftSidebarProps
- * @returns 탭 네비게이션 및 콘텐츠 UI
+ * @returns 전투 모드 UI
  */
-export default function LeftSidebar({ activeTab, onTabChange, collapsed = false }: LeftSidebarProps) {
-  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
-  const [editingGoal, setEditingGoal] = useState<DailyGoal | undefined>(undefined);
-  const { goals, loadGoals } = useGoalStore();
-
-  // Load goals once so we can show pending count badge
-  useEffect(() => {
-    loadGoals().catch(console.error);
-  }, [loadGoals]);
-
-  const pendingGoals = useMemo(
-    () => goals.filter(g => g.completedMinutes < g.targetMinutes).length,
-    [goals]
-  );
-
-  const handleOpenGoalModal = (goal?: DailyGoal) => {
-    setEditingGoal(goal);
-    setIsGoalModalOpen(true);
-  };
-
-  const handleCloseGoalModal = () => {
-    setIsGoalModalOpen(false);
-    setEditingGoal(undefined);
-  };
+export default function LeftSidebar({ collapsed = false }: LeftSidebarProps) {
+  const dailyState = useBattleStore(state => state.dailyState);
+  
+  const defeatedCount = dailyState?.totalDefeated ?? 0;
+  const totalBosses = dailyState?.bosses.length ?? 0;
 
   return (
     <nav
@@ -69,57 +33,47 @@ export default function LeftSidebar({ activeTab, onTabChange, collapsed = false 
       aria-label="메인 네비게이션"
       aria-hidden={collapsed}
     >
-      {/* 탭 네비게이션 (고정 헤더) */}
-      <div className="sidebar-tabs flex items-center gap-1 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-2 py-2" role="tablist">
-        {tabs.map(tab => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              className={`sidebar-tab relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-2 text-[11px] font-medium transition-all duration-200 ${isActive
-                ? 'bg-[var(--color-bg-elevated)] text-[var(--color-primary)] shadow-sm ring-1 ring-[var(--color-border)]'
-                : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-secondary)]'
-                }`}
-              onClick={() => onTabChange(tab.id)}
-              role="tab"
-              aria-selected={isActive}
-              aria-controls={`sidebar-panel-${tab.id}`}
-              id={`sidebar-tab-${tab.id}`}
-              tabIndex={collapsed ? -1 : (isActive ? 0 : -1)}
-              title={tab.label}
-            >
-              <span className="text-lg leading-none" aria-hidden="true">{tab.icon}</span>
-              <span>{tab.label}</span>
-              {tab.id === 'today' && pendingGoals > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold leading-none text-white">
-                  {pendingGoals}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 콘텐츠 영역 (스크롤 가능) */}
-      <div className="sidebar-content flex-1 min-h-0 overflow-y-auto bg-[var(--color-bg-base)]">
-        {activeTab === 'inbox' && (
-          <div role="tabpanel" id="sidebar-panel-inbox" aria-labelledby="sidebar-tab-inbox" className="h-full">
-            <InboxTab />
-          </div>
-        )}
-        {activeTab === 'completed' && (
-          <div role="tabpanel" id="sidebar-panel-completed" aria-labelledby="sidebar-tab-completed" className="h-full">
-            <CompletedTab />
-          </div>
-        )}
-        {activeTab === 'today' && (
-          <div role="tabpanel" id="sidebar-panel-today" aria-labelledby="sidebar-tab-today" className="h-full">
-            <GoalPanel onOpenModal={handleOpenGoalModal} />
+      {/* 헤더 - 진행 상황 포함 */}
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span className="text-base" aria-hidden="true">⚔️</span>
+          <h3
+            className="text-xs font-bold text-[var(--color-text)]"
+            style={{ fontFamily: "'Noto Sans KR', sans-serif", fontWeight: 900 }}
+          >
+            전투
+          </h3>
+        </div>
+        
+        {/* 진행 인디케이터 */}
+        {totalBosses > 0 && (
+          <div className="flex items-center gap-1.5">
+            {/* 보스별 상태 점 */}
+            <div className="flex gap-1">
+              {dailyState?.bosses.map((boss, idx) => (
+                <div
+                  key={boss.bossId}
+                  className={`h-2 w-2 rounded-full transition-all ${
+                    boss.defeatedAt
+                      ? 'bg-green-500'
+                      : idx === dailyState.currentBossIndex
+                      ? 'bg-red-500 animate-pulse'
+                      : 'bg-gray-600'
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-xs font-bold text-[var(--color-text-secondary)]">
+              {defeatedCount}/{totalBosses}
+            </span>
           </div>
         )}
       </div>
 
-      <GoalModal isOpen={isGoalModalOpen} onClose={handleCloseGoalModal} goal={editingGoal} />
+      {/* 전투 사이드바 */}
+      <div className="flex-1 min-h-0 overflow-auto">
+        <BattleSidebar />
+      </div>
     </nav>
   );
 }

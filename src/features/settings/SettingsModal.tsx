@@ -37,6 +37,7 @@ import {
     LogsTab,
     GameplayTab,
     ScheduleTab,
+    BattleTab,
 } from './components/tabs';
 
 const modalOverlayClass =
@@ -74,7 +75,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
     } = useSettingsStore();
 
     const [saving, setSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'gemini' | 'firebase' | 'appearance' | 'logs' | 'dontdo' | 'shortcuts' | 'gameplay' | 'schedule'>('appearance');
+    const [activeTab, setActiveTab] = useState<'gemini' | 'firebase' | 'appearance' | 'logs' | 'dontdo' | 'shortcuts' | 'gameplay' | 'schedule' | 'battle'>('appearance');
     const [currentTheme, setCurrentTheme] = useState<string>(() => {
         // eslint-disable-next-line no-restricted-globals -- theme is an allowed exception per CLAUDE.md
         return localStorage.getItem('theme') || '';
@@ -275,6 +276,10 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                             <span className="text-lg">📅</span>
                             <span>스케줄</span>
                         </button>
+                        <button className={getTabButtonClass('battle')} onClick={() => setActiveTab('battle')}>
+                            <span className="text-lg">⚔️</span>
+                            <span>전투</span>
+                        </button>
                         <button className={getTabButtonClass('gemini')} onClick={() => setActiveTab('gemini')}>
                             <span className="text-lg">🤖</span>
                             <span>Gemini AI</span>
@@ -324,6 +329,9 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                                         localSettings={localSettings}
                                         setLocalSettings={setLocalSettings}
                                     />
+                                )}
+                                {activeTab === 'battle' && (
+                                    <BattleTab />
                                 )}
                                 {activeTab === 'gemini' && (
                                     <GeminiTab
