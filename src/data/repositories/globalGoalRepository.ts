@@ -25,37 +25,85 @@ import { generateId, getLocalDate } from '@/shared/lib/utils';
 /**
  * 전역 목표 목록 로드
  *
- * @returns {Promise<DailyGoal[]>} 목표 배열 (order 순으로 정렬)
+ * @description 목표를 로드한 후, 오늘 날짜 기준으로 진행률(plannedMinutes, completedMinutes)을
+ *              재계산하여 반환합니다. 이는 매일 자정 이후 또는 앱 재시작 시 이전 날짜의
+ *              진행률이 남아있는 버그를 방지합니다.
+ * @returns {Promise<DailyGoal[]>} 목표 배열 (order 순으로 정렬, 오늘 진행률 재계산됨)
  * @throws 없음
  * @sideEffects
  *   - IndexedDB에서 데이터 조회
  *   - Firebase 폴백 시 IndexedDB에 데이터 복원 (초기 로드 시에만)
+ *   - 오늘 기준 진행률 재계산 후 IndexedDB 업데이트
  */
 export async function loadGlobalGoals(): Promise<DailyGoal[]> {
   try {
     // 1. IndexedDB에서 조회
-    const loadedGoals = await db.globalGoals.orderBy('order').toArray();
+    let loadedGoals = await db.globalGoals.orderBy('order').toArray();
 
-    if (loadedGoals.length > 0) {
-      addSyncLog('dexie', 'load', `Loaded ${loadedGoals.length} global goals`);
-      return loadedGoals;
+    if (loadedGoals.length === 0) {
+      // 2. Firebase에서 조회 (IndexedDB가 비어있을 때만)
+      const firebaseGoals = await withFirebaseFetch(
+        () => fetchFromFirebase<DailyGoal[]>(globalGoalStrategy),
+        null
+      );
+
+      if (firebaseGoals && firebaseGoals.length > 0) {
+        // IndexedDB가 완전히 비어있을 때만 Firebase 데이터로 복원
+        await db.globalGoals.bulkPut(firebaseGoals);
+        addSyncLog('firebase', 'load', `Restored ${firebaseGoals.length} goals from Firebase`);
+        loadedGoals = firebaseGoals;
+      }
     }
 
-    // 2. Firebase에서 조회 (IndexedDB가 비어있을 때만)
-    const firebaseGoals = await withFirebaseFetch(
-      () => fetchFromFirebase<DailyGoal[]>(globalGoalStrategy),
-      null
+    if (loadedGoals.length === 0) {
+      return [];
+    }
+
+    addSyncLog('dexie', 'load', `Loaded ${loadedGoals.length} global goals`);
+
+    // 3. 오늘 기준 진행률 재계산 (핵심: 매일 초기화)
+    const today = getLocalDate();
+    const dailyData = await db.dailyData.get(today);
+
+    const recalculatedGoals = loadedGoals.map(goal => {
+      // 오늘 스케줄에 배치된 연결된 작업만 필터링 (timeBlock !== null)
+      const linkedTasks = dailyData?.tasks.filter(task => 
+        task.goalId === goal.id && task.timeBlock !== null
+      ) || [];
+
+      // 계획한 시간 = 스케줄에 배치된 연결된 할일의 adjustedDuration 합계
+      const plannedMinutes = linkedTasks.reduce((sum, task) => sum + task.adjustedDuration, 0);
+
+      // 달성한 시간 = 오늘 완료된 할일의 actualDuration (없으면 adjustedDuration) 합계
+      const completedMinutes = linkedTasks
+        .filter(task => {
+          if (!task.completed || !task.completedAt) return false;
+          return getLocalDate(new Date(task.completedAt)) === today;
+        })
+        .reduce((sum, task) => sum + (task.actualDuration || task.adjustedDuration), 0);
+
+      return {
+        ...goal,
+        plannedMinutes,
+        completedMinutes,
+      };
+    });
+
+    // 진행률이 변경된 목표만 업데이트 (성능 최적화)
+    const goalsToUpdate = recalculatedGoals.filter((goal, index) => 
+      goal.plannedMinutes !== loadedGoals[index].plannedMinutes ||
+      goal.completedMinutes !== loadedGoals[index].completedMinutes
     );
 
-    if (firebaseGoals && firebaseGoals.length > 0) {
-      // IndexedDB가 완전히 비어있을 때만 Firebase 데이터로 복원
-      await db.globalGoals.bulkPut(firebaseGoals);
-      addSyncLog('firebase', 'load', `Restored ${firebaseGoals.length} goals from Firebase`);
-      return firebaseGoals;
+    if (goalsToUpdate.length > 0) {
+      await db.globalGoals.bulkPut(goalsToUpdate.map(g => ({
+        ...g,
+        updatedAt: new Date().toISOString(),
+      })));
+      addSyncLog('dexie', 'save', `Recalculated progress for ${goalsToUpdate.length} goals`);
     }
 
-    // 3. 데이터가 없으면 빈 배열 반환
-    return [];
+    return recalculatedGoals;
   } catch (error) {
     console.error('Failed to load global goals:', error);
     addSyncLog('dexie', 'error', 'Failed to load global goals', undefined, error as Error);
