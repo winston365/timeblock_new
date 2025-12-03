@@ -61,7 +61,7 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_04',
-    name: '바위 골렘',
+    name: '헬만 기사',
     image: 'boss_04.png',
     difficulty: 'easy',
     defeatQuote: '「ガラガラガラ……」',
@@ -79,9 +79,9 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_05',
-    name: '마인 노스(공격)',
+    name: '마인 노스',
     image: 'boss_05.png',
-    difficulty: 'easy',
+    difficulty: 'normal',
     defeatQuote: '「ノスッ！？」',
     quotes: [
       '꿈인가? 아니면 현실인가... 뭐, 상관없나.',
@@ -111,9 +111,9 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_07',
-    name: '미네르바',
+    name: '마인 레이',
     image: 'boss_07.png',
-    difficulty: 'normal',
+    difficulty: 'hard',
     defeatQuote: '뼈만 남았지만... 왕의 위엄은 영원하다...',
     quotes: [
       '망자의 왕이 다스린다.',
@@ -127,7 +127,7 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_08',
-    name: '코린',
+    name: '적주 아키하',
     image: 'boss_08.png',
     difficulty: 'easy',
     defeatQuote: '우가가... 배고파서 힘이 안 났어...',
@@ -159,9 +159,9 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_10',
-    name: '노스',
+    name: '타입문',
     image: 'boss_10.png',
-    difficulty: 'normal',
+    difficulty: 'epic',
     defeatQuote: '재에서... 다시 태어나리라...',
     quotes: [
       '불꽃은 영원을 노래한다.',
@@ -175,7 +175,7 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_11',
-    name: 'Mineva Margaret',
+    name: '시엘',
     image: 'boss_11.png',
     difficulty: 'normal',
     defeatQuote: '「見事だ……」',
@@ -207,9 +207,9 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_13',
-    name: '도쿠간류 마사무네',
+    name: '용사 아리오스 테오만',
     image: 'boss_13.png',
-    difficulty: 'hard',
+    difficulty: 'epic',
     defeatQuote: '「我が野望が……ここで潰えるか……」',
     quotes: [
       '「天下布武！ 我が野望の糧となれ！」',
@@ -277,7 +277,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_17',
     name: '마스조웨',
     image: 'boss_17.png',
-    difficulty: 'hard',
+    difficulty: 'normal',
     defeatQuote: '내 눈이... 안 보여...',
     quotes: [
       '눈이 모든 것을 꿰뚫는다.',
@@ -293,7 +293,7 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_18',
-    name: '여신 ALICE',
+    name: '흑화 세이버',
     image: 'boss_18.png',
     difficulty: 'hard',
     defeatQuote: '「致命的なエラーが発生しました。」',
@@ -359,7 +359,7 @@ export const BOSSES: Boss[] = [
     id: 'boss_22',
     name: '가르티아',
     image: 'boss_22.png',
-    difficulty: 'hard',
+    difficulty: 'normal',
     defeatQuote: '「もう……食べられないよぉ……」',
     quotes: [
       '「いただきまぁ～す！」',
@@ -375,9 +375,9 @@ export const BOSSES: Boss[] = [
   },
   {
     id: 'boss_23',
-    name: '도쿠간류 마사무네(강화형)',
+    name: '도쿠간류 마사무네',
     image: 'boss_23.png',
-    difficulty: 'epic',
+    difficulty: 'hard',
     defeatQuote: '「我が野望が……ここで潰えるか……」',
     quotes: [
       '「天下布武！ 我が野望の糧となれ！」',
