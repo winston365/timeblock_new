@@ -768,13 +768,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
   getRemainingBossCount: (difficulty: BossDifficulty) => {
     const { dailyState } = get();
-    if (!dailyState) return 0;
+    if (!dailyState?.remainingBosses) return 0;
     return dailyState.remainingBosses[difficulty]?.length ?? 0;
   },
 
   getTotalRemainingBossCount: () => {
     const { dailyState } = get();
-    if (!dailyState) return 0;
+    if (!dailyState?.remainingBosses) return 0;
     return Object.values(dailyState.remainingBosses).reduce((sum, arr) => sum + arr.length, 0);
   },
 }));
