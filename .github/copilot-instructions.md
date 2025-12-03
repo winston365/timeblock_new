@@ -2,14 +2,13 @@
 
 ## Architecture Overview
 - **Electron + React + TypeScript**: Renderer in `src/**`, desktop shell in `electron/main` + `electron/preload`. Entry: `src/main.tsx` → `AppShell`.
-- **Feature-first structure**: `src/features/*` (schedule, waifu, gemini, ignition, etc.) with co-located UI, hooks, utils. Cross-cutting code in `src/shared/**`.
+- **Feature-first structure**: `src/features/*` (schedule, waifu, gemini, ignition, battle, etc.) with co-located UI, hooks, utils. Cross-cutting code in `src/shared/**`.
 - **State flow**: Zustand stores (`src/shared/stores/*`) → Repository layer (`src/data/repositories/*`) → Dexie (IndexedDB) → Firebase (async sync).
 
 ## Critical Policies
 
 ### ⛔ localStorage 금지
-```typescript```typescript
-
+```typescript
 // ❌ 금지 (개발 환경에서 경고 발생)
 localStorage.setItem('key', value);
 
@@ -27,6 +26,18 @@ const cooldown = settings?.ignitionCooldownMinutes ?? 5;
 // ✅ 올바른 방법 - 중앙 집중 defaults
 import { SETTING_DEFAULTS, IGNITION_DEFAULTS } from '@/shared/constants/defaults';
 const cooldown = settings?.ignitionCooldownMinutes ?? SETTING_DEFAULTS.ignitionCooldownMinutes;
+```
+- 모든 기본값은 `src/shared/constants/defaults.ts`에서 관리
+
+### ⛔ Optional Chaining 필수
+```typescript
+// ❌ 런타임 에러 위험 - state가 있어도 중첩 객체가 undefined일 수 있음
+if (!dailyState) return 0;
+return dailyState.remainingBosses[difficulty]?.length;
+
+// ✅ 안전한 방법 - 중첩 객체도 체크
+if (!dailyState?.remainingBosses) return 0;
+return dailyState.remainingBosses[difficulty]?.length ?? 0;
 ```
 
 ## Key Patterns
@@ -68,6 +79,14 @@ eventBus.emit('task:completed', { taskId, xpEarned }, { source: 'dailyDataStore'
 - 명명: `[domain]:[action]` (예: `task:completed`, `block:locked`)
 - `useEffect` cleanup에서 반드시 구독 해제
 
+### Zustand Store 패턴
+```typescript
+// useMemo에서 store getter 함수 사용 시 - 의존성에 상태도 포함
+const remainingCounts = useMemo(() => ({
+  easy: getRemainingBossCount('easy'),
+}), [getRemainingBossCount, dailyState]); // dailyState도 의존성에 포함
+```
+
 ## Development Workflow
 ```bash
 npm run electron:dev    # 권장 개발 루프 (풀 Electron 앱)
@@ -81,14 +100,17 @@ npm run dist:win        # Windows 배포 빌드
 - **Imports**: `@/` alias 사용 (예: `@/shared/stores`)
 - **Naming**: Components = PascalCase, hooks/services = camelCase
 - **Large modules**: 폴더로 분해 (예: `dailyData/` → coreOperations, taskOperations 등)
+- **Assets**: 보스 이미지는 `public/assets/bosses/`, 와이푸는 `public/assets/waifu/poses/{tier}/`
 
 ## Integration Points
 | 기능 | 위치 | 비고 |
 |------|------|------|
 | Gemini AI | `src/shared/services/ai/gemini/` | `personaUtils`로 컨텍스트 빌드 후 호출 |
 | Waifu 이미지 | `public/assets/waifu/poses/{tier}/` | hostile/wary/indifferent/affectionate/loving |
+| Boss 이미지 | `public/assets/bosses/` | 세로 직사각형 이미지 (3:4 비율 권장) |
 | Quick Add | `?mode=quickadd` | `Ctrl+Shift+Space`, `inboxRepository` 사용 |
 | Template 자동생성 | `functions/index.js` | 00:00 KST 서버 실행, 클라이언트 생성 금지 |
+| Battle System | `src/features/battle/` | stores/battleStore.ts, 23종 보스 풀 시스템 |
 
 ## Debugging
 - **Firebase Sync**: SyncLog 모달 (`src/features/settings/SyncLogModal.tsx`)
@@ -101,3 +123,4 @@ npm run dist:win        # Windows 배포 빌드
 - Task Service: `src/shared/services/task/README.md`
 - Task Completion: `src/shared/services/gameplay/taskCompletion/README.md`
 - Dexie Schema: `src/data/db/README.md`
+- Defaults: `src/shared/constants/defaults.ts`

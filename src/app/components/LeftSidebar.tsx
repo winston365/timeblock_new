@@ -24,7 +24,6 @@ export default function LeftSidebar({ collapsed = false }: LeftSidebarProps) {
   const dailyState = useBattleStore(state => state.dailyState);
   
   const defeatedCount = dailyState?.totalDefeated ?? 0;
-  const totalBosses = dailyState?.bosses.length ?? 0;
 
   return (
     <nav
@@ -45,28 +44,11 @@ export default function LeftSidebar({ collapsed = false }: LeftSidebarProps) {
           </h3>
         </div>
         
-        {/* 진행 인디케이터 */}
-        {totalBosses > 0 && (
-          <div className="flex items-center gap-1.5">
-            {/* 보스별 상태 점 */}
-            <div className="flex gap-1">
-              {dailyState?.bosses.map((boss, idx) => (
-                <div
-                  key={boss.bossId}
-                  className={`h-2 w-2 rounded-full transition-all ${
-                    boss.defeatedAt
-                      ? 'bg-green-500'
-                      : idx === dailyState.currentBossIndex
-                      ? 'bg-red-500 animate-pulse'
-                      : 'bg-gray-600'
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="text-xs font-bold text-[var(--color-text-secondary)]">
-              {defeatedCount}/{totalBosses}
-            </span>
-          </div>
+        {/* 처치 수 표시 */}
+        {defeatedCount > 0 && (
+          <span className="text-xs font-bold text-green-500">
+            {defeatedCount}마리 처치
+          </span>
         )}
       </div>
 

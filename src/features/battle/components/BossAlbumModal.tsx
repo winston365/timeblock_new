@@ -17,6 +17,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BOSSES } from '../data/bossData';
 import { useBattleStore } from '../stores/battleStore';
+import { getBossImageSrc } from '../utils/assets';
 import type { Boss, BossDifficulty } from '@/shared/types/domain';
 
 interface BossAlbumModalProps {
@@ -54,7 +55,7 @@ interface BossCardProps {
 }
 
 function BossCard({ boss, isDefeatedToday, isDefeatedEver, onClick }: BossCardProps) {
-  const imagePath = `/assets/bosses/${boss.image}`;
+  const imagePath = getBossImageSrc(boss.image);
   const colors = DIFFICULTY_COLORS[boss.difficulty];
 
   return (
@@ -133,7 +134,7 @@ interface BossDetailOverlayProps {
 }
 
 function BossDetailOverlay({ boss, onClose }: BossDetailOverlayProps) {
-  const imagePath = `/assets/bosses/${boss.image}`;
+  const imagePath = getBossImageSrc(boss.image);
   const colors = DIFFICULTY_COLORS[boss.difficulty];
 
   return (

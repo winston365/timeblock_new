@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast';
 import { useBattleStore, getBossById } from '../stores/battleStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { playAttackSound, playBossDefeatSound } from '../services/battleSoundService';
+import { getBossImageSrc } from '../utils/assets';
 import type { BattleMission, BossDifficulty } from '@/shared/types/domain';
 import { DifficultySelectButtons } from './BattleSidebar';
 
@@ -288,7 +289,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
               {/* 보스 세로 이미지 */}
               <div className="relative flex-1 min-h-[300px]">
                 <img
-                  src={`/assets/bosses/${currentBoss.image}`}
+                  src={getBossImageSrc(currentBoss.image)}
                   alt={currentBoss.name}
                   className="absolute inset-0 w-full h-full object-cover object-top"
                 />
