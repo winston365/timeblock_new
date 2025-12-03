@@ -25,7 +25,7 @@ import {
   addToDefeatedBossHistory,
   loadDefeatedBossHistory,
 } from '@/data/repositories/battleRepository';
-import { getBossById, groupBossesByDifficulty } from '../data/bossData';
+import { BOSSES, getBossById, groupBossesByDifficulty } from '../data/bossData';
 import { getLocalDate } from '@/shared/lib/utils';
 import { getBossXpByDifficulty } from '../utils/xp';
 
@@ -59,6 +59,76 @@ function computeDailyStateForToday_core(dailyState: DailyBattleState | null, tod
   }
 
   return { dailyStateForToday: null, shouldStartNewDay: true };
+}
+
+/**
+ * legacy 데이터에 remainingBosses가 비어 있거나 누락된 경우 풀 시스템을 복원
+ */
+function normalizeDailyBattleState_core(dailyState: DailyBattleState): { normalized: DailyBattleState; changed: boolean } {
+  let changed = false;
+
+  const bosses = Array.isArray(dailyState.bosses) ? dailyState.bosses : [];
+  if (!Array.isArray(dailyState.bosses)) {
+    changed = true;
+  }
+
+  const defeatedBossIds = dailyState.defeatedBossIds ?? [];
+  if (!dailyState.defeatedBossIds) {
+    changed = true;
+  }
+
+  const completedMissionIds = dailyState.completedMissionIds ?? [];
+  if (!dailyState.completedMissionIds) {
+    changed = true;
+  }
+
+  const seenBossIds = new Set([
+    ...defeatedBossIds,
+    ...bosses.map(b => b.bossId),
+  ]);
+
+  const existingRemaining = dailyState.remainingBosses;
+  const existingRemainingTotal = existingRemaining
+    ? Object.values(existingRemaining).reduce((sum, arr) => sum + (arr?.length ?? 0), 0)
+    : 0;
+
+  const totalBosses = BOSSES.length;
+  const shouldRebuildPool = (!existingRemaining || existingRemainingTotal === 0) && seenBossIds.size < totalBosses;
+
+  let remainingBosses: Record<BossDifficulty, string[]> =
+    existingRemaining ?? { easy: [], normal: [], hard: [], epic: [] };
+  if (!existingRemaining) {
+    changed = true;
+  }
+
+  if (shouldRebuildPool) {
+    const rebuilt = groupBossesByDifficulty();
+    (Object.keys(rebuilt) as BossDifficulty[]).forEach(diff => {
+      rebuilt[diff] = rebuilt[diff].filter(id => !seenBossIds.has(id));
+    });
+    remainingBosses = rebuilt;
+    changed = true;
+  }
+
+  const maxIndex = Math.max(bosses.length - 1, 0);
+  const currentBossIndex = typeof dailyState.currentBossIndex === 'number'
+    ? Math.min(dailyState.currentBossIndex, maxIndex)
+    : 0;
+  if (currentBossIndex !== dailyState.currentBossIndex) {
+    changed = true;
+  }
+
+  return {
+    normalized: {
+      ...dailyState,
+      currentBossIndex,
+      bosses,
+      defeatedBossIds,
+      completedMissionIds,
+      remainingBosses,
+    },
+    changed,
+  };
 }
 
 function computeNewMission_core(params: {
@@ -391,7 +461,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const { dailyStateForToday, shouldStartNewDay } = computeDailyStateForToday_core(loadedDailyState, today);
 
       if (dailyStateForToday) {
-        set({ dailyState: dailyStateForToday, loading: false });
+        const { normalized, changed } = normalizeDailyBattleState_core(dailyStateForToday);
+        if (changed) {
+          await saveDailyBattleState(normalized);
+        }
+        set({ dailyState: normalized, loading: false });
         return;
       }
 
