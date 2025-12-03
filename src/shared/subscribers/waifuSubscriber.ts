@@ -36,7 +36,7 @@ export function initWaifuSubscriber(): void {
             waifuStore.show('완벽해! Perfect Block 달성! 🎉', {
                 audioPath: '/audio/하.mp3', // TODO: 적절한 축하 오디오로 교체 필요
                 expression: {
-                    imagePath: '/assets/waifu/poses/loving/hyeeun_happy.png',
+                    imagePath: '/assets/waifu/poses/loving/hyeeun_happy.webp',
                     durationMs: 3000,
                 },
             });
@@ -50,7 +50,7 @@ export function initWaifuSubscriber(): void {
             waifuStore.show(celebrationMessage, {
                 audioPath: '/audio/하.mp3', // TODO: 적절한 축하 오디오로 교체 필요
                 expression: {
-                    imagePath: '/assets/waifu/poses/loving/hyeeun_smiling.png', // 긍정적인 표정 사용
+                    imagePath: '/assets/waifu/poses/loving/hyeeun_winking.webp', // 긍정적인 표정 사용
                     durationMs: 3000,
                 },
             });

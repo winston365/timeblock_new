@@ -88,10 +88,6 @@ export default function ShopPanel({ onPurchaseSuccess }: ShopPanelProps) {
       return;
     }
 
-    if (!confirm(`${item.name}을(를) ${item.price} XP로 구매하시겠습니까?`)) {
-      return;
-    }
-
     setIsPurchasing(true);
 
     try {

@@ -6,11 +6,11 @@
 
 ```
 public/assets/waifu/
-├── default.png          # 기본 와이푸 이미지
+├── default.webp          # 기본 와이푸 이미지
 ├── poses/              # 다양한 포즈 이미지
-│   ├── happy.png
-│   ├── sad.png
-│   ├── excited.png
+│   ├── happy.webp
+│   ├── sad.webp
+│   ├── excited.webp
 │   └── ...
 └── README.md
 ```
@@ -27,13 +27,13 @@ public/assets/waifu/
 2. WaifuPanel 컴포넌트에서 이미지를 사용할 때:
 
 ```tsx
-<WaifuPanel imagePath="/assets/waifu/default.png" />
+<WaifuPanel imagePath="/assets/waifu/default.webp" />
 ```
 
 또는
 
 ```tsx
-<WaifuPanel imagePath="/assets/waifu/poses/happy.png" />
+<WaifuPanel imagePath="/assets/waifu/poses/happy.webp" />
 ```
 
 ## 예시
@@ -43,7 +43,7 @@ public/assets/waifu/
 ```tsx
 // AppShell.tsx 또는 관련 컴포넌트에서
 <aside className="waifu-panel-container">
-  <WaifuPanel imagePath="/assets/waifu/default.png" />
+  <WaifuPanel imagePath="/assets/waifu/default.webp" />
 </aside>
 ```
 

@@ -48,7 +48,7 @@ interface UseFocusMusicOptions {
  */
 export function useFocusMusic(options: UseFocusMusicOptions = {}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [selectedMusicFolder, setSelectedMusicFolder] = useState<string>(MUSIC_FOLDERS[0].id);
+  const [selectedMusicFolder, setSelectedMusicFolderState] = useState<string>(MUSIC_FOLDERS[0].id);
   const [musicTracks, setMusicTracks] = useState<MusicTrack[]>([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(null);
   const [isMusicLoading, setIsMusicLoading] = useState(false);
@@ -58,6 +58,7 @@ export function useFocusMusic(options: UseFocusMusicOptions = {}) {
 
   const musicVolumeRef = useRef(musicVolume);
   const loopModeRef = useRef<LoopMode>(loopMode);
+  const shouldAutoplayRef = useRef(false);
 
   /**
    * 음악 재생 정지
@@ -225,6 +226,13 @@ export function useFocusMusic(options: UseFocusMusicOptions = {}) {
     }
   }, [musicVolume]);
 
+  const setSelectedMusicFolder = useCallback((folderId: string, options?: { autoplay?: boolean }) => {
+    if (options?.autoplay) {
+      shouldAutoplayRef.current = true;
+    }
+    setSelectedMusicFolderState(folderId);
+  }, []);
+
   // Fetch tracks when folder changes
   useEffect(() => {
     stopMusic();
@@ -237,6 +245,15 @@ export function useFocusMusic(options: UseFocusMusicOptions = {}) {
       stopMusic();
     };
   }, [stopMusic]);
+
+  // Autoplay after folder toggle when requested
+  useEffect(() => {
+    if (!shouldAutoplayRef.current) return;
+    if (!musicTracks.length) return;
+
+    shouldAutoplayRef.current = false;
+    handleNextRandom(false);
+  }, [musicTracks, handleNextRandom]);
 
   return {
     // State

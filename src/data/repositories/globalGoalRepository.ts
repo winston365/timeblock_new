@@ -16,7 +16,7 @@ import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { globalGoalStrategy } from '@/shared/services/sync/firebase/strategies';
-import { generateId } from '@/shared/lib/utils';
+import { generateId, getLocalDate } from '@/shared/lib/utils';
 
 // ============================================================================
 // Global Goal CRUD
@@ -211,9 +211,23 @@ export async function deleteGlobalGoal(goalId: string): Promise<void> {
  * @returns {Promise<DailyGoal>} 재계산된 목표
  */
 export async function recalculateGlobalGoalProgress(goalId: string, date: string): Promise<DailyGoal> {
-  const dailyData = await db.dailyData.get(date);
+  const today = getLocalDate();
+  const existingGoal = await db.globalGoals.get(goalId);
+
+  if (!existingGoal) {
+    throw new Error(`Global goal not found: ${goalId}`);
+  }
+
+  // 목표 진행도는 "오늘" 작업만 기준으로 계산한다.
+  if (date !== today) {
+    return existingGoal;
+  }
+
+  const dailyData = await db.dailyData.get(today);
+
+  // 오늘 데이터가 없으면 0으로 초기화
   if (!dailyData) {
-    throw new Error(`DailyData not found for date: ${date}`);
+    return updateGlobalGoal(goalId, { plannedMinutes: 0, completedMinutes: 0 });
   }
 
   // 해당 날짜의 연결된 작업들 (ScheduleView에 배치된 작업만 = timeBlock이 있는 작업만)
@@ -226,7 +240,10 @@ export async function recalculateGlobalGoalProgress(goalId: string, date: string
 
   // 달성한 시간 = 완료된 할일의 actualDuration (없으면 adjustedDuration) 합계
   const completedMinutes = linkedTasks
-    .filter(task => task.completed)
+    .filter(task => {
+      if (!task.completed || !task.completedAt) return false;
+      return getLocalDate(new Date(task.completedAt)) === today;
+    })
     .reduce((sum, task) => sum + (task.actualDuration || task.adjustedDuration), 0);
 
   return updateGlobalGoal(goalId, { plannedMinutes, completedMinutes });

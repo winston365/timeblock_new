@@ -96,12 +96,21 @@ export async function getRecentDailyData(days: number): Promise<Array<DailyData 
  */
 export async function getRecentCompletedTasks(days: number = 7): Promise<Task[]> {
   try {
-    const recentData = await getRecentDailyData(days);
     const allCompletedTasks: Task[] = [];
 
-    // 모든 날짜의 완료된 작업 수집 (dailyData에서)
-    recentData.forEach(dailyDataWithDate => {
-      const completedTasks = dailyDataWithDate.tasks.filter(task => task.completed);
+    // 최근 N일 dailyData에서 완료 작업 수집 (IndexedDB만 조회, 네트워크 호출 없음)
+    const targetDates: string[] = [];
+    const today = new Date();
+    for (let i = 0; i < days; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      targetDates.push(getLocalDate(date));
+    }
+
+    const recentDailyRecords = await db.dailyData.bulkGet(targetDates);
+    recentDailyRecords.forEach(record => {
+      if (!record || !Array.isArray(record.tasks)) return;
+      const completedTasks = record.tasks.filter(task => task.completed);
       allCompletedTasks.push(...completedTasks);
     });
 

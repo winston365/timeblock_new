@@ -1,20 +1,20 @@
 /**
  * 보스 메타데이터
  *
- * @role 23마리 보스의 이름, 이미지, 난이도, 처치 대사 정의
+ * @role 31마리 보스의 이름, 이미지, 난이도, 처치 대사 정의
  * @description 에셋 파일은 public/assets/bosses/ 에 위치
  */
 
 import type { Boss } from '@/shared/types/domain';
 
 /**
- * 전체 보스 목록 (23마리)
+ * 전체 보스 목록 (31마리)
  */
 export const BOSSES: Boss[] = [
   {
     id: 'boss_01',
     name: '릭 아디슨',
-    image: 'boss_01.png',
+    image: 'boss_01.webp',
     difficulty: 'hard',
     defeatQuote: '「私の力が……及ばなかったか……」',
     quotes: [
@@ -30,7 +30,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_02',
     name: '악마 페리스',
-    image: 'boss_02.png',
+    image: 'boss_02.webp',
     difficulty: 'easy',
     defeatQuote: '「なんで私がこんな目にぃぃ！」',
     quotes: [
@@ -46,7 +46,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_03',
     name: '마소우 시즈카',
-    image: 'boss_03.png',
+    image: 'boss_03.webp',
     difficulty: 'normal',
     defeatQuote: '「私の魔法が……通じないなんて……」',
     quotes: [
@@ -62,7 +62,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_04',
     name: '헬만 기사',
-    image: 'boss_04.png',
+    image: 'boss_04.webp',
     difficulty: 'easy',
     defeatQuote: '「ガラガラガラ……」',
     quotes: [
@@ -80,7 +80,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_05',
     name: '마인 노스',
-    image: 'boss_05.png',
+    image: 'boss_05.webp',
     difficulty: 'normal',
     defeatQuote: '「ノスッ！？」',
     quotes: [
@@ -96,7 +96,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_06',
     name: '하니킹',
-    image: 'boss_06.png',
+    image: 'boss_06.webp',
     difficulty: 'epic',
     defeatQuote: '「馬鹿なハニ！ 余が負けるとは……」',
     quotes: [
@@ -112,7 +112,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_07',
     name: '마인 레이',
-    image: 'boss_07.png',
+    image: 'boss_07.webp',
     difficulty: 'hard',
     defeatQuote: '뼈만 남았지만... 왕의 위엄은 영원하다...',
     quotes: [
@@ -128,7 +128,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_08',
     name: '적주 아키하',
-    image: 'boss_08.png',
+    image: 'boss_08.webp',
     difficulty: 'easy',
     defeatQuote: '우가가... 배고파서 힘이 안 났어...',
     quotes: [
@@ -144,7 +144,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_09',
     name: '마인 레드아이',
-    image: 'boss_09.png',
+    image: 'boss_09.webp',
     difficulty: 'hard',
     defeatQuote: '「俺様が……死ぬだとぉぉ！？」',
     quotes: [
@@ -160,7 +160,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_10',
     name: '타입문',
-    image: 'boss_10.png',
+    image: 'boss_10.webp',
     difficulty: 'epic',
     defeatQuote: '재에서... 다시 태어나리라...',
     quotes: [
@@ -176,7 +176,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_11',
     name: '시엘',
-    image: 'boss_11.png',
+    image: 'boss_11.webp',
     difficulty: 'normal',
     defeatQuote: '「見事だ……」',
     quotes: [
@@ -192,7 +192,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_12',
     name: '리틀 프린세스',
-    image: 'boss_12.png',
+    image: 'boss_12.webp',
     difficulty: 'epic',
     defeatQuote: '「うえ～ん！ いじめられたぁ～！」',
     quotes: [
@@ -208,7 +208,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_13',
     name: '용사 아리오스 테오만',
-    image: 'boss_13.png',
+    image: 'boss_13.webp',
     difficulty: 'epic',
     defeatQuote: '「我が野望が……ここで潰えるか……」',
     quotes: [
@@ -226,7 +226,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_14',
     name: '자비엘',
-    image: 'boss_14.png',
+    image: 'boss_14.webp',
     difficulty: 'epic',
     defeatQuote: '「人間風情に……この我が……！」',
     quotes: [
@@ -260,7 +260,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_16',
     name: '파스텔 카라',
-    image: 'boss_16.png',
+    image: 'boss_16.webp',
     difficulty: 'hard',
     defeatQuote: '「男なんかに……屈するなんて……」',
     quotes: [
@@ -276,7 +276,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_17',
     name: '마스조웨',
-    image: 'boss_17.png',
+    image: 'boss_17.webp',
     difficulty: 'normal',
     defeatQuote: '내 눈이... 안 보여...',
     quotes: [
@@ -294,7 +294,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_18',
     name: '흑화 세이버',
-    image: 'boss_18.png',
+    image: 'boss_18.webp',
     difficulty: 'hard',
     defeatQuote: '「致命的なエラーが発生しました。」',
     quotes: [
@@ -310,7 +310,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_19',
     name: '카라',
-    image: 'boss_19.png',
+    image: 'boss_19.webp',
     difficulty: 'normal',
     defeatQuote: '「森が……汚れちゃう……」',
     quotes: [
@@ -326,7 +326,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_20',
     name: '여신 엘리스(epic)',
-    image: 'boss_20.png',
+    image: 'boss_20.webp',
     difficulty: 'epic',
     defeatQuote: '「世界の理（ことわり）には逆らえません。」',
     quotes: [
@@ -342,7 +342,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_21',
     name: '마왕 가이',
-    image: 'boss_21.png',
+    image: 'boss_21.webp',
     difficulty: 'epic',
     defeatQuote: 'やっと……終わるのか……この狂気が……',
     quotes: [
@@ -358,7 +358,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_22',
     name: '가르티아',
-    image: 'boss_22.png',
+    image: 'boss_22.webp',
     difficulty: 'normal',
     defeatQuote: '「もう……食べられないよぉ……」',
     quotes: [
@@ -376,7 +376,7 @@ export const BOSSES: Boss[] = [
   {
     id: 'boss_23',
     name: '도쿠간류 마사무네',
-    image: 'boss_23.png',
+    image: 'boss_23.webp',
     difficulty: 'hard',
     defeatQuote: '「我が野望が……ここで潰えるか……」',
     quotes: [
@@ -387,6 +387,134 @@ export const BOSSES: Boss[] = [
     defeatQuotes: [
       '「我が野望が……ここで潰えるか……」',
       '「バカな……この独眼竜が……」',
+    ],
+  },
+  {
+    id: 'boss_24',
+    name: '히소카',
+    image: 'boss_24.webp',
+    difficulty: 'normal',
+    defeatQuote: '이 쇼는 여기까지인가...',
+    quotes: [
+      '카드를 뽑아볼까?',
+      '흥미로운 상대군.',
+      '쇼타임은 이제 시작이야.',
+    ],
+    defeatQuotes: [
+      '이 쇼는 여기까지인가...',
+      '다음 판에서 보자고.',
+    ],
+  },
+  {
+    id: 'boss_25',
+    name: '간츠',
+    image: 'boss_25.webp',
+    difficulty: 'epic',
+    defeatQuote: '규칙은 깨졌다... 끝내라.',
+    quotes: [
+      '새 미션을 시작한다.',
+      '넌 선택받았다, 싸워라.',
+      '포기하지 마, 아직 끝나지 않았다.',
+    ],
+    defeatQuotes: [
+      '규칙은 깨졌다... 끝내라.',
+      '미션 실패… 다음을 기약한다.',
+    ],
+  },
+  {
+    id: 'boss_26',
+    name: '를르슈',
+    image: 'boss_26.webp',
+    difficulty: 'hard',
+    defeatQuote: '제로의 계획이… 무너졌다.',
+    quotes: [
+      '세계는 내가 재정의한다.',
+      '나의 명령에 복종하라!',
+      '승리는 계산된 결과다.',
+    ],
+    defeatQuotes: [
+      '제로의 계획이… 무너졌다.',
+      '이 패배도 언젠가 활용하겠어.',
+    ],
+  },
+  {
+    id: 'boss_27',
+    name: '하니',
+    image: 'boss_27.webp',
+    difficulty: 'easy',
+    defeatQuote: '하니… 힘이 다했어.',
+    quotes: [
+      '하니는 강하다!',
+      '꿀을 지켜야 해!',
+      '작아 보여도 무섭다고!',
+    ],
+    defeatQuotes: [
+      '하니… 힘이 다했어.',
+      '다음엔 더 강해질 거야… 하니!',
+    ],
+  },
+  {
+    id: 'boss_28',
+    name: '카미라',
+    image: 'boss_28.webp',
+    difficulty: 'hard',
+    defeatQuote: '여왕의 날개가… 꺾였군.',
+    quotes: [
+      '내 사냥감을 건드린 건 네가 처음이야.',
+      '고요히 무릎 꿇어라.',
+      '날개를 펴면 모두 침묵한다.',
+    ],
+    defeatQuotes: [
+      '여왕의 날개가… 꺾였군.',
+      '이屈辱을 기억하겠다.',
+    ],
+  },
+  {
+    id: 'boss_29',
+    name: '한니발',
+    image: 'boss_29.webp',
+    difficulty: 'epic',
+    defeatQuote: '전략이… 무너졌다.',
+    quotes: [
+      '계획 없는 승리는 없다.',
+      '네 수는 이미 읽었다.',
+      '뒤를 조심해라, 함정은 이미 깔렸다.',
+    ],
+    defeatQuotes: [
+      '전략이… 무너졌다.',
+      '전장은 다시 돌아오리라.',
+    ],
+  },
+  {
+    id: 'boss_30',
+    name: '다크란스',
+    image: 'boss_30.webp',
+    difficulty: 'hard',
+    defeatQuote: '어둠조차… 빛에 삼켜지는군.',
+    quotes: [
+      '어둠이 네 숨을 죈다.',
+      '빛은 금방 사라질 것이다.',
+      '절망에 잠겨라.',
+    ],
+    defeatQuotes: [
+      '어둠조차… 빛에 삼켜지는군.',
+      '이 빚은 반드시 갚겠다.',
+    ],
+  },
+  {
+    id: 'boss_31',
+    name: '크라피카',
+    image: 'boss_31.webp',
+    difficulty: 'normal',
+    defeatQuote: '체인의 끝은 여기까지인가…',
+    quotes: [
+      '사슬은 거짓을 묶는다.',
+      '차분히, 계획대로 움직인다.',
+      '복수는 아직 끝나지 않았다.',
+    ],
+    defeatQuotes: [
+      '체인의 끝은 여기까지인가…',
+      '언젠가 다시 만날 것이다.',
     ],
   },
 ];
@@ -443,8 +571,8 @@ export function groupBossesByDifficulty(): Record<Boss['difficulty'], string[]> 
  * 난이도별 보스 수 조회
  */
 export const BOSS_COUNT_BY_DIFFICULTY = {
-  easy: BOSSES.filter(b => b.difficulty === 'easy').length,    // 2
-  normal: BOSSES.filter(b => b.difficulty === 'normal').length, // 7
-  hard: BOSSES.filter(b => b.difficulty === 'hard').length,    // 7
-  epic: BOSSES.filter(b => b.difficulty === 'epic').length,    // 7
+  easy: BOSSES.filter(b => b.difficulty === 'easy').length,    // 4
+  normal: BOSSES.filter(b => b.difficulty === 'normal').length, // 8
+  hard: BOSSES.filter(b => b.difficulty === 'hard').length,    // 10
+  epic: BOSSES.filter(b => b.difficulty === 'epic').length,    // 9
 } as const;

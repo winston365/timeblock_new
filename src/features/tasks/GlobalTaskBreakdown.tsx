@@ -91,7 +91,7 @@ export default function GlobalTaskBreakdown() {
             // 4. Show waifu encouragement message
             showWaifu('큰 작업도 작게 나누면 할 수 있어요! 화이팅! 💪', {
                 expression: {
-                    imagePath: '/waifu/expressions/happy.png',
+                    imagePath: '/assets/waifu/poses/loving/hyeeun_happy.webp',
                     durationMs: 3000
                 }
             });

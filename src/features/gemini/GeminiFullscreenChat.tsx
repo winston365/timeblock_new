@@ -26,8 +26,7 @@ import {
   loadTodayChatHistory,
   saveChatHistory,
 } from '@/data/repositories/chatHistoryRepository';
-import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier } from '@/features/waifu/waifuImageUtils';
-import baseImage from '@/features/waifu/base.png';
+import { getWaifuImagePathWithFallback, getRandomImageNumber, getAffectionTier, DEFAULT_IMAGE } from '@/features/waifu/waifuImageUtils';
 import type { GeminiChatMessage } from '@/shared/types/domain';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -86,9 +85,9 @@ export default function GeminiFullscreenChat({ isOpen, onClose }: GeminiFullscre
   useEffect(() => {
     const loadWaifuImage = async () => {
       if (waifuState && settings) {
-        // 일반 모드일 경우 base.png 사용
+        // 일반 모드일 경우 기본 와이푸 이미지 사용
         if (settings.waifuMode === 'normal') {
-          setWaifuImagePath(baseImage);
+          setWaifuImagePath(DEFAULT_IMAGE);
         } else {
           // 특성 모드일 경우 호감도에 따라 랜덤 이미지 선택
           const tier = getAffectionTier(waifuState.affection);

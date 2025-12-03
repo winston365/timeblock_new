@@ -171,6 +171,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
   addTask: async (task: Task) => {
     const { currentDate, dailyData, loadData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
+    const today = getLocalDate();
 
     // ✅ Optimistic Update
     const optimisticTasks = addTaskToArray(dailyData.tasks, task);
@@ -183,8 +184,8 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       scheduleEmojiSuggestion(task.id, task.text);
 
       // ✅ 목표 연결 시 진행률 재계산
-      if (task.goalId) {
-        await useGoalStore.getState().recalculateProgress(task.goalId, currentDate);
+      if (task.goalId && task.timeBlock !== null && currentDate === today) {
+        await useGoalStore.getState().recalculateProgress(task.goalId, today);
         await loadData(currentDate, true);
       }
     } catch (err) {
@@ -202,6 +203,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     const { currentDate, dailyData, loadData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
     const { skipBehaviorTracking = false, skipEmoji = false, ignoreLock = false } = options || {};
+    const today = getLocalDate();
 
     // 🔧 Firebase undefined 처리 & hourSlot 자동 계산
     const sanitizedUpdates = sanitizeTaskUpdates(updates);
@@ -278,9 +280,14 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       if (originalTask?.goalId) affectedGoalIds.add(originalTask.goalId);
       if (sanitizedUpdates.goalId) affectedGoalIds.add(sanitizedUpdates.goalId);
 
-      if (affectedGoalIds.size > 0) {
+      const affectsSchedule =
+        (originalTask?.timeBlock !== null) ||
+        (sanitizedUpdates.timeBlock !== undefined && sanitizedUpdates.timeBlock !== null) ||
+        isInboxToBlockMove;
+
+      if (affectedGoalIds.size > 0 && affectsSchedule && currentDate === today) {
         for (const goalId of affectedGoalIds) {
-          await useGoalStore.getState().recalculateProgress(goalId, currentDate);
+          await useGoalStore.getState().recalculateProgress(goalId, today);
         }
         await loadData(currentDate, true);
       }
@@ -307,6 +314,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
   deleteTask: async (taskId: string) => {
     const { currentDate, dailyData, loadData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
+    const today = getLocalDate();
 
     // 원본 백업
     const originalTasks = dailyData.tasks;
@@ -328,8 +336,8 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       await deleteTaskFromRepo(taskId, currentDate);
 
       // ✅ 목표 연결 시 진행률 재계산
-      if (deletedTask?.goalId) {
-        await useGoalStore.getState().recalculateProgress(deletedTask.goalId, currentDate);
+      if (deletedTask?.goalId && deletedTask.timeBlock !== null && currentDate === today) {
+        await useGoalStore.getState().recalculateProgress(deletedTask.goalId, today);
         await loadData(currentDate, true);
       }
     } catch (err) {
@@ -346,6 +354,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
   toggleTaskCompletion: async (taskId: string) => {
     const { currentDate, dailyData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
+    const today = getLocalDate();
 
     const originalTasks = dailyData.tasks;
     const originalBlockStates = dailyData.timeBlockStates;
@@ -463,7 +472,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       }
 
       // Goal 진행률 이벤트 (Goal Subscriber가 처리)
-      if (updatedTask.goalId) {
+      if (updatedTask.goalId && updatedTask.timeBlock !== null && currentDate === today) {
         eventBus.emit('goal:progressChanged', {
           goalId: updatedTask.goalId,
           taskId: updatedTask.id,

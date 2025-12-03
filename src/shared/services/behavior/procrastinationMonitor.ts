@@ -37,8 +37,8 @@ const DEFAULT_STATE: ProcrastinationState = {
 const MESSAGE = '이 작업 벌써 3번째 옮기고 있네? 솔직히 말해봐, 하기 싫지?';
 const EXPRESSION_DURATION = 8000;
 const EXPRESSION_PATHS = [
-  'assets/waifu/poses/hyeeun_worried.png',
-  'assets/waifu/poses/hyeeun_suspicious.png',
+  'assets/waifu/poses/hyeeun_worried.webp',
+  'assets/waifu/poses/hyeeun_suspicious.webp',
 ] as const;
 
 async function loadState(currentDate: string): Promise<ProcrastinationState> {

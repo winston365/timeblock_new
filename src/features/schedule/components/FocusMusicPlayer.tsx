@@ -18,7 +18,7 @@ interface FocusMusicPlayerProps {
   isMusicPlaying: boolean;
   loopMode: LoopMode;
   musicVolume: number;
-  setSelectedMusicFolder: (folderId: string) => void;
+  setSelectedMusicFolder: (folderId: string, options?: { autoplay?: boolean }) => void;
   setMusicVolume: (volume: number) => void;
   handleTogglePlay: () => void;
   handleNextRandom: (avoidSame?: boolean) => void;
@@ -65,18 +65,30 @@ export function FocusMusicPlayer({
             폴더 선택 후 랜덤 재생 / 반복
           </span>
         </div>
-        <select
-          className="ml-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2 text-sm text-[var(--color-text)]"
-          value={selectedMusicFolder}
-          onChange={(e) => setSelectedMusicFolder(e.target.value)}
-          disabled={isMusicLoading}
-        >
-          {MUSIC_FOLDERS.map((folder) => (
-            <option key={folder.id} value={folder.id}>
-              {folder.label}
-            </option>
-          ))}
-        </select>
+        <div className="ml-auto flex items-center gap-1 rounded-2xl bg-[var(--color-bg-surface)] p-1">
+          {MUSIC_FOLDERS.map((folder) => {
+            const isActive = selectedMusicFolder === folder.id;
+            return (
+              <button
+                key={folder.id}
+                type="button"
+                onClick={() => setSelectedMusicFolder(folder.id, { autoplay: true })}
+                disabled={isMusicLoading}
+                aria-pressed={isActive}
+                className={`relative min-w-[78px] rounded-xl px-3 py-1.5 text-xs font-semibold transition-all duration-150 ${
+                  isActive
+                    ? 'bg-[var(--color-primary)] text-white shadow-sm shadow-[var(--color-primary)]/40'
+                    : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary-hover)]'
+                } ${isMusicLoading ? 'cursor-not-allowed opacity-70' : ''}`}
+              >
+                {folder.label}
+                {isActive && (
+                  <span className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-[var(--color-primary)]/30" aria-hidden="true" />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">

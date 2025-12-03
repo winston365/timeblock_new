@@ -48,7 +48,7 @@ const BLOCKS_WITH_OTHER = [
  */
 export function StatsModal({ open, onClose }: StatsModalProps) {
     const { gameState, loading } = useGameState();
-    const { completedTasks, loadData: loadCompletedTasks, loading: completedLoading } = useCompletedTasksStore();
+    const { completedTasks, loadData: loadCompletedTasks } = useCompletedTasksStore();
     const { settings } = useSettingsStore();
 
     // Tab state
@@ -444,7 +444,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
                 </header>
 
                 {/* Content */}
-                {loading || completedLoading || !gameState ? (
+                {loading || !gameState ? (
                     <div className="flex flex-1 items-center justify-center text-sm text-[var(--color-text-secondary)]">
                         불러오는 중...
                     </div>

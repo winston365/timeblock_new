@@ -118,6 +118,17 @@ export default function WeatherWidget() {
         return 'from-blue-500 to-indigo-600'; // 기본
     };
 
+    const getDayLabelWithWeekday = (day: (typeof safeForecast)[number], index: number) => {
+        const dayOffsets: Record<string, number> = { today: 0, tomorrow: 1, dayAfter: 2 };
+        const offset = dayOffsets[day.date] ?? index;
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + offset);
+        const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+        const weekdayLabel = weekdays[targetDate.getDay()];
+
+        return `${day.dateLabel} (${weekdayLabel})`;
+    };
+
     const insight: WeatherInsightResult | null = useMemo(() => {
         if (!currentForecast) return null;
         const { current, hourly } = currentForecast;
@@ -231,7 +242,7 @@ export default function WeatherWidget() {
                                                 : 'bg-white/10 text-white/70 hover:bg-white/20'
                                             }`}
                                     >
-                                        {day.dateLabel}
+                                        {getDayLabelWithWeekday(day, idx)}
                                     </button>
                                 ))}
                             </div>

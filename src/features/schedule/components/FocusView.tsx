@@ -339,6 +339,21 @@ export function FocusView({
         }).catch(console.error);
     }, [activeTaskId, activeTaskStartTime, breakRemainingSeconds, currentHourTasks, isBreakTime, isPaused, now, recommendedTask]);
 
+    const handleOpenPip = useCallback((options?: { silent?: boolean }) => {
+        if (!window.electronAPI?.openPip) {
+            if (!options?.silent) {
+                alert('PiP 모드는 Electron 앱에서만 사용 가능합니다.');
+            }
+            return;
+        }
+
+        window.electronAPI.openPip()
+            .then(() => {
+                sendPipState();
+            })
+            .catch(console.error);
+    }, [sendPipState]);
+
     // PiP 상태 동기화
     useEffect(() => {
         sendPipState();
@@ -388,6 +403,7 @@ export function FocusView({
     const handleStartNow = (task: Task) => {
         setFocusMode(true);
         startTask(task.id);
+        handleOpenPip({ silent: true });
         // 잠금 없이도 포커스 모드 시작 가능
     };
 
@@ -439,15 +455,7 @@ export function FocusView({
                             </button>
                             <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">🎯 지금 집중</h1>
                             <button
-                                onClick={() => {
-                                    if (!window.electronAPI) {
-                                        alert('PiP 모드는 Electron 앱에서만 사용 가능합니다.');
-                                        return;
-                                    }
-                                    window.electronAPI.openPip().then(() => {
-                                        sendPipState();
-                                    }).catch(console.error);
-                                }}
+                                onClick={() => handleOpenPip()}
                                 className="inline-flex items-center gap-2 rounded-md bg-[var(--color-bg-tertiary)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] shadow-sm hover:bg-[var(--color-bg-tertiary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] transition"
                             >
                                 <span>📌</span>

@@ -9,6 +9,7 @@
 
 import type { TaskCompletionHandler, TaskCompletionContext } from '../types';
 import { recalculateGlobalGoalProgress } from '@/data/repositories';
+import { getLocalDate } from '@/shared/lib/utils';
 
 /**
  * 전역 목표 진행률 업데이트 핸들러
@@ -28,8 +29,11 @@ export class GoalProgressHandler implements TaskCompletionHandler {
   async handle(context: TaskCompletionContext): Promise<import('@/shared/services/gameplay/gameState').GameStateEvent[]> {
     const { task, date } = context;
 
-    // 목표가 연결되어 있지 않으면 스킵
-    if (!task.goalId) {
+    const today = getLocalDate();
+    const isScheduledTask = task.timeBlock !== null;
+
+    // 목표가 없거나 인박스/과거·미래 날짜 이벤트는 무시 (오늘 스케줄만 목표에 반영)
+    if (!task.goalId || !isScheduledTask || date !== today) {
       return [];
     }
 

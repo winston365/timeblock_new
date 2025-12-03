@@ -215,13 +215,6 @@ export function BossDisplay({
 
         {/* 보스 이미지 */}
         <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-          {battleQuote && (
-            <div className="pointer-events-none absolute left-6 right-6 top-6 z-20 text-center drop-shadow-lg">
-              <div className="inline-block rounded-full bg-black/50 px-4 py-2 text-sm text-gray-100 backdrop-blur">
-                “{battleQuote}”
-              </div>
-            </div>
-          )}
           {!shouldShowEmoji ? (
             <img
               src={bossImageSrc}
@@ -272,7 +265,16 @@ export function BossDisplay({
         </div>
 
         {/* 보스 이름 - 하단 오버레이 */}
-        <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black via-black/80 to-transparent px-4 pb-4 pt-12">
+        <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black via-black/80 to-transparent px-4 pb-4 pt-14">
+          {/* 보스 대사 - HP 바 위 */}
+          {battleQuote && (
+            <div className="mb-3 flex justify-center text-center drop-shadow-[0_0_25px_rgba(239,68,68,0.6)]">
+              <div className="inline-flex items-center gap-2 rounded-full border border-red-700/60 bg-black/70 px-4 py-2 text-base font-extrabold uppercase tracking-wide text-red-200 backdrop-blur">
+                <span className="text-red-400">☠</span>
+                <span className="leading-tight">“{battleQuote}”</span>
+              </div>
+            </div>
+          )}
           {/* HP 바 */}
           <div className="mb-2">
             <div className="flex items-center justify-between text-xs mb-1">

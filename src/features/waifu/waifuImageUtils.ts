@@ -37,71 +37,71 @@ export const AFFECTION_TIERS = {
  * 폴더 구조 예시:
  * poses/
  *   ├── hostile/
- *   │   ├── 1.png
- *   │   ├── 2.png
- *   │   └── 3.png
+ *   │   ├── 1.webp
+ *   │   ├── 2.webp
+ *   │   └── 3.webp
  *   ├── wary/
- *   │   ├── 1.png
- *   │   └── 2.png
+ *   │   ├── 1.webp
+ *   │   └── 2.webp
  *   ...
  *
  * 또는 단일 파일:
- *   ├── hostile.png
- *   ├── wary.png
+ *   ├── hostile.webp
+ *   ├── wary.webp
  *   ...
  */
 
 // 각 호감도 구간별로 사용 가능한 이미지 파일 목록
 const IMAGE_FILES: Record<string, string[]> = {
   hostile: [
-    'hyeeun_angry.png',
-    'hyeeun_annoyed.png',
-    'hyeeun_disgusted.png',
-    'hyeeun_serious.png',
+    'hyeeun_angry.webp',
+    'hyeeun_annoyed.webp',
+    'hyeeun_disgusted.webp',
+    'hyeeun_serious.webp',
   ],
   wary: [
-    'hyeeun_bored.png',
-    'hyeeun_depressed.png',
-    'hyeeun_disappointed.png',
-    'hyeeun_sad.png',
-    'hyeeun_sleepy.png',
-    'hyeeun_thinking.png',
-    'hyeeun_tired.png',
+    'hyeeun_bored.webp',
+    'hyeeun_depressed.webp',
+    'hyeeun_disappointed.webp',
+    'hyeeun_sad.webp',
+    'hyeeun_sleepy.webp',
+    'hyeeun_thinking.webp',
+    'hyeeun_tired.webp',
   ],
   indifferent: [
-    'hyeeun_confused.png',
-    'hyeeun_curious.png',
-    'hyeeun_nervous.png',
-    'hyeeun_neutral.png',
-    'hyeeun_reading.png',
-    'hyeeun_relieved.png',
-    'hyeeun_smiling.png',
-    'hyeeun_smirking.png',
-    'hyeeun_smoking.png',
+    'hyeeun_confused.webp',
+    'hyeeun_curious.webp',
+    'hyeeun_nervous.webp',
+    'hyeeun_neutral.webp',
+    'hyeeun_reading.webp',
+    'hyeeun_relieved.webp',
+    'hyeeun_smiling.webp',
+    'hyeeun_smirking.webp',
+    'hyeeun_smoking.webp',
   ],
   interested: [
     // interested 폴더가 없으므로 indifferent의 긍정적인 이미지들 사용
-    'hyeeun_curious.png',
-    'hyeeun_smiling.png',
-    'hyeeun_smirking.png',
-    'hyeeun_relieved.png',
+    'hyeeun_curious.webp',
+    'hyeeun_smiling.webp',
+    'hyeeun_smirking.webp',
+    'hyeeun_relieved.webp',
   ],
   affectionate: [
-    'hyeeun_admiring.png',
-    'hyeeun_blushing shyly.png',
-    'hyeeun_embarrassed.png',
-    'hyeeun_giggling.png',
-    'hyeeun_laughing.png',
+    'hyeeun_admiring.webp',
+    'hyeeun_blushing shyly.webp',
+    'hyeeun_embarrassed.webp',
+    'hyeeun_giggling.webp',
+    'hyeeun_laughing.webp',
   ],
   loving: [
-    'hyeeun_excited.png',
-    'hyeeun_happy tears.png',
-    'hyeeun_happy.png',
-    'hyeeun_hugging.png',
-    'hyeeun_joyful.png',
-    'hyeeun_kiss.png',
-    'hyeeun_princess carry.png',
-    'hyeeun_winking.png',
+    'hyeeun_excited.webp',
+    'hyeeun_happy tears.webp',
+    'hyeeun_happy.webp',
+    'hyeeun_hugging.webp',
+    'hyeeun_joyful.webp',
+    'hyeeun_kiss.webp',
+    'hyeeun_princess carry.webp',
+    'hyeeun_winking.webp',
   ],
 };
 
@@ -118,7 +118,7 @@ const IMAGE_COUNTS: Record<string, number> = {
 /**
  * 기본 이미지 (호감도 이미지가 없을 때 사용)
  */
-export const DEFAULT_IMAGE = 'assets/waifu/default.png';
+export const DEFAULT_IMAGE = 'assets/waifu/poses/indifferent/hyeeun_neutral.webp';
 
 /**
  * 호감도 값에 따라 적절한 구간을 반환합니다.
@@ -175,7 +175,7 @@ export function getRandomImageNumber(tierName: string, excludeIndex?: number): n
 export function getImageFileName(tierName: string, imageIndex: number): string {
   const files = IMAGE_FILES[tierName];
   if (!files || files.length === 0) {
-    return '1.png'; // fallback
+    return '1.webp'; // fallback
   }
   return files[imageIndex % files.length];
 }
@@ -196,7 +196,7 @@ export function getWaifuImagePath(affection: number, imageIndex?: number): strin
   // interested 폴더가 없으므로 indifferent 폴더의 이미지 사용
   const folderName = tier.name === 'interested' ? 'indifferent' : tier.name;
 
-  // 폴더 구조: /assets/waifu/poses/hostile/hyeeun_angry.png
+  // 폴더 구조: /assets/waifu/poses/hostile/hyeeun_angry.webp
   return `assets/waifu/poses/${folderName}/${fileName}`;
 
 
@@ -209,7 +209,7 @@ export function getWaifuImagePath(affection: number, imageIndex?: number): strin
  * @returns 단일 파일 이미지 경로
  */
 export function getSingleFileImagePath(tierName: string): string {
-  return `assets/waifu/poses/${tierName}.png`;
+  return `assets/waifu/poses/${tierName}.webp`;
 }
 
 // 이미지 존재 여부 캐시
