@@ -20,6 +20,7 @@ import type { SyncStrategy } from '@/shared/services/sync/firebase/syncCore';
 import type { TempScheduleTask, RecurrenceRule } from '@/shared/types/tempSchedule';
 import { TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
 import { generateId } from '@/shared/lib/utils';
+import { withFirebaseSync } from '@/shared/utils/firebaseGuard';
 
 // ============================================================================
 // Firebase Sync Strategy
@@ -33,6 +34,15 @@ const tempScheduleFirebaseStrategy: SyncStrategy<TempScheduleTask[]> = {
   serialize: (tasks) => tasks,
   getSuccessMessage: (tasks) => `TempScheduleTasks synced (${tasks.length} items)`,
 };
+
+/**
+ * 임시 스케줄 전체를 Firebase에 동기화 (DRY: 중복 코드 제거)
+ * @description 4개 함수에서 반복되던 패턴을 단일 함수로 추출
+ */
+async function syncTempScheduleToFirebase(): Promise<void> {
+  const allTasks = await db.tempScheduleTasks.toArray();
+  await syncToFirebase(tempScheduleFirebaseStrategy, allTasks, 'all');
+}
 
 // ============================================================================
 // Helper Functions
@@ -236,13 +246,10 @@ export async function addTempScheduleTask(
   try {
     await db.tempScheduleTasks.add(newTask);
     addSyncLog('dexie', 'save', 'TempScheduleTask added', { id: newTask.id, name: newTask.name });
-    
-    // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      const allTasks = await db.tempScheduleTasks.toArray();
-      syncToFirebase(tempScheduleFirebaseStrategy, allTasks, 'all').catch(console.error);
-    }
-    
+
+    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
+    withFirebaseSync(syncTempScheduleToFirebase, 'TempSchedule:add');
+
     return newTask;
   } catch (error) {
     console.error('Failed to add temp schedule task:', error);
@@ -278,13 +285,10 @@ export async function updateTempScheduleTask(
     
     await db.tempScheduleTasks.put(updatedTask);
     addSyncLog('dexie', 'save', 'TempScheduleTask updated', { id, name: updatedTask.name });
-    
-    // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      const allTasks = await db.tempScheduleTasks.toArray();
-      syncToFirebase(tempScheduleFirebaseStrategy, allTasks, 'all').catch(console.error);
-    }
-    
+
+    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
+    withFirebaseSync(syncTempScheduleToFirebase, 'TempSchedule:update');
+
     return updatedTask;
   } catch (error) {
     console.error('Failed to update temp schedule task:', error);
@@ -306,12 +310,9 @@ export async function deleteTempScheduleTask(id: string): Promise<void> {
     
     await db.tempScheduleTasks.bulkDelete([id, ...childIds]);
     addSyncLog('dexie', 'save', 'TempScheduleTask deleted', { id, childCount: childIds.length });
-    
-    // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      const allTasks = await db.tempScheduleTasks.toArray();
-      syncToFirebase(tempScheduleFirebaseStrategy, allTasks, 'all').catch(console.error);
-    }
+
+    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
+    withFirebaseSync(syncTempScheduleToFirebase, 'TempSchedule:delete');
   } catch (error) {
     console.error('Failed to delete temp schedule task:', error);
     addSyncLog('dexie', 'error', 'Failed to delete TempScheduleTask', { id }, error as Error);
@@ -333,11 +334,13 @@ export async function saveTempScheduleTasks(tasks: TempScheduleTask[]): Promise<
     }
     
     addSyncLog('dexie', 'save', 'TempScheduleTasks saved', { count: tasks.length });
-    
-    // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      syncToFirebase(tempScheduleFirebaseStrategy, tasks, 'all').catch(console.error);
-    }
+
+    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
+    // 참고: 이 경우 tasks를 직접 전달해야 하므로 람다 사용
+    withFirebaseSync(
+      () => syncToFirebase(tempScheduleFirebaseStrategy, tasks, 'all'),
+      'TempSchedule:save'
+    );
   } catch (error) {
     console.error('Failed to save temp schedule tasks:', error);
     addSyncLog('dexie', 'error', 'Failed to save TempScheduleTasks', undefined, error as Error);

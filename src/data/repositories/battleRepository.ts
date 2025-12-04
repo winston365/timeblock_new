@@ -16,6 +16,7 @@ import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { battleMissionsStrategy, battleSettingsStrategy, bossImageSettingsStrategy } from '@/shared/services/sync/firebase/strategies';
 import { generateId, getLocalDate } from '@/shared/lib/utils';
+import { withFirebaseSync } from '@/shared/utils/firebaseGuard';
 
 // ============================================================================
 // Storage Keys
@@ -91,10 +92,11 @@ export async function saveBattleMissions(missions: BattleMission[]): Promise<voi
     await db.systemState.put({ key: MISSIONS_KEY, value: missions });
     addSyncLog('dexie', 'save', `Saved ${missions.length} battle missions`);
 
-    // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      await syncToFirebase(battleMissionsStrategy, missions);
-    }
+    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
+    withFirebaseSync(
+      () => syncToFirebase(battleMissionsStrategy, missions),
+      'BattleMissions:save'
+    );
   } catch (error) {
     console.error('Failed to save battle missions:', error);
     throw error;
@@ -211,10 +213,11 @@ export async function saveBattleSettings(settings: BattleSettings): Promise<void
     await db.systemState.put({ key: SETTINGS_KEY, value: settings });
     addSyncLog('dexie', 'save', 'Saved battle settings');
 
-    // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      await syncToFirebase(battleSettingsStrategy, settings);
-    }
+    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
+    withFirebaseSync(
+      () => syncToFirebase(battleSettingsStrategy, settings),
+      'BattleSettings:save'
+    );
   } catch (error) {
     console.error('Failed to save battle settings:', error);
     throw error;
@@ -272,10 +275,11 @@ export async function saveBossImageSettings(settings: BossImageSettings): Promis
     await db.systemState.put({ key: BOSS_IMAGE_SETTINGS_KEY, value: settings });
     addSyncLog('dexie', 'save', `Saved boss image settings (${Object.keys(settings).length} bosses)`);
 
-    // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      await syncToFirebase(bossImageSettingsStrategy, settings);
-    }
+    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
+    withFirebaseSync(
+      () => syncToFirebase(bossImageSettingsStrategy, settings),
+      'BossImageSettings:save'
+    );
   } catch (error) {
     console.error('Failed to save boss image settings:', error);
     throw error;

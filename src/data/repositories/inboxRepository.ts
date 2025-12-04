@@ -20,6 +20,39 @@ import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { globalInboxStrategy, completedInboxStrategy } from '@/shared/services/sync/firebase/strategies';
+import { withFirebaseSync } from '@/shared/utils/firebaseGuard';
+
+// ============================================================================
+// Firebase Sync Helper (DRY: 중복 코드 제거)
+// ============================================================================
+
+/**
+ * 전역 인박스 전체를 Firebase에 동기화
+ * @description 7개 함수에서 반복되던 패턴을 단일 함수로 추출
+ */
+async function syncGlobalInboxToFirebase(): Promise<void> {
+  const allTasks = await db.globalInbox.toArray();
+  await syncToFirebase(globalInboxStrategy, allTasks);
+}
+
+/**
+ * 전역 인박스와 완료 인박스를 모두 Firebase에 동기화
+ * @description toggleInboxTaskCompletion에서 사용 (두 테이블 동시 동기화)
+ */
+async function syncBothInboxTablesToFirebase(): Promise<void> {
+  const [activeTasks, completedTasks] = await Promise.all([
+    db.globalInbox.toArray(),
+    db.completedInbox.toArray()
+  ]);
+
+  const completedByDate = groupCompletedByDate(completedTasks);
+  await Promise.all([
+    syncToFirebase(globalInboxStrategy, activeTasks),
+    ...Object.entries(completedByDate).map(([date, tasks]) =>
+      syncToFirebase(completedInboxStrategy, tasks, date)
+    ),
+  ]);
+}
 
 // ============================================================================
 // Global Inbox CRUD
@@ -110,11 +143,8 @@ export async function addInboxTask(task: Task): Promise<void> {
 
     addSyncLog('dexie', 'save', `Added inbox task: ${task.text}`);
 
-    // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      const allTasks = await db.globalInbox.toArray();
-      await syncToFirebase(globalInboxStrategy, allTasks);
-    }
+    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
+    withFirebaseSync(syncGlobalInboxToFirebase, 'GlobalInbox:add');
   } catch (error) {
     console.error('Failed to add inbox task:', error);
     throw error;
@@ -148,11 +178,8 @@ export async function updateInboxTask(taskId: string, updates: Partial<Task>): P
 
     addSyncLog('dexie', 'save', `Updated inbox task: ${task.text}`);
 
-    // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      const allTasks = await db.globalInbox.toArray();
-      await syncToFirebase(globalInboxStrategy, allTasks);
-    }
+    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
+    withFirebaseSync(syncGlobalInboxToFirebase, 'GlobalInbox:update');
   } catch (error) {
     console.error('Failed to update inbox task:', error);
     throw error;
@@ -175,11 +202,8 @@ export async function deleteInboxTask(taskId: string): Promise<void> {
 
     addSyncLog('dexie', 'save', `Deleted inbox task: ${taskId}`);
 
-    // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      const allTasks = await db.globalInbox.toArray();
-      await syncToFirebase(globalInboxStrategy, allTasks);
-    }
+    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
+    withFirebaseSync(syncGlobalInboxToFirebase, 'GlobalInbox:delete');
   } catch (error) {
     console.error('Failed to delete inbox task:', error);
     throw error;
@@ -237,22 +261,8 @@ export async function toggleInboxTaskCompletion(taskId: string): Promise<Task> {
       addSyncLog('dexie', 'save', `Moved task back to globalInbox: ${task.text}`);
     }
 
-    // 5. Firebase 동기화
-    if (isFirebaseInitialized()) {
-      const [activeTasks, completedTasks] = await Promise.all([
-        db.globalInbox.toArray(),
-        db.completedInbox.toArray()
-      ]);
-
-      const completedByDate = groupCompletedByDate(completedTasks);
-      // 두 테이블 모두 동기화
-      await Promise.all([
-        syncToFirebase(globalInboxStrategy, activeTasks),
-        ...Object.entries(completedByDate).map(([date, tasks]) =>
-          syncToFirebase(completedInboxStrategy, tasks, date)
-        ),
-      ]);
-    }
+    // 5. Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
+    withFirebaseSync(syncBothInboxTablesToFirebase, 'GlobalInbox:toggle');
 
     return task;
   } catch (error) {
@@ -286,11 +296,8 @@ export async function moveInboxTaskToBlock(taskId: string): Promise<Task | null>
 
     addSyncLog('dexie', 'save', `Moved inbox task to time block: ${task.text}`);
 
-    // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      const allTasks = await db.globalInbox.toArray();
-      await syncToFirebase(globalInboxStrategy, allTasks);
-    }
+    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
+    withFirebaseSync(syncGlobalInboxToFirebase, 'GlobalInbox:moveToBlock');
 
     return task;
   } catch (error) {
@@ -319,11 +326,8 @@ export async function moveTaskToInbox(task: Task): Promise<void> {
 
     addSyncLog('dexie', 'save', `Moved task to inbox: ${task.text}`);
 
-    // Firebase 동기화
-    if (isFirebaseInitialized()) {
-      const allTasks = await db.globalInbox.toArray();
-      await syncToFirebase(globalInboxStrategy, allTasks);
-    }
+    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
+    withFirebaseSync(syncGlobalInboxToFirebase, 'GlobalInbox:moveToInbox');
   } catch (error) {
     console.error('Failed to move task to inbox:', error);
     throw error;

@@ -62,8 +62,10 @@ export const AUTO_MESSAGE_MAX_INTERVAL = 60; // 최대 60분
 // 타이머 간격
 // ============================================================================
 export const TIMER_UPDATE_INTERVAL = 1000; // 1초 (현재 시간 업데이트)
-export const TIMER_COLLAPSE_INTERVAL = 600000; // 10분 (비현재 블록 접기)
-export const TIMER_AUTOFOCUS_INTERVAL = 900000; // 15분 (현재 블록 자동 포커스)
+export const TEN_MINUTES_MS = 10 * 60 * 1000; // 10분 (밀리초) - DRY: 여러 곳에서 사용되는 공용 상수
+export const FIFTEEN_MINUTES_MS = 15 * 60 * 1000; // 15분 (밀리초)
+export const TIMER_COLLAPSE_INTERVAL = TEN_MINUTES_MS; // 10분 (비현재 블록 접기)
+export const TIMER_AUTOFOCUS_INTERVAL = FIFTEEN_MINUTES_MS; // 15분 (현재 블록 자동 포커스)
 
 // ============================================================================
 // 저장소 키 접두사
