@@ -28,6 +28,8 @@ interface WeeklyProgressBarProps {
   unit?: string;
   /** 높이 (기본: h-6) */
   height?: string;
+  /** 압축 모드 */
+  compact?: boolean;
 }
 
 const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
@@ -43,6 +45,7 @@ export default function WeeklyProgressBar({
   color = '#6366f1',
   unit = '',
   height = 'h-6',
+  compact = false,
 }: WeeklyProgressBarProps) {
   // 퍼센트 계산
   const progressPercent = Math.min(100, (currentProgress / target) * 100);
@@ -113,39 +116,43 @@ export default function WeeklyProgressBar({
 
         {/* 진행도 텍스트 */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-xs font-bold text-white drop-shadow-md">
-            {currentProgress.toLocaleString()} / {target.toLocaleString()} {unit}
+          <span className={`font-bold text-white drop-shadow-md ${compact ? 'text-[10px]' : 'text-xs'}`}>
+            {currentProgress.toLocaleString()} / {target.toLocaleString()} {compact ? '' : unit}
           </span>
         </div>
       </div>
 
-      {/* 요일 레이블 */}
-      <div className="mt-1 flex justify-between px-0.5">
-        {DAY_LABELS.map((label, i) => (
-          <span
-            key={label}
-            className={`text-[10px] font-medium ${
-              i === dayIndex
-                ? 'text-white'
-                : i < dayIndex
-                ? 'text-white/60'
-                : 'text-white/30'
-            }`}
-          >
-            {label}
-          </span>
-        ))}
-      </div>
+      {/* 요일 레이블 - compact 모드에서는 숨김 */}
+      {!compact && (
+        <div className="mt-1 flex justify-between px-0.5">
+          {DAY_LABELS.map((label, i) => (
+            <span
+              key={label}
+              className={`text-[10px] font-medium ${
+                i === dayIndex
+                  ? 'text-white'
+                  : i < dayIndex
+                  ? 'text-white/60'
+                  : 'text-white/30'
+              }`}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+      )}
 
-      {/* 구분값 표시 (마우스 호버 시 또는 항상 표시) */}
-      <div className="mt-0.5 flex justify-between px-0.5 text-[9px] text-white/40">
-        {divisionValues.slice(0, 6).map((value, i) => (
-          <span key={i} className="w-4 text-center">
-            {value >= 1000 ? `${Math.round(value / 1000)}k` : value}
-          </span>
-        ))}
-        <span className="w-4 text-center text-white/60">{target >= 1000 ? `${Math.round(target / 1000)}k` : target}</span>
-      </div>
+      {/* 구분값 표시 - compact 모드에서는 숨김 */}
+      {!compact && (
+        <div className="mt-0.5 flex justify-between px-0.5 text-[9px] text-white/40">
+          {divisionValues.slice(0, 6).map((value, i) => (
+            <span key={i} className="w-4 text-center">
+              {value >= 1000 ? `${Math.round(value / 1000)}k` : value}
+            </span>
+          ))}
+          <span className="w-4 text-center text-white/60">{target >= 1000 ? `${Math.round(target / 1000)}k` : target}</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -73,7 +73,7 @@ export function GoalsModal({ open, onClose }: GoalsModalProps) {
   return (
     <>
       <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 px-4 py-6">
-        <div className="flex h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-[var(--color-bg-secondary)] text-[var(--color-text)] shadow-2xl">
+        <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-[var(--color-bg-secondary)] text-[var(--color-text)] shadow-2xl">
           {/* Header */}
           <header className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
             <div>

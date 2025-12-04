@@ -102,16 +102,19 @@ export default function WeeklyGoalPanel({ onOpenModal }: WeeklyGoalPanelProps) {
           </button>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
-          {goals.map((goal) => (
-            <WeeklyGoalCard
-              key={goal.id}
-              goal={goal}
-              onEdit={() => handleOpenModal(goal)}
-              onDelete={() => handleDelete(goal.id)}
-              onShowHistory={() => handleShowHistory(goal)}
-            />
-          ))}
+        <div className="flex-1 overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {goals.map((goal) => (
+              <WeeklyGoalCard
+                key={goal.id}
+                goal={goal}
+                onEdit={() => handleOpenModal(goal)}
+                onDelete={() => handleDelete(goal.id)}
+                onShowHistory={() => handleShowHistory(goal)}
+                compact
+              />
+            ))}
+          </div>
         </div>
       )}
 
