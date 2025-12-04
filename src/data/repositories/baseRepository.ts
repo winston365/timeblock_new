@@ -34,11 +34,7 @@ import { fetchFromFirebase, syncToFirebase, type SyncStrategy } from '@/shared/s
 export interface RepositoryConfig<T> {
   /** Dexie 테이블 */
   table: any;
-  /** 
-   * @deprecated localStorage 키 (더 이상 사용되지 않음, 마이그레이션용으로만 유지)
-   * 새 코드에서는 이 필드를 설정하지 마세요.
-   */
-  storageKey?: string;
+
   /** Firebase 동기화 전략 */
   firebaseStrategy?: SyncStrategy<T>;
   /** 초기 데이터 생성 함수 */
@@ -65,11 +61,7 @@ export interface LoadOptions {
 export interface SaveOptions {
   /** Firebase 동기화 여부 (기본값: true) */
   syncFirebase?: boolean;
-  /** 
-   * @deprecated localStorage 저장 여부 (더 이상 사용되지 않음)
-   * Dexie가 유일한 로컬 저장소입니다.
-   */
-  saveLocalStorage?: boolean;
+
   /** 로그 기록 여부 (기본값: true) */
   logSync?: boolean;
 }

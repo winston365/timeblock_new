@@ -74,7 +74,11 @@ interface TempScheduleState {
   updateTask: (id: string, updates: Partial<TempScheduleTask>) => Promise<void>;
   /** 작업 삭제 */
   deleteTask: (id: string) => Promise<void>;
-  
+  /** 작업 복제 */
+  duplicateTask: (task: TempScheduleTask) => Promise<void>;
+  /** 실제 작업으로 변환 */
+  promoteToRealTask: (task: TempScheduleTask) => Promise<void>;
+
   // === View Actions ===
   /** 뷰 모드 변경 */
   setViewMode: (mode: TempScheduleViewMode) => void;
@@ -129,8 +133,17 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
   loadData: async () => {
     set({ isLoading: true, error: null });
     try {
-      const tasks = await loadTempScheduleTasks();
-      set({ tasks, isLoading: false });
+      // 병렬 로드
+      const [tasks, settings] = await Promise.all([
+        loadTempScheduleTasks(),
+        import('@/data/repositories/settingsRepository').then(m => m.loadSettings())
+      ]);
+
+      set({
+        tasks,
+        isLoading: false,
+        gridSnapInterval: (settings.tempScheduleGridSnapInterval as GridSnapInterval) || TEMP_SCHEDULE_DEFAULTS.gridSnapInterval
+      });
     } catch (error) {
       console.error('Failed to load temp schedule tasks:', error);
       set({ error: '데이터를 불러오는데 실패했습니다.', isLoading: false });
@@ -179,12 +192,70 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
     }
   },
 
+  duplicateTask: async (task) => {
+    try {
+      const { addTask } = get();
+      await addTask({
+        ...task,
+        name: `${task.name} (복사됨)`,
+      });
+    } catch (error) {
+      console.error('Failed to duplicate temp schedule task:', error);
+      throw error;
+    }
+  },
+
+  promoteToRealTask: async (task) => {
+    try {
+      // 동적 import로 순환 참조 방지
+      const { useDailyDataStore } = await import('@/shared/stores/dailyDataStore');
+      const { generateId } = await import('@/shared/lib/utils');
+
+      const realTask = {
+        id: generateId('task'),
+        text: task.name,
+        completed: false,
+        completedAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        timeBlock: null, // 인박스로 보낼지, 특정 시간 블록으로 보낼지 결정 필요. 일단 인박스(null)로.
+        goalId: null,
+        emoji: '📅',
+        duration: 30, // 기본값
+        adjustedDuration: 30,
+        memo: task.memo || '',
+        baseDuration: 30,
+        resistance: 'low' as const,
+        actualDuration: 0,
+      };
+
+      // 시간 정보가 있으면 메모에 추가하거나, 적절히 변환 로직 추가 가능
+      // 여기서는 단순히 인박스에 추가하는 것으로 구현
+      await useDailyDataStore.getState().addTask(realTask);
+
+      // 선택 사항: 변환 후 임시 스케줄 삭제? 
+      // await get().deleteTask(task.id); 
+      // -> 유저가 명시적으로 삭제하는게 나을 수 있음. 일단 유지.
+    } catch (error) {
+      console.error('Failed to promote temp schedule task:', error);
+      throw error;
+    }
+  },
+
   // === View Actions ===
   setViewMode: (mode) => set({ viewMode: mode }),
 
   setSelectedDate: (date) => set({ selectedDate: date }),
 
-  setGridSnapInterval: (interval) => set({ gridSnapInterval: interval }),
+  setGridSnapInterval: async (interval) => {
+    set({ gridSnapInterval: interval });
+    try {
+      const { updateSettings } = await import('@/data/repositories/settingsRepository');
+      await updateSettings({ tempScheduleGridSnapInterval: interval });
+    } catch (error) {
+      console.error('Failed to save grid snap interval:', error);
+    }
+  },
 
   goToPrevious: () => {
     const { viewMode, selectedDate } = get();
@@ -245,8 +316,8 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
 
   closeModal: () => set({ isModalOpen: false, isTaskModalOpen: false, editingTask: null }),
 
-  openTaskModal: (task) => set({ 
-    isTaskModalOpen: true, 
+  openTaskModal: (task) => set({
+    isTaskModalOpen: true,
     editingTask: task || null,
   }),
 

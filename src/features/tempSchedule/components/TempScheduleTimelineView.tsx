@@ -15,6 +15,10 @@ import { memo, useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import { TEMP_SCHEDULE_DEFAULTS, type TempScheduleTask, type DragTooltipInfo } from '@/shared/types/tempSchedule';
 import { timeToMinutes, minutesToTime } from '@/data/repositories/tempScheduleRepository';
+import { TempScheduleContextMenu } from './TempScheduleContextMenu';
+import { Repeat } from 'lucide-react';
+import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
+import { TIME_BLOCKS } from '@/shared/types/domain';
 
 // ============================================================================
 // Constants
@@ -101,25 +105,32 @@ interface TimelineBlockProps {
   onEdit: (task: TempScheduleTask) => void;
   onDelete: (id: string) => void;
   onDragStart: (task: TempScheduleTask, mode: 'move' | 'resize-top' | 'resize-bottom', e: React.MouseEvent) => void;
+  onContextMenu: (task: TempScheduleTask, e: React.MouseEvent) => void;
 }
 
-const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDelete, onDragStart }: TimelineBlockProps) {
+const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDelete, onDragStart, onContextMenu }: TimelineBlockProps) {
   const { task, column, totalColumns, top, height } = position;
   const widthPercent = 100 / totalColumns;
   const leftPercent = column * widthPercent;
+  const isRecurring = task.recurrence.type !== 'none';
 
   return (
     <div
-      className="absolute rounded-lg border shadow-sm cursor-move transition-shadow hover:shadow-md group"
+      className="absolute rounded-lg shadow-sm cursor-move transition-shadow hover:shadow-md group border border-white/10"
       style={{
         top: `${top}px`,
         height: `${height}px`,
         left: `calc(${leftPercent}% + 2px)`,
         width: `calc(${widthPercent}% - 4px)`,
-        backgroundColor: task.color + '20',
-        borderColor: task.color,
+        backgroundColor: task.color, // Solid color
+        zIndex: 10,
       }}
       onDoubleClick={() => onEdit(task)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onContextMenu(task, e);
+      }}
       onMouseDown={(e) => {
         if (e.button === 0) {
           onDragStart(task, 'move', e);
@@ -129,7 +140,7 @@ const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDelete, 
       {/* 상단 리사이즈 핸들 */}
       <div
         className="absolute top-0 left-0 right-0 h-2 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ backgroundColor: task.color + '40' }}
+        style={{ backgroundColor: 'rgba(255,255,255,0.3)' }}
         onMouseDown={(e) => {
           e.stopPropagation();
           onDragStart(task, 'resize-top', e);
@@ -137,14 +148,14 @@ const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDelete, 
       />
 
       {/* 내용 */}
-      <div className="px-2 py-1 overflow-hidden h-full flex flex-col">
-        <div
-          className="text-xs font-semibold truncate"
-          style={{ color: task.color }}
-        >
-          {task.name}
+      <div className="px-2 py-1 overflow-hidden h-full flex flex-col text-white">
+        <div className="flex items-center gap-1 min-w-0">
+          {isRecurring && <Repeat size={10} className="flex-shrink-0 opacity-80" />}
+          <div className="text-xs font-bold truncate drop-shadow-md">
+            {task.name}
+          </div>
         </div>
-        <div className="text-[10px] text-[var(--color-text-tertiary)]">
+        <div className="text-[10px] opacity-90 font-medium">
           {task.startTime} - {task.endTime}
         </div>
       </div>
@@ -152,23 +163,12 @@ const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDelete, 
       {/* 하단 리사이즈 핸들 */}
       <div
         className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ backgroundColor: task.color + '40' }}
+        style={{ backgroundColor: 'rgba(255,255,255,0.3)' }}
         onMouseDown={(e) => {
           e.stopPropagation();
           onDragStart(task, 'resize-bottom', e);
         }}
       />
-
-      {/* 삭제 버튼 */}
-      <button
-        className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-500/80 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete(task.id);
-        }}
-      >
-        ×
-      </button>
     </div>
   );
 });
@@ -183,12 +183,13 @@ interface TempScheduleTimelineViewProps {
 
 function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelineViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { 
-    getTasksForDate, 
-    gridSnapInterval, 
-    dragState, 
-    startDrag, 
-    updateDrag, 
+  const {
+    tasks: allTasks,
+    getTasksForDate,
+    gridSnapInterval,
+    dragState,
+    startDrag,
+    updateDrag,
     endDrag,
     addTask,
     updateTask,
@@ -197,9 +198,59 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
   } = useTempScheduleStore();
 
   const [tooltip, setTooltip] = useState<DragTooltipInfo | null>(null);
-  const [createPreview, setCreatePreview] = useState<{ top: number; height: number; startTime: string; endTime: string } | null>(null);
 
-  const tasks = useMemo(() => getTasksForDate(selectedDate), [getTasksForDate, selectedDate]);
+  // 메인 스케줄 데이터 가져오기 (오버레이용)
+  const { dailyData, loadData: loadDailyData } = useDailyDataStore();
+
+  // 날짜 변경 시 메인 스케줄 데이터 로드
+  useEffect(() => {
+    loadDailyData(selectedDate);
+  }, [loadDailyData, selectedDate]);
+
+  // 메인 스케줄 블록 계산
+  const mainScheduleBlocks = useMemo(() => {
+    if (!dailyData || !dailyData.tasks) return [];
+
+    return dailyData.tasks
+      .filter(t => t.timeBlock !== null)
+      .map(t => {
+        const blockInfo = TIME_BLOCKS.find(b => b.id === t.timeBlock);
+        if (!blockInfo) return null;
+
+        const startHour = blockInfo.start;
+        const endHour = blockInfo.end;
+
+        const top = (startHour * 60 - timelineStartHour * 60) * PIXELS_PER_MINUTE;
+        const height = (endHour - startHour) * 60 * PIXELS_PER_MINUTE;
+
+        return {
+          id: `main-${t.id}`,
+          name: t.text,
+          top,
+          height,
+          timeBlock: t.timeBlock,
+        };
+      })
+      .filter((b): b is NonNullable<typeof b> => b !== null);
+  }, [dailyData]);
+
+  // 중복 제거 (같은 타임블록에 여러 작업이 있을 경우 겹쳐서 진하게 보이는 문제 방지)
+  const uniqueMainBlocks = useMemo(() => {
+    const uniqueMap = new Map();
+    mainScheduleBlocks.forEach(b => {
+      if (!uniqueMap.has(b.timeBlock)) {
+        uniqueMap.set(b.timeBlock, b);
+      } else {
+        const existing = uniqueMap.get(b.timeBlock);
+        existing.name += `, ${b.name}`;
+      }
+    });
+    return Array.from(uniqueMap.values());
+  }, [mainScheduleBlocks]);
+  const [createPreview, setCreatePreview] = useState<{ top: number; height: number; startTime: string; endTime: string } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ task: TempScheduleTask; x: number; y: number } | null>(null);
+
+  const tasks = useMemo(() => getTasksForDate(selectedDate), [getTasksForDate, selectedDate, allTasks]);
   const blockPositions = useMemo(() => calculateBlockPositions(tasks), [tasks]);
 
   // 현재 시간 마커
@@ -210,7 +261,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
       const now = new Date();
       const hour = now.getHours();
       const minute = now.getMinutes();
-      
+
       if (hour < timelineStartHour || hour >= timelineEndHour) {
         setCurrentTimeTop(null);
       } else {
@@ -234,6 +285,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
   // 드래그 시작 핸들러
   const handleDragStart = useCallback((task: TempScheduleTask, mode: 'move' | 'resize-top' | 'resize-bottom', e: React.MouseEvent) => {
     e.preventDefault();
+    setContextMenu(null); // 드래그 시작 시 메뉴 닫기
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
@@ -250,6 +302,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
   // 새 블록 생성 드래그 시작
   const handleCreateStart = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
+    setContextMenu(null); // 생성 시작 시 메뉴 닫기
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
@@ -384,6 +437,15 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
     }
   }, [deleteTask]);
 
+  // 컨텍스트 메뉴 핸들러
+  const handleContextMenu = useCallback((task: TempScheduleTask, e: React.MouseEvent) => {
+    setContextMenu({
+      task,
+      x: e.clientX,
+      y: e.clientY,
+    });
+  }, []);
+
   // 시간 레이블 생성
   const hourLabels = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => timelineStartHour + i);
 
@@ -420,6 +482,25 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
             </div>
           ))}
 
+          {/* 메인 스케줄 고스트 블록 */}
+          <div className="absolute top-0 left-12 right-2 bottom-0 pointer-events-none">
+            {uniqueMainBlocks.map(block => (
+              <div
+                key={block.id}
+                className="absolute left-0 right-0 rounded-lg bg-gray-500/10 border border-gray-500/20 flex items-center justify-center text-xs text-gray-500/50 font-medium"
+                style={{
+                  top: `${block.top}px`,
+                  height: `${block.height}px`,
+                  zIndex: 0,
+                }}
+              >
+                <div className="truncate px-2">
+                  {block.name} (메인 스케줄)
+                </div>
+              </div>
+            ))}
+          </div>
+
           {/* 블록들 */}
           <div className="absolute top-0 left-12 right-2 bottom-0">
             {blockPositions.map(pos => (
@@ -429,6 +510,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
                 onEdit={openTaskModal}
                 onDelete={handleDelete}
                 onDragStart={handleDragStart}
+                onContextMenu={handleContextMenu}
               />
             ))}
 
@@ -473,6 +555,16 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
             {Math.floor(tooltip.durationMinutes / 60)}시간 {tooltip.durationMinutes % 60}분
           </div>
         </div>
+      )}
+
+      {/* 컨텍스트 메뉴 */}
+      {contextMenu && (
+        <TempScheduleContextMenu
+          task={contextMenu.task}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+        />
       )}
     </div>
   );

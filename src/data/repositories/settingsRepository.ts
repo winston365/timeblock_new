@@ -14,7 +14,7 @@
 
 import { db } from '../db/dexieClient';
 import type { Settings, TimeSlotTagTemplate } from '@/shared/types/domain';
-import { STORAGE_KEYS, DEFAULT_AUTO_MESSAGE_INTERVAL, TEN_MINUTES_MS } from '@/shared/lib/constants';
+import { DEFAULT_AUTO_MESSAGE_INTERVAL, TEN_MINUTES_MS } from '@/shared/lib/constants';
 import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
 import { loadData, saveData, updateData, type RepositoryConfig } from './baseRepository';
 import { settingsStrategy } from '@/shared/services/sync/firebase/strategies';
@@ -44,7 +44,7 @@ const DEFAULT_TIME_SLOT_TAGS: TimeSlotTagTemplate[] = [
 
 const settingsConfig: RepositoryConfig<Settings> = {
   table: db.settings,
-  storageKey: STORAGE_KEYS.SETTINGS,
+
   firebaseStrategy: settingsStrategy,
   createInitial: () => ({
     geminiApiKey: '',
@@ -126,7 +126,7 @@ export async function loadSettings(): Promise<Settings> {
  *   - localStorage에 백업
  */
 export async function saveSettings(settings: Settings): Promise<void> {
-  await saveData(settingsConfig, 'current', stampSettings(settings));
+  await saveData(settingsConfig, 'current', stampSettings(settings) as Settings);
 }
 
 /**

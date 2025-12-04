@@ -263,7 +263,7 @@ export function BattleSidebar() {
       )}
 
       {/* 보스 처치됨 - 난이도 선택 (순차 진행 완료 후에만 표시) */}
-      {isCurrentBossDefeated && totalRemaining > 0 && isSequentialComplete && (
+      {isCurrentBossDefeated && totalRemaining > 0 && isSequentialComplete && !showDefeatOverlay && (
         <div className="flex-1 flex flex-col gap-3 justify-center">
           <div className="text-center">
             <span className="text-3xl">✅</span>

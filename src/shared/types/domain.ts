@@ -421,6 +421,9 @@ export interface Settings {
   idleFocusModeEnabled?: boolean; // 비활동 시 집중 모드 전환 활성화 (기본: false)
   idleFocusModeMinutes?: number; // 비활동 감지 시간 (분, 기본: 3)
 
+  // 임시 스케줄 설정
+  tempScheduleGridSnapInterval?: number;
+
   // 메타데이터 (동기화 충돌 해결용)
   updatedAt?: number;
   updatedByDevice?: string;
@@ -513,18 +516,18 @@ export interface WeeklyGoal {
   target: number; // 목표 숫자 (예: 500)
   unit: string; // 단위 (예: "개", "페이지", "분")
   currentProgress: number; // 현재 진행도
-  
+
   // 메타데이터
   icon?: string; // 아이콘 (이모지)
   color?: string; // 색상
   order: number; // 정렬 순서
-  
+
   // 주간 기준
   weekStartDate: string; // 현재 주 시작일 (월요일, YYYY-MM-DD)
-  
+
   // 히스토리 (지난주 기록 포함)
   history: WeeklyGoalHistory[];
-  
+
   // 타임스탬프
   createdAt: string; // 생성 시각 (ISO 8601)
   updatedAt: string; // 수정 시각 (ISO 8601)
@@ -608,18 +611,14 @@ export interface DailyBattleState {
  * 전투 설정
  */
 export interface BattleSettings {
-  // 보스 설정 (deprecated - HP는 이제 bossDifficultyXP * 0.5로 계산)
-  /** @deprecated HP는 이제 난이도별 XP의 절반으로 자동 계산됩니다 */
-  dailyBossCount: number;        // 하루 보스 수 - deprecated (23마리 풀 시스템으로 대체)
-  /** @deprecated HP는 이제 난이도별 XP의 절반으로 자동 계산됩니다 */
-  bossBaseHP: number;            // 보스 기본 체력 - deprecated (난이도별 HP로 대체)
+
 
   // 미션 설정
   missions: BattleMission[];     // 미션 목록 (Firebase 동기화)
   defaultMissionDamage: number;  // 새 미션 기본 데미지 (5~30분, 기본: 15)
 
   // 보상 설정
-  bossDefeatXP: number;          // 보스 처치 XP (deprecated: fallback용)
+
   bossDifficultyXP: Record<BossDifficulty, number>; // 난이도별 XP
 
   // UI 설정

@@ -20,6 +20,16 @@ TimeBlock Planner는 시간 관리 방법론인 타임블로킹(Time-blocking)�
 - **상점 시스템**: 획득한 XP로 아이템 구매
 - **연속 출석**: 매일 로그인 스트릭 추적
 
+### ⚔️ 보스 배틀 & 도감 시스템
+- **31종의 유니크 보스**: Easy부터 Epic까지 4단계 난이도의 다양한 보스
+- **보스 도감 (Boss Dex)**:
+  - 🖼️ **홀로그램 3D 카드**: 마우스 움직임에 반응하는 프리미엄 비주얼 효과
+  - 🔒 **실루엣 시스템**: 미발견 보스는 실루엣으로 표시되어 수집 욕구 자극
+  - 📊 **전적 통계**: 최근 14일간의 처치 기록 및 난이도별 통계 그래프
+- **배틀 메커니즘**:
+  - 일일 미션 완료로 보스에게 데미지 입히기
+  - 보스 처치 시 대량의 XP 및 희귀 아이템 획득 기회
+
 ### 🤖 AI 동반자 (Waifu Companion)
 - **감정 표현 시스템**: 호감도(0-100)에 따라 변화하는 5가지 감정 포즈
 - **특수 포즈**: 상호작용으로 해금 가능한 특별 포즈 (울음, 취함, 놀람 등)
@@ -68,8 +78,7 @@ TimeBlock Planner는 시간 관리 방법론인 타임블로킹(Time-blocking)�
 
 ### 데이터 지속성 (3-Tier 폴백 시스템)
 1. **Dexie (IndexedDB)** - 로컬 데이터베이스 (Primary)
-2. **localStorage** - 동기식 폴백 (Secondary)
-3. **Firebase Realtime Database** - 클라우드 동기화 및 백업 (Cloud)
+2. **Firebase Realtime Database** - 클라우드 동기화 및 백업 (Cloud)
 
 ### AI & Backend
 - **Google Gemini API** - AI 채팅 및 작업 지원
@@ -190,8 +199,7 @@ timeblock_new/
 ### 3-Tier 데이터 지속성
 모든 데이터는 3단계 폴백 시스템으로 관리됩니다:
 1. IndexedDB (Dexie) - 고성능 로컬 스토리지
-2. localStorage - 동기식 백업
-3. Firebase Realtime Database - 클라우드 동기화
+2. Firebase Realtime Database - 클라우드 동기화
 
 모든 데이터 작업은 **Repository Pattern**을 통해 수행되며, 3개 레이어에 자동으로 동기화됩니다.
 

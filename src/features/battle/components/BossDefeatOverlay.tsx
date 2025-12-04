@@ -67,7 +67,7 @@ export function BossDefeatOverlay({
     timers.push(setTimeout(() => setStage('reveal'), 300));
     timers.push(setTimeout(() => setStage('quote'), 1200));
     timers.push(setTimeout(() => setStage('reward'), 2200));
-    
+
     // 순차 진행 완료 & 남은 보스가 있으면 선택 단계로
     if (isSequentialComplete && hasRemainingBosses && onSelectDifficulty) {
       timers.push(setTimeout(() => setStage('select'), 3500));
@@ -96,25 +96,23 @@ export function BossDefeatOverlay({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
-      onClick={stage === 'select' ? undefined : onClose}
+      onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="보스 처치 완료"
     >
       {/* 배경 오버레이 */}
       <div
-        className={`absolute inset-0 transition-all duration-500 ${
-          stage === 'flash' ? 'bg-white' : 'bg-black/80 backdrop-blur-sm'
-        }`}
+        className={`absolute inset-0 transition-all duration-500 ${stage === 'flash' ? 'bg-white' : 'bg-black/80 backdrop-blur-sm'
+          }`}
       />
 
       {/* 콘텐츠 */}
       <div className="relative z-10 flex flex-col items-center gap-6 p-8 text-center">
         {/* 처치 텍스트 */}
         <div
-          className={`transform transition-all duration-500 ${
-            stage === 'flash' ? 'scale-150 opacity-0' : 'scale-100 opacity-100'
-          }`}
+          className={`transform transition-all duration-500 ${stage === 'flash' ? 'scale-150 opacity-0' : 'scale-100 opacity-100'
+            }`}
         >
           <p className="mb-2 text-sm font-medium uppercase tracking-widest text-gray-400">
             ENEMY DEFEATED
@@ -132,9 +130,8 @@ export function BossDefeatOverlay({
 
         {/* 보스 아이콘 */}
         <div
-          className={`transform transition-all duration-700 delay-200 ${
-            stage === 'flash' || stage === 'reveal' ? 'scale-0 rotate-180' : 'scale-100 rotate-0'
-          } ${stage === 'select' ? 'scale-75' : ''}`}
+          className={`transform transition-all duration-700 delay-200 ${stage === 'flash' || stage === 'reveal' ? 'scale-0 rotate-180' : 'scale-100 rotate-0'
+            } ${stage === 'select' ? 'scale-75' : ''}`}
         >
           <div className="relative">
             <div className="absolute inset-0 animate-ping rounded-full bg-red-500/30 blur-xl" />
@@ -146,13 +143,12 @@ export function BossDefeatOverlay({
 
         {/* 처치 대사 */}
         <div
-          className={`max-w-md transform transition-all duration-500 ${
-            (stage === 'quote' || stage === 'reward') && stage !== 'select'
+          className={`max-w-md transform transition-all duration-500 ${(stage === 'quote' || stage === 'reward')
               ? 'translate-y-0 opacity-100'
-              : stage === 'select' 
-                ? 'scale-75 opacity-50' 
+              : stage === 'select'
+                ? 'scale-75 opacity-50'
                 : 'translate-y-4 opacity-0'
-          }`}
+            }`}
         >
           <blockquote className="rounded-lg border border-gray-700 bg-gray-900/80 px-6 py-4 italic text-gray-300 shadow-lg">
             <span className="text-2xl text-gray-500">"</span>
@@ -163,9 +159,8 @@ export function BossDefeatOverlay({
 
         {/* XP 보상 */}
         <div
-          className={`transform transition-all duration-500 ${
-            stage === 'reward' || stage === 'select' ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-8 scale-75 opacity-0'
-          } ${stage === 'select' ? 'scale-75' : ''}`}
+          className={`transform transition-all duration-500 ${stage === 'reward' || stage === 'select' ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-8 scale-75 opacity-0'
+            } ${stage === 'select' ? 'scale-75' : ''}`}
         >
           <div className="flex items-center gap-3 rounded-full border border-yellow-500/50 bg-yellow-500/20 px-6 py-3 shadow-lg">
             <span className="text-3xl">⭐</span>
@@ -181,9 +176,8 @@ export function BossDefeatOverlay({
         {/* 오버킬 데미지 표시 */}
         {overkillDamage !== undefined && overkillDamage > 0 && (stage === 'reward' || stage === 'select') && (
           <div
-            className={`transform transition-all duration-500 delay-200 ${
-              stage === 'reward' || stage === 'select' ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-8 scale-75 opacity-0'
-            } ${stage === 'select' ? 'scale-75' : ''}`}
+            className={`transform transition-all duration-500 delay-200 ${stage === 'reward' || stage === 'select' ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-8 scale-75 opacity-0'
+              } ${stage === 'select' ? 'scale-75' : ''}`}
           >
             <div className="flex items-center gap-2 rounded-full border border-orange-500/50 bg-orange-500/20 px-4 py-2 shadow-lg animate-pulse">
               <span className="text-xl">💥</span>
@@ -288,9 +282,8 @@ export function BossDefeatOverlay({
         {/* 닫기 안내 (선택 단계 아닐 때만) */}
         {stage !== 'select' && (
           <p
-            className={`text-xs text-gray-500 transition-opacity duration-500 ${
-              stage === 'reward' ? 'opacity-100' : 'opacity-0'
-            }`}
+            className={`text-xs text-gray-500 transition-opacity duration-500 ${stage === 'reward' ? 'opacity-100' : 'opacity-0'
+              }`}
           >
             화면을 클릭하면 닫힙니다
           </p>

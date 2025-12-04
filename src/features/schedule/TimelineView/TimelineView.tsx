@@ -29,6 +29,9 @@ import { TIME_BLOCKS, type Task, type TimeBlockId, type DailyGoal } from '@/shar
 import { generateId } from '@/shared/lib/utils';
 import TimelineTaskBlock from './TimelineTaskBlock';
 import TaskModal from '@/features/schedule/TaskModal';
+import { useTempScheduleStore } from '@/features/tempSchedule/stores/tempScheduleStore';
+import { timeToMinutes } from '@/data/repositories/tempScheduleRepository';
+import { TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
 
 /** 시간 초과 경고 임계값 (분) */
 const OVERTIME_THRESHOLD = 50;
@@ -74,6 +77,43 @@ function TimelineViewComponent() {
   // 컨텍스트 메뉴 상태
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+
+  // 임시 스케줄 데이터 가져오기 (오버레이용)
+  const {
+    tasks: tempTasks,
+    loadData: loadTempData,
+    getTasksForDate: getTempTasksForDate
+  } = useTempScheduleStore();
+
+  // 현재 날짜의 임시 스케줄 로드
+  useEffect(() => {
+    loadTempData();
+  }, [loadTempData]);
+
+  // 임시 스케줄 고스트 블록 계산
+  const tempScheduleBlocks = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0]; // 일단 오늘 날짜 기준 (TimelineView가 날짜를 prop으로 받지 않음)
+    // TODO: TimelineView가 날짜를 prop으로 받게 되면 수정 필요. 현재는 오늘 기준.
+
+    const tasks = getTempTasksForDate(today);
+
+    return tasks.map(t => {
+      const startMinutes = timeToMinutes(t.startTime);
+      const endMinutes = timeToMinutes(t.endTime);
+
+      // TimelineView는 visibleStartHour부터 시작함
+      const top = (startMinutes - visibleStartHour * 60) * PIXELS_PER_MINUTE;
+      const height = (endMinutes - startMinutes) * PIXELS_PER_MINUTE;
+
+      return {
+        id: `temp-${t.id}`,
+        name: t.name,
+        top,
+        height,
+        color: t.color,
+      };
+    }).filter(b => b.height > 0);
+  }, [getTempTasksForDate, visibleStartHour, tempTasks]);
 
   // 시간대별 초과 여부 계산
   const overtimeHours = useMemo(() => {
@@ -317,8 +357,8 @@ function TimelineViewComponent() {
           type="button"
           onClick={toggleShowPastBlocks}
           className={`rounded px-1.5 py-0.5 text-[10px] transition-all duration-200 ${showPastBlocks
-              ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
-              : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-secondary)]'
+            ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+            : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-secondary)]'
             }`}
           title={showPastBlocks ? '지난 블록 숨기기' : '지난 블록 보기'}
         >
@@ -358,8 +398,8 @@ function TimelineViewComponent() {
                 {/* 시간 구분선 */}
                 <div
                   className={`absolute left-0 right-0 top-0 ${isBlockBoundary
-                      ? 'border-t-2 border-[var(--color-text-tertiary)]/40'
-                      : 'border-t border-[var(--color-border)]/40'
+                    ? 'border-t-2 border-[var(--color-text-tertiary)]/40'
+                    : 'border-t border-[var(--color-border)]/40'
                     }`}
                 />
                 {/* 30분 보조선 */}
@@ -370,8 +410,8 @@ function TimelineViewComponent() {
                 {/* 시간 레이블 */}
                 <div
                   className={`absolute left-0.5 top-0.5 text-[10px] font-semibold ${isBlockBoundary
-                      ? 'text-[var(--color-text-primary)]'
-                      : 'text-[var(--color-text-secondary)]'
+                    ? 'text-[var(--color-text-primary)]'
+                    : 'text-[var(--color-text-secondary)]'
                     }`}
                 >
                   {String(hour).padStart(2, '0')}
@@ -406,6 +446,28 @@ function TimelineViewComponent() {
               </div>
             );
           })}
+
+          {/* 임시 스케줄 고스트 블록 */}
+          <div className="absolute top-0 left-6 right-0 bottom-0 pointer-events-none">
+            {tempScheduleBlocks.map(block => (
+              <div
+                key={block.id}
+                className="absolute left-0 right-0 rounded-lg border border-dashed flex items-center justify-center text-[10px] font-medium opacity-40"
+                style={{
+                  top: `${block.top}px`,
+                  height: `${block.height}px`,
+                  backgroundColor: block.color + '20',
+                  borderColor: block.color,
+                  color: block.color,
+                  zIndex: 0,
+                }}
+              >
+                <div className="truncate px-1">
+                  {block.name} (임시)
+                </div>
+              </div>
+            ))}
+          </div>
 
           {/* 작업 블록들 */}
           <div className="absolute top-0 left-6 right-0 bottom-0 pointer-events-none">

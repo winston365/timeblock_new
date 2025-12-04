@@ -34,11 +34,9 @@ const BATTLE_STATS_KEY = 'battleStats'; // 날짜별 통계
 // ============================================================================
 
 export const DEFAULT_BATTLE_SETTINGS: BattleSettings = {
-  dailyBossCount: 15,
-  bossBaseHP: 60,
   missions: [],
   defaultMissionDamage: 15,
-  bossDefeatXP: 40,
+
   bossDifficultyXP: {
     easy: 20,
     normal: 40,
@@ -463,20 +461,20 @@ export async function updateTodayBattleStats(
   try {
     const today = getLocalDate();
     const allStats = await loadBattleStats();
-    
+
     const todayStats: DailyBattleStats = allStats[today] ?? {
       date: today,
       defeatedCount: 0,
       defeatedBossIds: [],
       byDifficulty: { easy: 0, normal: 0, hard: 0, epic: 0 },
     };
-    
+
     // 이미 기록된 보스인지 확인 (중복 방지)
     if (!todayStats.defeatedBossIds.includes(bossId)) {
       todayStats.defeatedCount += 1;
       todayStats.defeatedBossIds.push(bossId);
       todayStats.byDifficulty[difficulty] += 1;
-      
+
       allStats[today] = todayStats;
       await saveBattleStats(allStats);
     }
@@ -492,14 +490,14 @@ export async function getRecentBattleStats(days: number = 14): Promise<DailyBatt
   try {
     const allStats = await loadBattleStats();
     const result: DailyBattleStats[] = [];
-    
+
     // 최근 N일 날짜 생성
     const today = new Date();
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().slice(0, 10);
-      
+
       result.push(allStats[dateStr] ?? {
         date: dateStr,
         defeatedCount: 0,
@@ -507,7 +505,7 @@ export async function getRecentBattleStats(days: number = 14): Promise<DailyBatt
         byDifficulty: { easy: 0, normal: 0, hard: 0, epic: 0 },
       });
     }
-    
+
     return result;
   } catch (error) {
     console.error('Failed to get recent battle stats:', error);

@@ -229,18 +229,7 @@ function computeBossHP(difficulty: BossDifficulty, settings: BattleSettings): nu
   return Math.floor(xp * 0.5);
 }
 
-/**
- * @deprecated dailyBossCount 기반 시스템은 더 이상 사용되지 않음
- * 23마리 풀 시스템으로 대체됨
- */
-function computeUpdatedDailyStateForBossCount_core(
-  dailyState: DailyBattleState,
-  _newCount: number,
-  _settings: BattleSettings,
-) {
-  // deprecated - 더 이상 동적으로 보스 수를 변경하지 않음
-  return { changed: false, nextState: dailyState };
-}
+
 
 /**
  * 새로운 일일 전투 상태 생성 (23마리 풀 시스템)
@@ -253,14 +242,14 @@ function computeNewDailyState_core(
 ): DailyBattleState {
   // 23마리 보스를 난이도별로 분류
   const remainingBosses = groupBossesByDifficulty();
-  
+
   // easy 풀에서 랜덤 1마리 선택하여 첫 보스로 스폰
   const easyBossIds = remainingBosses.easy;
   const randomIndex = Math.floor(Math.random() * easyBossIds.length);
   const firstBossId = easyBossIds[randomIndex];
   const firstBoss = getBossById(firstBossId)!;
   const firstBossHP = computeBossHP(firstBoss.difficulty, settings);
-  
+
   // 선택된 보스를 풀에서 제거
   remainingBosses.easy = easyBossIds.filter(id => id !== firstBossId);
 
@@ -292,35 +281,35 @@ function computeSpawnBossResult_core(
   settings: BattleSettings,
 ): { updatedState: DailyBattleState | null; spawnedBossId: string | null; overkillApplied: number } {
   const pool = dailyState.remainingBosses?.[difficulty];
-  
+
   // 해당 난이도에 남은 보스가 없으면 실패
   if (!pool || pool.length === 0) {
     return { updatedState: null, spawnedBossId: null, overkillApplied: 0 };
   }
-  
+
   // 랜덤 선택
   const randomIndex = Math.floor(Math.random() * pool.length);
   const selectedBossId = pool[randomIndex];
   const boss = getBossById(selectedBossId);
-  
+
   if (!boss) {
     return { updatedState: null, spawnedBossId: null, overkillApplied: 0 };
   }
-  
+
   const bossHP = computeBossHP(difficulty, settings);
-  
+
   // 오버킬 데미지 적용
   const overkillDamage = dailyState.overkillDamage ?? 0;
   const appliedOverkill = Math.min(overkillDamage, bossHP); // 최대 HP까지만 적용
   const initialHP = Math.max(0, bossHP - overkillDamage);
   const remainingOverkill = Math.max(0, overkillDamage - bossHP); // 남은 오버킬 (추가 이월)
-  
+
   // 풀에서 제거
   const updatedRemainingBosses = {
     ...dailyState.remainingBosses,
     [difficulty]: pool.filter(id => id !== selectedBossId),
   };
-  
+
   // 새 보스 추가
   const newBossProgress: DailyBossProgress = {
     bossId: selectedBossId,
@@ -330,10 +319,10 @@ function computeSpawnBossResult_core(
     // 스폰 시 HP가 0이면 즉시 처치
     ...(initialHP <= 0 ? { defeatedAt: new Date().toISOString() } : {}),
   };
-  
+
   const bosses = dailyState.bosses ?? [];
   const isInstantDefeat = initialHP <= 0;
-  
+
   const updatedState: DailyBattleState = {
     ...dailyState,
     currentBossIndex: bosses.length, // 새 보스가 현재 보스
@@ -346,7 +335,7 @@ function computeSpawnBossResult_core(
       defeatedBossIds: [...(dailyState.defeatedBossIds ?? []), selectedBossId],
     } : {}),
   };
-  
+
   return { updatedState, spawnedBossId: selectedBossId, overkillApplied: appliedOverkill };
 }
 
@@ -494,7 +483,7 @@ interface BattleStore {
   // 처치 연출 상태
   showDefeatOverlay: boolean;
   defeatedBossId: string | null;
-  
+
   // 처치 후 보스 선택 대기 상태
   awaitingBossSelection: boolean;
 
@@ -735,7 +724,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
   },
 
   updateSettings: async (updates) => {
-    const { settings, dailyState } = get();
+    const { settings } = get();
     const updatedSettings = computeUpdatedSettings_core(settings, updates);
 
     try {
@@ -752,30 +741,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       throw formattedError;
     }
 
-    // dailyBossCount가 변경되었고, 오늘 전투가 진행 중이라면 보스 목록 동기화
-    if (updates.dailyBossCount !== undefined && dailyState) {
-      const { changed, nextState } = computeUpdatedDailyStateForBossCount_core(
-        dailyState,
-        updates.dailyBossCount,
-        settings,
-      );
 
-      if (changed && nextState) {
-        try {
-          await saveDailyBattleState(nextState);
-          set({ dailyState: nextState });
-        } catch (error) {
-          const formattedError = createBattleStoreError(
-            'BATTLE_DAILY_STATE_SAVE_ERROR',
-            'Failed to persist updated daily battle state',
-            { dailyBossCount: updates.dailyBossCount },
-            error,
-          );
-          logBattleStoreError('updateSettings daily state sync failed', formattedError);
-          throw formattedError;
-        }
-      }
-    }
   },
 
   // =========================================================================
@@ -837,21 +803,21 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
   spawnBossByDifficulty: async (difficulty: BossDifficulty) => {
     const { dailyState, settings } = get();
-    
+
     if (!dailyState) {
       return false;
     }
-    
+
     const computation = computeSpawnBossResult_core(dailyState, difficulty, settings);
-    
+
     if (!computation.updatedState) {
       return false;
     }
-    
+
     try {
       await saveDailyBattleState(computation.updatedState);
-      set({ 
-        dailyState: computation.updatedState, 
+      set({
+        dailyState: computation.updatedState,
         awaitingBossSelection: false,
         lastOverkillApplied: computation.overkillApplied,
       });
@@ -892,37 +858,37 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         let currentPhase = finalState.sequentialPhase ?? 0;
         let nextPhase = currentPhase + 1;
         finalState = { ...finalState, sequentialPhase: nextPhase };
-        
+
         // 순차 진행 중이면 자동 스폰 (phase 5 미만)
         // 오버킬로 즉시 처치 시 연쇄 스폰 처리
         let nextDifficulty = getNextSequentialDifficulty(nextPhase);
-        
+
         while (nextDifficulty) {
           const spawnResult = computeSpawnBossResult_core(finalState, nextDifficulty, settings);
-          
+
           if (!spawnResult.updatedState) {
             // 해당 난이도에 보스가 없으면 중단
             break;
           }
-          
+
           finalState = spawnResult.updatedState;
           finalState = { ...finalState, sequentialPhase: nextPhase };
-          
+
           // 스폰된 보스가 즉시 처치되었는지 확인 (오버킬로 인한 연쇄 처치)
           const newBoss = finalState.bosses?.[finalState.currentBossIndex];
           const isInstantDefeat = newBoss?.defeatedAt != null;
-          
+
           if (isInstantDefeat && spawnResult.spawnedBossId) {
             // 연쇄 처치된 보스 ID 수집
             chainDefeatedBossIds.push(spawnResult.spawnedBossId);
-            
+
             // 즉시 처치된 보스도 히스토리와 통계에 추가
             await addToDefeatedBossHistory(spawnResult.spawnedBossId);
             const instantBoss = getBossById(spawnResult.spawnedBossId);
             if (instantBoss) {
               await updateTodayBattleStats(spawnResult.spawnedBossId, instantBoss.difficulty);
             }
-            
+
             // 다음 단계로 진행
             nextPhase++;
             finalState = { ...finalState, sequentialPhase: nextPhase };
@@ -935,7 +901,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
 
       await saveDailyBattleState(finalState);
-      
+
       // 연쇄 처치된 보스들도 로컬 히스토리에 추가
       let updatedHistory = get().defeatedBossHistory;
       for (const bossId of chainDefeatedBossIds) {
@@ -943,31 +909,31 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           updatedHistory = [...updatedHistory, bossId];
         }
       }
-      
-      set({ 
+
+      set({
         dailyState: finalState,
         defeatedBossHistory: updatedHistory,
         // 오버킬 데미지 저장 (처치 시만)
         ...(computation.result.bossDefeated ? { lastOverkillDamage: computation.result.overkillDamage } : {}),
       });
-      
+
       if (computation.defeatedBossId) {
         // 보스 처치 시 히스토리에 저장 (도감 확장 준비)
         await addToDefeatedBossHistory(computation.defeatedBossId);
-        
+
         // 통계 업데이트
         const defeatedBoss = getBossById(computation.defeatedBossId);
         if (defeatedBoss) {
           await updateTodayBattleStats(computation.defeatedBossId, defeatedBoss.difficulty);
         }
-        
+
         // 로컬 상태도 업데이트
         const currentHistory = get().defeatedBossHistory;
         if (!currentHistory.includes(computation.defeatedBossId)) {
           set({ defeatedBossHistory: [...currentHistory, computation.defeatedBossId] });
         }
         get().showBossDefeat(computation.defeatedBossId);
-        
+
         // 순차 진행 완료 후(phase 5+)만 보스 선택 대기 상태로 전환
         const isSequentialComplete = isSequentialPhaseComplete(finalState.sequentialPhase);
         set({ awaitingBossSelection: isSequentialComplete });
