@@ -829,6 +829,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     let finalState = computation.updatedState;
+    // 연쇄 처치된 보스 ID 수집 (도감 업데이트용)
+    const chainDefeatedBossIds: string[] = [];
 
     try {
       // 보스 처치 시 순차 진행 단계 업데이트 및 자동 스폰
@@ -857,6 +859,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           const isInstantDefeat = newBoss?.defeatedAt != null;
           
           if (isInstantDefeat && spawnResult.spawnedBossId) {
+            // 연쇄 처치된 보스 ID 수집
+            chainDefeatedBossIds.push(spawnResult.spawnedBossId);
+            
             // 즉시 처치된 보스도 히스토리와 통계에 추가
             await addToDefeatedBossHistory(spawnResult.spawnedBossId);
             const instantBoss = getBossById(spawnResult.spawnedBossId);
@@ -876,8 +881,18 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
 
       await saveDailyBattleState(finalState);
+      
+      // 연쇄 처치된 보스들도 로컬 히스토리에 추가
+      let updatedHistory = get().defeatedBossHistory;
+      for (const bossId of chainDefeatedBossIds) {
+        if (!updatedHistory.includes(bossId)) {
+          updatedHistory = [...updatedHistory, bossId];
+        }
+      }
+      
       set({ 
         dailyState: finalState,
+        defeatedBossHistory: updatedHistory,
         // 오버킬 데미지 저장 (처치 시만)
         ...(computation.result.bossDefeated ? { lastOverkillDamage: computation.result.overkillDamage } : {}),
       });
