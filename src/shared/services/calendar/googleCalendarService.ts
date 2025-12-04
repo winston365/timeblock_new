@@ -455,3 +455,25 @@ export async function updateLastSyncTime(): Promise<void> {
     });
   }
 }
+
+// ============================================================================
+// Legacy / Migration Wrappers
+// ============================================================================
+
+export async function createCalendarEvent(task: Task, date: string): Promise<GoogleCalendarEvent> {
+  const event = taskToCalendarEvent(task, date);
+  return createCalendarEventGeneric(event, task.id, 'taskCalendarMappings');
+}
+
+export async function updateCalendarEvent(task: Task, date: string): Promise<GoogleCalendarEvent | null> {
+  const event = taskToCalendarEvent(task, date);
+  return updateCalendarEventGeneric(event, task.id, 'taskCalendarMappings');
+}
+
+export async function deleteCalendarEvent(taskId: string): Promise<void> {
+  return deleteCalendarEventGeneric(taskId, 'taskCalendarMappings');
+}
+
+export async function getTaskCalendarMapping(taskId: string): Promise<TaskCalendarMapping | undefined> {
+  return db.table('taskCalendarMappings').get(taskId);
+}
