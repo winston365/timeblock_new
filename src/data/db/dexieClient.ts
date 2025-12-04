@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Dexie (IndexedDB) 클라이언트 설정
  *
@@ -29,6 +28,33 @@ import type {
 } from '@/shared/types/domain';
 import type { TempScheduleTask } from '@/shared/types/tempSchedule';
 import type { TaskCalendarMapping } from '@/shared/services/calendar/googleCalendarTypes';
+import type { DayForecast } from '@/shared/types/weather';
+
+/**
+ * 시스템 상태 저장소 레코드 타입
+ * @description key-value 형태의 시스템 상태 저장을 위한 타입
+ */
+export interface SystemStateRecord {
+  /** 상태 키 */
+  key: string;
+  /** 상태 값 (타입 안전성을 위해 unknown 사용) */
+  value: unknown;
+}
+
+/**
+ * 날씨 캐시 레코드 타입
+ * @description 날씨 데이터 캐싱을 위한 타입
+ */
+export interface WeatherCacheRecord {
+  /** 캐시 ID */
+  id: string;
+  /** 날씨 예보 데이터 */
+  data: DayForecast[];
+  /** 캐시 타임스탬프 */
+  timestamp: number;
+  /** 마지막 업데이트 날짜 */
+  lastUpdatedDate: string;
+}
 
 /**
  * RAG 벡터 문서 레코드 타입
@@ -73,9 +99,9 @@ export class TimeBlockDB extends Dexie {
   globalInbox!: Table<Task, string>;
   completedInbox!: Table<Task, string>;
   globalGoals!: Table<DailyGoal, string>;
-  systemState!: Table<{ key: string; value: any }, string>;
+  systemState!: Table<SystemStateRecord, string>;
   images!: Table<{ id: string; data: Blob | string }, string>;
-  weather!: Table<{ id: string; data: any; timestamp: number; lastUpdatedDate: string }, string>;
+  weather!: Table<WeatherCacheRecord, string>;
   aiInsights!: Table<AIInsight, string>;
   ragDocuments!: Table<RAGDocumentRecord, string>; // ✅ RAG 벡터 영구 저장
   weeklyGoals!: Table<WeeklyGoal, string>; // ✅ 장기목표 (주간 목표)

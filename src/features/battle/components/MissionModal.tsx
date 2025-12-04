@@ -5,7 +5,7 @@
  * @dependencies useBattleStore, battleSoundService
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useBattleStore, getBossById, getMissionCooldownRemaining, isMissionAvailable } from '../stores/battleStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
@@ -43,13 +43,28 @@ function formatCooldownTime(minutes: number): string {
 
 function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, onComplete, disabled, index }: BattleMissionCardProps) {
   const [isAttacking, setIsAttacking] = useState(false);
+  const attackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (attackTimeoutRef.current) {
+        clearTimeout(attackTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleClick = () => {
     if (!isUsed && !isOnCooldown && !disabled) {
       setIsAttacking(true);
-      setTimeout(() => {
+      // 기존 타이머가 있으면 정리
+      if (attackTimeoutRef.current) {
+        clearTimeout(attackTimeoutRef.current);
+      }
+      attackTimeoutRef.current = setTimeout(() => {
         setIsAttacking(false);
         onComplete(mission.id);
+        attackTimeoutRef.current = null;
       }, 200);
     }
   };
@@ -204,6 +219,22 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
   const [lastDamage, setLastDamage] = useState<number | null>(null);
   const [, forceUpdate] = useState(0); // 타이머 갱신용
 
+  // 타이머 ref들 (언마운트 시 정리용)
+  const damageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const soundTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 컴포넌트 언마운트 시 모든 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (damageTimeoutRef.current) {
+        clearTimeout(damageTimeoutRef.current);
+      }
+      if (soundTimeoutRef.current) {
+        clearTimeout(soundTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // 쿨다운 타이머 갱신 (1분마다)
   useEffect(() => {
     if (!open) return;
@@ -279,16 +310,29 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
       playAttackSound();
     }
 
-    // 데미지 표시
+    // 데미지 표시 (기존 타이머 정리 후 설정)
+    if (damageTimeoutRef.current) {
+      clearTimeout(damageTimeoutRef.current);
+    }
     setLastDamage(mission.damage);
-    setTimeout(() => setLastDamage(null), 1000);
+    damageTimeoutRef.current = setTimeout(() => {
+      setLastDamage(null);
+      damageTimeoutRef.current = null;
+    }, 1000);
 
     const result = await completeMission(missionId);
 
     // 보스 처치 시
     if (result.bossDefeated) {
       if (settings.battleSoundEffects) {
-        setTimeout(() => playBossDefeatSound(), 200);
+        // 기존 사운드 타이머 정리 후 설정
+        if (soundTimeoutRef.current) {
+          clearTimeout(soundTimeoutRef.current);
+        }
+        soundTimeoutRef.current = setTimeout(() => {
+          playBossDefeatSound();
+          soundTimeoutRef.current = null;
+        }, 200);
       }
       toast.success(`🎉 보스 처치! +${result.xpEarned} XP`, { duration: 2500 });
     }

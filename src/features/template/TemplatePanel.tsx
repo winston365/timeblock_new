@@ -104,16 +104,11 @@ export default function TemplatePanel({ onTaskCreate }: TemplatePanelProps) {
 
   // 예상 XP 계산 (Task로 변환하여 계산)
   const getEstimatedXP = (template: Template) => {
-    const tempTask: any = {
-      baseDuration: template.baseDuration,
-      adjustedDuration: template.baseDuration, // Fix: Provide adjustedDuration
+    return calculateTaskXP({
+      adjustedDuration: template.baseDuration,
       actualDuration: 0,
       resistance: template.resistance,
-      preparation1: template.preparation1,
-      preparation2: template.preparation2,
-      preparation3: template.preparation3,
-    };
-    return calculateTaskXP(tempTask);
+    });
   };
 
   return (

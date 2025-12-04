@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Base Repository
  *
@@ -18,6 +17,7 @@
  *       기존 localStorage 데이터는 마이그레이션 로직에서 일회성으로 복구됨
  */
 
+import type { Table } from 'dexie';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { fetchFromFirebase, syncToFirebase, type SyncStrategy } from '@/shared/services/sync/firebase/syncCore';
@@ -32,15 +32,15 @@ import { fetchFromFirebase, syncToFirebase, type SyncStrategy } from '@/shared/s
  * @template T - 저장할 데이터 타입
  */
 export interface RepositoryConfig<T> {
-  /** Dexie 테이블 */
-  table: any;
+  /** Dexie 테이블 (제네릭 Table 타입) */
+  table: Table<T & { key?: string | number }, string | number>;
 
   /** Firebase 동기화 전략 */
   firebaseStrategy?: SyncStrategy<T>;
   /** 초기 데이터 생성 함수 */
   createInitial: () => T;
-  /** 데이터 정제 함수 (선택) */
-  sanitize?: (data: any) => T;
+  /** 데이터 정제 함수 (선택) - unknown 입력을 T로 변환 */
+  sanitize?: (data: unknown) => T;
   /** 로그 접두사 (선택, 기본값: 테이블 이름) */
   logPrefix?: string;
 }

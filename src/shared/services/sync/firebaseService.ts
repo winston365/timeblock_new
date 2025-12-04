@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Firebase Synchronization Service - Facade
  *
@@ -27,7 +26,7 @@ export { debugFirebaseData } from './firebase/firebaseDebug';
 
 export type { SyncData } from './firebase/conflictResolver';
 
-import type { DailyData, Task, DailyGoal, Settings, DailyTokenUsage } from '@/shared/types/domain';
+import type { DailyData, Task, DailyGoal, Settings, DailyTokenUsage, GameState, ShopItem, WaifuState, Template } from '@/shared/types/domain';
 import { addSyncLog } from './syncLogger';
 import { getFirebaseDatabase } from './firebase/firebaseClient';
 import { ref, onValue, off } from 'firebase/database';
@@ -46,12 +45,12 @@ import { getDeviceId } from './firebase/syncUtils';
  */
 export async function fetchDataFromFirebase(): Promise<{
   dailyData: Record<string, DailyData>;
-  gameState: any | null;
-  globalInbox: any[] | null;
+  gameState: GameState | null;
+  globalInbox: Task[] | null;
   completedInbox: Record<string, Task[]> | null;
-  shopItems: any[] | null;
-  waifuState: any | null;
-  templates: any[] | null;
+  shopItems: ShopItem[] | null;
+  waifuState: WaifuState | null;
+  templates: Template[] | null;
   tokenUsage: Record<string, DailyTokenUsage>;
   globalGoals: DailyGoal[] | null;
   settings: Settings | null;

@@ -225,13 +225,18 @@ export function isToday(task: Task): boolean {
 // ============================================================================
 
 /**
+ * XP 계산에 필요한 최소 Task 필드
+ */
+export type TaskXPFields = Pick<Task, 'actualDuration' | 'adjustedDuration' | 'resistance'>;
+
+/**
  * 작업 완료 시 획득 XP 계산
  * 난이도에 따라 XP 배율 적용 (쉬움 1.0배, 보통 1.3배, 어려움 1.6배)
  *
- * @param task - XP를 계산할 Task 객체
+ * @param task - XP를 계산할 Task 객체 (필요한 필드만 포함해도 됨)
  * @returns 획득할 XP 양
  */
-export function calculateTaskXP(task: Task): number {
+export function calculateTaskXP(task: TaskXPFields): number {
   // 실제 소요 시간이 있으면 그걸 사용, 없으면 조정된 시간 사용
   const duration = task.actualDuration > 0 ? task.actualDuration : task.adjustedDuration;
   const baseXP = duration * XP_PER_MINUTE;

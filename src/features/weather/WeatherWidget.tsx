@@ -14,12 +14,15 @@
  *   - lucide-react: 아이콘
  */
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useWeatherStore } from './stores/weatherStore';
 import { getWeatherInsightWithGemini, type OutfitCard } from './services/weatherService';
 import { RefreshCw, Sparkles, Loader2 } from 'lucide-react';
 import type { HourlyWeather } from '@/shared/types/weather';
 import { getLocalDate } from '@/shared/lib/utils';
+
+/** 자동 새로고침 시간대 (9시, 11시, 12시, 15시) */
+const AUTO_REFRESH_HOURS = [9, 11, 12, 15] as const;
 
 /**
  * TopToolbar 날씨 위젯 컴포넌트
@@ -44,7 +47,8 @@ export default function WeatherWidget() {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const safeForecast = Array.isArray(forecast) ? forecast : [];
-    const autoRefreshSlots = new Set([9, 11, 12, 15]);
+    // 메모이제이션된 자동 새로고침 시간대 Set (렌더마다 새 객체 생성 방지)
+    const autoRefreshSlots = useMemo(() => new Set(AUTO_REFRESH_HOURS), []);
     const lastAutoHourRef = useRef<number | null>(null);
     const lastUpdatedDateRef = useRef<string | null>(null);
     
