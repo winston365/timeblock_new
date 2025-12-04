@@ -138,14 +138,16 @@ function computeNewMission_core(params: {
   order: number;
   idSeed: number;
   timestamp: string;
+  cooldownMinutes?: number;
 }): BattleMission {
-  const { text, damage, order, idSeed, timestamp } = params;
+  const { text, damage, order, idSeed, timestamp, cooldownMinutes = 0 } = params;
   return {
     id: `mission_${idSeed}`,
     text,
     damage,
     order,
     enabled: true,
+    cooldownMinutes, // 0이면 하루 1회 제한
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -275,6 +277,7 @@ function computeNewDailyState_core(
     remainingBosses,
     defeatedBossIds: [],
     completedMissionIds: [],
+    missionUsedAt: {}, // 미션 쿨다운 추적용
     sequentialPhase: 0, // 순차 진행 시작 (easy)
   };
 }
@@ -348,6 +351,49 @@ function computeSpawnBossResult_core(
 }
 
 /**
+ * 미션 쿨다운 남은 시간 계산 (분 단위)
+ * @returns 남은 쿨다운 시간(분), 0이면 사용 가능
+ */
+export function getMissionCooldownRemaining(
+  mission: BattleMission,
+  missionUsedAt: Record<string, string> | undefined,
+): number {
+  // 쿨다운이 0이면 하루 1회 제한 (completedMissionIds로 관리)
+  if (!mission.cooldownMinutes || mission.cooldownMinutes <= 0) {
+    return -1; // 하루 1회 제한임을 표시
+  }
+
+  const lastUsed = missionUsedAt?.[mission.id];
+  if (!lastUsed) {
+    return 0; // 사용한 적 없음
+  }
+
+  const lastUsedTime = new Date(lastUsed).getTime();
+  const now = Date.now();
+  const elapsedMinutes = (now - lastUsedTime) / (1000 * 60);
+  const remaining = mission.cooldownMinutes - elapsedMinutes;
+
+  return remaining > 0 ? Math.ceil(remaining) : 0;
+}
+
+/**
+ * 미션이 사용 가능한지 체크
+ */
+export function isMissionAvailable(
+  mission: BattleMission,
+  completedMissionIds: string[],
+  missionUsedAt: Record<string, string> | undefined,
+): boolean {
+  // 쿨다운이 없으면 하루 1회 제한
+  if (!mission.cooldownMinutes || mission.cooldownMinutes <= 0) {
+    return !completedMissionIds.includes(mission.id);
+  }
+
+  // 쿨다운이 있으면 쿨다운 체크
+  return getMissionCooldownRemaining(mission, missionUsedAt) <= 0;
+}
+
+/**
  * 미션 완료 결과 계산 (데미지 누적 시스템)
  * - 미션은 하루에 한 번만 사용 가능
  * - HP가 0 이하가 되면 보스 처치
@@ -377,19 +423,20 @@ function computeCompleteMissionResult_core(
   // 기존 데이터 호환성: 필드가 없을 수 있음
   const completedMissionIds = dailyState.completedMissionIds ?? [];
   const defeatedBossIds = dailyState.defeatedBossIds ?? [];
+  const missionUsedAt = dailyState.missionUsedAt ?? {};
 
   const currentBoss = dailyState.bosses?.[dailyState.currentBossIndex];
   if (!currentBoss || currentBoss.defeatedAt) {
     return emptyResult;
   }
 
-  // 이미 오늘 사용한 미션인지 확인 (하루 1회 제한)
-  if (completedMissionIds.includes(missionId)) {
+  const mission = missions.find(m => m.id === missionId);
+  if (!mission) {
     return emptyResult;
   }
 
-  const mission = missions.find(m => m.id === missionId);
-  if (!mission) {
+  // 쿨다운 체크: 쿨다운이 있는 미션은 쿨다운 확인, 없으면 하루 1회 제한
+  if (!isMissionAvailable(mission, completedMissionIds, missionUsedAt)) {
     return emptyResult;
   }
 
@@ -411,7 +458,14 @@ function computeCompleteMissionResult_core(
   const updatedState: DailyBattleState = {
     ...dailyState,
     bosses: updatedBosses,
-    completedMissionIds: [...completedMissionIds, missionId],
+    // 쿨다운이 없는 미션만 completedMissionIds에 추가 (하루 1회 제한)
+    completedMissionIds: (!mission.cooldownMinutes || mission.cooldownMinutes <= 0)
+      ? [...completedMissionIds, missionId]
+      : completedMissionIds,
+    // 쿨다운이 있는 미션은 missionUsedAt에 시간 기록
+    missionUsedAt: mission.cooldownMinutes && mission.cooldownMinutes > 0
+      ? { ...missionUsedAt, [missionId]: timestamp }
+      : missionUsedAt,
     // 오버킬 데미지 저장 (다음 보스 스폰 시 적용)
     ...(bossDefeated ? {
       totalDefeated: (dailyState.totalDefeated ?? 0) + 1,
@@ -1003,3 +1057,6 @@ export { getBossById };
 
 // HP 계산 헬퍼 함수 export
 export { computeBossHP };
+
+// 쿨다운 관련 헬퍼 함수는 위에서 이미 export function으로 선언됨
+// getMissionCooldownRemaining, isMissionAvailable

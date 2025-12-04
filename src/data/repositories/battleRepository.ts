@@ -55,6 +55,16 @@ export const DEFAULT_BATTLE_SETTINGS: BattleSettings = {
 // ============================================================================
 
 /**
+ * 미션 데이터 마이그레이션: cooldownMinutes 필드 추가
+ */
+function migrateMission(mission: BattleMission): BattleMission {
+  return {
+    ...mission,
+    cooldownMinutes: mission.cooldownMinutes ?? 0, // 기존 미션은 하루 1회 제한
+  };
+}
+
+/**
  * 전투 미션 목록 로드
  */
 export async function loadBattleMissions(): Promise<BattleMission[]> {
@@ -63,16 +73,19 @@ export async function loadBattleMissions(): Promise<BattleMission[]> {
     const stored = await db.systemState.get(MISSIONS_KEY);
     if (stored?.value && Array.isArray(stored.value)) {
       addSyncLog('dexie', 'load', `Loaded ${stored.value.length} battle missions`);
-      return stored.value as BattleMission[];
+      // 마이그레이션 적용
+      return (stored.value as BattleMission[]).map(migrateMission);
     }
 
     // 2. Firebase에서 조회 (초기 로드)
     if (isFirebaseInitialized()) {
       const remoteMissions = await fetchFromFirebase<BattleMission[]>(battleMissionsStrategy);
       if (remoteMissions && remoteMissions.length > 0) {
-        await db.systemState.put({ key: MISSIONS_KEY, value: remoteMissions });
-        addSyncLog('firebase', 'load', `Restored ${remoteMissions.length} missions from Firebase`);
-        return remoteMissions;
+        // 마이그레이션 적용
+        const migratedMissions = remoteMissions.map(migrateMission);
+        await db.systemState.put({ key: MISSIONS_KEY, value: migratedMissions });
+        addSyncLog('firebase', 'load', `Restored ${migratedMissions.length} missions from Firebase`);
+        return migratedMissions;
       }
     }
 

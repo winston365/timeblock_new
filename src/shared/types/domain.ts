@@ -563,6 +563,7 @@ export interface BattleMission {
   damage: number;                // 데미지 (분 단위, 기본 15)
   order: number;                 // 표시 순서
   enabled: boolean;              // 활성화 여부
+  cooldownMinutes: number;       // 쿨다운 (분 단위, 0이면 하루 1회)
   createdAt: string;
   updatedAt: string;
 }
@@ -592,6 +593,8 @@ export interface DailyBattleState {
   defeatedBossIds: string[];
   /** 오늘 사용한 미션 ID 목록 (중복 사용 방지) */
   completedMissionIds: string[];
+  /** 미션별 마지막 사용 시각 (쿨다운 계산용) */
+  missionUsedAt: Record<string, string>;
   /** 오버킬 데미지 (다음 보스에 이월될 데미지) */
   overkillDamage?: number;
   /** 
