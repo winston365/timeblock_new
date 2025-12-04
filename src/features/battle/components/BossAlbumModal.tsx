@@ -55,74 +55,163 @@ interface BossCardProps {
   onClick?: () => void;
 }
 
+/**
+ * 대형 보스 카드 컴포넌트 (앨범용) - 세로 직사각형
+ * 3D 틸트 효과 및 홀로그램 효과 적용
+ */
+interface BossCardProps {
+  boss: Boss;
+  isDefeatedToday: boolean;
+  isDefeatedEver: boolean;
+  onClick?: () => void;
+}
+
 function BossCard({ boss, isDefeatedToday, isDefeatedEver, onClick }: BossCardProps) {
   const imagePath = getBossImageSrc(boss.image);
   const colors = DIFFICULTY_COLORS[boss.difficulty];
 
+  // 3D 틸트 상태
+  const [rotate, setRotate] = useState({ x: 0, y: 0 });
+  const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isDefeatedEver) return; // 미발견 보스는 효과 없음
+
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    // 회전 각도 계산 (최대 15도)
+    const rotateX = ((y - centerY) / centerY) * -15;
+    const rotateY = ((x - centerX) / centerX) * 15;
+
+    // 글레어 위치 계산 (0~100%)
+    const glareX = (x / rect.width) * 100;
+    const glareY = (y / rect.height) * 100;
+
+    setRotate({ x: rotateX, y: rotateY });
+    setGlare({ x: glareX, y: glareY, opacity: 1 });
+  };
+
+  const handleMouseLeave = () => {
+    setRotate({ x: 0, y: 0 });
+    setGlare({ ...glare, opacity: 0 });
+  };
+
   return (
-    <button
-      onClick={onClick}
-      className={`
-        group relative flex flex-col rounded-xl overflow-hidden transition-all duration-300
-        ${isDefeatedEver 
-          ? `border-2 ${colors.border}/60 hover:scale-[1.02] hover:shadow-xl ${colors.glow}` 
-          : 'border-2 border-slate-700/50 bg-slate-800/30 opacity-60'
-        }
-        ${isDefeatedToday ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-slate-900' : ''}
-      `}
-    >
-      {/* 보스 이미지 - 세로 직사각형 */}
-      <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-b from-slate-800 to-slate-900">
-        {isDefeatedEver ? (
-          <>
-            <img
-              src={imagePath}
-              alt={boss.name}
-              className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
-            />
-            {/* 그라데이션 오버레이 */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-          </>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-slate-800">
-            <div className="text-center">
-              <span className="text-6xl text-slate-700">?</span>
-              <p className="text-xs text-slate-600 mt-2">미발견</p>
+    <div className="perspective-1000">
+      <button
+        onClick={onClick}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className={`
+          group relative flex flex-col rounded-xl overflow-hidden transition-all duration-200 w-full
+          ${isDefeatedEver
+            ? `border-2 ${colors.border}/60 hover:shadow-2xl ${colors.glow}`
+            : 'border-2 border-slate-700/50 bg-slate-800/30 opacity-80'
+          }
+          ${isDefeatedToday ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-slate-900' : ''}
+        `}
+        style={{
+          transform: `rotateX(${rotate.x}deg) rotateY(${rotate.y}deg) scale(${glare.opacity > 0 ? 1.05 : 1})`,
+          transformStyle: 'preserve-3d',
+        }}
+      >
+        {/* 보스 이미지 - 세로 직사각형 */}
+        <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-b from-slate-800 to-slate-900 w-full">
+          {isDefeatedEver ? (
+            <>
+              <img
+                src={imagePath}
+                alt={boss.name}
+                className="w-full h-full object-cover object-top transition-transform duration-300"
+                style={{ transform: 'translateZ(20px)' }}
+              />
+              {/* 그라데이션 오버레이 */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+
+              {/* 홀로그램 글레어 효과 */}
+              <div
+                className="absolute inset-0 pointer-events-none mix-blend-overlay transition-opacity duration-200"
+                style={{
+                  background: `radial-gradient(circle at ${glare.x}% ${glare.y}%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 80%)`,
+                  opacity: glare.opacity * 0.4,
+                  transform: 'translateZ(30px)',
+                }}
+              />
+              {/* 반짝임 효과 */}
+              <div
+                className="absolute inset-0 pointer-events-none mix-blend-color-dodge transition-opacity duration-200"
+                style={{
+                  background: `linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.3) ${glare.x}%, transparent 100%)`,
+                  opacity: glare.opacity * 0.3,
+                  transform: 'translateZ(30px)',
+                }}
+              />
+            </>
+          ) : (
+            <div className="w-full h-full relative overflow-hidden bg-slate-900">
+              {/* 실루엣 처리된 이미지 */}
+              <img
+                src={imagePath}
+                alt="Unknown"
+                className="w-full h-full object-cover object-top opacity-30 grayscale blur-[2px]"
+                style={{ filter: 'brightness(0) invert(0.3)' }}
+              />
+
+              {/* 물음표 오버레이 */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-6xl text-slate-600 drop-shadow-lg font-black">?</span>
+                <p className="text-xs text-slate-500 mt-2 font-bold">LOCKED</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* 난이도 뱃지 - 이미지 위에 표시 (항상 표시) */}
-        <div className={`absolute top-2 left-2 z-10 ${colors.bg} ${colors.text} text-[10px] font-bold px-2 py-0.5 rounded-full border ${colors.border}/50 backdrop-blur-sm`}>
-          {boss.difficulty.toUpperCase()}
-        </div>
-
-        {/* 오늘 처치 뱃지 */}
-        {isDefeatedToday && (
-          <div className="absolute top-2 right-2 z-10 bg-yellow-500 text-black text-[10px] font-black px-2 py-1 rounded-full shadow-lg animate-pulse">
-            TODAY!
-          </div>
-        )}
-
-        {/* 보스 정보 - 이미지 하단 오버레이 */}
-        <div className="absolute bottom-0 left-0 right-0 p-3">
-          <p
-            className={`
-              text-sm font-bold truncate
-              ${isDefeatedToday 
-                ? 'text-yellow-300' 
-                : isDefeatedEver 
-                  ? 'text-white' 
-                  : 'text-slate-600'
-              }
-            `}
-            title={isDefeatedEver ? boss.name : '???'}
+          {/* 난이도 뱃지 - 이미지 위에 표시 (항상 표시) */}
+          <div
+            className={`absolute top-2 left-2 z-10 ${colors.bg} ${colors.text} text-[10px] font-bold px-2 py-0.5 rounded-full border ${colors.border}/50 backdrop-blur-sm`}
+            style={{ transform: 'translateZ(40px)' }}
           >
-            {isDefeatedEver ? boss.name : '???'}
-          </p>
+            {boss.difficulty.toUpperCase()}
+          </div>
+
+          {/* 오늘 처치 뱃지 */}
+          {isDefeatedToday && (
+            <div
+              className="absolute top-2 right-2 z-10 bg-yellow-500 text-black text-[10px] font-black px-2 py-1 rounded-full shadow-lg animate-pulse"
+              style={{ transform: 'translateZ(40px)' }}
+            >
+              TODAY!
+            </div>
+          )}
+
+          {/* 보스 정보 - 이미지 하단 오버레이 */}
+          <div
+            className="absolute bottom-0 left-0 right-0 p-3"
+            style={{ transform: 'translateZ(30px)' }}
+          >
+            <p
+              className={`
+                text-sm font-bold truncate
+                ${isDefeatedToday
+                  ? 'text-yellow-300'
+                  : isDefeatedEver
+                    ? 'text-white'
+                    : 'text-slate-500'
+                }
+              `}
+              title={isDefeatedEver ? boss.name : '???'}
+            >
+              {isDefeatedEver ? boss.name : '???'}
+            </p>
+          </div>
         </div>
-      </div>
-    </button>
+      </button>
+    </div>
   );
 }
 
@@ -139,11 +228,11 @@ function BossDetailOverlay({ boss, onClose }: BossDetailOverlayProps) {
   const colors = DIFFICULTY_COLORS[boss.difficulty];
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md"
       onClick={onClose}
     >
-      <div 
+      <div
         className="relative max-w-md w-full mx-4 animate-in zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
       >
@@ -159,7 +248,7 @@ function BossDetailOverlay({ boss, onClose }: BossDetailOverlayProps) {
             />
             {/* 그라데이션 */}
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
-            
+
             {/* 닫기 버튼 */}
             <button
               onClick={onClose}
@@ -177,7 +266,7 @@ function BossDetailOverlay({ boss, onClose }: BossDetailOverlayProps) {
           {/* 정보 영역 */}
           <div className="p-4 bg-slate-900">
             <h3 className="text-2xl font-black text-white mb-2">{boss.name}</h3>
-            
+
             {/* 대사 */}
             {boss.defeatQuote && (
               <div className="bg-black/30 rounded-lg p-3 mt-3">
@@ -264,51 +353,51 @@ function StatsTab({ recentStats }: StatsTabProps) {
       {/* 날짜별 바 그래프 */}
       <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/50">
         <h4 className="text-sm font-bold text-white mb-4">📊 날짜별 처치 현황</h4>
-        
+
         <div className="flex items-end gap-1 h-40">
           {recentStats.map((stat) => {
             const heightPercent = (stat.defeatedCount / maxCount) * 100;
             const dateObj = new Date(stat.date);
             const dayLabel = dateObj.getDate();
             const isToday = stat.date === new Date().toISOString().slice(0, 10);
-            
+
             return (
               <div key={stat.date} className="flex-1 flex flex-col items-center gap-1">
                 {/* 막대 그래프 */}
                 <div className="w-full flex flex-col justify-end h-32 relative group">
                   {stat.defeatedCount > 0 ? (
-                    <div 
+                    <div
                       className="w-full rounded-t transition-all duration-300 hover:opacity-80 relative overflow-hidden"
                       style={{ height: `${heightPercent}%` }}
                     >
                       {/* 난이도별 스택 바 */}
                       <div className="absolute inset-0 flex flex-col-reverse">
                         {stat.byDifficulty.epic > 0 && (
-                          <div 
+                          <div
                             className={`${difficultyColors.epic} w-full`}
                             style={{ height: `${(stat.byDifficulty.epic / stat.defeatedCount) * 100}%` }}
                           />
                         )}
                         {stat.byDifficulty.hard > 0 && (
-                          <div 
+                          <div
                             className={`${difficultyColors.hard} w-full`}
                             style={{ height: `${(stat.byDifficulty.hard / stat.defeatedCount) * 100}%` }}
                           />
                         )}
                         {stat.byDifficulty.normal > 0 && (
-                          <div 
+                          <div
                             className={`${difficultyColors.normal} w-full`}
                             style={{ height: `${(stat.byDifficulty.normal / stat.defeatedCount) * 100}%` }}
                           />
                         )}
                         {stat.byDifficulty.easy > 0 && (
-                          <div 
+                          <div
                             className={`${difficultyColors.easy} w-full`}
                             style={{ height: `${(stat.byDifficulty.easy / stat.defeatedCount) * 100}%` }}
                           />
                         )}
                       </div>
-                      
+
                       {/* 툴팁 */}
                       <div className="absolute -top-10 left-1/2 -translate-x-1/2 hidden group-hover:block bg-black/90 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-10">
                         {stat.defeatedCount}마리
@@ -318,7 +407,7 @@ function StatsTab({ recentStats }: StatsTabProps) {
                     <div className="w-full h-1 bg-slate-700 rounded" />
                   )}
                 </div>
-                
+
                 {/* 날짜 라벨 */}
                 <span className={`text-[10px] ${isToday ? 'text-yellow-400 font-bold' : 'text-slate-500'}`}>
                   {dayLabel}
@@ -327,7 +416,7 @@ function StatsTab({ recentStats }: StatsTabProps) {
             );
           })}
         </div>
-        
+
         {/* 범례 */}
         <div className="flex justify-center gap-4 mt-4 text-[10px]">
           <span className="flex items-center gap-1">
@@ -470,7 +559,7 @@ export default function BossAlbumModal({ isOpen, onClose }: BossAlbumModalProps)
               <div>
                 <h2 className="text-2xl font-black text-white">보스 도감</h2>
                 <p className="text-sm text-slate-400">
-                  {stats.defeatedTotal} / {stats.totalBosses} 발견 
+                  {stats.defeatedTotal} / {stats.totalBosses} 발견
                   <span className="ml-2 text-yellow-400">({stats.completionRate}%)</span>
                 </p>
               </div>
@@ -478,7 +567,7 @@ export default function BossAlbumModal({ isOpen, onClose }: BossAlbumModalProps)
 
             {/* 진행 바 */}
             <div className="hidden sm:block w-40 h-3 bg-slate-800 rounded-full overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-gradient-to-r from-yellow-500 to-amber-400 transition-all duration-500"
                 style={{ width: `${stats.completionRate}%` }}
               />
@@ -490,33 +579,30 @@ export default function BossAlbumModal({ isOpen, onClose }: BossAlbumModalProps)
             <div className="flex rounded-lg overflow-hidden border border-slate-700">
               <button
                 onClick={() => setViewMode('all')}
-                className={`px-3 py-1.5 text-xs font-bold transition ${
-                  viewMode === 'all' 
-                    ? 'bg-slate-700 text-white' 
+                className={`px-3 py-1.5 text-xs font-bold transition ${viewMode === 'all'
+                    ? 'bg-slate-700 text-white'
                     : 'bg-slate-800 text-slate-400 hover:text-white'
-                }`}
+                  }`}
               >
                 전체
               </button>
               {stats.defeatedToday > 0 && (
                 <button
                   onClick={() => setViewMode('today')}
-                  className={`px-3 py-1.5 text-xs font-bold transition ${
-                    viewMode === 'today' 
-                      ? 'bg-yellow-500 text-black' 
+                  className={`px-3 py-1.5 text-xs font-bold transition ${viewMode === 'today'
+                      ? 'bg-yellow-500 text-black'
                       : 'bg-slate-800 text-slate-400 hover:text-white'
-                  }`}
+                    }`}
                 >
                   오늘 ({stats.defeatedToday})
                 </button>
               )}
               <button
                 onClick={() => setViewMode('stats')}
-                className={`px-3 py-1.5 text-xs font-bold transition ${
-                  viewMode === 'stats' 
-                    ? 'bg-cyan-500 text-black' 
+                className={`px-3 py-1.5 text-xs font-bold transition ${viewMode === 'stats'
+                    ? 'bg-cyan-500 text-black'
                     : 'bg-slate-800 text-slate-400 hover:text-white'
-                }`}
+                  }`}
               >
                 📊 통계
               </button>
@@ -593,9 +679,9 @@ export default function BossAlbumModal({ isOpen, onClose }: BossAlbumModalProps)
 
       {/* 보스 상세 오버레이 */}
       {selectedBoss && (
-        <BossDetailOverlay 
-          boss={selectedBoss} 
-          onClose={() => setSelectedBoss(null)} 
+        <BossDetailOverlay
+          boss={selectedBoss}
+          onClose={() => setSelectedBoss(null)}
         />
       )}
     </div>
