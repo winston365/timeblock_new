@@ -47,30 +47,51 @@ function computeDifficultyStyles(difficulty: Boss['difficulty']) {
         badge: 'bg-green-500/20 text-green-400 border-green-500/50',
         glow: 'rgba(34, 197, 94, 0.3)',
         label: '쉬움',
+        // 외곽선 스타일
+        borderStyle: 'border-2 border-green-500/30',
+        shadowStyle: '',
+        containerClass: '',
+        overlayEffect: null,
       };
     case 'normal':
       return {
         badge: 'bg-blue-500/20 text-blue-400 border-blue-500/50',
-        glow: 'rgba(59, 130, 246, 0.3)',
+        glow: 'rgba(59, 130, 246, 0.4)',
         label: '보통',
+        borderStyle: 'border-2 border-blue-500/40',
+        shadowStyle: 'shadow-[0_0_15px_rgba(59,130,246,0.3)]',
+        containerClass: '',
+        overlayEffect: null,
       };
     case 'hard':
       return {
         badge: 'bg-orange-500/20 text-orange-400 border-orange-500/50',
-        glow: 'rgba(249, 115, 22, 0.3)',
+        glow: 'rgba(249, 115, 22, 0.5)',
         label: '어려움',
+        borderStyle: 'border-[3px] border-orange-500/60',
+        shadowStyle: 'shadow-[0_0_25px_rgba(249,115,22,0.4)]',
+        containerClass: '',
+        overlayEffect: 'hard',
       };
     case 'epic':
       return {
-        badge: 'bg-purple-500/20 text-purple-400 border-purple-500/50',
-        glow: 'rgba(168, 85, 247, 0.4)',
+        badge: 'bg-purple-500/30 text-purple-300 border-purple-400/70 animate-pulse',
+        glow: 'rgba(168, 85, 247, 0.6)',
         label: '에픽',
+        borderStyle: 'border-[3px] border-purple-500/80',
+        shadowStyle: 'shadow-[0_0_40px_rgba(168,85,247,0.5),0_0_80px_rgba(168,85,247,0.3)]',
+        containerClass: 'ring-2 ring-purple-400/50 ring-offset-2 ring-offset-black',
+        overlayEffect: 'epic',
       };
     default:
       return {
         badge: 'bg-gray-500/20 text-gray-400 border-gray-500/50',
         glow: 'rgba(107, 114, 128, 0.3)',
         label: '???',
+        borderStyle: 'border border-gray-500/30',
+        shadowStyle: '',
+        containerClass: '',
+        overlayEffect: null,
       };
   }
 }
@@ -202,7 +223,7 @@ export function BossDisplay({
   return (
     <div className={`relative h-full w-full ${isDefeated ? 'opacity-50' : ''}`}>
       {/* 보스 이미지 영역 - 직사각형, 전체 차지 */}
-      <div className="relative h-full w-full overflow-hidden rounded-xl border border-[var(--color-border)] bg-gradient-to-b from-gray-900 to-black">
+      <div className={`relative h-full w-full overflow-hidden rounded-xl bg-gradient-to-b from-gray-900 to-black ${difficultyStyle.borderStyle} ${difficultyStyle.shadowStyle} ${difficultyStyle.containerClass} transition-all duration-300`}>
         {/* 배경 글로우 효과 */}
         {!isDefeated && (
           <div
@@ -211,6 +232,50 @@ export function BossDisplay({
               background: `radial-gradient(ellipse at center, ${difficultyStyle.glow} 0%, transparent 70%)`,
             }}
           />
+        )}
+
+        {/* Hard 난이도 - 불꽃 테두리 효과 */}
+        {difficultyStyle.overlayEffect === 'hard' && !isDefeated && (
+          <div className="absolute inset-0 pointer-events-none z-20">
+            {/* 상단 불꽃 */}
+            <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-orange-500/30 via-red-500/10 to-transparent animate-pulse" />
+            {/* 하단 불꽃 */}
+            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-orange-500/20 via-red-500/5 to-transparent" />
+            {/* 코너 강조 */}
+            <div className="absolute top-0 left-0 w-12 h-12 border-t-2 border-l-2 border-orange-400/60 rounded-tl-xl" />
+            <div className="absolute top-0 right-0 w-12 h-12 border-t-2 border-r-2 border-orange-400/60 rounded-tr-xl" />
+          </div>
+        )}
+
+        {/* Epic 난이도 - 세련된 오버레이 효과 */}
+        {difficultyStyle.overlayEffect === 'epic' && !isDefeated && (
+          <div className="absolute inset-0 pointer-events-none z-20">
+            {/* 내부 비네트 효과 - 가장자리 어둡게 */}
+            <div 
+              className="absolute inset-0 rounded-xl"
+              style={{
+                background: 'radial-gradient(ellipse at center, transparent 40%, rgba(88,28,135,0.15) 70%, rgba(88,28,135,0.3) 100%)',
+              }}
+            />
+            {/* 상단 보라색 안개 */}
+            <div 
+              className="absolute top-0 left-0 right-0 h-32 opacity-60"
+              style={{
+                background: 'linear-gradient(to bottom, rgba(139,92,246,0.25) 0%, rgba(168,85,247,0.1) 40%, transparent 100%)',
+              }}
+            />
+            {/* 하단 핑크 안개 */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 h-24 opacity-40"
+              style={{
+                background: 'linear-gradient(to top, rgba(219,39,119,0.2) 0%, transparent 100%)',
+              }}
+            />
+            {/* 미세한 빛 입자들 */}
+            <div className="absolute top-[15%] right-[10%] w-1 h-1 bg-purple-300/80 rounded-full animate-pulse" />
+            <div className="absolute top-[25%] left-[8%] w-0.5 h-0.5 bg-pink-300/60 rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+            <div className="absolute top-[40%] right-[15%] w-0.5 h-0.5 bg-purple-200/50 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+          </div>
         )}
 
         {/* 보스 이미지 */}

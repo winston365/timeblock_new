@@ -70,9 +70,9 @@ function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, o
       onClick={handleClick}
       disabled={isUnavailable || disabled}
       className={`
-        group relative flex flex-col rounded-lg overflow-hidden transition-all duration-200
+        group relative flex flex-col rounded-lg overflow-hidden transition-all duration-200 min-h-[100px]
         ${isUnavailable
-          ? 'opacity-40 cursor-default grayscale'
+          ? 'opacity-60 cursor-default'
           : disabled
             ? 'opacity-30 cursor-not-allowed grayscale'
             : `hover:scale-[1.02] hover:shadow-lg ${grade.glow} active:scale-[0.98]`
@@ -84,7 +84,7 @@ function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, o
       {/* 카드 배경 */}
       <div className={`
         relative border-2 ${isUnavailable ? (isOnCooldown ? 'border-cyan-500/50 bg-cyan-900/20' : 'border-emerald-500/50 bg-emerald-900/20') : grade.border} 
-        bg-gradient-to-b from-slate-800 to-slate-900 rounded-lg p-2
+        bg-gradient-to-b from-slate-800 to-slate-900 rounded-lg p-2 h-full flex flex-col
       `}>
         {/* 등급 라벨 */}
         {grade.label && !isUnavailable && (
@@ -95,19 +95,20 @@ function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, o
 
         {/* 완료 체크 오버레이 */}
         {isUsed && !isOnCooldown && (
-          <div className="absolute inset-0 flex items-center justify-center bg-emerald-500/20 rounded-lg z-10">
-            <div className="bg-emerald-500 rounded-full p-1">
-              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-900/60 rounded-lg z-10">
+            <div className="bg-emerald-500 rounded-full p-2 mb-1">
+              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
             </div>
+            <span className="text-[10px] font-bold text-emerald-300">완료</span>
           </div>
         )}
 
         {/* 쿨다운 오버레이 */}
         {isOnCooldown && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-cyan-500/20 rounded-lg z-10">
-            <div className="text-cyan-400 text-lg">⏱️</div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-cyan-900/60 rounded-lg z-10">
+            <div className="text-cyan-400 text-xl">⏱️</div>
             <div className="text-[10px] font-bold text-cyan-300 mt-1">
               {formatCooldownTime(cooldownRemaining)}
             </div>
