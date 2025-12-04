@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * DailyData Zustand Store
  *
@@ -19,6 +18,7 @@
 
 import { create } from 'zustand';
 import type { DailyData, Task, TimeBlockState } from '../types/domain';
+import type { TaskCompletionResult } from '@/shared/services/gameplay/taskCompletion/types';
 import {
   loadDailyData,
   saveDailyData,
@@ -416,7 +416,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       const updatedTask = await toggleTaskInRepo(taskId, currentDate);
 
       // Task completion 처리
-      let result: any = null;
+      let result: TaskCompletionResult | null = null;
       if (!wasCompleted && updatedTask.completed) {
         if (taskInDaily && updatedTask.timeBlock) {
           blockState = dailyData.timeBlockStates[updatedTask.timeBlock];

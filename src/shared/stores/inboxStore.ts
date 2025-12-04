@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Inbox Zustand Store
  *
@@ -18,6 +17,7 @@
 
 import { create } from 'zustand';
 import type { Task } from '@/shared/types/domain';
+import type { TaskCompletionResult } from '@/shared/services/gameplay/taskCompletion/types';
 import {
     loadInboxTasks,
     addInboxTask,
@@ -128,7 +128,7 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
 
             const updatedTask = await toggleInboxTaskCompletion(taskId);
 
-            let result: any = null;
+            let result: TaskCompletionResult | null = null;
             if (!wasCompleted && updatedTask.completed) {
                 // XP/퀘스트/와이푸 토스트 포함 공통 완료 파이프라인 재사용
                 result = await taskCompletionService.handleTaskCompletion({

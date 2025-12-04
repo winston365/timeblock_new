@@ -264,16 +264,11 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   };
 
   const getEstimatedXP = (template: Template) => {
-    const tempTask: any = {
-      baseDuration: template.baseDuration,
+    return calculateTaskXP({
       adjustedDuration: template.baseDuration,
       actualDuration: 0,
       resistance: template.resistance,
-      preparation1: template.preparation1,
-      preparation2: template.preparation2,
-      preparation3: template.preparation3,
-    };
-    return calculateTaskXP(tempTask);
+    });
   };
 
   if (!isOpen) return null;

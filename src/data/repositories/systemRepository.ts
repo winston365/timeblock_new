@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * systemRepository.ts
  *
@@ -21,9 +20,9 @@ export const SYSTEM_KEYS = {
 /**
  * 시스템 상태 값 저장
  * @param key 상태 키
- * @param value 저장할 값
+ * @param value 저장할 값 (타입 안전성을 위해 unknown 사용)
  */
-export async function setSystemState(key: string, value: any): Promise<void> {
+export async function setSystemState(key: string, value: unknown): Promise<void> {
     try {
         await db.systemState.put({ key, value });
     } catch (error) {
