@@ -69,13 +69,13 @@ export default function AppShell() {
   // ============================================================================
   // Custom Hooks
   // ============================================================================
-  
+
   // Event Bus 초기화
   useEventBusInit();
-  
+
   // 서비스 초기화 (디버그, 비활동 알림 등)
   useServicesInit(dbInitialized);
-  
+
   // 패널 레이아웃 관리
   const {
     effectiveLeftCollapsed,
@@ -222,7 +222,7 @@ export default function AppShell() {
         </span>
         <span className="sr-only">{isAlwaysOnTop ? '창 최상위 해제' : '창 최상위 고정'}</span>
       </button>
-      
+
       {/* Top Bar */}
       {!isFocusMode && (
         <>
@@ -233,6 +233,8 @@ export default function AppShell() {
             onOpenSettings={modals.openSettings}
             timelineVisible={effectiveTimelineVisible}
             onToggleTimeline={toggleTimeline}
+            onToggleLeftPanel={toggleLeftSidebar}
+            leftPanelVisible={!effectiveLeftCollapsed}
           />
           <DailyXPBar
             timeBlockXP={gameState?.timeBlockXP}
@@ -253,8 +255,8 @@ export default function AppShell() {
         className="relative flex flex-1 overflow-hidden"
         style={{ display: 'grid', gridTemplateColumns }}
       >
-        <LeftSidebar 
-          collapsed={effectiveLeftCollapsed} 
+        <LeftSidebar
+          collapsed={effectiveLeftCollapsed}
         />
         {effectiveTimelineVisible ? <TimelineView /> : <div className="w-0 overflow-hidden" />}
         <CenterContent />
@@ -274,18 +276,18 @@ export default function AppShell() {
       />
 
       {/* Modals */}
-      <GeminiFullscreenChat 
-        isOpen={modals.showGeminiChat} 
-        onClose={modals.closeGeminiChat} 
+      <GeminiFullscreenChat
+        isOpen={modals.showGeminiChat}
+        onClose={modals.closeGeminiChat}
       />
-      <BulkAddModal 
-        isOpen={modals.showBulkAdd} 
-        onClose={modals.closeBulkAdd} 
-        onAddTasks={handleBulkAddTasks} 
+      <BulkAddModal
+        isOpen={modals.showBulkAdd}
+        onClose={modals.closeBulkAdd}
+        onAddTasks={handleBulkAddTasks}
       />
-      <SettingsModal 
-        isOpen={modals.showSettings} 
-        onClose={modals.closeSettings} 
+      <SettingsModal
+        isOpen={modals.showSettings}
+        onClose={modals.closeSettings}
       />
       <TemplatesModal
         isOpen={modals.showTemplates}

@@ -46,6 +46,10 @@ interface TopToolbarProps {
   timelineVisible?: boolean;
   /** 타임라인 뷰 토글 콜백 */
   onToggleTimeline?: () => void;
+  /** 좌측 패널 토글 콜백 */
+  onToggleLeftPanel?: () => void;
+  /** 좌측 패널 표시 상태 */
+  leftPanelVisible?: boolean;
 }
 
 /**
@@ -53,108 +57,18 @@ interface TopToolbarProps {
  * @param props - TopToolbarProps
  * @returns 툴바 UI
  */
-export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplates, onOpenSettings, timelineVisible, onToggleTimeline }: TopToolbarProps) {
+export default function TopToolbar({
+  gameState,
+  onOpenGeminiChat,
+  onOpenTemplates,
+  onOpenSettings,
+  timelineVisible,
+  onToggleTimeline,
+  onToggleLeftPanel,
+  leftPanelVisible = true
+}: TopToolbarProps) {
   const { waifuState, currentMood } = useWaifu();
-  const { show } = useWaifuCompanionStore();
-  const { isLoading: aiAnalyzing, cancelBreakdown } = useTaskBreakdownStore();
-  const [hovered, setHovered] = useState<string | null>(null);
-  const [showStats, setShowStats] = useState(false);
-  const [showDailySummary, setShowDailySummary] = useState(false);
-  const [showInbox, setShowInbox] = useState(false);
-  const [showGoals, setShowGoals] = useState(false);
-  const [showBossAlbum, setShowBossAlbum] = useState(false);
-  const [showTempSchedule, setShowTempSchedule] = useState(false);
-  const { settings } = useSettingsStore();
-  const isNormalWaifu = settings?.waifuMode === 'normal';
-
-  // Battle store for boss album
-  const { dailyState: battleDailyState } = useBattleStore();
-  const todayDefeatedCount = battleDailyState?.defeatedBossIds?.length ?? 0;
-
-  // Schedule View 상태 (워밍업, 지금모드, 지난블록)
-  const { isFocusMode, toggleFocusMode } = useFocusModeStore();
-  const { showPastBlocks, toggleShowPastBlocks, openWarmupModal } = useScheduleViewStore();
-
-  // 현재 시간 기준 타임블록 계산
-  const currentHour = new Date().getHours();
-  const currentBlockId = TIME_BLOCKS.find(b => currentHour >= b.start && currentHour < b.end)?.id ?? null;
-  const pastBlocksCount = TIME_BLOCKS.filter(block => currentHour >= block.end).length;
-
-  const handleCallWaifu = () => {
-    if (isNormalWaifu) return;
-
-    if (waifuState) {
-      const dialogue = getDialogueFromAffection(waifuState.affection, waifuState.tasksCompletedToday);
-
-      if (dialogue.audio) {
-        audioService.play(dialogue.audio);
-      }
-
-      show(dialogue.text, dialogue.audio);
-    } else {
-      show('하루야~ 오늘도 힘내자!');
-    }
-
-    setTimeout(() => {
-      useWaifuCompanionStore.getState().peek();
-    }, 10000);
-  };
-
-  const statItemClass =
-    'flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-text)]';
-  const statValueClass = 'font-mono font-bold text-sm text-[var(--color-text)]';
-
-  const gradientString =
-    'linear-gradient(to right,' +
-    ' var(--color-primary),' +
-    ' var(--color-primary) 16.65%,' +
-    ' #7c3aed 16.65%,' +
-    ' #7c3aed 33.3%,' +
-    ' #22c55e 33.3%,' +
-    ' #22c55e 49.95%,' +
-    ' #0ea5e9 49.95%,' +
-    ' #0ea5e9 66.6%,' +
-    ' #f59e0b 66.6%,' +
-    ' #f59e0b 83.25%,' +
-    ' #ef4444 83.25%,' +
-    ' #ef4444 100%)';
-
-  const baseButtonClass =
-    'relative inline-flex items-center justify-center rounded-md border-0 px-3.5 py-2 text-xs font-bold text-white shadow transition duration-200 ease-out will-change-transform';
-
-  const renderCTA = (id: string, label: string, onClick?: () => void, badge?: string | number) => {
-    const isHover = hovered === id;
-    return (
-      <button
-        key={id}
-        type="button"
-        className={baseButtonClass}
-        onMouseEnter={() => setHovered(id)}
-        onMouseLeave={() => setHovered(null)}
-        onClick={onClick}
-        style={
-          {
-            ['--btn-width' as string]: '150px',
-            ['--timing' as string]: '2s',
-            background: isHover ? undefined : 'var(--color-primary)',
-            backgroundImage: isHover ? gradientString : undefined,
-            animation: isHover ? 'dance6123 var(--timing) linear infinite' : undefined,
-            transform: isHover ? 'scale(1.08) translateY(-1px)' : undefined,
-            boxShadow: isHover
-              ? '0 12px 28px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.18)'
-              : '0 6px 16px rgba(0,0,0,0.18)',
-          } as React.CSSProperties
-        }
-      >
-        <span className="relative z-10 text-sm uppercase tracking-[0.06em]">{label}</span>
-        {badge !== undefined && badge !== null && badge !== '' && (
-          <span className="absolute -right-1 -top-1 z-20 flex h-5 min-w-[32px] items-center justify-center rounded-full bg-emerald-500 px-2 text-[10px] font-bold leading-none text-white shadow">
-            {badge}
-          </span>
-        )}
-      </button>
-    );
-  };
+  // ... (existing code)
 
   return (
     <>
@@ -163,7 +77,23 @@ export default function TopToolbar({ gameState, onOpenGeminiChat, onOpenTemplate
         role="banner"
       >
         <style>{`@keyframes dance6123 { to { background-position: var(--btn-width); } }`}</style>
+
+        {/* 좌측 패널 토글 버튼 */}
+        <button
+          type="button"
+          onClick={onToggleLeftPanel}
+          className={`shrink-0 rounded px-2 py-1 text-xs transition ${leftPanelVisible
+            ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+            : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
+            }`}
+          title={leftPanelVisible ? '보스 패널 숨기기 (Ctrl+B)' : '보스 패널 보기 (Ctrl+B)'}
+        >
+          🛡️
+        </button>
+
         <h1 className="shrink-0 text-sm font-semibold tracking-tight">하루 루틴 컨트롤러</h1>
+
+        {/* ... rest of the header content ... */}
 
         <div className="flex flex-1 shrink-0 items-center gap-[var(--spacing-md)] text-[13px]">
           <div className={statItemClass}>

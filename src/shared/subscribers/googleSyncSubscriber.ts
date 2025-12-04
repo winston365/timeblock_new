@@ -157,26 +157,29 @@ async function handleTaskSync(taskId: string, action: 'create' | 'update' | 'del
 
     try {
       if (action === 'delete') {
-        await deleteGoogleTask(taskId);
-        // 기존 Calendar Event도 삭제 (Migration)
         await deleteCalendarEvent(taskId);
+        // 혹시 모를 Google Task도 삭제 (Cleanup)
+        await deleteGoogleTask(taskId);
         return;
       }
 
       const task = await getTaskById(taskId);
       if (!task) return;
 
-      // Migration: 기존 Calendar Event가 있다면 삭제
-      const calendarMapping = await getTaskCalendarMapping(taskId);
-      if (calendarMapping) {
-        console.log('[GoogleSync] Migrating task from Calendar Event to Google Task:', taskId);
-        await deleteCalendarEvent(taskId);
+      // Reverse Migration: Google Task가 있다면 삭제
+      // (이전에 Google Tasks로 동기화된 항목이 있을 수 있음)
+      try {
+        await deleteGoogleTask(taskId);
+      } catch (e) {
+        // Ignore error if task doesn't exist
       }
 
+      const date = task.scheduledDate || getLocalDate();
+
       if (action === 'create') {
-        await createGoogleTask(task);
+        await createCalendarEvent(task, date);
       } else {
-        await updateGoogleTask(task);
+        await updateCalendarEvent(task, date);
       }
 
       await updateLastSyncTime();
