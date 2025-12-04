@@ -839,13 +839,18 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         
         // 순차 진행 중이면 자동 스폰 (phase 5 미만)
         const nextDifficulty = getNextSequentialDifficulty(nextPhase);
+        console.log('[Battle] Boss defeated! Current phase:', currentPhase, '-> Next phase:', nextPhase, '-> Next difficulty:', nextDifficulty);
+        console.log('[Battle] Remaining bosses:', finalState.remainingBosses);
+        
         if (nextDifficulty) {
           // 다음 난이도로 자동 스폰
           const spawnResult = computeSpawnBossResult_core(finalState, nextDifficulty, settings);
+          console.log('[Battle] Auto-spawn result:', spawnResult.spawnedBossId, spawnResult.updatedState ? 'success' : 'failed');
           if (spawnResult.updatedState) {
             finalState = spawnResult.updatedState;
             // 자동 스폰 시 sequentialPhase 유지
             finalState = { ...finalState, sequentialPhase: nextPhase };
+            console.log('[Battle] New boss index:', finalState.currentBossIndex, 'Total bosses:', finalState.bosses?.length);
           }
         }
       }

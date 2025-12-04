@@ -163,6 +163,10 @@ type InsightContext = {
     tonightLow?: number;
     condition?: string;
     hourlyTemps?: number[];
+    /** 시간대별 강수확률 배열 (예: [{time: '06:00', chance: 0}, ...]) */
+    hourlyPrecip?: { time: string; chance: number }[];
+    /** 현재 시간 (HH:MM 형식) */
+    currentTime?: string;
 };
 
 /**
@@ -180,12 +184,14 @@ export async function getWeatherInsightWithGemini(
     condition: string,
     context: InsightContext = {}
 ): Promise<WeatherInsightResult> {
-    const { humidity, chanceOfRain, tonightLow, hourlyTemps } = context;
+    const { humidity, tonightLow, hourlyTemps, hourlyPrecip, currentTime } = context;
     
     // Gemini API 키 확인
     const settings = useSettingsStore.getState().settings;
     const geminiApiKey = settings?.geminiApiKey;
-    const model = settings?.geminiModel;
+    
+    // 날씨 인사이트는 항상 gemini-2.0-flash-lite 모델 사용 (비용 절감)
+    const WEATHER_MODEL = 'gemini-2.5-flash-lite-preview-09-2025';
     
     if (!geminiApiKey) {
         console.warn('[WeatherInsight] Gemini API key not found, using fallback');
@@ -195,12 +201,13 @@ export async function getWeatherInsightWithGemini(
     try {
         const prompt = buildWeatherInsightPrompt(temp, feelsLike, condition, {
             humidity,
-            chanceOfRain,
             tonightLow,
             hourlyTemps,
+            hourlyPrecip,
+            currentTime,
         });
         
-        const { text, tokenUsage } = await callGeminiAPI(prompt, [], geminiApiKey, model);
+        const { text, tokenUsage } = await callGeminiAPI(prompt, [], geminiApiKey, WEATHER_MODEL);
         trackTokenUsage(tokenUsage);
         
         // 응답 파싱
@@ -219,9 +226,18 @@ function buildWeatherInsightPrompt(
     temp: number,
     feelsLike: number,
     condition: string,
-    context: { humidity?: number; chanceOfRain?: number; tonightLow?: number; hourlyTemps?: number[] }
+    context: { 
+        humidity?: number; 
+        tonightLow?: number; 
+        hourlyTemps?: number[];
+        hourlyPrecip?: { time: string; chance: number }[];
+        currentTime?: string;
+    }
 ): string {
-    const { humidity, chanceOfRain, tonightLow, hourlyTemps } = context;
+    const { humidity, tonightLow, hourlyTemps, hourlyPrecip, currentTime } = context;
+    
+    // 현재 시간 정보
+    const timeInfo = currentTime ? `현재 시각: ${currentTime}\n\n` : '';
     
     let weatherInfo = `현재 날씨 정보:
 - 기온: ${temp}°C
@@ -231,25 +247,43 @@ function buildWeatherInsightPrompt(
     if (humidity !== undefined) {
         weatherInfo += `\n- 습도: ${humidity}%`;
     }
-    if (chanceOfRain !== undefined) {
-        weatherInfo += `\n- 강수 확률: ${chanceOfRain}%`;
-    }
     if (tonightLow !== undefined) {
-        weatherInfo += `\n- 오늘 저녁 최저: ${tonightLow}°C`;
+        weatherInfo += `\n- 오늘 저녁 최저 체감온도: ${tonightLow}°C`;
     }
     if (hourlyTemps && hourlyTemps.length > 0) {
         weatherInfo += `\n- 시간대별 체감온도: ${hourlyTemps.join('°, ')}°C`;
     }
+    
+    // 시간대별 강수확률 정보 추가
+    let rainWarning = '';
+    if (hourlyPrecip && hourlyPrecip.length > 0) {
+        const precipInfo = hourlyPrecip
+            .map(h => `${h.time.slice(0, 5)} ${h.chance}%`)
+            .join(', ');
+        weatherInfo += `\n- 시간대별 강수확률: ${precipInfo}`;
+        
+        // 비올 시간대 강조
+        const rainyHours = hourlyPrecip.filter(h => h.chance >= 50);
+        if (rainyHours.length > 0) {
+            const firstRainyTime = rainyHours[0].time.slice(0, 5);
+            const rainyTimes = rainyHours.map(h => h.time.slice(0, 5)).join(', ');
+            weatherInfo += `\n- ⚠️ 비 예상 시간대: ${rainyTimes}`;
+            rainWarning = `\n\n중요: ${firstRainyTime} 이후 비가 올 확률이 높습니다. 이 정보를 인트로에 반드시 포함해주세요.`;
+        }
+    }
 
     return `당신은 날씨 전문가이자 패션 어드바이저입니다.
-아래 날씨 정보를 바탕으로 오늘의 날씨 분석과 복장 추천을 해주세요.
+${timeInfo}아래 날씨 정보를 바탕으로 오늘의 날씨 분석과 복장 추천을 해주세요.
 
-${weatherInfo}
+${weatherInfo}${rainWarning}
 
 다음 형식으로 응답해주세요:
 
 ## 인트로
-(날씨에 대한 간단한 한 문장 분석. 이모지 1-2개 포함. 체감온도 강조)
+(현재 시간 기준으로 날씨에 대한 2-3문장 분석. 이모지 1-2개 포함. 
+ - 현재 체감온도 언급
+ - 비 예상 시간대가 있으면 "XX시 이후 비 예상, 우산 챙기세요" 형태로 명확히 언급
+ - 하루 중 온도 변화가 크면 언급)
 
 ## 추천 코디
 각 옵션에 대해 러닝과 외출 복장을 추천해주세요.

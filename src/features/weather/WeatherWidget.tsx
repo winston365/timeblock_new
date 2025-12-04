@@ -16,7 +16,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useWeatherStore } from './stores/weatherStore';
-import { getWeatherInsightWithGemini, type WeatherInsightResult, type OutfitCard } from './services/weatherService';
+import { getWeatherInsightWithGemini, type OutfitCard } from './services/weatherService';
 import { RefreshCw, Sparkles, Loader2 } from 'lucide-react';
 import type { HourlyWeather } from '@/shared/types/weather';
 import { getLocalDate } from '@/shared/lib/utils';
@@ -27,15 +27,30 @@ import { getLocalDate } from '@/shared/lib/utils';
  * @returns 날씨 요약 버튼 및 상세 드롭다운 모달 UI
  */
 export default function WeatherWidget() {
-    const { forecast, selectedDay, loading, error, fetchWeather, setSelectedDay, lastUpdated } = useWeatherStore();
+    const { 
+        forecast, 
+        selectedDay, 
+        loading, 
+        error, 
+        fetchWeather, 
+        setSelectedDay, 
+        lastUpdated,
+        insightCache,
+        setInsight: setStoreInsight,
+        getInsight,
+        insightLoadingDay,
+        setInsightLoading: setStoreInsightLoading,
+    } = useWeatherStore();
     const [isExpanded, setIsExpanded] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [insight, setInsight] = useState<WeatherInsightResult | null>(null);
-    const [insightLoading, setInsightLoading] = useState(false);
     const safeForecast = Array.isArray(forecast) ? forecast : [];
     const autoRefreshSlots = new Set([9, 11, 12, 15]);
     const lastAutoHourRef = useRef<number | null>(null);
     const lastUpdatedDateRef = useRef<string | null>(null);
+    
+    // 현재 선택된 날의 인사이트 (캐시에서 가져오기)
+    const insight = getInsight(selectedDay);
+    const insightLoading = insightLoadingDay === selectedDay;
 
     // ESC 키로 모달 닫기
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -102,7 +117,7 @@ export default function WeatherWidget() {
         if (isRefreshing) return;
         setIsRefreshing(true);
         try {
-            await fetchWeather(true, selectedDay); // 강제 새로고침
+            await fetchWeather(true, selectedDay); // 강제 새로고침 (인사이트 캐시도 클리어됨)
         } finally {
             setIsRefreshing(false);
         }
@@ -111,12 +126,19 @@ export default function WeatherWidget() {
     // 현재 선택된 날짜의 예보
     const currentForecast = safeForecast[selectedDay];
 
-    // Gemini AI 인사이트 로드 (비동기)
+    // Gemini AI 인사이트 로드 (캐시 확인 후 없으면 로드)
     useEffect(() => {
         if (!currentForecast || !isExpanded) return;
         
+        // 이미 캐시에 있으면 로드하지 않음
+        const cachedInsight = getInsight(selectedDay);
+        if (cachedInsight) {
+            console.log('[WeatherWidget] Using cached insight for day', selectedDay);
+            return;
+        }
+        
         const loadInsight = async () => {
-            setInsightLoading(true);
+            setStoreInsightLoading(selectedDay);
             try {
                 const { current, hourly } = currentForecast;
                 const feelsLikeTemps = Array.isArray(hourly) 
@@ -124,27 +146,39 @@ export default function WeatherWidget() {
                     : [];
                 const tonightLow = feelsLikeTemps.length ? Math.min(...feelsLikeTemps) : undefined;
                 
+                // 시간대별 강수확률 추출
+                const hourlyPrecip = Array.isArray(hourly)
+                    ? hourly.map(h => ({ time: h.time, chance: h.chanceOfRain ?? 0 }))
+                    : [];
+                
+                // 현재 시간
+                const now = new Date();
+                const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+                
                 const result = await getWeatherInsightWithGemini(
                     current.temp, 
                     current.feelsLike, 
                     current.condition, 
                     {
                         humidity: current.humidity,
-                        chanceOfRain: current.chanceOfRain,
                         tonightLow,
                         hourlyTemps: feelsLikeTemps,
+                        hourlyPrecip,
+                        currentTime,
                     }
                 );
-                setInsight(result);
+                
+                // 스토어 캐시에 저장
+                setStoreInsight(selectedDay, result);
             } catch (err) {
                 console.error('[WeatherWidget] Insight loading error:', err);
             } finally {
-                setInsightLoading(false);
+                setStoreInsightLoading(null);
             }
         };
         
         loadInsight();
-    }, [currentForecast, isExpanded, selectedDay]);
+    }, [currentForecast, isExpanded, selectedDay, getInsight, setStoreInsight, setStoreInsightLoading, insightCache]);
     const getBackgroundGradient = (condition: string = '') => {
         const c = condition.toLowerCase();
         if (c.includes('비') || c.includes('rain')) return 'from-slate-700 to-slate-900';

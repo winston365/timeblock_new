@@ -5,6 +5,7 @@
  * @role 날씨 데이터 상태 관리 및 조회 액션 제공
  * @responsibilities
  *   - 날씨 예보 데이터 상태 관리 (forecast, selectedDay)
+ *   - 인사이트 캐싱 (날씨 새로고침 시에만 갱신)
  *   - 로딩/에러 상태 관리
  *   - 날씨 조회 액션 (캐시 활용, 에러 복구)
  *   - 재조회 필요 여부 판단 (30분 경과)
@@ -15,12 +16,30 @@
 
 import { create } from 'zustand';
 import type { WeatherState } from '@/shared/types/weather';
-import { fetchWeatherFromGoogle, clearWeatherCache } from '../services/weatherService';
+import { fetchWeatherFromGoogle, clearWeatherCache, type WeatherInsightResult } from '../services/weatherService';
+
+/** 날씨별 인사이트 캐시 */
+interface InsightCache {
+    [dayIndex: number]: WeatherInsightResult;
+}
 
 interface WeatherStore extends WeatherState {
+    /** 인사이트 캐시 (날씨 데이터와 함께 갱신) */
+    insightCache: InsightCache;
+    /** 인사이트 로딩 중인 날짜 인덱스 */
+    insightLoadingDay: number | null;
+    
     fetchWeather: (forceRefresh?: boolean, dayIndex?: number, allowRecovery?: boolean) => Promise<void>;
     setSelectedDay: (day: number) => void;
     shouldRefetch: () => boolean;
+    /** 인사이트 캐시에 저장 */
+    setInsight: (dayIndex: number, insight: WeatherInsightResult) => void;
+    /** 인사이트 캐시 조회 */
+    getInsight: (dayIndex: number) => WeatherInsightResult | null;
+    /** 인사이트 로딩 상태 설정 */
+    setInsightLoading: (dayIndex: number | null) => void;
+    /** 인사이트 캐시 클리어 */
+    clearInsightCache: () => void;
 }
 
 /**
@@ -35,6 +54,8 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
     error: null,
     lastUpdated: null,
     lastErrorAt: null,
+    insightCache: {},
+    insightLoadingDay: null,
 
     /**
      * 날씨 정보 가져오기
@@ -71,13 +92,20 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
                 return;
             }
 
-            set({
+            // 날씨 데이터가 새로 로드되면 인사이트 캐시도 클리어 (새로고침이면)
+            const newState: Partial<WeatherStore> = {
                 forecast: safeForecast,
                 selectedDay: Math.min(dayIndex, safeForecast.length - 1),
                 loading: false,
                 lastUpdated: result.timestamp || Date.now(),
                 lastErrorAt: null,
-            });
+            };
+            
+            if (forceRefresh) {
+                newState.insightCache = {};
+            }
+            
+            set(newState as WeatherStore);
         } catch (error) {
             console.error('[WeatherStore] Failed to fetch weather:', error);
             if (allowRecovery) {
@@ -115,5 +143,38 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
         const THIRTY_MINUTES = 30 * 60 * 1000;
 
         return elapsed > THIRTY_MINUTES;
+    },
+    
+    /**
+     * 인사이트 캐시에 저장
+     */
+    setInsight: (dayIndex: number, insight: WeatherInsightResult) => {
+        set(state => ({
+            insightCache: {
+                ...state.insightCache,
+                [dayIndex]: insight,
+            },
+        }));
+    },
+    
+    /**
+     * 인사이트 캐시 조회
+     */
+    getInsight: (dayIndex: number) => {
+        return get().insightCache[dayIndex] ?? null;
+    },
+    
+    /**
+     * 인사이트 로딩 상태 설정
+     */
+    setInsightLoading: (dayIndex: number | null) => {
+        set({ insightLoadingDay: dayIndex });
+    },
+    
+    /**
+     * 인사이트 캐시 클리어
+     */
+    clearInsightCache: () => {
+        set({ insightCache: {} });
     },
 }));

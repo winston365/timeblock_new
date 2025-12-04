@@ -298,9 +298,9 @@ function parseWeatherApiResponse(data: WeatherApiResponse): DayForecast[] {
         // 시간별 데이터 (6시~21시, 3시간 간격)
         const hourlyData = filterHourlyData(day.hour);
         
-        // 현재 날씨 정보
+        // 현재 날씨 정보: 오늘은 현재 시간 기준 hourly 데이터 사용
         const currentWeather: WeatherData = index === 0 
-            ? buildCurrentWeather(data.current, locationName, day.day.daily_chance_of_rain)
+            ? buildCurrentWeatherFromHourly(day.hour, data.current, locationName, day.day.daily_chance_of_rain)
             : buildDayWeather(day, locationName);
 
         return {
@@ -313,21 +313,53 @@ function parseWeatherApiResponse(data: WeatherApiResponse): DayForecast[] {
 }
 
 /**
- * 현재 날씨 데이터 생성 (오늘용)
+ * 현재 날씨 데이터 생성 (오늘용) - 현재 시간에 가장 가까운 hourly 데이터 사용
  */
-function buildCurrentWeather(
-    current: WeatherApiCurrent, 
+function buildCurrentWeatherFromHourly(
+    hours: WeatherApiHour[],
+    currentApi: WeatherApiCurrent,
     location: string,
     dailyChanceOfRain: number
 ): WeatherData {
-    const hour = new Date().getHours();
+    const now = new Date();
+    const currentHour = now.getHours();
     
+    // 현재 시간에 가장 가까운 hourly 데이터 찾기
+    const closestHour = hours.reduce((closest, hour) => {
+        const hourTime = hour.time.split(' ')[1] || '00:00';
+        const hourNum = parseInt(hourTime.split(':')[0], 10);
+        const closestTime = closest.time.split(' ')[1] || '00:00';
+        const closestNum = parseInt(closestTime.split(':')[0], 10);
+        
+        const diffCurrent = Math.abs(hourNum - currentHour);
+        const diffClosest = Math.abs(closestNum - currentHour);
+        
+        return diffCurrent < diffClosest ? hour : closest;
+    }, hours[0]);
+    
+    // hourly 데이터가 있으면 그것을 사용, 없으면 current API 데이터 사용
+    if (closestHour) {
+        const hourTime = closestHour.time.split(' ')[1] || '00:00';
+        const hourNum = parseInt(hourTime.split(':')[0], 10);
+        
+        return {
+            temp: Math.round(closestHour.temp_c),
+            feelsLike: Math.round(closestHour.feelslike_c),
+            condition: closestHour.condition.text,
+            icon: getWeatherIcon(closestHour.condition.code, closestHour.is_day === 1, hourNum),
+            humidity: closestHour.humidity,
+            chanceOfRain: dailyChanceOfRain,
+            location,
+        };
+    }
+    
+    // fallback: current API 데이터
     return {
-        temp: Math.round(current.temp_c),
-        feelsLike: Math.round(current.feelslike_c),
-        condition: current.condition.text, // lang=ko로 이미 한글 반환
-        icon: getWeatherIcon(current.condition.code, current.is_day === 1, hour),
-        humidity: current.humidity,
+        temp: Math.round(currentApi.temp_c),
+        feelsLike: Math.round(currentApi.feelslike_c),
+        condition: currentApi.condition.text,
+        icon: getWeatherIcon(currentApi.condition.code, currentApi.is_day === 1, currentHour),
+        humidity: currentApi.humidity,
         chanceOfRain: dailyChanceOfRain,
         location,
     };
@@ -371,12 +403,15 @@ function filterHourlyData(hours: WeatherApiHour[]): HourlyWeather[] {
             const timeStr = hour.time.split(' ')[1] || '00:00'; // "06:00"
             const hourNum = parseInt(timeStr.split(':')[0], 10);
             
+            // 강수확률: 비와 눈 중 더 높은 값 사용
+            const chanceOfPrecip = Math.max(hour.chance_of_rain, hour.chance_of_snow);
+            
             return {
                 time: timeStr,
                 temp: Math.round(hour.temp_c),
                 feelsLike: Math.round(hour.feelslike_c),
                 icon: getWeatherIcon(hour.condition.code, hour.is_day === 1, hourNum),
-                chanceOfRain: hour.chance_of_rain,
+                chanceOfRain: chanceOfPrecip,
             };
         });
 }
