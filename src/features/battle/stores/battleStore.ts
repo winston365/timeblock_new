@@ -833,24 +833,44 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     try {
       // 보스 처치 시 순차 진행 단계 업데이트 및 자동 스폰
       if (computation.result.bossDefeated) {
-        const currentPhase = finalState.sequentialPhase ?? 0;
-        const nextPhase = currentPhase + 1;
+        let currentPhase = finalState.sequentialPhase ?? 0;
+        let nextPhase = currentPhase + 1;
         finalState = { ...finalState, sequentialPhase: nextPhase };
         
         // 순차 진행 중이면 자동 스폰 (phase 5 미만)
-        const nextDifficulty = getNextSequentialDifficulty(nextPhase);
-        console.log('[Battle] Boss defeated! Current phase:', currentPhase, '-> Next phase:', nextPhase, '-> Next difficulty:', nextDifficulty);
-        console.log('[Battle] Remaining bosses:', finalState.remainingBosses);
+        // 오버킬로 즉시 처치 시 연쇄 스폰 처리
+        let nextDifficulty = getNextSequentialDifficulty(nextPhase);
         
-        if (nextDifficulty) {
-          // 다음 난이도로 자동 스폰
+        while (nextDifficulty) {
           const spawnResult = computeSpawnBossResult_core(finalState, nextDifficulty, settings);
-          console.log('[Battle] Auto-spawn result:', spawnResult.spawnedBossId, spawnResult.updatedState ? 'success' : 'failed');
-          if (spawnResult.updatedState) {
-            finalState = spawnResult.updatedState;
-            // 자동 스폰 시 sequentialPhase 유지
+          
+          if (!spawnResult.updatedState) {
+            // 해당 난이도에 보스가 없으면 중단
+            break;
+          }
+          
+          finalState = spawnResult.updatedState;
+          finalState = { ...finalState, sequentialPhase: nextPhase };
+          
+          // 스폰된 보스가 즉시 처치되었는지 확인 (오버킬로 인한 연쇄 처치)
+          const newBoss = finalState.bosses?.[finalState.currentBossIndex];
+          const isInstantDefeat = newBoss?.defeatedAt != null;
+          
+          if (isInstantDefeat && spawnResult.spawnedBossId) {
+            // 즉시 처치된 보스도 히스토리와 통계에 추가
+            await addToDefeatedBossHistory(spawnResult.spawnedBossId);
+            const instantBoss = getBossById(spawnResult.spawnedBossId);
+            if (instantBoss) {
+              await updateTodayBattleStats(spawnResult.spawnedBossId, instantBoss.difficulty);
+            }
+            
+            // 다음 단계로 진행
+            nextPhase++;
             finalState = { ...finalState, sequentialPhase: nextPhase };
-            console.log('[Battle] New boss index:', finalState.currentBossIndex, 'Total bosses:', finalState.bosses?.length);
+            nextDifficulty = getNextSequentialDifficulty(nextPhase);
+          } else {
+            // 보스가 살아있으면 루프 종료
+            break;
           }
         }
       }
