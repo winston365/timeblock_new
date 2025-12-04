@@ -740,6 +740,7 @@ ipcMain.handle('google-oauth-login', async (_event, clientId: string, clientSecr
       'https://www.googleapis.com/auth/calendar.events',
       'https://www.googleapis.com/auth/calendar.readonly',
       'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/tasks',
     ].join(' ');
 
     const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
@@ -779,7 +780,7 @@ function startOAuthCallbackServer(): Promise<{ code: string; state: string }> {
 
     oauthCallbackServer = http.createServer((req, res) => {
       const url = new URL(req.url || '', 'http://localhost:17365');
-      
+
       if (url.pathname === '/oauth/callback') {
         const code = url.searchParams.get('code');
         const state = url.searchParams.get('state');

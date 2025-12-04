@@ -24,15 +24,15 @@ import { initGoalSubscriber } from './goalSubscriber';
 import { initWaifuSubscriber } from './waifuSubscriber';
 import { initGameStateSubscriber } from './gameStateSubscriber';
 import { initRealityCheckSubscriber } from './realityCheckSubscriber';
-import { initGoogleCalendarSubscriber } from './googleCalendarSubscriber';
+import { initGoogleSyncSubscriber } from './googleSyncSubscriber';
 
-export { 
-    initXpSubscriber, 
-    initGoalSubscriber, 
+export {
+    initXpSubscriber,
+    initGoalSubscriber,
     initWaifuSubscriber,
     initGameStateSubscriber,
     initRealityCheckSubscriber,
-    initGoogleCalendarSubscriber,
+    initGoogleSyncSubscriber,
 };
 
 /**
@@ -49,5 +49,5 @@ export function initAllSubscribers(): void {
     initWaifuSubscriber();
     initGameStateSubscriber();
     initRealityCheckSubscriber();
-    initGoogleCalendarSubscriber();
+    initGoogleSyncSubscriber();
 }

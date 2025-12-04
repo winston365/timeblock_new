@@ -21,6 +21,7 @@ import type { TempScheduleTask, RecurrenceRule } from '@/shared/types/tempSchedu
 import { TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
 import { generateId } from '@/shared/lib/utils';
 import { withFirebaseSync } from '@/shared/utils/firebaseGuard';
+import { eventBus } from '@/shared/lib/eventBus';
 
 // ============================================================================
 // Firebase Sync Strategy
@@ -57,47 +58,47 @@ async function syncTempScheduleToFirebase(): Promise<void> {
  */
 export function shouldShowOnDate(task: TempScheduleTask, date: string): boolean {
   const { scheduledDate, recurrence } = task;
-  
+
   // 특정 날짜에만 표시되는 경우
   if (scheduledDate && recurrence.type === 'none') {
     return scheduledDate === date;
   }
-  
+
   // 반복 규칙 체크
   const targetDate = new Date(date);
   const taskStartDate = scheduledDate ? new Date(scheduledDate) : new Date(task.createdAt);
-  
+
   // 시작일 이전이면 표시하지 않음
   if (targetDate < taskStartDate) {
     return false;
   }
-  
+
   // 종료일 이후이면 표시하지 않음
   if (recurrence.endDate && targetDate > new Date(recurrence.endDate)) {
     return false;
   }
-  
+
   switch (recurrence.type) {
     case 'daily':
       return true;
-      
+
     case 'weekly':
       if (!recurrence.weeklyDays || recurrence.weeklyDays.length === 0) {
         return false;
       }
       return recurrence.weeklyDays.includes(targetDate.getDay());
-      
+
     case 'monthly':
       // 매월 같은 날짜
       return targetDate.getDate() === taskStartDate.getDate();
-      
+
     case 'custom':
       if (!recurrence.intervalDays || recurrence.intervalDays <= 0) {
         return false;
       }
       const daysDiff = Math.floor((targetDate.getTime() - taskStartDate.getTime()) / (1000 * 60 * 60 * 24));
       return daysDiff % recurrence.intervalDays === 0;
-      
+
     case 'none':
     default:
       return scheduledDate === date;
@@ -164,23 +165,23 @@ export function snapTimeToGrid(time: string, snapInterval: number = TEMP_SCHEDUL
 export async function loadTempScheduleTasks(): Promise<TempScheduleTask[]> {
   try {
     const tasks = await db.tempScheduleTasks.toArray();
-    
+
     if (tasks.length > 0) {
       addSyncLog('dexie', 'load', 'TempScheduleTasks loaded from IndexedDB', { count: tasks.length });
       return tasks;
     }
-    
+
     // Firebase fallback
     if (isFirebaseInitialized()) {
       const firebaseTasks = await fetchFromFirebase<TempScheduleTask[]>(tempScheduleFirebaseStrategy, 'all');
-      
+
       if (firebaseTasks && firebaseTasks.length > 0) {
         await db.tempScheduleTasks.bulkPut(firebaseTasks);
         addSyncLog('firebase', 'load', 'TempScheduleTasks loaded from Firebase', { count: firebaseTasks.length });
         return firebaseTasks;
       }
     }
-    
+
     return [];
   } catch (error) {
     console.error('Failed to load temp schedule tasks:', error);
@@ -213,15 +214,15 @@ export async function loadTempScheduleTasksForRange(
 ): Promise<Record<string, TempScheduleTask[]>> {
   const allTasks = await loadTempScheduleTasks();
   const result: Record<string, TempScheduleTask[]> = {};
-  
+
   const start = new Date(startDate);
   const end = new Date(endDate);
-  
+
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const dateStr = d.toISOString().split('T')[0];
     result[dateStr] = allTasks.filter(task => shouldShowOnDate(task, dateStr));
   }
-  
+
   return result;
 }
 
@@ -235,20 +236,23 @@ export async function addTempScheduleTask(
   taskData: Omit<TempScheduleTask, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<TempScheduleTask> {
   const now = new Date().toISOString();
-  
+
   const newTask: TempScheduleTask = {
     ...taskData,
     id: generateId('tempschedule'),
     createdAt: now,
     updatedAt: now,
   };
-  
+
   try {
     await db.tempScheduleTasks.add(newTask);
     addSyncLog('dexie', 'save', 'TempScheduleTask added', { id: newTask.id, name: newTask.name });
 
     // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
     withFirebaseSync(syncTempScheduleToFirebase, 'TempSchedule:add');
+
+    // 이벤트 발행
+    eventBus.emit('tempSchedule:created', { task: newTask });
 
     return newTask;
   } catch (error) {
@@ -271,23 +275,26 @@ export async function updateTempScheduleTask(
 ): Promise<TempScheduleTask | null> {
   try {
     const existingTask = await db.tempScheduleTasks.get(id);
-    
+
     if (!existingTask) {
       console.warn(`TempScheduleTask not found: ${id}`);
       return null;
     }
-    
+
     const updatedTask: TempScheduleTask = {
       ...existingTask,
       ...updates,
       updatedAt: new Date().toISOString(),
     };
-    
+
     await db.tempScheduleTasks.put(updatedTask);
     addSyncLog('dexie', 'save', 'TempScheduleTask updated', { id, name: updatedTask.name });
 
     // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
     withFirebaseSync(syncTempScheduleToFirebase, 'TempSchedule:update');
+
+    // 이벤트 발행
+    eventBus.emit('tempSchedule:updated', { task: updatedTask, oldTask: existingTask });
 
     return updatedTask;
   } catch (error) {
@@ -307,12 +314,20 @@ export async function deleteTempScheduleTask(id: string): Promise<void> {
     // 자식 작업도 함께 삭제
     const childTasks = await db.tempScheduleTasks.where('parentId').equals(id).toArray();
     const childIds = childTasks.map(t => t.id);
-    
+
+    // 삭제 전 작업 정보 가져오기 (이벤트 발행용)
+    const taskToDelete = await db.tempScheduleTasks.get(id);
+
     await db.tempScheduleTasks.bulkDelete([id, ...childIds]);
     addSyncLog('dexie', 'save', 'TempScheduleTask deleted', { id, childCount: childIds.length });
 
     // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
     withFirebaseSync(syncTempScheduleToFirebase, 'TempSchedule:delete');
+
+    // 이벤트 발행
+    if (taskToDelete) {
+      eventBus.emit('tempSchedule:deleted', { task: taskToDelete });
+    }
   } catch (error) {
     console.error('Failed to delete temp schedule task:', error);
     addSyncLog('dexie', 'error', 'Failed to delete TempScheduleTask', { id }, error as Error);
@@ -328,11 +343,11 @@ export async function deleteTempScheduleTask(id: string): Promise<void> {
 export async function saveTempScheduleTasks(tasks: TempScheduleTask[]): Promise<void> {
   try {
     await db.tempScheduleTasks.clear();
-    
+
     if (tasks.length > 0) {
       await db.tempScheduleTasks.bulkPut(tasks);
     }
-    
+
     addSyncLog('dexie', 'save', 'TempScheduleTasks saved', { count: tasks.length });
 
     // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)

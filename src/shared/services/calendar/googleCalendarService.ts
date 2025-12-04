@@ -254,7 +254,7 @@ async function callCalendarApi<T>(
 export function taskToCalendarEvent(task: Task, date: string): GoogleCalendarEvent {
   // hourSlot이 없으면 timeBlock의 시작 시간 사용
   let startHour = task.hourSlot ?? 9;
-  
+
   // timeBlock에서 시작 시간 추출 (예: '8-11' -> 8)
   if (!task.hourSlot && task.timeBlock) {
     const match = task.timeBlock.match(/^(\d+)-/);
@@ -325,18 +325,22 @@ function getResistanceLabel(resistance: string): string {
 // Calendar 이벤트 CRUD
 // ============================================================================
 
+// ... existing imports
+import type { TempScheduleTask } from '@/shared/types/tempSchedule';
+
+// ...
+
 /**
- * 이벤트 생성
+ * Generic Event 생성 (Task 외의 용도)
  */
-export async function createCalendarEvent(
-  task: Task,
-  date: string
+export async function createCalendarEventGeneric(
+  event: GoogleCalendarEvent,
+  mappingId: string,
+  mappingTable: 'taskCalendarMappings' | 'tempScheduleCalendarMappings'
 ): Promise<GoogleCalendarEvent> {
   const settings = await getGoogleCalendarSettings();
   const calendarId = settings?.calendarId || 'primary';
-  
-  const event = taskToCalendarEvent(task, date);
-  
+
   const createdEvent = await callCalendarApi<GoogleCalendarEvent>(
     `/calendars/${encodeURIComponent(calendarId)}/events`,
     {
@@ -346,10 +350,10 @@ export async function createCalendarEvent(
   );
 
   // 매핑 저장
-  await saveTaskCalendarMapping({
-    taskId: task.id,
+  await db.table(mappingTable).put({
+    taskId: mappingId, // taskId 컬럼을 ID로 사용 (TempSchedule ID 포함)
     calendarEventId: createdEvent.id!,
-    date,
+    date: event.start.dateTime?.split('T')[0] || '',
     lastSyncedAt: Date.now(),
     syncStatus: 'synced',
   });
@@ -358,22 +362,20 @@ export async function createCalendarEvent(
 }
 
 /**
- * 이벤트 업데이트
+ * Generic Event 업데이트
  */
-export async function updateCalendarEvent(
-  task: Task,
-  date: string
+export async function updateCalendarEventGeneric(
+  event: GoogleCalendarEvent,
+  mappingId: string,
+  mappingTable: 'taskCalendarMappings' | 'tempScheduleCalendarMappings'
 ): Promise<GoogleCalendarEvent | null> {
-  const mapping = await getTaskCalendarMapping(task.id);
+  const mapping = await db.table(mappingTable).get(mappingId);
   if (!mapping) {
-    // 매핑이 없으면 새로 생성
-    return createCalendarEvent(task, date);
+    return createCalendarEventGeneric(event, mappingId, mappingTable);
   }
 
   const settings = await getGoogleCalendarSettings();
   const calendarId = settings?.calendarId || 'primary';
-  
-  const event = taskToCalendarEvent(task, date);
 
   try {
     const updatedEvent = await callCalendarApi<GoogleCalendarEvent>(
@@ -384,8 +386,7 @@ export async function updateCalendarEvent(
       }
     );
 
-    // 매핑 업데이트
-    await saveTaskCalendarMapping({
+    await db.table(mappingTable).put({
       ...mapping,
       lastSyncedAt: Date.now(),
       syncStatus: 'synced',
@@ -393,23 +394,23 @@ export async function updateCalendarEvent(
 
     return updatedEvent;
   } catch (error) {
-    // 이벤트가 삭제된 경우 새로 생성
     if ((error as Error).message.includes('404')) {
-      await deleteTaskCalendarMapping(task.id);
-      return createCalendarEvent(task, date);
+      await db.table(mappingTable).delete(mappingId);
+      return createCalendarEventGeneric(event, mappingId, mappingTable);
     }
     throw error;
   }
 }
 
 /**
- * 이벤트 삭제
+ * Generic Event 삭제
  */
-export async function deleteCalendarEvent(taskId: string): Promise<void> {
-  const mapping = await getTaskCalendarMapping(taskId);
-  if (!mapping) {
-    return; // 매핑 없으면 무시
-  }
+export async function deleteCalendarEventGeneric(
+  mappingId: string,
+  mappingTable: 'taskCalendarMappings' | 'tempScheduleCalendarMappings'
+): Promise<void> {
+  const mapping = await db.table(mappingTable).get(mappingId);
+  if (!mapping) return;
 
   const settings = await getGoogleCalendarSettings();
   const calendarId = settings?.calendarId || 'primary';
@@ -420,53 +421,15 @@ export async function deleteCalendarEvent(taskId: string): Promise<void> {
       { method: 'DELETE' }
     );
   } catch (error) {
-    // 이미 삭제된 경우 무시
     if (!(error as Error).message.includes('404')) {
       throw error;
     }
   }
 
-  // 매핑 삭제
-  await deleteTaskCalendarMapping(taskId);
+  await db.table(mappingTable).delete(mappingId);
 }
 
-// ============================================================================
-// Task-Calendar 매핑 관리
-// ============================================================================
-
-/**
- * 매핑 저장
- */
-async function saveTaskCalendarMapping(mapping: TaskCalendarMapping): Promise<void> {
-  try {
-    await db.table('taskCalendarMappings').put(mapping);
-  } catch (error) {
-    console.error('[GoogleCalendar] Failed to save mapping:', error);
-  }
-}
-
-/**
- * 매핑 조회
- */
-export async function getTaskCalendarMapping(taskId: string): Promise<TaskCalendarMapping | undefined> {
-  try {
-    return await db.table('taskCalendarMappings').get(taskId);
-  } catch (error) {
-    console.error('[GoogleCalendar] Failed to get mapping:', error);
-    return undefined;
-  }
-}
-
-/**
- * 매핑 삭제
- */
-async function deleteTaskCalendarMapping(taskId: string): Promise<void> {
-  try {
-    await db.table('taskCalendarMappings').delete(taskId);
-  } catch (error) {
-    console.error('[GoogleCalendar] Failed to delete mapping:', error);
-  }
-}
+// ... existing functions
 
 // ============================================================================
 // 동기화 상태 확인

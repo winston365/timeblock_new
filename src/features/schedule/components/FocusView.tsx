@@ -24,59 +24,18 @@ import { FocusTimeline } from './FocusTimeline';
 import { QuickMemo } from './QuickMemo';
 import { BreakView } from './BreakView';
 import { FocusMusicPlayer } from './FocusMusicPlayer';
-import { useFocusMusic } from '../hooks/useFocusMusic';
+import { useFocusMusicStore } from '../stores/focusMusicStore';
 
-/**
- * FocusView 컴포넌트 Props
- * @param currentBlockId - 현재 타임 블록 ID
- * @param tasks - 현재 블록의 작업 목록
- * @param allDailyTasks - 오늘 전체 작업 목록
- * @param isLocked - 블록 잠금 상태
- * @param onEditTask - 작업 수정 핸들러
- * @param onUpdateTask - 작업 업데이트 핸들러
- * @param onToggleTask - 작업 완료 토글 핸들러
- * @param onToggleLock - 블록 잠금 토글 핸들러 (선택적)
- * @param onExitFocusMode - 집중 모드 종료 핸들러
- * @param onCreateTask - 새 작업 생성 핸들러
- */
-interface FocusViewProps {
-    currentBlockId: TimeBlockId;
-    tasks: Task[];
-    allDailyTasks: Task[];
-    isLocked: boolean;
-    onEditTask: (task: Task) => void;
-    onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
-    onToggleTask: (taskId: string) => void;
-    onToggleLock?: () => void;
-    onExitFocusMode: () => void;
-    onCreateTask: (text: string, blockId: TimeBlockId, hourSlot?: number) => Promise<void>;
-}
+// ...
 
-/**
- * 집중 모드 메인 뷰 컴포넌트
- * @param props - FocusViewProps
- * @returns 집중 모드 UI 렌더링
- */
 export function FocusView({
-    currentBlockId,
-    tasks,
-    allDailyTasks,
-    isLocked,
-    onEditTask,
-    onUpdateTask,
-    onToggleTask,
-    onExitFocusMode,
-    onCreateTask
+    // ... props
 }: FocusViewProps) {
     const { setFocusMode, activeTaskId, activeTaskStartTime, startTask, stopTask, isPaused, pauseTask, resumeTask } = useFocusModeStore();
     const { settings } = useSettingsStore();
-    const [memoText, setMemoText] = useState('');
-    const [isBreakTime, setIsBreakTime] = useState(false);
-    const [breakRemainingSeconds, setBreakRemainingSeconds] = useState<number | null>(null);
-    const [pendingNextTaskId, setPendingNextTaskId] = useState<string | null>(null);
-    const [now, setNow] = useState(Date.now());
+    // ... other state
 
-    // Music player hook
+    // Music player store
     const {
         selectedMusicFolder,
         musicTracks,
@@ -90,7 +49,17 @@ export function FocusView({
         handleTogglePlay,
         handleNextRandom,
         handleLoopModeChange,
-    } = useFocusMusic({ githubToken: settings?.githubToken });
+        fetchMusicTracks,
+    } = useFocusMusicStore();
+
+    // 초기 로드 (트랙이 비어있으면 로드)
+    useEffect(() => {
+        if (musicTracks.length === 0 && !isMusicLoading) {
+            fetchMusicTracks(settings?.githubToken);
+        }
+    }, [musicTracks.length, isMusicLoading, fetchMusicTracks, settings?.githubToken]);
+
+    // ... rest of the component
 
     const lastSavedMemoRef = useRef<{ taskId: string | null; memo: string }>({ taskId: null, memo: '' });
     // 시간/작업 계산 (상단에서 정의하여 TDZ 회피)
@@ -392,7 +361,7 @@ export function FocusView({
         });
 
         return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isPaused, pauseTask, resumeTask, activeTaskId, handleToggleTaskWrapper, startBreakForNextTask, recommendedTask, setFocusMode, startTask]);
 
     // Progress calculation for current hour tasks only

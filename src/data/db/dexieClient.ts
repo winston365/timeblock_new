@@ -28,6 +28,7 @@ import type {
 } from '@/shared/types/domain';
 import type { TempScheduleTask } from '@/shared/types/tempSchedule';
 import type { TaskCalendarMapping } from '@/shared/services/calendar/googleCalendarTypes';
+import type { TaskGoogleTaskMapping } from '@/shared/services/calendar/googleTasksService';
 import type { DayForecast } from '@/shared/types/weather';
 
 /**
@@ -106,7 +107,9 @@ export class TimeBlockDB extends Dexie {
   ragDocuments!: Table<RAGDocumentRecord, string>; // ✅ RAG 벡터 영구 저장
   weeklyGoals!: Table<WeeklyGoal, string>; // ✅ 장기목표 (주간 목표)
   tempScheduleTasks!: Table<TempScheduleTask, string>; // ✅ 임시 스케줄 작업
-  taskCalendarMappings!: Table<TaskCalendarMapping, string>; // ✅ Task-Calendar 매핑
+  taskCalendarMappings!: Table<TaskCalendarMapping, string>; // ✅ Task-Calendar 매핑 (Deprecated)
+  taskGoogleTaskMappings!: Table<TaskGoogleTaskMapping, string>; // ✅ Task-GoogleTask 매핑
+  tempScheduleCalendarMappings!: Table<TaskCalendarMapping, string>; // ✅ TempSchedule-Calendar 매핑
 
   constructor() {
     super('timeblock_db');
@@ -410,7 +413,32 @@ export class TimeBlockDB extends Dexie {
       ragDocuments: 'id, type, date, completed, contentHash, indexedAt',
       weeklyGoals: 'id, weekStartDate, order',
       tempScheduleTasks: 'id, scheduledDate, parentId, order, createdAt',
-      taskCalendarMappings: 'taskId, calendarEventId, date, syncStatus', // ✅ Task-Calendar 매핑
+      taskCalendarMappings: 'taskId, calendarEventId, date, syncStatus',
+    });
+
+    // 스키마 버전 17 - Google Sync 개선 (Tasks & Temp Schedule)
+    this.version(17).stores({
+      dailyData: 'date, updatedAt',
+      gameState: 'key',
+      templates: 'id, name, autoGenerate',
+      shopItems: 'id, name',
+      waifuState: 'key',
+      settings: 'key',
+      chatHistory: 'date, updatedAt',
+      dailyTokenUsage: 'date, updatedAt',
+      globalInbox: 'id, createdAt, completed',
+      completedInbox: 'id, completedAt, createdAt',
+      globalGoals: 'id, createdAt, order',
+      systemState: 'key',
+      images: 'id',
+      weather: 'id',
+      aiInsights: 'date',
+      ragDocuments: 'id, type, date, completed, contentHash, indexedAt',
+      weeklyGoals: 'id, weekStartDate, order',
+      tempScheduleTasks: 'id, scheduledDate, parentId, order, createdAt',
+      taskCalendarMappings: 'taskId, calendarEventId, date, syncStatus', // Deprecated but kept for migration
+      taskGoogleTaskMappings: 'taskId, googleTaskId, googleTaskListId, syncStatus', // ✅ Main Task -> Google Task
+      tempScheduleCalendarMappings: 'taskId, calendarEventId, date, syncStatus', // ✅ Temp Schedule -> Calendar Event
     });
   }
 }

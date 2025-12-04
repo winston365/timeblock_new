@@ -138,34 +138,6 @@ export interface RealityCheckRequestEvent {
 }
 
 /**
- * GameState 도메인 이벤트
- */
-export interface GameStateRefreshRequestEvent {
-    reason?: string;
-}
-
-/**
- * 모든 이벤트 타입 매핑
- */
-export interface EventTypeMap {
-    // Task events
-    'task:created': TaskCreatedEvent;
-    'task:updated': TaskUpdatedEvent;
-    'task:deleted': TaskDeletedEvent;
-    'task:completed': TaskCompletedEvent;
-
-    // Block events
-    'block:locked': BlockLockedEvent;
-    'block:unlocked': BlockUnlockedEvent;
-    'block:perfect': BlockPerfectEvent;
-
-// XP events
-    'xp:earned': XpEarnedEvent;
-    'xp:spent': XpSpentEvent;
-
-    // Quest events
-    'quest:progress': QuestProgressEvent;
-    'quest:completed': QuestCompletedEvent;
 
     // Goal events
     'goal:progressChanged': GoalProgressChangedEvent;

@@ -8,7 +8,7 @@
  * @dependencies useFocusMusic 훅 (MUSIC_FOLDERS, LoopMode, MusicTrack)
  */
 
-import { MUSIC_FOLDERS, type LoopMode, type MusicTrack } from '../hooks/useFocusMusic';
+import { MUSIC_FOLDERS, type LoopMode, type MusicTrack } from '../stores/focusMusicStore';
 
 interface FocusMusicPlayerProps {
   selectedMusicFolder: string;
@@ -75,11 +75,10 @@ export function FocusMusicPlayer({
                 onClick={() => setSelectedMusicFolder(folder.id, { autoplay: true })}
                 disabled={isMusicLoading}
                 aria-pressed={isActive}
-                className={`relative min-w-[78px] rounded-xl px-3 py-1.5 text-xs font-semibold transition-all duration-150 ${
-                  isActive
+                className={`relative min-w-[78px] rounded-xl px-3 py-1.5 text-xs font-semibold transition-all duration-150 ${isActive
                     ? 'bg-[var(--color-primary)] text-white shadow-sm shadow-[var(--color-primary)]/40'
                     : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary-hover)]'
-                } ${isMusicLoading ? 'cursor-not-allowed opacity-70' : ''}`}
+                  } ${isMusicLoading ? 'cursor-not-allowed opacity-70' : ''}`}
               >
                 {folder.label}
                 {isActive && (
@@ -94,11 +93,10 @@ export function FocusMusicPlayer({
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
           onClick={handleTogglePlay}
-          className={`rounded-xl px-3 py-2 text-sm font-semibold shadow-sm disabled:opacity-60 ${
-            isMusicPlaying
+          className={`rounded-xl px-3 py-2 text-sm font-semibold shadow-sm disabled:opacity-60 ${isMusicPlaying
               ? 'bg-emerald-500 text-white hover:opacity-90'
               : 'bg-[var(--color-primary)] text-white hover:opacity-90'
-          }`}
+            }`}
           disabled={isMusicLoading || !musicTracks.length}
           aria-pressed={isMusicPlaying}
         >
@@ -114,22 +112,20 @@ export function FocusMusicPlayer({
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleLoopModeChange('track')}
-            className={`rounded-xl border px-3 py-2 text-sm transition ${
-              loopMode === 'track'
+            className={`rounded-xl border px-3 py-2 text-sm transition ${loopMode === 'track'
                 ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-sm'
                 : 'border-[var(--color-border)] bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary-hover)]'
-            }`}
+              }`}
             aria-pressed={loopMode === 'track'}
           >
             🔂 한 곡 반복
           </button>
           <button
             onClick={() => handleLoopModeChange('folder')}
-            className={`rounded-xl border px-3 py-2 text-sm transition ${
-              loopMode === 'folder'
+            className={`rounded-xl border px-3 py-2 text-sm transition ${loopMode === 'folder'
                 ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-sm'
                 : 'border-[var(--color-border)] bg-[var(--color-bg-surface)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-tertiary-hover)]'
-            }`}
+              }`}
             aria-pressed={loopMode === 'folder'}
           >
             🔁 폴더 반복

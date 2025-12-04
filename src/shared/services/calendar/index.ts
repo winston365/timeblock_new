@@ -5,4 +5,10 @@
  */
 
 export * from './googleCalendarTypes';
+export {
+    createCalendarEvent,
+    updateCalendarEvent,
+    deleteCalendarEvent,
+    getTaskCalendarMapping,
+} from './googleCalendarService';
 export * from './googleCalendarService';
