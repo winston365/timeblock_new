@@ -482,27 +482,29 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
             </div>
           ))}
 
-          {/* 메인 스케줄 고스트 블록 */}
-          <div className="absolute top-0 left-12 right-2 bottom-0 pointer-events-none">
+          {/* 스플릿 뷰 구분선 (15% 지점) */}
+          <div className="absolute top-0 bottom-0 border-r border-[var(--color-border)]" style={{ left: '15%' }} />
+
+          {/* 메인 스케줄 (왼쪽 15%) */}
+          <div className="absolute top-0 left-0 bottom-0 w-[15%] pointer-events-none bg-black/5">
             {uniqueMainBlocks.map(block => (
               <div
                 key={block.id}
-                className="absolute left-0 right-0 rounded-lg bg-gray-500/10 border border-gray-500/20 flex items-center justify-center text-xs text-gray-500/50 font-medium"
+                className="absolute left-1 right-1 rounded bg-gray-500/20 border border-gray-500/30 flex items-center justify-center text-[9px] text-gray-500 font-medium"
                 style={{
                   top: `${block.top}px`,
                   height: `${block.height}px`,
-                  zIndex: 0,
                 }}
               >
-                <div className="truncate px-2">
-                  {block.name} (메인 스케줄)
+                <div className="truncate px-0.5 text-center leading-tight">
+                  {block.name}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* 블록들 */}
-          <div className="absolute top-0 left-12 right-2 bottom-0">
+          {/* 임시 스케줄 (오른쪽 85%) */}
+          <div className="absolute top-0 left-[15%] right-2 bottom-0">
             {blockPositions.map(pos => (
               <TimelineBlock
                 key={pos.task.id}

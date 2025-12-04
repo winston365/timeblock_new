@@ -447,30 +447,32 @@ function TimelineViewComponent() {
             );
           })}
 
-          {/* 임시 스케줄 고스트 블록 */}
-          <div className="absolute top-0 left-6 right-0 bottom-0 pointer-events-none">
+          {/* 스플릿 뷰 구분선 (85% 지점) */}
+          <div className="absolute top-0 bottom-0 border-r border-[var(--color-border)]" style={{ left: '85%' }} />
+
+          {/* 임시 스케줄 (오른쪽 15%) */}
+          <div className="absolute top-0 right-0 bottom-0 w-[15%] pointer-events-none bg-black/5">
             {tempScheduleBlocks.map(block => (
               <div
                 key={block.id}
-                className="absolute left-0 right-0 rounded-lg border border-dashed flex items-center justify-center text-[10px] font-medium opacity-40"
+                className="absolute left-1 right-1 rounded border border-dashed flex items-center justify-center text-[9px] font-medium opacity-60"
                 style={{
                   top: `${block.top}px`,
                   height: `${block.height}px`,
-                  backgroundColor: block.color + '20',
+                  backgroundColor: block.color + '10',
                   borderColor: block.color,
                   color: block.color,
-                  zIndex: 0,
                 }}
               >
-                <div className="truncate px-1">
-                  {block.name} (임시)
+                <div className="truncate px-0.5 text-center leading-tight">
+                  {block.name}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* 작업 블록들 */}
-          <div className="absolute top-0 left-6 right-0 bottom-0 pointer-events-none">
+          {/* 작업 블록들 (왼쪽 85%) */}
+          <div className="absolute top-0 left-6 right-[15%] bottom-0 pointer-events-none">
             {timelineItems.map(item => (
               <div key={item.task.id} className="pointer-events-auto">
                 <TimelineTaskBlock
