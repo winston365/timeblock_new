@@ -4,7 +4,7 @@
  *
  * @description Google Sync Subscriber
  * - Temp Schedule -> Google Calendar Events
- * - Main Schedule -> Google Tasks
+ * - Main Schedule -> Google Calendar Events (Tasks도 일정으로 저장)
  *
  * @role EventBus를 통해 이벤트를 수신하고 Google 서비스와 동기화
  *
@@ -25,8 +25,6 @@ import {
   getTaskCalendarMapping, // For migration
 } from '@/shared/services/calendar/googleCalendarService';
 import {
-  createGoogleTask,
-  updateGoogleTask,
   deleteGoogleTask,
 } from '@/shared/services/calendar/googleTasksService';
 import type { Task } from '@/shared/types/domain';

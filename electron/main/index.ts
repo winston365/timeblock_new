@@ -963,6 +963,7 @@ ipcMain.handle('google-oauth-refresh', async (_event, clientId: string, clientSe
 
     const tokenData = await tokenResponse.json() as {
       access_token?: string;
+      refresh_token?: string;
       expires_in?: number;
       error?: string;
       error_description?: string;
