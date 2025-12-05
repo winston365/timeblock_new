@@ -26,14 +26,35 @@ import { BreakView } from './BreakView';
 import { FocusMusicPlayer } from './FocusMusicPlayer';
 import { useFocusMusicStore } from '../stores/focusMusicStore';
 
-// ...
+interface FocusViewProps {
+    currentBlockId: TimeBlockId | null;
+    tasks: Task[];
+    allDailyTasks: Task[];
+    isLocked: boolean;
+    onEditTask: (task: Task) => void;
+    onUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void> | void;
+    onToggleTask: (taskId: string) => Promise<void> | void;
+    onExitFocusMode: () => void;
+    onCreateTask: (text: string, blockId: TimeBlockId, hourSlot?: number) => Promise<void>;
+}
 
 export function FocusView({
-    // ... props
+    currentBlockId,
+    tasks,
+    allDailyTasks,
+    isLocked,
+    onEditTask,
+    onUpdateTask,
+    onToggleTask,
+    onExitFocusMode,
+    onCreateTask,
 }: FocusViewProps) {
     const { setFocusMode, activeTaskId, activeTaskStartTime, startTask, stopTask, isPaused, pauseTask, resumeTask } = useFocusModeStore();
     const { settings } = useSettingsStore();
-    // ... other state
+    const [memoText, setMemoText] = useState('');
+    const [isBreakTime, setIsBreakTime] = useState(false);
+    const [breakRemainingSeconds, setBreakRemainingSeconds] = useState<number | null>(null);
+    const [pendingNextTaskId, setPendingNextTaskId] = useState<string | null>(null);
 
     // Music player store
     const {
@@ -51,6 +72,13 @@ export function FocusView({
         handleLoopModeChange,
         fetchMusicTracks,
     } = useFocusMusicStore();
+
+    // 현재 시각 상태 (타이머/슬롯 라벨용)
+    const [now, setNow] = useState(Date.now());
+    useEffect(() => {
+        const interval = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(interval);
+    }, []);
 
     // 초기 로드 (트랙이 비어있으면 로드)
     useEffect(() => {
@@ -207,13 +235,6 @@ export function FocusView({
     useEffect(() => {
         setUpcomingTasks(initialUpcomingTasks);
     }, [initialUpcomingTasks]);
-
-    // 타이머 업데이트
-    useEffect(() => {
-        if (!activeTaskId || !activeTaskStartTime || isPaused || isBreakTime) return;
-        const interval = setInterval(() => setNow(Date.now()), 1000);
-        return () => clearInterval(interval);
-    }, [activeTaskId, activeTaskStartTime, isPaused, isBreakTime]);
 
     // 작업 시간 경과 시 자동 완료 (보너스 XP 적용)
     useEffect(() => {
