@@ -10,11 +10,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useBattleStore, getBossById, getMissionCooldownRemaining, isMissionAvailable } from '../stores/battleStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
-import { useInboxStore } from '@/shared/stores/inboxStore';
+import { useDailyData } from '@/shared/hooks/useDailyData';
 import { playAttackSound, playBossDefeatSound } from '../services/battleSoundService';
 import { getBossImageSrc } from '../utils/assets';
 import type { BattleMission, BossDifficulty } from '@/shared/types/domain';
-import { createInboxTask } from '@/shared/utils/taskFactory';
+import { createNewTask } from '@/shared/utils/taskFactory';
+import { getBlockIdFromHour } from '@/shared/utils/timeBlockUtils';
 import { DifficultySelectButtons } from './BattleSidebar';
 import { useModalEscapeClose } from '@/shared/hooks';
 
@@ -32,7 +33,7 @@ interface BattleMissionCardProps {
   isOnCooldown: boolean;
   cooldownRemaining: number; // 분 단위, -1이면 하루 1회 제한
   onComplete: (missionId: string) => void;
-  onAddToInbox: (mission: BattleMission) => void;
+  onAddToSchedule: (mission: BattleMission) => void;
   disabled: boolean;
   index: number;
 }
@@ -46,7 +47,7 @@ function formatCooldownTime(minutes: number): string {
   return mins > 0 ? `${hours}시간 ${mins}분` : `${hours}시간`;
 }
 
-function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, onComplete, onAddToInbox, disabled, index }: BattleMissionCardProps) {
+function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, onComplete, onAddToSchedule, disabled, index }: BattleMissionCardProps) {
   const [isAttacking, setIsAttacking] = useState(false);
   const attackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -90,9 +91,9 @@ function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, o
     triggerAttack();
   };
 
-  const handleAddToInbox = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleAddToSchedule = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-    onAddToInbox(mission);
+    onAddToSchedule(mission);
   };
 
   // 데미지에 따른 카드 등급 색상
@@ -209,7 +210,7 @@ function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, o
             </button>
             <button
               type="button"
-              onClick={handleAddToInbox}
+              onClick={handleAddToSchedule}
               className="flex-1 rounded-lg border border-indigo-400/40 bg-indigo-500/10 px-3 py-2 text-[11px] font-bold text-indigo-100 transition hover:border-indigo-300 hover:bg-indigo-500/20"
             >
               할일에 추가
@@ -269,7 +270,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
   } = useBattleStore();
 
   const addXP = useGameStateStore(state => state.addXP);
-  const addInboxTask = useInboxStore(state => state.addTask);
+  const { addTask: addDailyTask, refresh, dailyData } = useDailyData();
   const [lastDamage, setLastDamage] = useState<number | null>(null);
   const [, forceUpdate] = useState(0); // 타이머 갱신용
 
@@ -395,17 +396,38 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
     }
   }, [completeMission, addXP, missions, settings.battleSoundEffects]);
 
-  // 인박스 추가 핸들러
-  const handleAddMissionToInbox = useCallback(async (mission: BattleMission) => {
-    try {
-      const task = createInboxTask(`미션 ${mission.text}`, { baseDuration: 15 });
-      await addInboxTask(task);
-      toast.success('미션을 인박스에 추가했어요 (15분)', { duration: 1800 });
-    } catch (error) {
-      console.error('Failed to add mission task to inbox:', error);
-      toast.error('인박스에 추가하지 못했어요');
+  // 현재 시간대(hour bar)에 추가 핸들러
+  const handleAddMissionToSchedule = useCallback(async (mission: BattleMission) => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const blockId = getBlockIdFromHour(currentHour);
+
+    if (!blockId) {
+      toast.error('현재 시간대에 배치할 타임블록이 없어요.');
+      return;
     }
-  }, [addInboxTask]);
+
+    const task = createNewTask(`미션 ${mission.text}`, {
+      baseDuration: 15,
+      timeBlock: blockId,
+      hourSlot: currentHour,
+    });
+
+    const tryAdd = async () => {
+      await addDailyTask(task);
+      toast.success(`${currentHour}:00 시간대에 미션을 추가했어요 (15분)`, { duration: 1800 });
+    };
+
+    try {
+      if (!dailyData) {
+        await refresh();
+      }
+      await tryAdd();
+    } catch (error) {
+      console.error('Failed to add mission task to schedule:', error);
+      toast.error('현재 시간대에 추가하지 못했어요');
+    }
+  }, [addDailyTask, dailyData, refresh]);
 
   // 난이도 선택 핸들러
   const handleSelectDifficulty = useCallback(async (difficulty: BossDifficulty) => {
@@ -566,7 +588,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
                       isOnCooldown={isOnCooldown}
                       cooldownRemaining={cooldownRemaining}
                       onComplete={handleCompleteMission}
-                      onAddToInbox={handleAddMissionToInbox}
+                      onAddToSchedule={handleAddMissionToSchedule}
                       disabled={noBoss}
                       index={index}
                     />
