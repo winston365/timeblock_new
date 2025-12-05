@@ -194,3 +194,23 @@ export interface TimeRange {
 export interface TempScheduleTasksByDate {
   [date: string]: TempScheduleTask[];
 }
+
+// ============================================================================
+// 스케줄 템플릿
+// ============================================================================
+
+/**
+ * 스케줄 템플릿 (저장된 일일 패턴)
+ */
+export interface TempScheduleTemplate {
+  /** 고유 ID */
+  id: string;
+  /** 템플릿 이름 */
+  name: string;
+  /** 템플릿에 포함된 작업들 (날짜 독립적) */
+  tasks: Omit<TempScheduleTask, 'id' | 'scheduledDate' | 'createdAt' | 'updatedAt'>[];
+  /** 생성 시각 */
+  createdAt: string;
+  /** 수정 시각 */
+  updatedAt: string;
+}

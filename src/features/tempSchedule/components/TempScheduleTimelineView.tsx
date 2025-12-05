@@ -438,7 +438,8 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
     if (dragState.mode === 'create' && createPreview) {
       const duration = timeToMinutes(createPreview.endTime) - timeToMinutes(createPreview.startTime);
       if (duration >= TEMP_SCHEDULE_DEFAULTS.minBlockDuration) {
-        await addTask({
+        // 블록 생성 후 바로 편집 모달 열기
+        const newTask = await addTask({
           name: '새 스케줄',
           startTime: createPreview.startTime,
           endTime: createPreview.endTime,
@@ -449,6 +450,8 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
           order: tasks.length,
           memo: '',
         });
+        // 생성된 작업으로 편집 모달 열기
+        openTaskModal(newTask);
       }
     } else if (dragState.taskId && tooltip) {
       await updateTask(dragState.taskId, {
@@ -461,7 +464,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
     setTooltip(null);
     setCreatePreview(null);
     setDragPreview(null);
-  }, [dragState, createPreview, tooltip, addTask, updateTask, endDrag, selectedDate, tasks.length]);
+  }, [dragState, createPreview, tooltip, addTask, updateTask, endDrag, selectedDate, tasks.length, openTaskModal]);
 
   // 작업 삭제
   const handleDelete = useCallback(async (id: string) => {
@@ -596,14 +599,25 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
             )}
           </div>
 
+          {/* 현재 시간까지 지난 영역 음영 처리 */}
+          {currentTimeTop !== null && selectedDate === new Date().toISOString().split('T')[0] && (
+            <div
+              className="absolute left-0 right-0 top-0 pointer-events-none z-[5]"
+              style={{
+                height: `${currentTimeTop}px`,
+                background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.08) 100%)',
+              }}
+            />
+          )}
+
           {/* 현재 시간 마커 */}
           {currentTimeTop !== null && selectedDate === new Date().toISOString().split('T')[0] && (
             <div
               className="absolute left-0 right-0 z-20 pointer-events-none"
               style={{ top: `${currentTimeTop}px` }}
             >
-              <div className="absolute left-0 -translate-y-1/2 w-2 h-2 rounded-full bg-red-500" />
-              <div className="absolute left-2 right-0 h-[2px] bg-red-500/80" />
+              <div className="absolute left-0 -translate-y-1/2 w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.6)]" />
+              <div className="absolute left-2 right-0 h-[2px] bg-red-500/80 shadow-[0_0_4px_rgba(239,68,68,0.4)]" />
             </div>
           )}
         </div>
