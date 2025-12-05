@@ -20,6 +20,8 @@ import {
   createCalendarEventGeneric,
   updateCalendarEventGeneric,
   deleteCalendarEventGeneric,
+  createCalendarEvent,
+  updateCalendarEvent,
   deleteCalendarEvent, // For migration
   updateLastSyncTime,
   getTaskCalendarMapping, // For migration
