@@ -27,7 +27,12 @@ import {
   updateTempScheduleTask,
   deleteTempScheduleTask,
   shouldShowOnDate,
+  loadTemplates,
+  saveTemplate,
+  deleteTemplate,
+  applyTemplate,
 } from '@/data/repositories/tempScheduleRepository';
+import type { TempScheduleTemplate } from '@/shared/types/tempSchedule';
 import { getLocalDate } from '@/shared/lib/utils';
 
 // ============================================================================
@@ -42,6 +47,12 @@ interface TempScheduleState {
   isLoading: boolean;
   /** 에러 상태 */
   error: string | null;
+
+  // === 템플릿 ===
+  /** 저장된 템플릿 목록 */
+  templates: TempScheduleTemplate[];
+  /** 템플릿 모달 열림 여부 */
+  isTemplateModalOpen: boolean;
 
   // === 뷰 설정 ===
   /** 현재 뷰 모드 */
@@ -110,6 +121,18 @@ interface TempScheduleState {
   openTaskModal: (task?: TempScheduleTask) => void;
   /** 작업 모달 닫기 */
   closeTaskModal: () => void;
+
+  // === Template Actions ===
+  /** 템플릿 모달 열기 */
+  openTemplateModal: () => void;
+  /** 템플릿 모달 닫기 */
+  closeTemplateModal: () => void;
+  /** 현재 날짜 스케줄을 템플릿으로 저장 */
+  saveAsTemplate: (name: string) => Promise<void>;
+  /** 템플릿 삭제 */
+  removeTemplate: (id: string) => Promise<void>;
+  /** 템플릿 적용 */
+  applyTemplateToDate: (template: TempScheduleTemplate, date?: string) => Promise<void>;
 }
 
 // ============================================================================
@@ -121,6 +144,8 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
   tasks: [],
   isLoading: false,
   error: null,
+  templates: [],
+  isTemplateModalOpen: false,
   viewMode: 'day',
   selectedDate: getLocalDate(),
   gridSnapInterval: TEMP_SCHEDULE_DEFAULTS.gridSnapInterval,
@@ -133,14 +158,16 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
   loadData: async () => {
     set({ isLoading: true, error: null });
     try {
-      // 병렬 로드
-      const [tasks, settings] = await Promise.all([
+      // 병렬 로드 (템플릿 포함)
+      const [tasks, templates, settings] = await Promise.all([
         loadTempScheduleTasks(),
+        loadTemplates(),
         import('@/data/repositories/settingsRepository').then(m => m.loadSettings())
       ]);
 
       set({
         tasks,
+        templates,
         isLoading: false,
         gridSnapInterval: (settings.tempScheduleGridSnapInterval as GridSnapInterval) || TEMP_SCHEDULE_DEFAULTS.gridSnapInterval
       });
@@ -322,4 +349,54 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
   }),
 
   closeTaskModal: () => set({ isTaskModalOpen: false, editingTask: null }),
+
+  // === Template Actions ===
+  openTemplateModal: () => set({ isTemplateModalOpen: true }),
+
+  closeTemplateModal: () => set({ isTemplateModalOpen: false }),
+
+  saveAsTemplate: async (name: string) => {
+    const { selectedDate, getTasksForDate } = get();
+    const tasksForDate = getTasksForDate(selectedDate);
+
+    if (tasksForDate.length === 0) {
+      throw new Error('저장할 스케줄이 없습니다.');
+    }
+
+    try {
+      const newTemplate = await saveTemplate(name, tasksForDate);
+      set(state => ({
+        templates: [...state.templates, newTemplate],
+      }));
+    } catch (error) {
+      console.error('Failed to save template:', error);
+      throw error;
+    }
+  },
+
+  removeTemplate: async (id: string) => {
+    try {
+      await deleteTemplate(id);
+      set(state => ({
+        templates: state.templates.filter(t => t.id !== id),
+      }));
+    } catch (error) {
+      console.error('Failed to delete template:', error);
+      throw error;
+    }
+  },
+
+  applyTemplateToDate: async (template: TempScheduleTemplate, date?: string) => {
+    const targetDate = date || get().selectedDate;
+
+    try {
+      const newTasks = await applyTemplate(template, targetDate);
+      set(state => ({
+        tasks: [...state.tasks, ...newTasks],
+      }));
+    } catch (error) {
+      console.error('Failed to apply template:', error);
+      throw error;
+    }
+  },
 }));

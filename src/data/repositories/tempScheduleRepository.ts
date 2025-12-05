@@ -17,7 +17,7 @@ import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { fetchFromFirebase, syncToFirebase } from '@/shared/services/sync/firebase/syncCore';
 import type { SyncStrategy } from '@/shared/services/sync/firebase/syncCore';
-import type { TempScheduleTask, RecurrenceRule } from '@/shared/types/tempSchedule';
+import type { TempScheduleTask, RecurrenceRule, TempScheduleTemplate } from '@/shared/types/tempSchedule';
 import { TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
 import { generateId } from '@/shared/lib/utils';
 import { withFirebaseSync } from '@/shared/utils/firebaseGuard';
@@ -422,4 +422,104 @@ export function createDefaultTempScheduleTask(
     order: 0,
     memo: '',
   };
+}
+
+// ============================================================================
+// Template Functions
+// ============================================================================
+
+const TEMPLATES_STORAGE_KEY = 'tempScheduleTemplates';
+
+/**
+ * 템플릿 목록 로드
+ */
+export async function loadTemplates(): Promise<TempScheduleTemplate[]> {
+  try {
+    const record = await db.systemState.get(TEMPLATES_STORAGE_KEY);
+    return (record?.value as TempScheduleTemplate[]) || [];
+  } catch (error) {
+    console.error('Failed to load templates:', error);
+    return [];
+  }
+}
+
+/**
+ * 템플릿 저장
+ */
+export async function saveTemplate(
+  name: string,
+  tasks: TempScheduleTask[]
+): Promise<TempScheduleTemplate> {
+  const now = new Date().toISOString();
+
+  const template: TempScheduleTemplate = {
+    id: generateId('template'),
+    name,
+    tasks: tasks.map(t => ({
+      name: t.name,
+      startTime: t.startTime,
+      endTime: t.endTime,
+      color: t.color,
+      parentId: t.parentId,
+      recurrence: { type: 'none', weeklyDays: [], intervalDays: 1, endDate: null },
+      order: t.order,
+      memo: t.memo,
+      favorite: t.favorite,
+    })),
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  try {
+    const templates = await loadTemplates();
+    templates.push(template);
+    await db.systemState.put({ key: TEMPLATES_STORAGE_KEY, value: templates });
+    addSyncLog('dexie', 'save', 'Template saved', { id: template.id, name });
+    return template;
+  } catch (error) {
+    console.error('Failed to save template:', error);
+    throw error;
+  }
+}
+
+/**
+ * 템플릿 삭제
+ */
+export async function deleteTemplate(id: string): Promise<void> {
+  try {
+    const templates = await loadTemplates();
+    const filtered = templates.filter(t => t.id !== id);
+    await db.systemState.put({ key: TEMPLATES_STORAGE_KEY, value: filtered });
+    addSyncLog('dexie', 'save', 'Template deleted', { id });
+  } catch (error) {
+    console.error('Failed to delete template:', error);
+    throw error;
+  }
+}
+
+/**
+ * 템플릿을 특정 날짜에 적용
+ */
+export async function applyTemplate(
+  template: TempScheduleTemplate,
+  targetDate: string
+): Promise<TempScheduleTask[]> {
+  const createdTasks: TempScheduleTask[] = [];
+
+  for (const taskData of template.tasks) {
+    const newTask = await addTempScheduleTask({
+      ...taskData,
+      scheduledDate: targetDate,
+      recurrence: { type: 'none', weeklyDays: [], intervalDays: 1, endDate: null },
+    });
+    createdTasks.push(newTask);
+  }
+
+  addSyncLog('dexie', 'save', 'Template applied', {
+    templateId: template.id,
+    targetDate,
+    taskCount: createdTasks.length
+  });
+
+  return createdTasks;
 }

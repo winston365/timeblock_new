@@ -9,7 +9,7 @@
  * @dependencies useTempScheduleStore
  */
 
-import { memo, useEffect } from 'react';
+import { memo, useEffect, useCallback } from 'react';
 import { useTempScheduleStore } from './stores/tempScheduleStore';
 import type { GridSnapInterval } from '@/shared/types/tempSchedule';
 import { TempScheduleTimelineView } from './components/TempScheduleTimelineView';
@@ -17,7 +17,21 @@ import { TempScheduleTaskList } from './components/TempScheduleTaskList';
 import { AddTempScheduleTaskModal } from './components/AddTempScheduleTaskModal';
 import { WeeklyScheduleView } from './components/WeeklyScheduleView';
 import { MonthlyScheduleView } from './components/MonthlyScheduleView';
+import { TemplateModal } from './components/TemplateModal';
 import { useModalEscapeClose } from '@/shared/hooks';
+
+// ============================================================================
+// Keyboard Shortcuts
+// ============================================================================
+
+const KEYBOARD_SHORTCUTS = [
+  { key: 'N', action: '새 스케줄 추가' },
+  { key: 'D', action: '일간 뷰' },
+  { key: 'W', action: '주간 뷰' },
+  { key: 'M', action: '월간 뷰' },
+  { key: 'T', action: '오늘로 이동' },
+  { key: '←/→', action: '이전/다음' },
+];
 
 // ============================================================================
 // Constants
@@ -83,12 +97,16 @@ function TempScheduleModalComponent({ isOpen, onClose }: TempScheduleModalProps)
     selectedDate,
     gridSnapInterval,
     isLoading,
+    isTaskModalOpen,
+    isTemplateModalOpen,
     loadData,
     setViewMode,
     setGridSnapInterval,
     goToPrevious,
     goToNext,
     goToToday,
+    openTaskModal,
+    openTemplateModal,
   } = useTempScheduleStore();
 
   useModalEscapeClose(isOpen, onClose);
@@ -99,6 +117,57 @@ function TempScheduleModalComponent({ isOpen, onClose }: TempScheduleModalProps)
       loadData();
     }
   }, [isOpen, loadData]);
+
+  // 키보드 단축키 핸들러
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // 입력 필드에서는 단축키 비활성화
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+      return;
+    }
+
+    // 작업 모달 또는 템플릿 모달이 열려있으면 단축키 비활성화
+    if (isTaskModalOpen || isTemplateModalOpen) return;
+
+    switch (e.key.toLowerCase()) {
+      case 'n':
+        e.preventDefault();
+        openTaskModal();
+        break;
+      case 'd':
+        e.preventDefault();
+        setViewMode('day');
+        break;
+      case 'w':
+        e.preventDefault();
+        setViewMode('week');
+        break;
+      case 'm':
+        e.preventDefault();
+        setViewMode('month');
+        break;
+      case 't':
+        e.preventDefault();
+        goToToday();
+        break;
+      case 'arrowleft':
+        e.preventDefault();
+        goToPrevious();
+        break;
+      case 'arrowright':
+        e.preventDefault();
+        goToNext();
+        break;
+    }
+  }, [isTaskModalOpen, isTemplateModalOpen, openTaskModal, setViewMode, goToToday, goToPrevious, goToNext]);
+
+  // 키보드 이벤트 등록
+  useEffect(() => {
+    if (!isOpen) return;
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, handleKeyDown]);
 
   if (!isOpen) return null;
 
@@ -182,6 +251,16 @@ function TempScheduleModalComponent({ isOpen, onClose }: TempScheduleModalProps)
               </div>
             )}
 
+            {/* 템플릿 버튼 */}
+            <button
+              className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:border-[var(--color-primary)]/50 transition-colors flex items-center gap-1.5"
+              onClick={openTemplateModal}
+              title="템플릿 관리"
+            >
+              <span>📋</span>
+              <span>템플릿</span>
+            </button>
+
             {/* 닫기 버튼 */}
             <button
               className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
@@ -231,7 +310,20 @@ function TempScheduleModalComponent({ isOpen, onClose }: TempScheduleModalProps)
         {/* Footer */}
         <div className="border-t border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6 py-3 text-xs text-[var(--color-text-tertiary)]">
           <div className="flex items-center justify-between">
-            <span>💡 팁: 타임라인을 드래그하여 새 스케줄을 생성하세요</span>
+            <div className="flex items-center gap-4">
+              <span>💡 팁: 타임라인을 드래그하여 새 스케줄을 생성하세요</span>
+              <div className="flex items-center gap-2 text-[10px]">
+                <span className="opacity-60">단축키:</span>
+                {KEYBOARD_SHORTCUTS.map(({ key, action }) => (
+                  <span key={key} className="inline-flex items-center gap-1">
+                    <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] font-mono text-[9px]">
+                      {key}
+                    </kbd>
+                    <span className="opacity-60">{action}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
             <span>총 {tasks.length}개의 스케줄</span>
           </div>
         </div>
@@ -239,6 +331,9 @@ function TempScheduleModalComponent({ isOpen, onClose }: TempScheduleModalProps)
 
       {/* 작업 추가/편집 모달 */}
       <AddTempScheduleTaskModal />
+
+      {/* 템플릿 모달 */}
+      <TemplateModal />
     </div>
   );
 }
