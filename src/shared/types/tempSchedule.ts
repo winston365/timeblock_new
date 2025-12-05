@@ -63,6 +63,8 @@ export interface TempScheduleTask {
   createdAt: string;
   /** 수정 시각 (ISO 8601) */
   updatedAt: string;
+  /** 즐겨찾기 여부 */
+  favorite?: boolean;
 }
 
 // ============================================================================

@@ -175,6 +175,7 @@ async function refreshAccessToken(): Promise<boolean> {
     await saveGoogleCalendarSettings({
       ...settings,
       accessToken: result.accessToken,
+      refreshToken: result.refreshToken || settings.refreshToken, // 회전된 refresh_token 보존
       tokenExpiresAt: Date.now() + (result.expiresIn || 3600) * 1000,
     });
 
@@ -184,6 +185,11 @@ async function refreshAccessToken(): Promise<boolean> {
     console.error('[GoogleCalendar] Token refresh error:', error);
     return false;
   }
+}
+
+// 외부 모듈(예: Google Tasks)에서 401 발생 시 재사용할 수 있도록 export
+export async function refreshGoogleAccessTokenForRetry(): Promise<boolean> {
+  return refreshAccessToken();
 }
 
 /**
@@ -196,7 +202,8 @@ export async function getValidAccessToken(): Promise<string | null> {
   }
 
   // 토큰이 곧 만료되면 갱신
-  if (settings.tokenExpiresAt && settings.tokenExpiresAt < Date.now() + TOKEN_REFRESH_BUFFER) {
+  const expiresAt = settings.tokenExpiresAt;
+  if (!expiresAt || expiresAt < Date.now() + TOKEN_REFRESH_BUFFER) {
     console.log('[GoogleCalendar] Token expiring soon, refreshing...');
     const refreshed = await refreshAccessToken();
     if (!refreshed) {
@@ -221,23 +228,44 @@ async function callCalendarApi<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const accessToken = await getValidAccessToken();
-  if (!accessToken) {
-    throw new Error('인증이 필요합니다. Google 계정에 다시 로그인해주세요.');
+  let attemptedRefresh = false;
+
+  const doRequest = async (): Promise<Response> => {
+    const accessToken = await getValidAccessToken();
+    if (!accessToken) {
+      throw new Error('인증이 필요합니다. Google 계정에 다시 로그인해주세요.');
+    }
+
+    return fetch(`${GOOGLE_CALENDAR_API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+  };
+
+  let response = await doRequest();
+
+  // 401/invalid_grant 발생 시 한 번만 리프레시 후 재시도
+  if (!response.ok && response.status === 401 && !attemptedRefresh) {
+    attemptedRefresh = true;
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      response = await doRequest();
+    }
   }
 
-  const response = await fetch(`${GOOGLE_CALENDAR_API_BASE}${endpoint}`, {
-    ...options,
-    headers: {
-      ...options.headers,
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || `API 호출 실패: ${response.status}`);
+    let errorMessage = `API 호출 실패: ${response.status}`;
+    try {
+      const error = await response.json();
+      errorMessage = error.error?.message || errorMessage;
+    } catch {
+      // ignore JSON parse error
+    }
+    throw new Error(errorMessage);
   }
 
   // DELETE 요청은 응답 본문이 없을 수 있음

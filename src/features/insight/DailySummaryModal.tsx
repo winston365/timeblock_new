@@ -24,6 +24,7 @@ import { db } from '@/data/db/dexieClient';
 import type { DailyData, Task } from '@/shared/types/domain';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 // ============================================================================
 // Types
@@ -99,6 +100,10 @@ function formatDateKorean(dateStr: string): string {
 
 function getCacheKey(date: string): string {
   return `${REPORT_CACHE_KEY_PREFIX}:${date}`;
+}
+
+function resolveReportDate(reportDate: ReportDate): string {
+  return reportDate === 'today' ? getLocalDate() : getYesterday();
 }
 
 // ============================================================================
@@ -491,18 +496,20 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useModalEscapeClose(open, onClose);
+
   const targetDate = useMemo(() => {
-    return reportDate === 'today' ? getLocalDate() : getYesterday();
+    return resolveReportDate(reportDate);
   }, [reportDate]);
 
   // Load or generate report
-  const loadReport = useCallback(async (forceRegenerate = false) => {
+  const loadReport = useCallback(async (date: string, forceRegenerate = false) => {
     if (!settings?.geminiApiKey) {
       setError('Gemini API 키가 설정되지 않았습니다. 설정에서 API 키를 입력해주세요.');
       return;
     }
 
-    const cacheKey = getCacheKey(targetDate);
+    const cacheKey = getCacheKey(date);
     
     // Try loading from cache first
     if (!forceRegenerate) {
@@ -522,8 +529,8 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
     setError(null);
 
     try {
-      const dailyData = await loadDailyData(targetDate);
-      const newReport = await buildDailyReport(targetDate, dailyData, settings.geminiApiKey);
+      const dailyData = await loadDailyData(date);
+      const newReport = await buildDailyReport(date, dailyData, settings.geminiApiKey);
       
       // Cache the report
       try {
@@ -539,14 +546,14 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
     } finally {
       setIsLoading(false);
     }
-  }, [targetDate, settings?.geminiApiKey]);
+  }, [settings?.geminiApiKey]);
 
   // Handle regeneration
   const handleRegenerate = useCallback(async () => {
     setIsRegenerating(true);
-    await loadReport(true);
+    await loadReport(targetDate, true);
     setIsRegenerating(false);
-  }, [loadReport]);
+  }, [loadReport, targetDate]);
 
   // Handle date selection - generates report only when button is clicked
   const handleDateSelect = useCallback((date: ReportDate) => {
@@ -566,21 +573,6 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
     }
   }, [open]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    if (!open) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-        return;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
-
   if (!open) return null;
 
   const pages: ReportPage[] = ['overview', 'tasks', 'ai-analysis'];
@@ -590,7 +582,6 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
       />
 
       {/* Modal */}
@@ -621,8 +612,8 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
             <button
               onClick={() => {
                 handleDateSelect('yesterday');
-                // Trigger report generation after state update
-                setTimeout(() => loadReport(false), 0);
+                const selectedDate = resolveReportDate('yesterday');
+                void loadReport(selectedDate, false);
               }}
               disabled={isLoading}
               className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium transition ${
@@ -637,8 +628,8 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
             <button
               onClick={() => {
                 handleDateSelect('today');
-                // Trigger report generation after state update
-                setTimeout(() => loadReport(false), 0);
+                const selectedDate = resolveReportDate('today');
+                void loadReport(selectedDate, false);
               }}
               disabled={isLoading}
               className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium transition ${
@@ -698,7 +689,7 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
               <span className="text-4xl">⚠️</span>
               <p className="text-sm text-red-400">{error}</p>
               <button
-                onClick={() => loadReport(true)}
+                onClick={() => loadReport(targetDate, true)}
                 className="px-4 py-2 rounded-xl bg-slate-800 text-sm font-medium text-white hover:bg-slate-700 transition"
               >
                 다시 시도

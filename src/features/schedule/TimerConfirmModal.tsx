@@ -7,6 +7,7 @@
  */
 
 import { createPortal } from 'react-dom';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface TimerConfirmModalProps {
   taskName: string;
@@ -21,14 +22,11 @@ interface TimerConfirmModalProps {
  * @returns 타이머 사용 확인 모달 UI
  */
 export function TimerConfirmModal({ taskName, onConfirm }: TimerConfirmModalProps) {
-  const handleOverlayClick = () => {
-    onConfirm(false);
-  };
+  useModalEscapeClose(true, () => onConfirm(false));
 
   const modalContent = (
     <div
       className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 px-4 py-8 text-[var(--color-text)] backdrop-blur"
-      onClick={handleOverlayClick}
     >
       <div
         className="w-full max-w-md rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-2xl"

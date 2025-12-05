@@ -22,6 +22,7 @@ import { useTemplateStore } from '@/shared/stores/templateStore';
 import { TemplateModal } from './TemplateModal';
 import { RESISTANCE_LABELS, TIME_BLOCKS } from '@/shared/types/domain';
 import { calculateTaskXP, getLocalDate } from '@/shared/lib/utils';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface TemplatesModalProps {
   isOpen: boolean;
@@ -50,16 +51,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   const [showDailyOnly, setShowDailyOnly] = useState(false);
   const [showUpcomingOnly, setShowUpcomingOnly] = useState(false);
 
-  // ESC 키로 모달 닫기
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen && !isTemplateModalOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, isTemplateModalOpen, onClose]);
+  useModalEscapeClose(isOpen && !isTemplateModalOpen, onClose);
 
   // 템플릿 및 카테고리 로드
   useEffect(() => {
@@ -274,7 +266,7 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-8" onClick={onClose}>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-8">
       <div className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-base)] shadow-2xl" onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}

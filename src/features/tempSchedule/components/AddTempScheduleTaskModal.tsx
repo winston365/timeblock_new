@@ -15,6 +15,7 @@ import { memo, useState, useCallback, useEffect } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { RecurrenceRule, TempScheduleRecurrenceType } from '@/shared/types/tempSchedule';
 import { TEMP_SCHEDULE_COLORS, TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 // ============================================================================
 // Constants
@@ -49,9 +50,12 @@ function AddTempScheduleTaskModalComponent() {
     editingTask, 
     addTask, 
     updateTask,
+    deleteTask,
     tasks,
     selectedDate,
   } = useTempScheduleStore();
+
+  useModalEscapeClose(isTaskModalOpen, closeTaskModal);
 
   // Form 상태
   const [name, setName] = useState('');
@@ -65,6 +69,7 @@ function AddTempScheduleTaskModalComponent() {
   const [weeklyDays, setWeeklyDays] = useState<number[]>([]);
   const [intervalDays, setIntervalDays] = useState(1);
   const [endDate, setEndDate] = useState<string>('');
+  const [isFavorite, setIsFavorite] = useState(false);
 
   // 부모 후보 (중첩 가능한 작업들)
   const parentCandidates = tasks.filter(t => t.id !== editingTask?.id && !t.parentId);
@@ -83,6 +88,7 @@ function AddTempScheduleTaskModalComponent() {
       setWeeklyDays(editingTask.recurrence.weeklyDays || []);
       setIntervalDays(editingTask.recurrence.intervalDays || 1);
       setEndDate(editingTask.recurrence.endDate || '');
+      setIsFavorite(editingTask.favorite ?? false);
     } else {
       // 새 작업: 기본값
       setName('');
@@ -96,6 +102,7 @@ function AddTempScheduleTaskModalComponent() {
       setWeeklyDays([]);
       setIntervalDays(1);
       setEndDate('');
+      setIsFavorite(false);
     }
   }, [editingTask, isTaskModalOpen, selectedDate]);
 
@@ -137,6 +144,7 @@ function AddTempScheduleTaskModalComponent() {
       recurrence,
       order: editingTask?.order ?? tasks.length,
       memo: memo.trim(),
+      favorite: isFavorite,
     };
 
     try {
@@ -150,25 +158,21 @@ function AddTempScheduleTaskModalComponent() {
       console.error('Failed to save task:', error);
       alert('저장에 실패했습니다.');
     }
-  }, [name, startTime, endTime, scheduledDate, color, parentId, memo, recurrenceType, weeklyDays, intervalDays, endDate, editingTask, tasks.length, addTask, updateTask, closeTaskModal]);
+  }, [name, startTime, endTime, scheduledDate, color, parentId, memo, recurrenceType, weeklyDays, intervalDays, endDate, editingTask, tasks.length, addTask, updateTask, closeTaskModal, isFavorite]);
 
-  // ESC 키로 닫기
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isTaskModalOpen) {
-        closeTaskModal();
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isTaskModalOpen, closeTaskModal]);
+  const handleDelete = useCallback(async () => {
+    if (!editingTask) return;
+    const confirmed = confirm('이 스케줄을 삭제하시겠습니까?');
+    if (!confirmed) return;
+    await deleteTask(editingTask.id);
+    closeTaskModal();
+  }, [deleteTask, editingTask, closeTaskModal]);
 
   if (!isTaskModalOpen) return null;
 
   return (
     <div 
       className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-      onClick={closeTaskModal}
     >
       <div 
         className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] shadow-2xl overflow-hidden"
@@ -179,12 +183,35 @@ function AddTempScheduleTaskModalComponent() {
           <h2 className="text-lg font-bold text-[var(--color-text)]">
             {editingTask ? '📝 스케줄 편집' : '➕ 새 스케줄'}
           </h2>
-          <button
-            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
-            onClick={closeTaskModal}
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsFavorite(prev => !prev)}
+              className={`flex h-8 w-8 items-center justify-center rounded-full border text-lg transition ${
+                isFavorite
+                  ? 'border-amber-400 bg-amber-500/20 text-amber-300'
+                  : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
+              }`}
+              title="즐겨찾기 토글"
+            >
+              {isFavorite ? '★' : '☆'}
+            </button>
+            {editingTask && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="flex h-8 px-3 items-center justify-center rounded-full border border-red-500/60 bg-red-500/10 text-xs font-semibold text-red-300 hover:bg-red-500/20 transition"
+              >
+                삭제
+              </button>
+            )}
+            <button
+              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+              onClick={closeTaskModal}
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Content */}

@@ -99,6 +99,7 @@ const electronAPI = {
   googleOAuthRefresh: (clientId: string, clientSecret: string, refreshToken: string): Promise<{
     success: boolean;
     accessToken?: string;
+    refreshToken?: string;
     expiresIn?: number;
     error?: string;
   }> => ipcRenderer.invoke('google-oauth-refresh', clientId, clientSecret, refreshToken),

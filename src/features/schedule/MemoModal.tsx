@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface MemoModalProps {
   memo: string;
@@ -26,6 +27,7 @@ interface MemoModalProps {
 export function MemoModal({ memo, onSave, onClose }: MemoModalProps) {
   const [editedMemo, setEditedMemo] = useState(memo);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useModalEscapeClose(true, onClose);
 
   useEffect(() => {
     textareaRef.current?.focus();
@@ -36,9 +38,6 @@ export function MemoModal({ memo, onSave, onClose }: MemoModalProps) {
 
   useEffect(() => {
     const handleKeyboard = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
       if (e.key === 'Enter' && e.ctrlKey) {
         e.preventDefault();
         handleSave();
@@ -61,7 +60,6 @@ export function MemoModal({ memo, onSave, onClose }: MemoModalProps) {
   const modalContent = (
     <div
       className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-md animate-in fade-in duration-200"
-      onClick={handleCancel}
     >
       <div
         className="w-full max-w-3xl overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-2xl animate-in zoom-in-95 duration-200"

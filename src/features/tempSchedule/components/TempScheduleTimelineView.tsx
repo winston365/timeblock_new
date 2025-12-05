@@ -18,7 +18,7 @@ import { timeToMinutes, minutesToTime } from '@/data/repositories/tempScheduleRe
 import { TempScheduleContextMenu } from './TempScheduleContextMenu';
 import { Repeat } from 'lucide-react';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
-import { TIME_BLOCKS } from '@/shared/types/domain';
+import { TIME_BLOCKS, type Task } from '@/shared/types/domain';
 
 // ============================================================================
 // Constants
@@ -28,6 +28,8 @@ const { timelineStartHour, timelineEndHour, hourHeight } = TEMP_SCHEDULE_DEFAULT
 const TOTAL_HOURS = timelineEndHour - timelineStartHour;
 const TIMELINE_HEIGHT = TOTAL_HOURS * hourHeight;
 const PIXELS_PER_MINUTE = hourHeight / 60;
+const MAIN_SNAPSHOT_WIDTH_PERCENT = 12;
+const MIN_MAIN_SNAPSHOT_HEIGHT = 10;
 
 // ============================================================================
 // Helper Functions
@@ -96,6 +98,49 @@ function calculateBlockPositions(tasks: TempScheduleTask[]): BlockPosition[] {
   return positions;
 }
 
+interface MainSnapshotPosition {
+  id: string;
+  name: string;
+  top: number;
+  height: number;
+}
+
+function deriveMainSnapshotPosition(task: Task): MainSnapshotPosition | null {
+  // 시작 시각은 hourSlot 우선, 없으면 타임블록 시작
+  const block = task.timeBlock ? TIME_BLOCKS.find(b => b.id === task.timeBlock) : null;
+  const startMinutesRaw = task.hourSlot !== undefined && task.hourSlot !== null
+    ? task.hourSlot * 60
+    : block
+      ? block.start * 60
+      : null;
+
+  if (startMinutesRaw === null) return null;
+
+  // 지속 시간: 실제 > 조정된 > 기본, 최소 5분
+  const durationMinutes = Math.max(
+    task.actualDuration > 0 ? task.actualDuration : task.adjustedDuration || task.baseDuration || 30,
+    5
+  );
+
+  const endMinutesRaw = startMinutesRaw + durationMinutes;
+
+  // 타임라인 범위 내로 클램프
+  const visibleStart = Math.max(startMinutesRaw, timelineStartHour * 60);
+  const visibleEnd = Math.min(endMinutesRaw, timelineEndHour * 60);
+
+  if (visibleEnd <= visibleStart) return null;
+
+  const top = (visibleStart - timelineStartHour * 60) * PIXELS_PER_MINUTE;
+  const height = Math.max((visibleEnd - visibleStart) * PIXELS_PER_MINUTE, MIN_MAIN_SNAPSHOT_HEIGHT);
+
+  return {
+    id: `main-${task.id}`,
+    name: task.text,
+    top,
+    height,
+  };
+}
+
 // ============================================================================
 // Sub Components
 // ============================================================================
@@ -113,6 +158,7 @@ const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDelete, 
   const widthPercent = 100 / totalColumns;
   const leftPercent = column * widthPercent;
   const isRecurring = task.recurrence.type !== 'none';
+  const isFavorite = task.favorite;
 
   return (
     <div
@@ -150,6 +196,7 @@ const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDelete, 
       {/* 내용 */}
       <div className="px-2 py-1 overflow-hidden h-full flex flex-col text-white">
         <div className="flex items-center gap-1 min-w-0">
+          {isFavorite && <span className="text-amber-300 text-[11px] leading-none">★</span>}
           {isRecurring && <Repeat size={10} className="flex-shrink-0 opacity-80" />}
           <div className="text-xs font-bold truncate drop-shadow-md">
             {task.name}
@@ -213,41 +260,12 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
 
     return dailyData.tasks
       .filter(t => t.timeBlock !== null)
-      .map(t => {
-        const blockInfo = TIME_BLOCKS.find(b => b.id === t.timeBlock);
-        if (!blockInfo) return null;
-
-        const startHour = blockInfo.start;
-        const endHour = blockInfo.end;
-
-        const top = (startHour * 60 - timelineStartHour * 60) * PIXELS_PER_MINUTE;
-        const height = (endHour - startHour) * 60 * PIXELS_PER_MINUTE;
-
-        return {
-          id: `main-${t.id}`,
-          name: t.text,
-          top,
-          height,
-          timeBlock: t.timeBlock,
-        };
-      })
-      .filter((b): b is NonNullable<typeof b> => b !== null);
+      .map(deriveMainSnapshotPosition)
+      .filter((b): b is MainSnapshotPosition => b !== null);
   }, [dailyData]);
 
-  // 중복 제거 (같은 타임블록에 여러 작업이 있을 경우 겹쳐서 진하게 보이는 문제 방지)
-  const uniqueMainBlocks = useMemo(() => {
-    const uniqueMap = new Map();
-    mainScheduleBlocks.forEach(b => {
-      if (!uniqueMap.has(b.timeBlock)) {
-        uniqueMap.set(b.timeBlock, b);
-      } else {
-        const existing = uniqueMap.get(b.timeBlock);
-        existing.name += `, ${b.name}`;
-      }
-    });
-    return Array.from(uniqueMap.values());
-  }, [mainScheduleBlocks]);
   const [createPreview, setCreatePreview] = useState<{ top: number; height: number; startTime: string; endTime: string } | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ top: number; height: number; color: string; name: string; startTime: string; endTime: string } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ task: TempScheduleTask; x: number; y: number } | null>(null);
 
   const tasks = useMemo(() => getTasksForDate(selectedDate), [getTasksForDate, selectedDate, allTasks]);
@@ -396,8 +414,22 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
         x: e.clientX,
         y: e.clientY,
       });
+
+      const task = tasks.find(t => t.id === dragState.taskId);
+      if (task) {
+        const previewTop = (timeToMinutes(newStartTime) - timelineStartHour * 60) * PIXELS_PER_MINUTE;
+        const previewHeight = Math.max((timeToMinutes(newEndTime) - timeToMinutes(newStartTime)) * PIXELS_PER_MINUTE, 10);
+        setDragPreview({
+          top: previewTop,
+          height: previewHeight,
+          color: task.color,
+          name: task.name,
+          startTime: newStartTime,
+          endTime: newEndTime,
+        });
+      }
     }
-  }, [dragState, updateDrag, yToTime, gridSnapInterval]);
+  }, [dragState, updateDrag, yToTime, gridSnapInterval, tasks]);
 
   // 마우스 업 핸들러
   const handleMouseUp = useCallback(async () => {
@@ -428,6 +460,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
     endDrag();
     setTooltip(null);
     setCreatePreview(null);
+    setDragPreview(null);
   }, [dragState, createPreview, tooltip, addTask, updateTask, endDrag, selectedDate, tasks.length]);
 
   // 작업 삭제
@@ -482,15 +515,24 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
             </div>
           ))}
 
-          {/* 스플릿 뷰 구분선 (15% 지점) */}
-          <div className="absolute top-0 bottom-0 border-r border-[var(--color-border)]" style={{ left: '15%' }} />
+          {/* 스플릿 뷰 구분선 */}
+          <div
+            className="absolute top-0 bottom-0 border-r border-blue-500/40"
+            style={{ left: `${MAIN_SNAPSHOT_WIDTH_PERCENT}%` }}
+          />
 
-          {/* 메인 스케줄 (왼쪽 15%) */}
-          <div className="absolute top-0 left-0 bottom-0 w-[15%] pointer-events-none bg-black/5">
-            {uniqueMainBlocks.map(block => (
+          {/* 메인 스케줄 (좌측 스냅샷) */}
+          <div
+            className="absolute top-0 left-0 bottom-0 pointer-events-none bg-transparent"
+            style={{ width: `${MAIN_SNAPSHOT_WIDTH_PERCENT}%` }}
+          >
+            <div className="absolute top-2 left-2 px-2 py-1 rounded-md text-[10px] font-semibold text-blue-50 bg-blue-500/30 border border-blue-400/50 shadow-sm">
+              메인 일정
+            </div>
+            {mainScheduleBlocks.map(block => (
               <div
                 key={block.id}
-                className="absolute left-1 right-1 rounded bg-gray-500/20 border border-gray-500/30 flex items-center justify-center text-[9px] text-gray-500 font-medium"
+                className="absolute left-1 right-1 rounded bg-blue-500/30 border border-blue-300/50 flex items-center justify-center text-[9px] text-blue-50 font-semibold shadow-sm"
                 style={{
                   top: `${block.top}px`,
                   height: `${block.height}px`,
@@ -503,8 +545,14 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
             ))}
           </div>
 
-          {/* 임시 스케줄 (오른쪽 85%) */}
-          <div className="absolute top-0 left-[15%] right-2 bottom-0">
+          {/* 임시 스케줄 (오른쪽 가용 영역) */}
+          <div
+            className="absolute top-0 right-2 bottom-0 bg-emerald-500/5 rounded-l-xl pl-2"
+            style={{ left: `${MAIN_SNAPSHOT_WIDTH_PERCENT}%` }}
+          >
+            <div className="absolute top-2 right-3 px-2 py-1 rounded-md text-[10px] font-semibold text-emerald-50 bg-emerald-500/30 border border-emerald-400/40 shadow-sm pointer-events-none">
+              임시 스케줄
+            </div>
             {blockPositions.map(pos => (
               <TimelineBlock
                 key={pos.task.id}
@@ -515,6 +563,24 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
                 onContextMenu={handleContextMenu}
               />
             ))}
+
+            {/* 드래그 미리보기 (기존 블록 이동/리사이즈) */}
+            {dragPreview && (
+              <div
+                className="absolute left-0 right-0 rounded-lg border-2 border-dashed border-white/30 bg-white/10 pointer-events-none shadow-[0_0_0_1px_rgba(255,255,255,0.05)]"
+                style={{
+                  top: `${dragPreview.top}px`,
+                  height: `${dragPreview.height}px`,
+                }}
+              >
+                <div className="flex items-center justify-between px-2 py-1 text-[10px] text-white/80">
+                  <span className="font-semibold">{dragPreview.name}</span>
+                  <span className="font-mono">
+                    {dragPreview.startTime} - {dragPreview.endTime}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* 생성 프리뷰 */}
             {createPreview && createPreview.height > 0 && (

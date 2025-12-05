@@ -8,7 +8,7 @@
  * @dependencies 다수 스토어 및 서비스
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import type React from 'react';
 import type { GameState } from '@/shared/types/domain';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
@@ -18,9 +18,7 @@ import { getDialogueFromAffection } from '@/data/repositories/waifuRepository';
 import { audioService } from '@/shared/services/media/audioService';
 import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
 import { useXPParticleStore } from '@/features/gamification/stores/xpParticleStore';
-import { useEffect, useRef } from 'react';
 import WeatherWidget from '@/features/weather/WeatherWidget';
-import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { StatsModal } from '@/features/stats/StatsModal';
 import DailySummaryModal from '@/features/insight/DailySummaryModal';
 import { InboxModal } from '@/features/tasks/InboxModal';
@@ -67,13 +65,73 @@ export default function TopToolbar({
   onToggleLeftPanel,
   leftPanelVisible = true
 }: TopToolbarProps) {
-  const { waifuState, currentMood } = useWaifu();
-  // ... (existing code)
+  const { waifuState, currentMood, currentAudio } = useWaifu();
+  const { show: showWaifu } = useWaifuCompanionStore();
+  const { isLoading: aiAnalyzing, cancelBreakdown } = useTaskBreakdownStore();
+  const { isFocusMode, toggleFocusMode } = useFocusModeStore();
+  const { showPastBlocks, toggleShowPastBlocks, openWarmupModal } = useScheduleViewStore();
+  const { dailyState } = useBattleStore();
+
+  const [showStats, setShowStats] = useState(false);
+  const [showDailySummary, setShowDailySummary] = useState(false);
+  const [showInbox, setShowInbox] = useState(false);
+  const [showGoals, setShowGoals] = useState(false);
+  const [showBossAlbum, setShowBossAlbum] = useState(false);
+  const [showTempSchedule, setShowTempSchedule] = useState(false);
+
+  const toolbarHeightClass = 'h-10'; // CTA/우측 영역
+  const leftHeightClass = 'h-8'; // 좌측 컴팩트 영역
+  const statItemClass =
+    `flex items-center gap-1.5 px-1 ${leftHeightClass} text-[var(--color-text)]`;
+  const statValueClass = 'font-bold text-[var(--color-primary)]';
+
+  const todayDefeatedCount = dailyState?.defeatedBossIds?.length ?? 0;
+  const isNormalWaifu = (waifuState?.affection ?? 50) >= 40;
+
+  const currentBlockId = useMemo(() => {
+    const now = new Date();
+    const hour = now.getHours();
+    const block = TIME_BLOCKS.find(b => hour >= b.start && hour < b.end);
+    return block?.id ?? null;
+  }, []);
+
+  const pastBlocksCount = useMemo(() => {
+    const nowHour = new Date().getHours();
+    return TIME_BLOCKS.filter(block => block.end <= nowHour).length;
+  }, []);
+
+  const handleCallWaifu = () => {
+    const dialogue = waifuState
+      ? getDialogueFromAffection(waifuState.affection, waifuState.tasksCompletedToday)
+      : { text: '오늘도 화이팅!' };
+    showWaifu(dialogue.text, dialogue.audio ? { audioPath: dialogue.audio } : undefined);
+    if (currentAudio) {
+      audioService.play(currentAudio).catch(() => {
+        /* ignore audio errors */
+      });
+    }
+  };
+
+  const renderCTA = (key: string, label: string, onClick?: () => void, badge?: string) => (
+    <button
+      key={key}
+      type="button"
+      onClick={onClick}
+      className={`relative inline-flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-2 ${toolbarHeightClass} min-w-[72px] text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]`}
+    >
+      {label}
+      {badge && (
+        <span className="absolute -top-1 -right-1 rounded-full bg-[var(--color-primary)] px-2 py-0.5 text-[10px] font-bold text-white">
+          {badge}
+        </span>
+      )}
+    </button>
+  );
 
   return (
     <>
       <header
-        className="flex h-auto min-h-[48px] max-h-[48px] shrink-0 items-center gap-[var(--spacing-sm)] overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-[var(--spacing-lg)] py-[calc(var(--spacing-sm)+2px)] text-[var(--color-text)]"
+        className="flex h-auto min-h-[40px] max-h-[40px] shrink-0 items-center gap-[var(--spacing-sm)] overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-[var(--spacing-lg)] py-[var(--spacing-xs)] text-[var(--color-text)]"
         role="banner"
       >
         <style>{`@keyframes dance6123 { to { background-position: var(--btn-width); } }`}</style>
@@ -82,7 +140,7 @@ export default function TopToolbar({
         <button
           type="button"
           onClick={onToggleLeftPanel}
-          className={`shrink-0 rounded px-2 py-1 text-xs transition ${leftPanelVisible
+          className={`shrink-0 flex ${leftHeightClass} w-8 items-center justify-center rounded text-xs transition ${leftPanelVisible
             ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
             : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
             }`}
@@ -95,7 +153,7 @@ export default function TopToolbar({
 
         {/* ... rest of the header content ... */}
 
-        <div className="flex flex-1 shrink-0 items-center gap-[var(--spacing-md)] text-[13px]">
+        <div className={`flex flex-1 shrink-0 items-center gap-[var(--spacing-md)] text-[12px] ${leftHeightClass}`}>
           <div className={statItemClass}>
             <span>⭐ 오늘 XP:</span>
             <span
@@ -122,7 +180,7 @@ export default function TopToolbar({
           </div>
 
           {waifuState && (
-            <div className={`${statItemClass} gap-3`}>
+            <div className={`${statItemClass} gap-2.5`}>
               {!isNormalWaifu && <span>와이푸 애정도</span>}
               <div className="relative h-2 w-16 overflow-hidden rounded-full bg-white/10">
                 <div
@@ -138,7 +196,7 @@ export default function TopToolbar({
           )}
 
           {waifuState && currentMood && (
-            <div className={`${statItemClass} gap-2.5`}>
+            <div className={`${statItemClass} gap-2`}>
               <span>분위기:</span>
               <span className="text-base" title={currentMood}>
                 {currentMood}
@@ -150,11 +208,11 @@ export default function TopToolbar({
           <WeatherWidget />
 
           {/* Schedule View 컨트롤 (압축형) */}
-          <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-1.5 py-0.5">
+          <div className={`flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-1.5 py-1 ${toolbarHeightClass}`}>
             <button
               type="button"
               onClick={onToggleTimeline}
-              className={`rounded px-2 py-1 text-xs transition ${timelineVisible
+              className={`flex h-8 w-8 items-center justify-center rounded text-xs transition ${timelineVisible
                 ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
                 : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
                 }`}
@@ -165,7 +223,7 @@ export default function TopToolbar({
             <button
               type="button"
               onClick={openWarmupModal}
-              className="rounded px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)] transition"
+              className="flex h-8 w-8 items-center justify-center rounded text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)] transition"
               title="워밍업 세트"
             >
               🧊
@@ -179,7 +237,7 @@ export default function TopToolbar({
                 }
                 toggleFocusMode();
               }}
-              className={`rounded px-2 py-1 text-xs transition ${isFocusMode
+              className={`flex h-8 w-8 items-center justify-center rounded text-xs transition ${isFocusMode
                 ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
                 : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
                 }`}
@@ -191,7 +249,7 @@ export default function TopToolbar({
               <button
                 type="button"
                 onClick={toggleShowPastBlocks}
-                className={`rounded px-2 py-1 text-xs transition ${showPastBlocks
+                className={`flex h-8 w-9 items-center justify-center rounded text-xs transition ${showPastBlocks
                   ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
                   : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)]'
                   }`}
@@ -203,7 +261,7 @@ export default function TopToolbar({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-[var(--spacing-xs)] md:ml-auto">
+        <div className={`flex shrink-0 items-center gap-[var(--spacing-sm)] ml-auto ${toolbarHeightClass}`}>
           {/* AI 분석 인디케이터 */}
           {aiAnalyzing && (
             <div className="flex items-center gap-1.5 rounded-xl border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--color-primary)] animate-pulse">

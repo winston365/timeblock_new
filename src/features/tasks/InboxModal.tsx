@@ -11,6 +11,7 @@
  * - InboxTab: 실제 인박스 UI 컴포넌트
  */
 
+import { useModalEscapeClose } from '@/shared/hooks';
 import InboxTab from './InboxTab';
 
 interface InboxModalProps {
@@ -28,6 +29,8 @@ interface InboxModalProps {
  * @returns {JSX.Element | null} 인박스 모달 UI 또는 null
  */
 export function InboxModal({ open, onClose }: InboxModalProps) {
+  useModalEscapeClose(open, onClose);
+
   if (!open) return null;
 
   return (

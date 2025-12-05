@@ -24,6 +24,7 @@ import { MemoModal } from './MemoModal';
 import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
 import { useTaskContextSuggestion } from './hooks/useTaskContextSuggestion';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface TaskModalProps {
   task: Task | null;
@@ -53,6 +54,7 @@ export default function TaskModal({
   source = 'schedule',
   zIndex = 1000,
 }: TaskModalProps) {
+  const isOpen = !!task;
   const [text, setText] = useState('');
   const [memo, setMemo] = useState('');
   const [baseDuration, setBaseDuration] = useState(15);
@@ -71,6 +73,7 @@ export default function TaskModal({
 
   const { settings } = useSettingsStore();
   const { triggerBreakdown } = useTaskBreakdownStore();
+  useModalEscapeClose(isOpen && !showMemoModal, onClose);
 
   // 맥락 추천 훅 사용
   const {
@@ -177,12 +180,9 @@ export default function TaskModal({
 
   // 키보드 단축키
   useEffect(() => {
-    const handleKeyboard = (keyboardEvent: KeyboardEvent) => {
-      if (showMemoModal) return;
+    if (!isOpen || showMemoModal) return;
 
-      if (keyboardEvent.key === 'Escape') {
-        onClose();
-      }
+    const handleKeyboard = (keyboardEvent: KeyboardEvent) => {
       if (keyboardEvent.key === 'Enter' && keyboardEvent.ctrlKey) {
         keyboardEvent.preventDefault();
         formRef.current?.requestSubmit();
@@ -190,7 +190,7 @@ export default function TaskModal({
     };
     window.addEventListener('keydown', handleKeyboard);
     return () => window.removeEventListener('keydown', handleKeyboard);
-  }, [onClose, showMemoModal]);
+  }, [isOpen, onClose, showMemoModal]);
 
   // 수동 AI 세분화 버튼 핸들러 (이제 글로벌 스토어 사용)
   const handleAIBreakdown = async () => {
@@ -291,12 +291,6 @@ export default function TaskModal({
     }
   };
 
-  const handleOverlayClick = (overlayEvent: React.MouseEvent) => {
-    if (overlayEvent.target === overlayEvent.currentTarget) {
-      onClose();
-    }
-  };
-
   const baseFieldClasses =
     'w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition-all duration-200 focus:border-[var(--color-primary)] focus:bg-[var(--color-bg-surface)] focus:ring-2 focus:ring-[var(--color-primary)]/20 placeholder:text-[var(--color-text-tertiary)]';
   const selectFieldClasses = `${baseFieldClasses} cursor-pointer appearance-none`;
@@ -307,7 +301,6 @@ export default function TaskModal({
       <div
         className="modal-overlay fixed inset-0 flex items-start justify-center bg-[color:var(--modal-backdrop)] px-4 py-8 backdrop-blur-xl md:items-center"
         style={{ zIndex }}
-        onClick={handleOverlayClick}
       >
         <div className="modal-content modal-content-wide relative flex w-full max-w-[900px] flex-col overflow-hidden rounded-3xl border border-[var(--modal-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text)] shadow-[var(--modal-shadow)] animate-in zoom-in-95 duration-200 max-h-[90vh]">
 

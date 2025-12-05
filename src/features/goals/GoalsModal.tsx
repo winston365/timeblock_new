@@ -14,7 +14,7 @@
  * - WeeklyGoalModal: 장기목표 추가/수정 모달
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import GoalPanel from './GoalPanel';
 import GoalModal from './GoalModal';
 import WeeklyGoalPanel from './WeeklyGoalPanel';
@@ -67,6 +67,21 @@ export function GoalsModal({ open, onClose }: GoalsModalProps) {
     setIsWeeklyGoalModalOpen(false);
     setEditingWeeklyGoal(undefined);
   };
+
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
 
   if (!open) return null;
 

@@ -80,7 +80,7 @@ export function GoogleCalendarTab() {
         try {
             const currentSettings = await getGoogleCalendarSettings();
             await saveGoogleCalendarSettings({
-                ...currentSettings,
+                ...(currentSettings || {}),
                 enabled: currentSettings?.enabled ?? false,
                 clientId: clientId.trim(),
                 clientSecret: clientSecret.trim(),

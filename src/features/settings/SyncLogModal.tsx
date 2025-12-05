@@ -22,6 +22,7 @@ import {
 } from '@/shared/services/sync/syncLogger';
 import { loadAllTokenUsage } from '@/data/repositories/chatHistoryRepository';
 import type { DailyTokenUsage } from '@/shared/types/domain';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 // Gemini 2.5 Flash (updated pricing): $2 / 1M input, $12 / 1M output
 const PRICE_PER_MILLION_INPUT = 2.0;
@@ -111,15 +112,7 @@ export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
   const [filterType, setFilterType] = useState<SyncType | 'all'>('all');
   const [filterAction, setFilterAction] = useState<SyncAction | 'all'>('all');
 
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+  useModalEscapeClose(isOpen, onClose);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -155,12 +148,6 @@ export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
   const formatTime = (timestamp: number) =>
     new Date(timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   const totalMessages = tokenUsage.reduce((sum, t) => sum + t.messageCount, 0);
   const totalPromptTokens = tokenUsage.reduce((sum, t) => sum + t.promptTokens, 0);
   const totalOutputTokens = tokenUsage.reduce((sum, t) => sum + t.candidatesTokens, 0);
@@ -170,7 +157,7 @@ export default function SyncLogModal({ isOpen, onClose }: SyncLogModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className={overlayClass} onClick={handleOverlayClick}>
+    <div className={overlayClass}>
       <div className={containerClass}>
         <div className="flex items-start justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6 py-4">
           <div>

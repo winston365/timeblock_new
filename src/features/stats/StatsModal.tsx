@@ -27,6 +27,7 @@ import {
     type GoalProgress,
 } from './components/tabs';
 import CompletedTab from '@/features/tasks/CompletedTab';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface StatsModalProps {
     open: boolean;
@@ -50,6 +51,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
     const { gameState, loading } = useGameState();
     const { completedTasks, loadData: loadCompletedTasks } = useCompletedTasksStore();
     const { settings } = useSettingsStore();
+    useModalEscapeClose(open, onClose);
 
     // Tab state
     const [activeTab, setActiveTab] = useState<'overview' | 'xp' | 'blocks' | 'completed' | 'insights'>('overview');
@@ -112,11 +114,6 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
         if (!open) return;
 
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                onClose();
-                return;
-            }
-
             if (e.key === 'Tab') {
                 e.preventDefault();
                 const tabs: Array<'overview' | 'xp' | 'blocks' | 'completed' | 'insights'> = ['overview', 'xp', 'blocks', 'completed', 'insights'];
@@ -134,7 +131,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [open, activeTab, handleTabChange, onClose]);
+    }, [open, activeTab, handleTabChange]);
 
     const today = getLocalDate();
     const todayXP = gameState?.dailyXP ?? 0;

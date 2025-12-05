@@ -975,6 +975,7 @@ ipcMain.handle('google-oauth-refresh', async (_event, clientId: string, clientSe
     return {
       success: true,
       accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token, // 회전된 refresh_token이 오면 전달
       expiresIn: tokenData.expires_in,
     };
   } catch (error: any) {

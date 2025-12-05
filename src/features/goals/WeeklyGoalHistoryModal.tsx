@@ -11,6 +11,7 @@
  */
 
 import type { WeeklyGoal } from '@/shared/types/domain';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface WeeklyGoalHistoryModalProps {
   isOpen: boolean;
@@ -36,6 +37,8 @@ function formatWeekLabel(weekStartDate: string): string {
  * 장기목표 히스토리 모달
  */
 export default function WeeklyGoalHistoryModal({ isOpen, onClose, goal }: WeeklyGoalHistoryModalProps) {
+  useModalEscapeClose(isOpen, onClose);
+
   if (!isOpen) return null;
 
   const history = goal.history || [];
@@ -57,7 +60,7 @@ export default function WeeklyGoalHistoryModal({ isOpen, onClose, goal }: Weekly
   const accent = goal.color || '#6366f1';
 
   return (
-    <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div
         className="w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}

@@ -20,6 +20,7 @@ import { toast } from 'react-hot-toast';
 import { useMemoMissionStore } from '@/shared/stores/memoMissionStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { FocusTimer } from '@/features/schedule/components/FocusTimer';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 /**
  * 메모 미션 모달 컴포넌트
@@ -45,6 +46,12 @@ export function MemoMissionModal() {
     } = useMemoMissionStore();
     
     const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
+
+    const handleClose = () => {
+        closeMission();
+    };
+
+    useModalEscapeClose(isOpen, handleClose);
     
     // Timer interval
     useEffect(() => {
@@ -80,10 +87,6 @@ export function MemoMissionModal() {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
     
-    const handleClose = () => {
-        closeMission();
-    };
-    
     const handleComplete = async () => {
         if (!memoMissionEligible) return;
         const reward = memoMissionReward;
@@ -112,7 +115,6 @@ export function MemoMissionModal() {
     return (
         <div
             className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-md"
-            onClick={handleClose}
         >
             <div
                 className="w-full max-w-5xl overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-2xl"

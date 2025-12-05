@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react';
 import type { ShopItem } from '@/shared/types/domain';
 import { createShopItem, updateShopItem } from '@/data/repositories';
 import { toast } from 'react-hot-toast';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface ShopModalProps {
     item: ShopItem | null; // null이면 신규 생성
@@ -33,6 +34,7 @@ export function ShopModal({ item, onClose }: ShopModalProps) {
     const [price, setPrice] = useState(50);
     const [image, setImage] = useState<string | undefined>(undefined);
     const [isSaving, setIsSaving] = useState(false);
+    const isOpen = !!item;
 
     // 편집 모드일 경우 초기값 설정
     useEffect(() => {
@@ -43,12 +45,13 @@ export function ShopModal({ item, onClose }: ShopModalProps) {
         }
     }, [item]);
 
-    // ESC 키로 모달 닫기, Ctrl+Enter로 저장
+    useModalEscapeClose(isOpen, () => onClose(false));
+
+    // Ctrl+Enter로 저장
     useEffect(() => {
+        if (!isOpen) return;
+
         const handleKeyboard = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                onClose(false);
-            }
             if (e.key === 'Enter' && e.ctrlKey) {
                 e.preventDefault();
                 // 폼 제출 트리거
@@ -60,7 +63,7 @@ export function ShopModal({ item, onClose }: ShopModalProps) {
         };
         window.addEventListener('keydown', handleKeyboard);
         return () => window.removeEventListener('keydown', handleKeyboard);
-    }, [onClose]);
+    }, [isOpen, onClose]);
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -139,7 +142,7 @@ export function ShopModal({ item, onClose }: ShopModalProps) {
     };
 
     return (
-        <div className="modal-overlay fixed inset-0 z-[1000] flex items-start justify-center bg-[color:var(--modal-backdrop)] px-4 py-8 backdrop-blur-sm md:items-center" onClick={handleCancel}>
+        <div className="modal-overlay fixed inset-0 z-[1000] flex items-start justify-center bg-[color:var(--modal-backdrop)] px-4 py-8 backdrop-blur-sm md:items-center">
             <div className="modal-content relative w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--modal-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text)] shadow-[var(--modal-shadow)]" onClick={e => e.stopPropagation()}>
                 <div className="modal-header flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6 py-4">
                     <h2>{item ? '상품 편집' : '상품 추가'}</h2>

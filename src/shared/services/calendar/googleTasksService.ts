@@ -13,7 +13,7 @@
 
 import { db } from '@/data/db/dexieClient';
 import type { Task } from '@/shared/types/domain';
-import { getValidAccessToken } from './googleCalendarService';
+import { getValidAccessToken, refreshGoogleAccessTokenForRetry } from './googleCalendarService';
 
 // ============================================================================
 // Types
@@ -58,23 +58,44 @@ async function callTasksApi<T>(
     endpoint: string,
     options: RequestInit = {}
 ): Promise<T> {
-    const accessToken = await getValidAccessToken();
-    if (!accessToken) {
-        throw new Error('인증이 필요합니다. Google 계정에 다시 로그인해주세요.');
+    let attemptedRefresh = false;
+
+    const doRequest = async (): Promise<Response> => {
+        const accessToken = await getValidAccessToken();
+        if (!accessToken) {
+            throw new Error('인증이 필요합니다. Google 계정에 다시 로그인해주세요.');
+        }
+
+        return fetch(`${GOOGLE_TASKS_API_BASE}${endpoint}`, {
+            ...options,
+            headers: {
+                ...options.headers,
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    };
+
+    let response = await doRequest();
+
+    // 401/invalid_grant 발생 시 한 번만 리프레시 후 재시도
+    if (!response.ok && response.status === 401 && !attemptedRefresh) {
+        attemptedRefresh = true;
+        const refreshed = await refreshGoogleAccessTokenForRetry();
+        if (refreshed) {
+            response = await doRequest();
+        }
     }
 
-    const response = await fetch(`${GOOGLE_TASKS_API_BASE}${endpoint}`, {
-        ...options,
-        headers: {
-            ...options.headers,
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-        },
-    });
-
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || `API 호출 실패: ${response.status}`);
+        let errorMessage = `API 호출 실패: ${response.status}`;
+        try {
+            const error = await response.json();
+            errorMessage = error.error?.message || errorMessage;
+        } catch {
+            // ignore JSON parse error
+        }
+        throw new Error(errorMessage);
     }
 
     if (response.status === 204) {

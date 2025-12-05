@@ -19,6 +19,7 @@ import type { Template, Resistance, TimeBlockId, RecurrenceType } from '@/shared
 import { createTemplate, updateTemplate } from '@/data/repositories';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import { getTemplateCategories, addTemplateCategory } from '@/data/repositories/settingsRepository';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface TemplateModalProps {
   template: Template | null; // null이면 신규 생성
@@ -55,6 +56,8 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  useModalEscapeClose(true, () => onClose(false));
+
   // 카테고리 목록 로드
   useEffect(() => {
     loadCategories();
@@ -85,15 +88,6 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
       setImageUrl(template.imageUrl || '');
     }
   }, [template]);
-
-  // ESC 키로 모달 닫기
-  useEffect(() => {
-    const handleKeydown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose(false);
-    };
-    window.addEventListener('keydown', handleKeydown);
-    return () => window.removeEventListener('keydown', handleKeydown);
-  }, [onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,7 +167,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const labelClass = "text-xs font-bold text-[var(--color-text-secondary)] mb-1 block";
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => onClose(false)}>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] shadow-2xl" onClick={e => e.stopPropagation()}>
 
         {/* Header */}

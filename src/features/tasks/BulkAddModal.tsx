@@ -18,6 +18,7 @@ import { useState, useRef, useEffect, useId } from 'react';
 import type { Task, TimeBlockId, Resistance } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import { createTaskFromPartial } from '@/shared/utils/taskFactory';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface BulkAddModalProps {
     isOpen: boolean;
@@ -82,23 +83,14 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
     const titleId = useId();
     const descriptionId = useId();
 
+    useModalEscapeClose(isOpen, onClose);
+
     // 모달 열릴 때 textarea에 포커스
     useEffect(() => {
         if (isOpen) {
             textareaRef.current?.focus();
         }
     }, [isOpen]);
-
-    // ESC 키로 모달 닫기
-    useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && isOpen) {
-                onClose();
-            }
-        };
-        window.addEventListener('keydown', handleEscape);
-        return () => window.removeEventListener('keydown', handleEscape);
-    }, [isOpen, onClose]);
 
     // 입력값 변경 시 미리보기 업데이트
     useEffect(() => {
@@ -245,7 +237,7 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
 
     return (
 
-        <div className={modalOverlayClass} onClick={onClose}>
+        <div className={modalOverlayClass}>
 
             <div
 

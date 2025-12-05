@@ -16,6 +16,7 @@
 import { useState, useEffect } from 'react';
 import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
 import type { WeeklyGoal } from '@/shared/types/domain';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface WeeklyGoalModalProps {
   isOpen: boolean;
@@ -43,6 +44,13 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
   const [selectedColor, setSelectedColor] = useState('#6366f1');
   const [saving, setSaving] = useState(false);
 
+  const handleEscapeClose = () => {
+    if (saving) return;
+    onClose();
+  };
+
+  useModalEscapeClose(isOpen, handleEscapeClose);
+
   useEffect(() => {
     if (goal) {
       setTitle(goal.title);
@@ -58,15 +66,6 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
       setSelectedColor('#6366f1');
     }
   }, [goal, isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !saving) onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [isOpen, saving, onClose]);
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -113,7 +112,7 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
   const labelClass = "text-xs font-bold text-[var(--color-text-secondary)] mb-1 block";
 
   return (
-    <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div
         className="w-full max-w-md overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}

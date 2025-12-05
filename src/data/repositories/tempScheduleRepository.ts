@@ -164,7 +164,10 @@ export function snapTimeToGrid(time: string, snapInterval: number = TEMP_SCHEDUL
  */
 export async function loadTempScheduleTasks(): Promise<TempScheduleTask[]> {
   try {
-    const tasks = await db.tempScheduleTasks.toArray();
+    const tasks = (await db.tempScheduleTasks.toArray()).map(t => ({
+      ...t,
+      favorite: t.favorite ?? false,
+    }));
 
     if (tasks.length > 0) {
       addSyncLog('dexie', 'load', 'TempScheduleTasks loaded from IndexedDB', { count: tasks.length });
@@ -176,9 +179,10 @@ export async function loadTempScheduleTasks(): Promise<TempScheduleTask[]> {
       const firebaseTasks = await fetchFromFirebase<TempScheduleTask[]>(tempScheduleFirebaseStrategy, 'all');
 
       if (firebaseTasks && firebaseTasks.length > 0) {
-        await db.tempScheduleTasks.bulkPut(firebaseTasks);
+        const normalized = firebaseTasks.map(t => ({ ...t, favorite: t.favorite ?? false }));
+        await db.tempScheduleTasks.bulkPut(normalized);
         addSyncLog('firebase', 'load', 'TempScheduleTasks loaded from Firebase', { count: firebaseTasks.length });
-        return firebaseTasks;
+        return normalized;
       }
     }
 
@@ -242,6 +246,7 @@ export async function addTempScheduleTask(
     id: generateId('tempschedule'),
     createdAt: now,
     updatedAt: now,
+    favorite: taskData.favorite ?? false,
   };
 
   try {
@@ -285,6 +290,7 @@ export async function updateTempScheduleTask(
       ...existingTask,
       ...updates,
       updatedAt: new Date().toISOString(),
+      favorite: updates.favorite ?? existingTask.favorite ?? false,
     };
 
     await db.tempScheduleTasks.put(updatedTask);

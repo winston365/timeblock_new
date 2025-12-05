@@ -9,7 +9,7 @@
  * @dependencies useTempScheduleStore
  */
 
-import { memo, useMemo, useCallback } from 'react';
+import { memo, useMemo, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { TempScheduleTask } from '@/shared/types/tempSchedule';
 import { shouldShowOnDate, timeToMinutes } from '@/data/repositories/tempScheduleRepository';
@@ -41,7 +41,8 @@ function calculateWeekDates(selectedDate: string): string[] {
 // ============================================================================
 
 const WEEK_DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
-const HOUR_HEIGHT = 24; // 시간당 높이 (픽셀)
+const DEFAULT_HOUR_HEIGHT = 24; // 시간당 기본 높이 (픽셀)
+const HEADER_HEIGHT = 52; // 요일 헤더 높이 (px)
 const START_HOUR = 5;
 const END_HOUR = 24;
 
@@ -71,9 +72,10 @@ interface DayColumnProps {
   dayIndex: number;
   tasks: TempScheduleTask[];
   onDayClick: (date: string) => void;
+  hourHeight: number;
 }
 
-const DayColumn = memo(function DayColumn({ date, dayIndex, tasks, onDayClick }: DayColumnProps) {
+const DayColumn = memo(function DayColumn({ date, dayIndex, tasks, onDayClick, hourHeight }: DayColumnProps) {
   const { day, month, isToday, isWeekend } = formatDate(date);
 
   return (
@@ -101,33 +103,39 @@ const DayColumn = memo(function DayColumn({ date, dayIndex, tasks, onDayClick }:
         }`}>
           {day}
         </div>
-        {(dayIndex === 0 || day === 1) && (
-          <div className="text-[8px] text-[var(--color-text-tertiary)]">{month}월</div>
-        )}
+        <div className="text-[8px] text-[var(--color-text-tertiary)] opacity-80 h-3 flex items-center justify-center">
+          {(dayIndex === 0 || day === 1) ? `${month}월` : '\u00A0'}
+        </div>
       </div>
 
       {/* 스케줄 블록들 */}
-      <div className="relative" style={{ height: `${(END_HOUR - START_HOUR) * HOUR_HEIGHT}px` }}>
+      <div
+        className="relative"
+        style={{
+          height: `${(END_HOUR - START_HOUR) * hourHeight}px`,
+        }}
+      >
         {tasks.map(task => {
           const startMinutes = timeToMinutes(task.startTime);
           const endMinutes = timeToMinutes(task.endTime);
-          const top = Math.max(0, (startMinutes - START_HOUR * 60) / 60 * HOUR_HEIGHT);
-          const height = Math.max(12, (endMinutes - startMinutes) / 60 * HOUR_HEIGHT);
+          const top = Math.max(0, (startMinutes - START_HOUR * 60) / 60 * hourHeight);
+          const height = Math.max(12, (endMinutes - startMinutes) / 60 * hourHeight);
 
           return (
             <div
               key={task.id}
-              className="absolute left-0.5 right-0.5 rounded text-[8px] px-1 py-0.5 overflow-hidden truncate"
-              style={{
-                top: `${top}px`,
-                height: `${height}px`,
-                backgroundColor: task.color + '30',
-                borderLeft: `2px solid ${task.color}`,
-              }}
-              title={`${task.name}\n${task.startTime} - ${task.endTime}`}
-            >
-              <span style={{ color: task.color }} className="font-semibold">
-                {task.name}
+            className="absolute left-0.5 right-0.5 rounded text-[8px] px-1 py-0.5 overflow-hidden truncate"
+            style={{
+              top: `${top}px`,
+              height: `${height}px`,
+              backgroundColor: task.color + '30',
+              borderLeft: `2px solid ${task.color}`,
+            }}
+            title={`${task.name}\n${task.startTime} - ${task.endTime}`}
+          >
+              <span style={{ color: task.color }} className="font-semibold flex items-center gap-1">
+                {task.favorite && <span className="text-amber-300">★</span>}
+                <span className="truncate">{task.name}</span>
               </span>
             </div>
           );
@@ -146,6 +154,8 @@ function WeeklyScheduleViewComponent() {
   const selectedDate = useTempScheduleStore(state => state.selectedDate);
   const setSelectedDate = useTempScheduleStore(state => state.setSelectedDate);
   const setViewMode = useTempScheduleStore(state => state.setViewMode);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hourHeight, setHourHeight] = useState(DEFAULT_HOUR_HEIGHT);
 
   // 주간 날짜 계산 (selectedDate가 변경될 때만 재계산)
   const weekDates = useMemo(() => calculateWeekDates(selectedDate), [selectedDate]);
@@ -164,19 +174,42 @@ function WeeklyScheduleViewComponent() {
     setViewMode('day');
   }, [setSelectedDate, setViewMode]);
 
+  // 가용 높이에 맞춰 시간 축을 늘려 24시 이후 빈공간 제거
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const compute = () => {
+      const available = el.clientHeight - HEADER_HEIGHT;
+      const base = (END_HOUR - START_HOUR) * DEFAULT_HOUR_HEIGHT;
+      const targetHeight = Math.max(available, base);
+      setHourHeight(targetHeight / (END_HOUR - START_HOUR));
+    };
+
+    compute();
+    const observer = new ResizeObserver(compute);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" ref={containerRef}>
       {/* 시간 라벨 + 7일 열 */}
       <div className="flex flex-1 overflow-hidden">
         {/* 시간 라벨 */}
         <div className="w-8 flex-shrink-0 border-r border-[var(--color-border)]">
           <div className="h-[52px] border-b border-[var(--color-border)]" />
-          <div className="relative" style={{ height: `${(END_HOUR - START_HOUR) * HOUR_HEIGHT}px` }}>
-            {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i).map(hour => (
+          <div
+            className="relative"
+            style={{
+              height: `${(END_HOUR - START_HOUR) * hourHeight}px`,
+            }}
+          >
+            {Array.from({ length: (END_HOUR - START_HOUR) + 1 }, (_, i) => START_HOUR + i).map(hour => (
               <div
                 key={hour}
                 className="absolute left-0 right-0 text-[8px] text-[var(--color-text-tertiary)] text-right pr-1"
-                style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT - 4}px` }}
+                style={{ top: `${(hour - START_HOUR) * hourHeight - 4}px` }}
               >
                 {hour}
               </div>
@@ -193,6 +226,7 @@ function WeeklyScheduleViewComponent() {
               dayIndex={index}
               tasks={tasksByDate[date] || []}
               onDayClick={handleDayClick}
+              hourHeight={hourHeight}
             />
           ))}
         </div>

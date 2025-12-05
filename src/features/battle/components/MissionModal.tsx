@@ -5,14 +5,18 @@
  * @dependencies useBattleStore, battleSoundService
  */
 
+import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useBattleStore, getBossById, getMissionCooldownRemaining, isMissionAvailable } from '../stores/battleStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
+import { useInboxStore } from '@/shared/stores/inboxStore';
 import { playAttackSound, playBossDefeatSound } from '../services/battleSoundService';
 import { getBossImageSrc } from '../utils/assets';
 import type { BattleMission, BossDifficulty } from '@/shared/types/domain';
+import { createInboxTask } from '@/shared/utils/taskFactory';
 import { DifficultySelectButtons } from './BattleSidebar';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface MissionModalProps {
   open: boolean;
@@ -28,6 +32,7 @@ interface BattleMissionCardProps {
   isOnCooldown: boolean;
   cooldownRemaining: number; // 분 단위, -1이면 하루 1회 제한
   onComplete: (missionId: string) => void;
+  onAddToInbox: (mission: BattleMission) => void;
   disabled: boolean;
   index: number;
 }
@@ -41,7 +46,7 @@ function formatCooldownTime(minutes: number): string {
   return mins > 0 ? `${hours}시간 ${mins}분` : `${hours}시간`;
 }
 
-function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, onComplete, disabled, index }: BattleMissionCardProps) {
+function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, onComplete, onAddToInbox, disabled, index }: BattleMissionCardProps) {
   const [isAttacking, setIsAttacking] = useState(false);
   const attackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -54,19 +59,40 @@ function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, o
     };
   }, []);
 
-  const handleClick = () => {
-    if (!isUsed && !isOnCooldown && !disabled) {
-      setIsAttacking(true);
-      // 기존 타이머가 있으면 정리
-      if (attackTimeoutRef.current) {
-        clearTimeout(attackTimeoutRef.current);
-      }
-      attackTimeoutRef.current = setTimeout(() => {
-        setIsAttacking(false);
-        onComplete(mission.id);
-        attackTimeoutRef.current = null;
-      }, 200);
+  const triggerAttack = () => {
+    if (isUsed || isOnCooldown || disabled) return;
+
+    setIsAttacking(true);
+    // 기존 타이머가 있으면 정리
+    if (attackTimeoutRef.current) {
+      clearTimeout(attackTimeoutRef.current);
     }
+    attackTimeoutRef.current = setTimeout(() => {
+      setIsAttacking(false);
+      onComplete(mission.id);
+      attackTimeoutRef.current = null;
+    }, 200);
+  };
+
+  const handleCardClick = () => {
+    triggerAttack();
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if ((event.key === 'Enter' || event.key === ' ') && !isUsed && !isOnCooldown && !disabled) {
+      event.preventDefault();
+      triggerAttack();
+    }
+  };
+
+  const handleAttackButtonClick: React.MouseEventHandler<HTMLButtonElement> = (event) => {
+    event.stopPropagation();
+    triggerAttack();
+  };
+
+  const handleAddToInbox = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    onAddToInbox(mission);
   };
 
   // 데미지에 따른 카드 등급 색상
@@ -79,27 +105,34 @@ function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, o
 
   const grade = getCardGrade(mission.damage);
   const isUnavailable = isUsed || isOnCooldown;
+  const cooldownLabel = mission.cooldownMinutes && mission.cooldownMinutes > 0
+    ? (isOnCooldown ? formatCooldownTime(cooldownRemaining) : formatCooldownTime(mission.cooldownMinutes))
+    : '';
+  const attackLabel = isOnCooldown ? '쿨다운 중' : isUsed ? '완료됨' : '공격!';
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={isUnavailable || disabled}
+    <div
+      role="button"
+      tabIndex={isUnavailable || disabled ? -1 : 0}
+      onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
       className={`
-        group relative flex flex-col rounded-lg overflow-hidden transition-all duration-200 min-h-[100px]
+        group relative flex flex-col rounded-xl overflow-hidden transition-all duration-200 min-h-[160px]
         ${isUnavailable
-          ? 'opacity-60 cursor-default'
+          ? 'opacity-70 cursor-default'
           : disabled
-            ? 'opacity-30 cursor-not-allowed grayscale'
-            : `hover:scale-[1.02] hover:shadow-lg ${grade.glow} active:scale-[0.98]`
+            ? 'opacity-50 cursor-not-allowed grayscale'
+            : `hover:scale-[1.02] hover:shadow-lg ${grade.glow} active:scale-[0.98] cursor-pointer`
         }
         ${isAttacking ? 'animate-pulse scale-95' : ''}
       `}
       style={{ animationDelay: `${index * 30}ms` }}
+      aria-disabled={isUnavailable || disabled}
     >
       {/* 카드 배경 */}
       <div className={`
         relative border-2 ${isUnavailable ? (isOnCooldown ? 'border-cyan-500/50 bg-cyan-900/20' : 'border-emerald-500/50 bg-emerald-900/20') : grade.border} 
-        bg-gradient-to-b from-slate-800 to-slate-900 rounded-lg p-2 h-full flex flex-col
+        bg-gradient-to-b from-slate-800 to-slate-900 rounded-xl p-3 h-full flex flex-col gap-3
       `}>
         {/* 등급 라벨 */}
         {grade.label && !isUnavailable && (
@@ -110,7 +143,7 @@ function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, o
 
         {/* 완료 체크 오버레이 */}
         {isUsed && !isOnCooldown && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-900/60 rounded-lg z-10">
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-emerald-900/60 rounded-xl z-10">
             <div className="bg-emerald-500 rounded-full p-2 mb-1">
               <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -122,7 +155,7 @@ function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, o
 
         {/* 쿨다운 오버레이 */}
         {isOnCooldown && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-cyan-900/60 rounded-lg z-10">
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-cyan-900/60 rounded-xl z-10">
             <div className="text-cyan-400 text-xl">⏱️</div>
             <div className="text-[10px] font-bold text-cyan-300 mt-1">
               {formatCooldownTime(cooldownRemaining)}
@@ -130,41 +163,61 @@ function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, o
           </div>
         )}
 
-        {/* 데미지 표시 (상단) */}
-        <div className="flex justify-center mb-1">
+        {/* 데미지/정보 */}
+        <div className="flex items-start justify-between gap-2 pr-6">
           <div className={`
-            flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-black
+            flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black
             ${isUsed ? 'bg-emerald-500/30 text-emerald-300' : isOnCooldown ? 'bg-cyan-500/30 text-cyan-300' : 'bg-red-500/30 text-red-300'}
           `}>
-            <span className="text-sm">⚔️</span>
-            <span>{mission.damage}</span>
+            <span className="text-base leading-none">⚔️</span>
+            <span className="text-sm leading-none font-black">{mission.damage}</span>
           </div>
         </div>
 
         {/* 미션 텍스트 */}
-        <div className="min-h-[40px] flex items-center justify-center">
-          <p className={`text-[11px] font-medium text-center line-clamp-2 leading-tight ${isUsed ? 'text-emerald-200' : isOnCooldown ? 'text-cyan-200' : 'text-gray-200'}`}>
+        <div className="flex-1 flex items-center">
+          <p className={`text-sm font-semibold text-center leading-snug break-words ${isUsed ? 'text-emerald-200' : isOnCooldown ? 'text-cyan-200' : 'text-gray-100'}`}>
             {mission.text}
           </p>
         </div>
 
-        {/* 쿨다운 표시 (하단) - 쿨다운이 있는 미션만 */}
-        {mission.cooldownMinutes && mission.cooldownMinutes > 0 && !isOnCooldown && !isUsed && (
-          <div className="mt-1 text-center">
-            <span className="text-[9px] text-cyan-400/70">🔄 {formatCooldownTime(mission.cooldownMinutes)}</span>
+        {/* 쿨다운 표시 (제목 아래, 항상 가로 표시) */}
+        {cooldownLabel && (
+          <div className="flex justify-center">
+            <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-[10px] font-semibold text-cyan-200 whitespace-nowrap">
+              <span className="text-[11px]">🔄</span>
+              <span>{cooldownLabel}</span>
+            </span>
           </div>
         )}
 
-        {/* 공격 버튼 영역 */}
-        {!isUnavailable && !disabled && (
-          <div className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold py-1 rounded text-center">
-              공격!
-            </div>
+        {/* 액션 */}
+        <div className={`flex flex-col gap-1 pt-1 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto ${isUnavailable || disabled ? 'opacity-0 group-hover:opacity-80 group-focus-within:opacity-80' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleAttackButtonClick}
+              disabled={isUnavailable || disabled}
+              className={`
+                flex-1 rounded-lg px-3 py-2 text-[11px] font-bold text-white transition
+                ${isUnavailable || disabled
+                  ? 'bg-slate-700 text-slate-300 cursor-not-allowed'
+                  : 'bg-red-600 hover:bg-red-500 shadow-md shadow-red-900/30'}
+              `}
+            >
+              {attackLabel}
+            </button>
+            <button
+              type="button"
+              onClick={handleAddToInbox}
+              className="flex-1 rounded-lg border border-indigo-400/40 bg-indigo-500/10 px-3 py-2 text-[11px] font-bold text-indigo-100 transition hover:border-indigo-300 hover:bg-indigo-500/20"
+            >
+              할일에 추가
+            </button>
           </div>
-        )}
+        </div>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -216,6 +269,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
   } = useBattleStore();
 
   const addXP = useGameStateStore(state => state.addXP);
+  const addInboxTask = useInboxStore(state => state.addTask);
   const [lastDamage, setLastDamage] = useState<number | null>(null);
   const [, forceUpdate] = useState(0); // 타이머 갱신용
 
@@ -247,6 +301,14 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
   // 미션 사용 시각 맵
   const missionUsedAt = dailyState?.missionUsedAt ?? {};
 
+  const sortMissions = useCallback((list: BattleMission[]) => {
+    // 1순위: 데미지 낮은 순, 2순위: order
+    return [...list].sort((a, b) => {
+      if (a.damage === b.damage) return a.order - b.order;
+      return a.damage - b.damage;
+    });
+  }, []);
+
   // 사용된 미션 ID 세트 (하루 1회 제한용)
   const completedMissionIds = useMemo(
     () => dailyState?.completedMissionIds ?? [],
@@ -255,14 +317,14 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
 
   // 활성 미션 (사용 가능한 것 앞으로, 쿨다운/완료 뒤로)
   const enabledMissionsList = useMemo(() => {
-    const enabled = missions.filter(m => m.enabled).sort((a, b) => a.order - b.order);
+    const enabled = missions.filter(m => m.enabled);
     
     // 사용 가능 여부로 분리
-    const available = enabled.filter(m => isMissionAvailable(m, completedMissionIds, missionUsedAt));
-    const unavailable = enabled.filter(m => !isMissionAvailable(m, completedMissionIds, missionUsedAt));
+    const available = sortMissions(enabled.filter(m => isMissionAvailable(m, completedMissionIds, missionUsedAt)));
+    const unavailable = sortMissions(enabled.filter(m => !isMissionAvailable(m, completedMissionIds, missionUsedAt)));
     
     return [...available, ...unavailable];
-  }, [missions, completedMissionIds, missionUsedAt]);
+  }, [missions, completedMissionIds, missionUsedAt, sortMissions]);
 
   // 사용 가능한 미션 수
   const availableMissionsCount = useMemo(
@@ -288,17 +350,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
 
   const totalRemaining = getTotalRemainingBossCount();
 
-  // ESC로 모달 닫기
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
+  useModalEscapeClose(open, onClose);
 
   // 미션 완료 핸들러
   const handleCompleteMission = useCallback(async (missionId: string) => {
@@ -343,6 +395,18 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
     }
   }, [completeMission, addXP, missions, settings.battleSoundEffects]);
 
+  // 인박스 추가 핸들러
+  const handleAddMissionToInbox = useCallback(async (mission: BattleMission) => {
+    try {
+      const task = createInboxTask(`미션 ${mission.text}`, { baseDuration: 15 });
+      await addInboxTask(task);
+      toast.success('미션을 인박스에 추가했어요 (15분)', { duration: 1800 });
+    } catch (error) {
+      console.error('Failed to add mission task to inbox:', error);
+      toast.error('인박스에 추가하지 못했어요');
+    }
+  }, [addInboxTask]);
+
   // 난이도 선택 핸들러
   const handleSelectDifficulty = useCallback(async (difficulty: BossDifficulty) => {
     await spawnBossByDifficulty(difficulty);
@@ -367,11 +431,10 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
       {/* 배경 오버레이 - 배틀 분위기 */}
       <div 
         className="absolute inset-0 bg-gradient-to-b from-black/90 via-red-950/30 to-black/90 backdrop-blur-md"
-        onClick={onClose}
       />
 
       {/* 메인 컨테이너 - 좌우 배치 */}
-      <div className="relative w-full max-w-5xl mx-4 max-h-[90vh] flex gap-4">
+      <div className="relative w-full max-w-6xl mx-6 max-h-[92vh] flex gap-6">
         
         {/* 왼쪽 - 보스 영역 (세로 직사각형) */}
         <div className="shrink-0 w-64 flex flex-col">
@@ -463,7 +526,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
         {/* 오른쪽 - 미션 카드 영역 */}
         <div className="flex-1 min-h-0 bg-slate-900/80 rounded-2xl border border-slate-700/50 overflow-hidden flex flex-col">
           {/* 미션 헤더 */}
-          <div className="shrink-0 px-4 py-3 border-b border-slate-700/50 flex items-center justify-between">
+          <div className="shrink-0 px-5 py-4 border-b border-slate-700/50 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-lg">⚔️</span>
               <span className="font-bold text-white">미션 카드</span>
@@ -480,7 +543,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
           </div>
 
           {/* 미션 그리드 */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto p-5">
             {enabledMissionsList.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
                 <span className="text-5xl opacity-50">📋</span>
@@ -488,7 +551,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
                 <p className="text-xs text-gray-500">설정 → 전투에서 미션을 추가하세요</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {enabledMissionsList.map((mission, index) => {
                   const cooldownRemaining = getMissionCooldownRemaining(mission, missionUsedAt);
                   const isOnCooldown = cooldownRemaining > 0;
@@ -503,6 +566,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
                       isOnCooldown={isOnCooldown}
                       cooldownRemaining={cooldownRemaining}
                       onComplete={handleCompleteMission}
+                      onAddToInbox={handleAddMissionToInbox}
                       disabled={noBoss}
                       index={index}
                     />
@@ -513,7 +577,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
           </div>
 
           {/* 하단 안내 */}
-          <div className="shrink-0 px-4 py-2 border-t border-slate-700/50 bg-slate-800/50">
+          <div className="shrink-0 px-5 py-3 border-t border-slate-700/50 bg-slate-800/50">
             <p className="text-[10px] text-gray-500 text-center">
               💡 쿨다운 미션은 시간 후 재사용 가능 • 🔄 표시 = 쿨다운 • ✓ = 하루 1회 완료 • ESC로 닫기
             </p>

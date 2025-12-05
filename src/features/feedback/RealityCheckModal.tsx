@@ -9,6 +9,7 @@
 import { useRealityCheckStore } from '@/shared/stores/realityCheckStore';
 import { useToastStore } from '@/shared/stores/toastStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 /**
  * 현실 점검 모달 컴포넌트
@@ -20,6 +21,8 @@ export function RealityCheckModal() {
     const { isOpen, taskTitle, estimatedDuration, closeRealityCheck } = useRealityCheckStore();
     const { addXP } = useGameStateStore();
     const { addToast } = useToastStore();
+
+    useModalEscapeClose(isOpen, closeRealityCheck);
 
     if (!isOpen) return null;
 

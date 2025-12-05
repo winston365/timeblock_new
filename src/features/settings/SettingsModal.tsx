@@ -40,6 +40,7 @@ import {
     BattleTab,
     GoogleCalendarTab,
 } from './components/tabs';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 const modalOverlayClass =
     'fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(0,0,0,0.65)] p-4 backdrop-blur';
@@ -119,16 +120,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
         }
     }, [isOpen, settings]);
 
-    // ESC 키로 모달 닫기
-    useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && isOpen) {
-                onClose();
-            }
-        };
-        window.addEventListener('keydown', handleEscape);
-        return () => window.removeEventListener('keydown', handleEscape);
-    }, [isOpen, onClose]);
+    useModalEscapeClose(isOpen, onClose);
 
     // 로그 및 토큰 사용량 로드
     useEffect(() => {
@@ -244,7 +236,7 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
         }`;
 
     return (
-        <div className={modalOverlayClass} onClick={onClose}>
+        <div className={modalOverlayClass}>
             <div className={modalContainerClass} onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">

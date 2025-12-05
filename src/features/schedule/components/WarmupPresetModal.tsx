@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import type { WarmupPresetItem } from '@/shared/types/domain';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface WarmupPresetModalProps {
   preset: WarmupPresetItem[];
@@ -16,6 +17,7 @@ interface WarmupPresetModalProps {
 
 export function WarmupPresetModal({ preset, onSave, onApply, onClose }: WarmupPresetModalProps) {
   const [draft, setDraft] = useState<WarmupPresetItem[]>(preset);
+  useModalEscapeClose(true, onClose);
 
   const handleChange = (index: number, field: keyof WarmupPresetItem, value: string) => {
     setDraft(prev =>

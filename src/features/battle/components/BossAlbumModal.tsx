@@ -230,7 +230,6 @@ function BossDetailOverlay({ boss, onClose }: BossDetailOverlayProps) {
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md"
-      onClick={onClose}
     >
       <div
         className="relative max-w-md w-full mx-4 animate-in zoom-in-95 duration-200"
@@ -541,7 +540,6 @@ export default function BossAlbumModal({ isOpen, onClose }: BossAlbumModalProps)
   return (
     <div
       className="fixed inset-0 z-[120] flex items-center justify-center"
-      onClick={onClose}
     >
       {/* 배경 */}
       <div className="absolute inset-0 bg-gradient-to-b from-slate-900/95 via-slate-900/98 to-black/95 backdrop-blur-lg" />

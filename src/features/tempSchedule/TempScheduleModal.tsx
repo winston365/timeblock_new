@@ -17,6 +17,7 @@ import { TempScheduleTaskList } from './components/TempScheduleTaskList';
 import { AddTempScheduleTaskModal } from './components/AddTempScheduleTaskModal';
 import { WeeklyScheduleView } from './components/WeeklyScheduleView';
 import { MonthlyScheduleView } from './components/MonthlyScheduleView';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 // ============================================================================
 // Constants
@@ -90,6 +91,8 @@ function TempScheduleModalComponent({ isOpen, onClose }: TempScheduleModalProps)
     goToToday,
   } = useTempScheduleStore();
 
+  useModalEscapeClose(isOpen, onClose);
+
   // 데이터 로드
   useEffect(() => {
     if (isOpen) {
@@ -97,23 +100,11 @@ function TempScheduleModalComponent({ isOpen, onClose }: TempScheduleModalProps)
     }
   }, [isOpen, loadData]);
 
-  // ESC 키로 닫기
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   return (
     <div 
       className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-8" 
-      onClick={onClose}
     >
       <div 
         className="flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-base)] shadow-2xl" 
@@ -200,6 +191,19 @@ function TempScheduleModalComponent({ isOpen, onClose }: TempScheduleModalProps)
             </button>
           </div>
         </div>
+
+        {/* Split Legend (day view only) */}
+        {viewMode === 'day' && (
+          <div className="flex items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)]/80 px-6 py-2 text-[11px] text-[var(--color-text-secondary)]">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-blue-500/40 bg-blue-500/15 text-blue-50 font-semibold">
+              메인 일정 스냅샷 · 좌측 12%
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 text-emerald-50 font-semibold">
+              임시 스케줄 · 우측 편집
+            </span>
+            <span className="text-[10px] text-[var(--color-text-tertiary)]">비율 고정 · 메인 일정은 읽기 전용 표시</span>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex flex-1 overflow-hidden">

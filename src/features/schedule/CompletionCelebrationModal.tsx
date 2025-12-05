@@ -8,6 +8,7 @@
 
 import { createPortal } from 'react-dom';
 import type { Task } from '@/shared/types/domain';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface CompletionCelebrationModalProps {
   task: Task;
@@ -31,10 +32,11 @@ export function CompletionCelebrationModal({
   timerBonus,
   onClose,
 }: CompletionCelebrationModalProps) {
+  useModalEscapeClose(true, onClose);
+
   const modalContent = (
     <div
       className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 px-4 py-8 text-[var(--color-text)] backdrop-blur"
-      onClick={onClose}
     >
       <div
         className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-[var(--color-border)] bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#312e81] p-1 shadow-[0_25px_60px_rgba(59,7,100,0.5)]"

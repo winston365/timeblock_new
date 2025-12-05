@@ -24,6 +24,7 @@ import { generateId } from '@/shared/lib/utils';
 import { useTaskBreakdownStore } from './stores/breakdownStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
+import { useModalEscapeClose } from '@/shared/hooks';
 
 interface TaskBreakdownModalProps {
   isOpen: boolean;
@@ -112,6 +113,8 @@ export default function TaskBreakdownModal({
   const [previewTasks, setPreviewTasks] = useState<ParsedTask[]>([]);
   const [regenerating, setRegenerating] = useState(false);
 
+  useModalEscapeClose(isOpen, onClose);
+
   // 초기 텍스트와 기본값 설정
   useEffect(() => {
     if (isOpen && taskData) {
@@ -130,17 +133,6 @@ export default function TaskBreakdownModal({
       }, 100);
     }
   }, [isOpen]);
-
-  // ESC 키로 닫기
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
 
   // 입력 텍스트가 바뀌면 미리보기 갱신
   useEffect(() => {
@@ -307,7 +299,7 @@ export default function TaskBreakdownModal({
   const allChecked = previewTasks.length > 0 && previewTasks.every(task => task.checked);
 
   return (
-    <div className={modalOverlayClass} onClick={onClose}>
+    <div className={modalOverlayClass}>
       <div
         role="dialog"
         aria-modal="true"

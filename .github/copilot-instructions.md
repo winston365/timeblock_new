@@ -40,6 +40,10 @@ if (!dailyState?.remainingBosses) return 0;
 return dailyState.remainingBosses[difficulty]?.length ?? 0;
 ```
 
+### ⛔ 모달 닫기 UX 통일
+- **배경 클릭으로 모달을 닫지 않는다.** 닫기는 명시적 버튼/액션으로만 허용한다.
+- **모든 모달은 ESC 키로 닫혀야 한다.** 가능하면 `useModalEscapeClose` 훅(`@/shared/hooks`)을 사용해 키 핸들러를 추가한다.
+
 ## Key Patterns
 
 ### Data Persistence

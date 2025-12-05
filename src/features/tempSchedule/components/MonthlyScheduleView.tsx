@@ -101,7 +101,7 @@ const DayCell = memo(function DayCell({ date, currentMonth, tasks, onDayClick }:
 
       {/* 스케줄 요약 */}
       <div className="space-y-0.5">
-        {tasks.slice(0, 3).map(task => (
+        {tasks.slice(0, 2).map(task => (
           <div
             key={task.id}
             className="text-[9px] px-1 py-0.5 rounded truncate"
@@ -112,12 +112,12 @@ const DayCell = memo(function DayCell({ date, currentMonth, tasks, onDayClick }:
             }}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
           >
-            {task.name}
+            {task.favorite ? '★ ' : ''}{task.name}
           </div>
         ))}
-        {tasks.length > 3 && (
+        {tasks.length > 2 && (
           <div className="text-[8px] text-[var(--color-text-tertiary)] pl-1">
-            +{tasks.length - 3}개 더
+            +{tasks.length - 2}개 더
           </div>
         )}
       </div>
@@ -144,7 +144,7 @@ function MonthlyScheduleViewComponent() {
   const tasksByDate = useMemo(() => {
     const result: Record<string, TempScheduleTask[]> = {};
     for (const date of monthDates) {
-      result[date] = tasks.filter(task => shouldShowOnDate(task, date));
+      result[date] = tasks.filter(task => task.favorite && shouldShowOnDate(task, date));
     }
     return result;
   }, [tasks, monthDates]);
