@@ -19,7 +19,7 @@ import { fetchFromFirebase, syncToFirebase } from '@/shared/services/sync/fireba
 import type { SyncStrategy } from '@/shared/services/sync/firebase/syncCore';
 import type { TempScheduleTask, RecurrenceRule, TempScheduleTemplate } from '@/shared/types/tempSchedule';
 import { TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
-import { generateId } from '@/shared/lib/utils';
+import { generateId, minutesToTimeStr, timeStrToMinutes } from '@/shared/lib/utils';
 import { withFirebaseSync } from '@/shared/utils/firebaseGuard';
 import { eventBus } from '@/shared/lib/eventBus';
 
@@ -106,51 +106,25 @@ export function shouldShowOnDate(task: TempScheduleTask, date: string): boolean 
 }
 
 /**
- * 시간 문자열을 분으로 변환
- * 
- * @param time - 시간 문자열 (HH:MM)
- * @returns 자정 기준 분
- */
-export function timeToMinutes(time: string): number {
-  const [hours, minutes] = time.split(':').map(Number);
-  return hours * 60 + minutes;
-}
-
-/**
- * 분을 시간 문자열로 변환
- * 
- * @param minutes - 자정 기준 분
- * @returns 시간 문자열 (HH:MM)
- */
-export function minutesToTime(minutes: number): string {
-  const hours = Math.floor(minutes / 60) % 24;
-  const mins = minutes % 60;
-  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-}
-
-/**
  * 작업 기간(분) 계산
  * 
  * @param task - 임시 스케줄 작업
  * @returns 기간 (분)
  */
 export function getTaskDuration(task: TempScheduleTask): number {
-  const startMinutes = timeToMinutes(task.startTime);
-  const endMinutes = timeToMinutes(task.endTime);
-  return endMinutes > startMinutes ? endMinutes - startMinutes : (24 * 60 - startMinutes) + endMinutes;
+  const { startTime, endTime } = task;
+  return endTime > startTime ? endTime - startTime : (24 * 60 - startTime) + endTime;
 }
 
 /**
  * 시간을 그리드 스냅에 맞게 조정
  * 
- * @param time - 시간 문자열 (HH:MM)
+ * @param minutes - 시간 (분)
  * @param snapInterval - 스냅 간격 (분)
- * @returns 조정된 시간 문자열
+ * @returns 조정된 시간 (분)
  */
-export function snapTimeToGrid(time: string, snapInterval: number = TEMP_SCHEDULE_DEFAULTS.gridSnapInterval): string {
-  const minutes = timeToMinutes(time);
-  const snappedMinutes = Math.round(minutes / snapInterval) * snapInterval;
-  return minutesToTime(snappedMinutes);
+export function snapTimeToGrid(minutes: number, snapInterval: number = TEMP_SCHEDULE_DEFAULTS.gridSnapInterval): number {
+  return Math.round(minutes / snapInterval) * snapInterval;
 }
 
 // ============================================================================
@@ -167,6 +141,9 @@ export async function loadTempScheduleTasks(): Promise<TempScheduleTask[]> {
     const tasks = (await db.tempScheduleTasks.toArray()).map(t => ({
       ...t,
       favorite: t.favorite ?? false,
+      // Migration for existing data (string -> number)
+      startTime: typeof t.startTime === 'string' ? timeStrToMinutes(t.startTime as unknown as string) : t.startTime,
+      endTime: typeof t.endTime === 'string' ? timeStrToMinutes(t.endTime as unknown as string) : t.endTime,
     }));
 
     if (tasks.length > 0) {
@@ -179,7 +156,13 @@ export async function loadTempScheduleTasks(): Promise<TempScheduleTask[]> {
       const firebaseTasks = await fetchFromFirebase<TempScheduleTask[]>(tempScheduleFirebaseStrategy, 'all');
 
       if (firebaseTasks && firebaseTasks.length > 0) {
-        const normalized = firebaseTasks.map(t => ({ ...t, favorite: t.favorite ?? false }));
+        const normalized = firebaseTasks.map(t => ({
+          ...t,
+          favorite: t.favorite ?? false,
+          // Migration for existing data
+          startTime: typeof t.startTime === 'string' ? timeStrToMinutes(t.startTime as unknown as string) : t.startTime,
+          endTime: typeof t.endTime === 'string' ? timeStrToMinutes(t.endTime as unknown as string) : t.endTime,
+        }));
         await db.tempScheduleTasks.bulkPut(normalized);
         addSyncLog('firebase', 'load', 'TempScheduleTasks loaded from Firebase', { count: firebaseTasks.length });
         return normalized;
@@ -400,15 +383,15 @@ export function createDefaultRecurrence(): RecurrenceRule {
  * 기본 임시 스케줄 작업 생성
  * 
  * @param name - 작업 이름
- * @param startTime - 시작 시간
- * @param endTime - 종료 시간
+ * @param startTime - 시작 시간 (분)
+ * @param endTime - 종료 시간 (분)
  * @param scheduledDate - 예정 날짜 (null이면 반복 일정)
  * @returns 작업 데이터 (id, createdAt, updatedAt 제외)
  */
 export function createDefaultTempScheduleTask(
   name: string,
-  startTime: string,
-  endTime: string,
+  startTime: number,
+  endTime: number,
   scheduledDate: string | null = null
 ): Omit<TempScheduleTask, 'id' | 'createdAt' | 'updatedAt'> {
   return {
@@ -436,7 +419,17 @@ const TEMPLATES_STORAGE_KEY = 'tempScheduleTemplates';
 export async function loadTemplates(): Promise<TempScheduleTemplate[]> {
   try {
     const record = await db.systemState.get(TEMPLATES_STORAGE_KEY);
-    return (record?.value as TempScheduleTemplate[]) || [];
+    const templates = (record?.value as TempScheduleTemplate[]) || [];
+
+    // Migration for existing templates
+    return templates.map(tpl => ({
+      ...tpl,
+      tasks: tpl.tasks.map(t => ({
+        ...t,
+        startTime: typeof t.startTime === 'string' ? timeStrToMinutes(t.startTime as unknown as string) : t.startTime,
+        endTime: typeof t.endTime === 'string' ? timeStrToMinutes(t.endTime as unknown as string) : t.endTime,
+      }))
+    }));
   } catch (error) {
     console.error('Failed to load templates:', error);
     return [];

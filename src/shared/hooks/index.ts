@@ -15,4 +15,5 @@ export * from './useDailyData';
 export * from './useGameState';
 export * from './useKeyboardNavigation';
 export * from './useModalEscapeClose';
+export * from './useTimeout';
 

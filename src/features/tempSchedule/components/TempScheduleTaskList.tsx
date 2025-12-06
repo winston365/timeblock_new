@@ -6,16 +6,185 @@
  *   - 등록된 모든 스케줄 작업 목록 표시
  *   - 반복 규칙 표시
  *   - 작업 추가/편집/삭제 버튼
+ *   - 오늘/내일/이후 기준 그룹화 및 정렬
+ *   - D-Day 상대적 표시
+ *   - 임박 일정 하이라이트
  * @dependencies useTempScheduleStore
  */
 
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState, useEffect } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { TempScheduleTask, RecurrenceRule } from '@/shared/types/tempSchedule';
+import { minutesToTimeStr } from '@/shared/lib/utils';
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** 임박 일정으로 간주하는 시간 (분) */
+const IMMINENT_THRESHOLD_MINUTES = 60;
+
+/** 진행 중 일정 갱신 간격 (ms) */
+const REFRESH_INTERVAL_MS = 60_000; // 1분
+
+/** 소요 시간 구간 (분) */
+const DURATION_THRESHOLDS = {
+  SHORT: 30,    // 30분 이하 - 짧음
+  MEDIUM: 90,   // 90분 이하 - 중간
+  LONG: 180,    // 180분 이하 - 김
+  // 그 이상 - 매우 김
+} as const;
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+/**
+ * 오늘 날짜를 YYYY-MM-DD 형식으로 반환
+ */
+function getTodayStr(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+/**
+ * 두 날짜 사이의 일수 차이 계산
+ */
+function getDaysDiff(dateStr: string, baseDate: string = getTodayStr()): number {
+  const date = new Date(dateStr);
+  const base = new Date(baseDate);
+  const diffTime = date.getTime() - base.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * D-Day 라벨 생성 (상대적 날짜 표시)
+ */
+function getDDayLabel(dateStr: string): string {
+  const diff = getDaysDiff(dateStr);
+  if (diff < 0) return `D${diff}`; // D-1, D-2 (지난 날짜)
+  if (diff === 0) return '오늘';
+  if (diff === 1) return '내일';
+  if (diff === 2) return '모레';
+  if (diff <= 7) return `D+${diff}`;
+  return dateStr; // 일주일 이후는 날짜 그대로
+}
+
+/**
+ * 일정이 임박했는지 확인 (오늘 + 1시간 이내 시작)
+ */
+function isImminent(task: TempScheduleTask): boolean {
+  const today = getTodayStr();
+  const scheduledDate = task.scheduledDate ?? today;
+  
+  if (scheduledDate !== today) return false;
+  
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const minutesUntilStart = task.startTime - currentMinutes;
+  
+  return minutesUntilStart > 0 && minutesUntilStart <= IMMINENT_THRESHOLD_MINUTES;
+}
+
+/**
+ * 일정이 지나갔는지 확인 (오늘 + 종료 시간 지남)
+ */
+function isPast(task: TempScheduleTask): boolean {
+  const today = getTodayStr();
+  const scheduledDate = task.scheduledDate ?? today;
+  
+  // 과거 날짜
+  if (scheduledDate < today) return true;
+  
+  // 오늘인데 종료 시간이 지남
+  if (scheduledDate === today) {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    return task.endTime < currentMinutes;
+  }
+  
+  return false;
+}
+
+/**
+ * 소요 시간 계산 (분 → 시간/분 문자열)
+ */
+function getDurationLabel(startTime: number, endTime: number): string {
+  const duration = endTime - startTime;
+  if (duration < 60) return `${duration}분`;
+  const hours = Math.floor(duration / 60);
+  const mins = duration % 60;
+  return mins > 0 ? `${hours}시간 ${mins}분` : `${hours}시간`;
+}
+
+/**
+ * 소요 시간에 따른 색상 클래스 반환
+ */
+function getDurationColorClass(startTime: number, endTime: number): string {
+  const duration = endTime - startTime;
+  if (duration <= DURATION_THRESHOLDS.SHORT) {
+    return 'bg-emerald-500/20 text-emerald-400'; // 짧음 - 녹색
+  }
+  if (duration <= DURATION_THRESHOLDS.MEDIUM) {
+    return 'bg-blue-500/20 text-blue-400'; // 중간 - 파랑
+  }
+  if (duration <= DURATION_THRESHOLDS.LONG) {
+    return 'bg-amber-500/20 text-amber-400'; // 김 - 주황
+  }
+  return 'bg-rose-500/20 text-rose-400'; // 매우 김 - 빨강
+}
+
+/**
+ * 현재 진행 중인 일정인지 확인
+ */
+function isInProgress(task: TempScheduleTask): boolean {
+  const today = getTodayStr();
+  const scheduledDate = task.scheduledDate ?? today;
+  
+  if (scheduledDate !== today) return false;
+  
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  
+  return task.startTime <= currentMinutes && currentMinutes < task.endTime;
+}
+
+/**
+ * 다음 예정 일정인지 확인 (오늘의 아직 시작 안 한 일정 중 가장 빠른 것)
+ */
+function getNextUpcomingTask(tasks: TempScheduleTask[]): TempScheduleTask | null {
+  const today = getTodayStr();
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  
+  const upcoming = tasks
+    .filter(t => {
+      const date = t.scheduledDate ?? today;
+      return date === today && t.startTime > currentMinutes;
+    })
+    .sort((a, b) => a.startTime - b.startTime);
+  
+  return upcoming[0] ?? null;
+}
+
+/**
+ * 임박 시간 라벨 (몇 분 후 시작)
+ */
+function getImminentLabel(task: TempScheduleTask): string | null {
+  const today = getTodayStr();
+  const scheduledDate = task.scheduledDate ?? today;
+  
+  if (scheduledDate !== today) return null;
+  
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const minutesUntilStart = task.startTime - currentMinutes;
+  
+  if (minutesUntilStart <= 0) return null;
+  if (minutesUntilStart <= IMMINENT_THRESHOLD_MINUTES) {
+    return `${minutesUntilStart}분 후 시작`;
+  }
+  return null;
+}
 
 /**
  * 반복 규칙을 읽기 쉬운 문자열로 변환
@@ -42,8 +211,81 @@ function getRecurrenceLabel(recurrence: RecurrenceRule): string {
 /**
  * 시간 범위 포맷
  */
-function formatTimeRange(startTime: string, endTime: string): string {
-  return `${startTime} - ${endTime}`;
+function formatTimeRange(startTime: number, endTime: number): string {
+  return `${minutesToTimeStr(startTime)} - ${minutesToTimeStr(endTime)}`;
+}
+
+/**
+ * 일회성 일정을 날짜 그룹으로 분류
+ */
+interface DateGroup {
+  label: string;
+  emoji: string;
+  tasks: TempScheduleTask[];
+  sortOrder: number;
+}
+
+function groupTasksByDate(tasks: TempScheduleTask[]): DateGroup[] {
+  const today = getTodayStr();
+  
+  const groups: Record<string, DateGroup> = {};
+  
+  for (const task of tasks) {
+    const date = task.scheduledDate ?? today;
+    const diff = getDaysDiff(date);
+    
+    let groupKey: string;
+    let label: string;
+    let emoji: string;
+    let sortOrder: number;
+    
+    if (diff < 0) {
+      // 지난 일정
+      groupKey = 'past';
+      label = '지난 일정';
+      emoji = '⏰';
+      sortOrder = -1;
+    } else if (diff === 0) {
+      groupKey = 'today';
+      label = '오늘';
+      emoji = '📌';
+      sortOrder = 0;
+    } else if (diff === 1) {
+      groupKey = 'tomorrow';
+      label = '내일';
+      emoji = '📅';
+      sortOrder = 1;
+    } else if (diff <= 7) {
+      groupKey = 'thisWeek';
+      label = '이번 주';
+      emoji = '🗓️';
+      sortOrder = 2;
+    } else {
+      groupKey = 'later';
+      label = '다가오는 일정';
+      emoji = '📆';
+      sortOrder = 3;
+    }
+    
+    if (!groups[groupKey]) {
+      groups[groupKey] = { label, emoji, tasks: [], sortOrder };
+    }
+    groups[groupKey].tasks.push(task);
+  }
+  
+  // 각 그룹 내 시간순 정렬 + 그룹 정렬
+  return Object.values(groups)
+    .map(group => ({
+      ...group,
+      tasks: group.tasks.sort((a, b) => {
+        // 먼저 날짜순, 같은 날이면 시간순
+        const dateA = a.scheduledDate ?? today;
+        const dateB = b.scheduledDate ?? today;
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        return a.startTime - b.startTime;
+      }),
+    }))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 // ============================================================================
@@ -54,24 +296,88 @@ interface TaskItemProps {
   task: TempScheduleTask;
   onEdit: (task: TempScheduleTask) => void;
   onDelete: (id: string) => void;
+  showDDay?: boolean; // 일회성 일정에서 D-Day 표시 여부
 }
 
-const TaskItem = memo(function TaskItem({ task, onEdit, onDelete }: TaskItemProps) {
+interface TaskItemProps {
+  task: TempScheduleTask;
+  onEdit: (task: TempScheduleTask) => void;
+  onDelete: (id: string) => void;
+  showDDay?: boolean;
+  isNextUp?: boolean; // 다음 예정 일정 표시
+  currentTime: number; // 현재 시간 (분) - 갱신용
+}
+
+const TaskItem = memo(function TaskItem({ 
+  task, 
+  onEdit, 
+  onDelete, 
+  showDDay = false,
+  isNextUp = false,
+  currentTime,
+}: TaskItemProps) {
+  const imminent = isImminent(task);
+  const past = isPast(task);
+  const inProgress = isInProgress(task);
+  const imminentLabel = getImminentLabel(task);
+  const durationLabel = getDurationLabel(task.startTime, task.endTime);
+  const durationColorClass = getDurationColorClass(task.startTime, task.endTime);
+  
+  // 진행률 계산 (진행 중일 때)
+  const progressPercent = useMemo(() => {
+    if (!inProgress) return 0;
+    const totalDuration = task.endTime - task.startTime;
+    const elapsed = currentTime - task.startTime;
+    return Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+  }, [inProgress, task.startTime, task.endTime, currentTime]);
+  
   return (
     <div
-      className="group flex items-start gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 transition-all hover:border-[var(--color-primary)]/50 hover:shadow-md cursor-pointer"
+      className={`
+        group flex items-start gap-3 rounded-xl border p-3 transition-all cursor-pointer relative overflow-hidden
+        ${inProgress
+          ? 'border-green-500/50 bg-green-500/10 shadow-md shadow-green-500/20 ring-2 ring-green-500/30'
+          : imminent 
+            ? 'border-orange-500/50 bg-orange-500/10 shadow-md shadow-orange-500/20' 
+            : past
+              ? 'border-[var(--color-border)]/50 bg-[var(--color-bg-surface)]/50 opacity-60'
+              : isNextUp
+                ? 'border-blue-500/50 bg-blue-500/5'
+                : 'border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-primary)]/50 hover:shadow-md'
+        }
+      `}
       onClick={() => onEdit(task)}
     >
+      {/* 진행률 배경 바 (진행 중일 때) */}
+      {inProgress && (
+        <div 
+          className="absolute inset-0 bg-green-500/10 transition-all duration-1000"
+          style={{ width: `${progressPercent}%` }}
+        />
+      )}
+      
       {/* 색상 표시 */}
       <div
-        className="w-1 self-stretch rounded-full flex-shrink-0"
+        className={`w-1.5 self-stretch rounded-full flex-shrink-0 z-10 ${past ? 'opacity-50' : ''}`}
         style={{ backgroundColor: task.color }}
       />
 
       {/* 내용 */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 z-10">
+        {/* 제목 행 */}
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm text-[var(--color-text)] truncate">
+          {/* 상태 뱃지 */}
+          {inProgress && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500 text-white font-bold animate-pulse">
+              진행 중
+            </span>
+          )}
+          {isNextUp && !inProgress && !imminent && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-medium">
+              다음
+            </span>
+          )}
+          <span className={`font-semibold text-sm truncate ${past ? 'text-[var(--color-text-tertiary)] line-through' : 'text-[var(--color-text)]'}`}>
             {task.name}
           </span>
           {task.parentId && (
@@ -81,21 +387,61 @@ const TaskItem = memo(function TaskItem({ task, onEdit, onDelete }: TaskItemProp
           )}
         </div>
 
-        <div className="flex items-center gap-2 mt-1 text-xs text-[var(--color-text-secondary)]">
-          <span className="font-mono">{formatTimeRange(task.startTime, task.endTime)}</span>
-          <span className="text-[var(--color-border)]">•</span>
-          <span>{getRecurrenceLabel(task.recurrence)}</span>
+        {/* 시간 행 - 강조 표시 */}
+        <div className="flex items-center gap-2 mt-1.5">
+          <span className={`font-mono font-bold text-base ${inProgress ? 'text-green-400' : imminent ? 'text-orange-400' : past ? 'text-[var(--color-text-tertiary)]' : 'text-[var(--color-text)]'}`}>
+            {formatTimeRange(task.startTime, task.endTime)}
+          </span>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${durationColorClass}`}>
+            {durationLabel}
+          </span>
         </div>
-
-        {task.scheduledDate && task.recurrence.type === 'none' && (
-          <div className="mt-1 text-[10px] text-[var(--color-text-tertiary)]">
-            📅 {task.scheduledDate}
+        
+        {/* 진행 중 - 남은 시간 */}
+        {inProgress && (
+          <div className="mt-1.5 flex items-center gap-1 text-xs text-green-400 font-medium">
+            <span>⏳</span>
+            <span>{task.endTime - currentTime}분 남음</span>
+            <span className="text-[var(--color-text-tertiary)]">
+              ({Math.round(progressPercent)}% 완료)
+            </span>
           </div>
         )}
 
+        {/* 임박 알림 */}
+        {imminentLabel && (
+          <div className="mt-1.5 flex items-center gap-1 text-xs text-orange-400 font-medium">
+            <span className="animate-pulse">🔥</span>
+            <span>{imminentLabel}</span>
+          </div>
+        )}
+
+        {/* 지난 일정 표시 */}
+        {past && (
+          <div className="mt-1.5 flex items-center gap-1 text-[10px] text-[var(--color-text-tertiary)]">
+            <span>✅</span>
+            <span>완료됨</span>
+          </div>
+        )}
+
+        {/* 메타 정보 행 */}
+        <div className="flex items-center gap-2 mt-1 text-[10px] text-[var(--color-text-tertiary)]">
+          <span>{getRecurrenceLabel(task.recurrence)}</span>
+          
+          {/* D-Day 표시 (일회성 일정) */}
+          {showDDay && task.scheduledDate && task.recurrence.type === 'none' && (
+            <>
+              <span className="text-[var(--color-border)]">•</span>
+              <span className={getDaysDiff(task.scheduledDate) <= 1 ? 'text-[var(--color-primary)] font-medium' : ''}>
+                {getDDayLabel(task.scheduledDate)}
+              </span>
+            </>
+          )}
+        </div>
+
         {task.memo && (
           <div className="mt-1 text-[10px] text-[var(--color-text-tertiary)] truncate">
-            {task.memo}
+            💬 {task.memo}
           </div>
         )}
       </div>
@@ -139,22 +485,60 @@ interface TempScheduleTaskListProps {
 
 function TempScheduleTaskListComponent({ tasks }: TempScheduleTaskListProps) {
   const { openTaskModal, deleteTask } = useTempScheduleStore();
+  
+  // 현재 시간 상태 (분 단위, 자동 갱신)
+  const [currentTime, setCurrentTime] = useState(() => {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  });
+  
+  // 1분마다 현재 시간 갱신 (진행 중 일정 & 임박 일정 자동 업데이트)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      setCurrentTime(now.getHours() * 60 + now.getMinutes());
+    }, REFRESH_INTERVAL_MS);
+    
+    return () => clearInterval(interval);
+  }, []);
 
-  // 반복 유형별 그룹화
-  const groupedTasks = useMemo(() => {
-    const recurring: TempScheduleTask[] = [];
-    const oneTime: TempScheduleTask[] = [];
+  // 반복/일회성 분리 + 일회성은 날짜별 그룹화
+  const { recurring, dateGroups, todayCount, inProgressCount, nextUpTask } = useMemo(() => {
+    const recurringTasks: TempScheduleTask[] = [];
+    const oneTimeTasks: TempScheduleTask[] = [];
 
     for (const task of tasks) {
       if (task.recurrence.type !== 'none') {
-        recurring.push(task);
+        recurringTasks.push(task);
       } else {
-        oneTime.push(task);
+        oneTimeTasks.push(task);
       }
     }
 
-    return { recurring, oneTime };
-  }, [tasks]);
+    // 반복 일정은 시간순 정렬
+    recurringTasks.sort((a, b) => a.startTime - b.startTime);
+
+    // 일회성 일정은 날짜 그룹화
+    const groups = groupTasksByDate(oneTimeTasks);
+    
+    // 오늘 일정 수 계산
+    const todayGroup = groups.find(g => g.label === '오늘');
+    const todayTaskCount = todayGroup?.tasks.length ?? 0;
+    
+    // 진행 중인 일정 수
+    const progressCount = tasks.filter(isInProgress).length;
+    
+    // 다음 예정 일정
+    const nextTask = getNextUpcomingTask(oneTimeTasks);
+
+    return { 
+      recurring: recurringTasks, 
+      dateGroups: groups,
+      todayCount: todayTaskCount,
+      inProgressCount: progressCount,
+      nextUpTask: nextTask,
+    };
+  }, [tasks, currentTime]); // currentTime 의존성 추가로 자동 갱신
 
   return (
     <div className="flex flex-col h-full">
@@ -162,9 +546,21 @@ function TempScheduleTaskListComponent({ tasks }: TempScheduleTaskListProps) {
       <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3">
         <div>
           <h3 className="text-sm font-bold text-[var(--color-text)]">📋 스케줄 목록</h3>
-          <p className="text-[10px] text-[var(--color-text-tertiary)] mt-0.5">
-            총 {tasks.length}개의 스케줄
-          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-[10px] text-[var(--color-text-tertiary)]">
+              총 {tasks.length}개
+            </span>
+            {todayCount > 0 && (
+              <span className="text-[10px] text-[var(--color-primary)] font-medium">
+                오늘 {todayCount}개
+              </span>
+            )}
+            {inProgressCount > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium animate-pulse">
+                ⏳ {inProgressCount}개 진행 중
+              </span>
+            )}
+          </div>
         </div>
         <button
           className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-xs font-bold hover:bg-[var(--color-primary-dark)] transition-colors"
@@ -189,38 +585,73 @@ function TempScheduleTaskListComponent({ tasks }: TempScheduleTaskListProps) {
           </div>
         ) : (
           <>
-            {/* 반복 일정 */}
-            {groupedTasks.recurring.length > 0 && (
-              <div>
-                <h4 className="text-[10px] font-bold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-2">
-                  🔄 반복 일정 ({groupedTasks.recurring.length})
-                </h4>
+            {/* 날짜별 일회성 일정 (오늘/내일/이번주/다가오는) */}
+            {dateGroups.map(group => (
+              <div key={group.label}>
+                {/* 개선된 그룹 헤더 */}
+                <div className={`
+                  flex items-center gap-2 mb-2 pb-1 border-b
+                  ${group.label === '오늘' 
+                    ? 'border-[var(--color-primary)]/30' 
+                    : group.label === '지난 일정'
+                      ? 'border-[var(--color-border)]/30'
+                      : 'border-[var(--color-border)]/50'
+                  }
+                `}>
+                  <span className="text-sm">{group.emoji}</span>
+                  <span className={`text-xs font-bold tracking-wide ${
+                    group.label === '오늘' 
+                      ? 'text-[var(--color-primary)]' 
+                      : group.label === '지난 일정'
+                        ? 'text-[var(--color-text-tertiary)]'
+                        : 'text-[var(--color-text-secondary)]'
+                  }`}>
+                    {group.label}
+                  </span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                    group.label === '오늘'
+                      ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+                      : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]'
+                  }`}>
+                    {group.tasks.length}
+                  </span>
+                </div>
                 <div className="space-y-2">
-                  {groupedTasks.recurring.map(task => (
+                  {group.tasks.map(task => (
                     <TaskItem
                       key={task.id}
                       task={task}
                       onEdit={openTaskModal}
                       onDelete={deleteTask}
+                      showDDay={group.label !== '오늘' && group.label !== '지난 일정'}
+                      isNextUp={nextUpTask?.id === task.id}
+                      currentTime={currentTime}
                     />
                   ))}
                 </div>
               </div>
-            )}
+            ))}
 
-            {/* 일회성 일정 */}
-            {groupedTasks.oneTime.length > 0 && (
+            {/* 반복 일정 */}
+            {recurring.length > 0 && (
               <div>
-                <h4 className="text-[10px] font-bold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-2">
-                  📌 예정 일정 ({groupedTasks.oneTime.length})
-                </h4>
+                <div className="flex items-center gap-2 mb-2 pb-1 border-b border-[var(--color-border)]/50">
+                  <span className="text-sm">🔄</span>
+                  <span className="text-xs font-bold tracking-wide text-[var(--color-text-secondary)]">
+                    반복 일정
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]">
+                    {recurring.length}
+                  </span>
+                </div>
                 <div className="space-y-2">
-                  {groupedTasks.oneTime.map(task => (
+                  {recurring.map(task => (
                     <TaskItem
                       key={task.id}
                       task={task}
                       onEdit={openTaskModal}
                       onDelete={deleteTask}
+                      currentTime={currentTime}
                     />
                   ))}
                 </div>
@@ -228,6 +659,16 @@ function TempScheduleTaskListComponent({ tasks }: TempScheduleTaskListProps) {
             )}
           </>
         )}
+      </div>
+
+      {/* 푸터 - 총 개수 + 현재 시간 */}
+      <div className="border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2 flex justify-between items-center">
+        <span className="text-[10px] text-[var(--color-text-tertiary)] font-mono">
+          {minutesToTimeStr(currentTime)} 기준
+        </span>
+        <span className="text-[10px] text-[var(--color-text-tertiary)]">
+          총 {tasks.length}개의 스케줄
+        </span>
       </div>
     </div>
   );

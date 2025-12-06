@@ -9,17 +9,20 @@
  *     - +/-1, +/-5, +/-10 버튼으로 진행도 조절
  *     - 직접 값 입력으로 진행도 설정
  *     - 오늘의 목표량 자동 계산 표시
- *     - 만회 경고 표시
+ *     - 만회 경고 표시 (심각도 레벨: 🟢🟡🔴)
  *     - 클릭 시 히스토리 모달 열기
  *   - Key Dependencies:
  *     - WeeklyProgressBar: 진행도바 컴포넌트
  *     - useWeeklyGoalStore: 상태 관리
+ *     - catchUpUtils: 만회 심각도 계산
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { WeeklyGoal } from '@/shared/types/domain';
 import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
 import WeeklyProgressBar from './WeeklyProgressBar';
+import { QUICK_UPDATE_BUTTONS } from './constants/goalConstants';
+import { calculateCatchUpInfo } from './utils/catchUpUtils';
 
 interface WeeklyGoalCardProps {
   goal: WeeklyGoal;
@@ -29,22 +32,6 @@ interface WeeklyGoalCardProps {
   /** 압축 모드 (그리드 레이아웃용) */
   compact?: boolean;
 }
-
-const QUICK_BUTTONS = [
-  { label: '-10', delta: -10 },
-  { label: '-5', delta: -5 },
-  { label: '-1', delta: -1 },
-  { label: '+1', delta: 1 },
-  { label: '+5', delta: 5 },
-  { label: '+10', delta: 10 },
-];
-
-const COMPACT_QUICK_BUTTONS = [
-  { label: '-5', delta: -5 },
-  { label: '-1', delta: -1 },
-  { label: '+1', delta: 1 },
-  { label: '+5', delta: 5 },
-];
 
 /**
  * 장기목표 카드 컴포넌트
@@ -60,9 +47,13 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
   const remainingDays = getRemainingDays();
   const dailyTargetForToday = getDailyTargetForToday(goal.target, goal.currentProgress);
 
-  const isCompleted = goal.currentProgress >= goal.target;
-  const isBehind = goal.currentProgress < todayTarget;
-  const catchUpNeeded = todayTarget - goal.currentProgress;
+  // 만회 정보 계산 (심각도 레벨 포함)
+  const catchUpInfo = useMemo(
+    () => calculateCatchUpInfo(goal, todayTarget),
+    [goal, todayTarget]
+  );
+
+  const { isCompleted, isBehind, catchUpNeeded, config: severityConfig } = catchUpInfo;
   const progressPercent = Math.round((goal.currentProgress / goal.target) * 100);
 
   const handleQuickUpdate = async (delta: number) => {
@@ -112,7 +103,7 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
   };
 
   const accent = goal.color || '#6366f1';
-  const quickButtons = compact ? COMPACT_QUICK_BUTTONS : QUICK_BUTTONS;
+  const quickButtons = compact ? QUICK_UPDATE_BUTTONS.COMPACT : QUICK_UPDATE_BUTTONS.NORMAL;
 
   return (
     <div
@@ -179,7 +170,7 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
         compact={compact}
       />
 
-      {/* 오늘의 목표량 & 만회 정보 */}
+      {/* 오늘의 목표량 & 만회 정보 (심각도 레벨 표시) */}
       <div className={`flex flex-wrap justify-between gap-1 ${compact ? 'text-[10px]' : 'text-xs'}`}>
         <div className={`rounded-lg bg-white/5 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
           <span className="text-white/50">오늘: </span>
@@ -188,8 +179,15 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
         </div>
 
         {isBehind && !isCompleted && (
-          <div className={`rounded-lg bg-orange-500/10 text-orange-300 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
-            ⚠️ <span className="font-bold">{catchUpNeeded.toLocaleString()}</span>
+          <div
+            className={`rounded-lg ${severityConfig.bgClass} ${severityConfig.textClass} ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}
+            title={severityConfig.description}
+          >
+            {severityConfig.icon}{' '}
+            <span className="font-bold">{catchUpNeeded.toLocaleString()}</span>
+            {!compact && (
+              <span className="ml-1 text-white/50">부족</span>
+            )}
           </div>
         )}
 

@@ -16,6 +16,7 @@ import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { RecurrenceRule, TempScheduleRecurrenceType } from '@/shared/types/tempSchedule';
 import { TEMP_SCHEDULE_COLORS, TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
 import { useModalEscapeClose } from '@/shared/hooks';
+import { minutesToTimeStr, timeStrToMinutes } from '@/shared/lib/utils';
 
 // ============================================================================
 // Constants
@@ -78,8 +79,8 @@ function AddTempScheduleTaskModalComponent() {
   useEffect(() => {
     if (editingTask) {
       setName(editingTask.name);
-      setStartTime(editingTask.startTime);
-      setEndTime(editingTask.endTime);
+      setStartTime(minutesToTimeStr(editingTask.startTime));
+      setEndTime(minutesToTimeStr(editingTask.endTime));
       setScheduledDate(editingTask.scheduledDate || '');
       setColor(editingTask.color);
       setParentId(editingTask.parentId || null);
@@ -136,8 +137,8 @@ function AddTempScheduleTaskModalComponent() {
 
     const taskData = {
       name: name.trim(),
-      startTime,
-      endTime,
+      startTime: timeStrToMinutes(startTime),
+      endTime: timeStrToMinutes(endTime),
       scheduledDate: recurrenceType === 'none' ? (scheduledDate || null) : null,
       color,
       parentId,

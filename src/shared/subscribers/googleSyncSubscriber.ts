@@ -32,7 +32,7 @@ import {
 import type { Task } from '@/shared/types/domain';
 import type { TempScheduleTask } from '@/shared/types/tempSchedule';
 import type { GoogleCalendarEvent } from '@/shared/services/calendar/googleCalendarTypes';
-import { getLocalDate } from '@/shared/lib/utils';
+import { getLocalDate, minutesToTimeStr } from '@/shared/lib/utils';
 import { db } from '@/data/db/dexieClient';
 
 // 중복 동기화 방지용 Set
@@ -116,8 +116,10 @@ async function handleTempScheduleSync(task: TempScheduleTask, action: 'create' |
 
 function tempToCalendarEvent(task: TempScheduleTask): GoogleCalendarEvent {
   const date = task.scheduledDate || getLocalDate();
-  const startTime = new Date(`${date}T${task.startTime}:00`);
-  const endTime = new Date(`${date}T${task.endTime}:00`);
+  const startTimeStr = minutesToTimeStr(task.startTime);
+  const endTimeStr = minutesToTimeStr(task.endTime);
+  const startTime = new Date(`${date}T${startTimeStr}:00`);
+  const endTime = new Date(`${date}T${endTimeStr}:00`);
 
   return {
     summary: `[임시] ${task.name}`,

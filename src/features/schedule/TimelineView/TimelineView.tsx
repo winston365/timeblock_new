@@ -30,7 +30,6 @@ import { generateId } from '@/shared/lib/utils';
 import TimelineTaskBlock from './TimelineTaskBlock';
 import TaskModal from '@/features/schedule/TaskModal';
 import { useTempScheduleStore } from '@/features/tempSchedule/stores/tempScheduleStore';
-import { timeToMinutes } from '@/data/repositories/tempScheduleRepository';
 import { TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
 
 /** 시간 초과 경고 임계값 (분) */
@@ -98,8 +97,8 @@ function TimelineViewComponent() {
     const tasks = getTempTasksForDate(today);
 
     return tasks.map(t => {
-      const startMinutes = timeToMinutes(t.startTime);
-      const endMinutes = timeToMinutes(t.endTime);
+      const startMinutes = t.startTime;
+      const endMinutes = t.endTime;
 
       // TimelineView는 visibleStartHour부터 시작함
       const top = (startMinutes - visibleStartHour * 60) * PIXELS_PER_MINUTE;
@@ -450,21 +449,34 @@ function TimelineViewComponent() {
           {/* 스플릿 뷰 구분선 (85% 지점) */}
           <div className="absolute top-0 bottom-0 border-r border-[var(--color-border)]" style={{ left: '85%' }} />
 
-          {/* 임시 스케줄 (오른쪽 15%) */}
-          <div className="absolute top-0 right-0 bottom-0 w-[15%] pointer-events-none bg-black/5">
+          {/* 임시 스케줄 (오른쪽 15%) - 점선 테두리 + 예정 라벨 */}
+          <div className="absolute top-0 right-0 bottom-0 w-[15%] pointer-events-none">
+            {/* 영역 라벨 */}
+            <div className="absolute top-1 right-1 left-1 text-center">
+              <span className="text-[8px] font-medium text-[var(--color-text-tertiary)] bg-[var(--color-bg-secondary)]/80 px-1 py-0.5 rounded">
+                예정
+              </span>
+            </div>
             {tempScheduleBlocks.map(block => (
               <div
                 key={block.id}
-                className="absolute left-1 right-1 rounded border border-dashed flex items-center justify-center text-[9px] font-medium opacity-60"
+                className="absolute left-1 right-1 rounded-md border-2 border-dashed flex flex-col items-center justify-center text-[9px] font-medium opacity-80 hover:opacity-100 transition-opacity"
                 style={{
                   top: `${block.top}px`,
-                  height: `${block.height}px`,
-                  backgroundColor: block.color + '10',
+                  height: `${Math.max(block.height, 24)}px`,
+                  backgroundColor: block.color + '15',
                   borderColor: block.color,
                   color: block.color,
                 }}
+                title={`임시 스케줄: ${block.name}`}
               >
-                <div className="truncate px-0.5 text-center leading-tight">
+                {/* 예정 뱃지 (높이가 충분할 때만) */}
+                {block.height >= 30 && (
+                  <span className="text-[7px] font-bold opacity-70 bg-white/20 px-1 rounded mb-0.5">
+                    예정
+                  </span>
+                )}
+                <div className="truncate px-0.5 text-center leading-tight font-semibold">
                   {block.name}
                 </div>
               </div>

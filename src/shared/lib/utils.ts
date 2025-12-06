@@ -29,6 +29,27 @@ export function getLocalDate(date: Date = new Date()): string {
 }
 
 /**
+ * "HH:MM" 문자열을 분(minutes from midnight)으로 변환
+ * @param timeStr - "HH:MM" 형식의 시간 문자열
+ * @returns 0시 0분부터의 경과 분 (0~1439)
+ */
+export function timeStrToMinutes(timeStr: string): number {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+/**
+ * 분(minutes from midnight)을 "HH:MM" 문자열로 변환
+ * @param minutes - 0시 0분부터의 경과 분
+ * @returns "HH:MM" 형식의 시간 문자열
+ */
+export function minutesToTimeStr(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/**
  * 시간을 HH:mm 형식으로 반환
  *
  * @param date - 변환할 Date 객체 (기본값: 현재 시간)

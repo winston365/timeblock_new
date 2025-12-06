@@ -1,5 +1,5 @@
 ﻿from pathlib import Path
-path = Path('src/features/schedule/TimeBlock.tsx')
+path = Path('../src/features/schedule/TimeBlock.tsx')
 text = path.read_text(encoding='utf-8')
 start = text.index('  return (')
 end = text.index('  );\r\n});', start)

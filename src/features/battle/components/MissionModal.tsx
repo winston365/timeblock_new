@@ -1,257 +1,43 @@
 /**
  * @file MissionModal.tsx
  * @role 전투 미션 선택 모달 - 배틀 스타일 UI
- * @description 긴장감 있는 배틀 UI, 20개 이상 미션 지원, 카드 게임 스타일, 쿨다운 타이머
- * @dependencies useBattleStore, battleSoundService
+ * @description
+ *   - 긴장감 있는 배틀 UI
+ *   - 20개 이상 미션 지원
+ *   - 카드 게임 스타일
+ *   - 쿨다운 타이머
+ *   - 시간대별 미션 필터링
+ * @dependencies useBattleStore, battleSoundService, 분리된 하위 컴포넌트들
  */
 
-import type React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { useBattleStore, getBossById, getMissionCooldownRemaining, isMissionAvailable } from '../stores/battleStore';
+import {
+  useBattleStore,
+  getBossById,
+  isMissionAvailable,
+} from '../stores/battleStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
-import { useDailyData } from '@/shared/hooks/useDailyData';
+import { useDailyData, useModalEscapeClose, useNamedTimeouts } from '@/shared/hooks';
 import { playAttackSound, playBossDefeatSound } from '../services/battleSoundService';
-import { getBossImageSrc } from '../utils/assets';
 import type { BattleMission, BossDifficulty } from '@/shared/types/domain';
 import { createNewTask } from '@/shared/utils/taskFactory';
 import { getBlockIdFromHour } from '@/shared/utils/timeBlockUtils';
-import { DifficultySelectButtons } from './BattleSidebar';
-import { useModalEscapeClose } from '@/shared/hooks';
+
+// 분리된 컴포넌트 import
+import { BossPanel, MissionCardGrid } from './modal';
+
+// 상수 import
+import {
+  DAMAGE_DISPLAY_DURATION_MS,
+  BOSS_DEFEAT_SOUND_DELAY_MS,
+  COOLDOWN_REFRESH_INTERVAL_MS,
+  shouldShowMissionByTime,
+} from '../constants/battleConstants';
 
 interface MissionModalProps {
   open: boolean;
   onClose: () => void;
-}
-
-/**
- * 배틀 스타일 미션 카드
- */
-interface BattleMissionCardProps {
-  mission: BattleMission;
-  isUsed: boolean;
-  isOnCooldown: boolean;
-  cooldownRemaining: number; // 분 단위, -1이면 하루 1회 제한
-  onComplete: (missionId: string) => void;
-  onAddToSchedule: (mission: BattleMission) => void;
-  disabled: boolean;
-  index: number;
-}
-
-/** 쿨다운 시간 포맷 */
-function formatCooldownTime(minutes: number): string {
-  if (minutes <= 0) return '';
-  if (minutes < 60) return `${minutes}분`;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins > 0 ? `${hours}시간 ${mins}분` : `${hours}시간`;
-}
-
-function BattleMissionCard({ mission, isUsed, isOnCooldown, cooldownRemaining, onComplete, onAddToSchedule, disabled, index }: BattleMissionCardProps) {
-  const [isAttacking, setIsAttacking] = useState(false);
-  const attackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // 컴포넌트 언마운트 시 타이머 정리
-  useEffect(() => {
-    return () => {
-      if (attackTimeoutRef.current) {
-        clearTimeout(attackTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const triggerAttack = () => {
-    if (isUsed || isOnCooldown || disabled) return;
-
-    setIsAttacking(true);
-    // 기존 타이머가 있으면 정리
-    if (attackTimeoutRef.current) {
-      clearTimeout(attackTimeoutRef.current);
-    }
-    attackTimeoutRef.current = setTimeout(() => {
-      setIsAttacking(false);
-      onComplete(mission.id);
-      attackTimeoutRef.current = null;
-    }, 200);
-  };
-
-  const handleCardClick = () => {
-    triggerAttack();
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if ((event.key === 'Enter' || event.key === ' ') && !isUsed && !isOnCooldown && !disabled) {
-      event.preventDefault();
-      triggerAttack();
-    }
-  };
-
-  const handleAttackButtonClick: React.MouseEventHandler<HTMLButtonElement> = (event) => {
-    event.stopPropagation();
-    triggerAttack();
-  };
-
-  const handleAddToSchedule = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    onAddToSchedule(mission);
-  };
-
-  // 데미지에 따른 카드 등급 색상
-  const getCardGrade = (damage: number) => {
-    if (damage >= 30) return { border: 'border-purple-500', glow: 'shadow-purple-500/30', label: 'EPIC', labelBg: 'bg-purple-500' };
-    if (damage >= 20) return { border: 'border-orange-500', glow: 'shadow-orange-500/30', label: 'RARE', labelBg: 'bg-orange-500' };
-    if (damage >= 15) return { border: 'border-blue-500', glow: 'shadow-blue-500/30', label: 'GOOD', labelBg: 'bg-blue-500' };
-    return { border: 'border-gray-500', glow: 'shadow-gray-500/20', label: '', labelBg: '' };
-  };
-
-  const grade = getCardGrade(mission.damage);
-  const isUnavailable = isUsed || isOnCooldown;
-  const cooldownLabel = mission.cooldownMinutes && mission.cooldownMinutes > 0
-    ? (isOnCooldown ? formatCooldownTime(cooldownRemaining) : formatCooldownTime(mission.cooldownMinutes))
-    : '';
-  const attackLabel = isOnCooldown ? '쿨다운 중' : isUsed ? '완료됨' : '공격!';
-
-  return (
-    <div
-      role="button"
-      tabIndex={isUnavailable || disabled ? -1 : 0}
-      onClick={handleCardClick}
-      onKeyDown={handleKeyDown}
-      className={`
-        group relative flex flex-col rounded-xl overflow-hidden transition-all duration-200 min-h-[160px]
-        ${isUnavailable
-          ? 'opacity-70 cursor-default'
-          : disabled
-            ? 'opacity-50 cursor-not-allowed grayscale'
-            : `hover:scale-[1.02] hover:shadow-lg ${grade.glow} active:scale-[0.98] cursor-pointer`
-        }
-        ${isAttacking ? 'animate-pulse scale-95' : ''}
-      `}
-      style={{ animationDelay: `${index * 30}ms` }}
-      aria-disabled={isUnavailable || disabled}
-    >
-      {/* 카드 배경 */}
-      <div className={`
-        relative border-2 ${isUnavailable ? (isOnCooldown ? 'border-cyan-500/50 bg-cyan-900/20' : 'border-emerald-500/50 bg-emerald-900/20') : grade.border} 
-        bg-gradient-to-b from-slate-800 to-slate-900 rounded-xl p-3 h-full flex flex-col gap-3
-      `}>
-        {/* 등급 라벨 */}
-        {grade.label && !isUnavailable && (
-          <div className={`absolute -top-0.5 -right-0.5 ${grade.labelBg} text-[8px] font-black text-white px-1.5 py-0.5 rounded-bl-md rounded-tr-md`}>
-            {grade.label}
-          </div>
-        )}
-
-        {/* 완료 체크 오버레이 */}
-        {isUsed && !isOnCooldown && (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-emerald-900/60 rounded-xl z-10">
-            <div className="bg-emerald-500 rounded-full p-2 mb-1">
-              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <span className="text-[10px] font-bold text-emerald-300">완료</span>
-          </div>
-        )}
-
-        {/* 쿨다운 오버레이 */}
-        {isOnCooldown && (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-cyan-900/60 rounded-xl z-10">
-            <div className="text-cyan-400 text-xl">⏱️</div>
-            <div className="text-[10px] font-bold text-cyan-300 mt-1">
-              {formatCooldownTime(cooldownRemaining)}
-            </div>
-          </div>
-        )}
-
-        {/* 데미지/정보 */}
-        <div className="flex items-start justify-between gap-2 pr-6">
-          <div className={`
-            flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black
-            ${isUsed ? 'bg-emerald-500/30 text-emerald-300' : isOnCooldown ? 'bg-cyan-500/30 text-cyan-300' : 'bg-red-500/30 text-red-300'}
-          `}>
-            <span className="text-base leading-none">⚔️</span>
-            <span className="text-sm leading-none font-black">{mission.damage}</span>
-          </div>
-        </div>
-
-        {/* 미션 텍스트 */}
-        <div className="flex-1 flex items-center">
-          <p className={`text-sm font-semibold text-center leading-snug break-words ${isUsed ? 'text-emerald-200' : isOnCooldown ? 'text-cyan-200' : 'text-gray-100'}`}>
-            {mission.text}
-          </p>
-        </div>
-
-        {/* 쿨다운 표시 (제목 아래, 항상 가로 표시) */}
-        {cooldownLabel && (
-          <div className="flex justify-center">
-            <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-[10px] font-semibold text-cyan-200 whitespace-nowrap">
-              <span className="text-[11px]">🔄</span>
-              <span>{cooldownLabel}</span>
-            </span>
-          </div>
-        )}
-
-        {/* 액션 */}
-        <div className={`flex flex-col gap-1 pt-1 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto ${isUnavailable || disabled ? 'opacity-0 group-hover:opacity-80 group-focus-within:opacity-80' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleAttackButtonClick}
-              disabled={isUnavailable || disabled}
-              className={`
-                flex-1 rounded-lg px-3 py-2 text-[11px] font-bold text-white transition
-                ${isUnavailable || disabled
-                  ? 'bg-slate-700 text-slate-300 cursor-not-allowed'
-                  : 'bg-red-600 hover:bg-red-500 shadow-md shadow-red-900/30'}
-              `}
-            >
-              {attackLabel}
-            </button>
-            <button
-              type="button"
-              onClick={handleAddToSchedule}
-              className="flex-1 rounded-lg border border-indigo-400/40 bg-indigo-500/10 px-3 py-2 text-[11px] font-bold text-indigo-100 transition hover:border-indigo-300 hover:bg-indigo-500/20"
-            >
-              할일에 추가
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * 보스 HP 바 컴포넌트
- */
-function BossHPBar({ current, max }: { current: number; max: number }) {
-  const percentage = (current / max) * 100;
-  const isLow = percentage <= 30;
-  const isCritical = percentage <= 15;
-
-  return (
-    <div className="w-full">
-      <div className="flex justify-between items-center mb-1">
-        <span className="text-sm font-bold text-red-400">HP</span>
-        <span className={`text-sm font-mono font-bold ${isCritical ? 'text-red-500 animate-pulse' : isLow ? 'text-orange-400' : 'text-red-300'}`}>
-          {current} / {max}
-        </span>
-      </div>
-      <div className="h-4 bg-black/50 rounded-full overflow-hidden border border-red-900/50">
-        <div
-          className={`h-full transition-all duration-500 ${
-            isCritical 
-              ? 'bg-gradient-to-r from-red-700 via-red-500 to-red-700 animate-pulse' 
-              : isLow 
-                ? 'bg-gradient-to-r from-orange-600 to-red-500' 
-                : 'bg-gradient-to-r from-red-600 via-red-500 to-red-400'
-          }`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-    </div>
-  );
 }
 
 /**
@@ -269,39 +55,30 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
     getTotalRemainingBossCount,
   } = useBattleStore();
 
-  const addXP = useGameStateStore(state => state.addXP);
+  const addXP = useGameStateStore((state) => state.addXP);
   const { addTask: addDailyTask, refresh, dailyData } = useDailyData();
   const [lastDamage, setLastDamage] = useState<number | null>(null);
   const [, forceUpdate] = useState(0); // 타이머 갱신용
 
-  // 타이머 ref들 (언마운트 시 정리용)
-  const damageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const soundTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // 컴포넌트 언마운트 시 모든 타이머 정리
-  useEffect(() => {
-    return () => {
-      if (damageTimeoutRef.current) {
-        clearTimeout(damageTimeoutRef.current);
-      }
-      if (soundTimeoutRef.current) {
-        clearTimeout(soundTimeoutRef.current);
-      }
-    };
-  }, []);
+  // 타이머 관리 (useNamedTimeouts 훅 사용으로 중복 제거)
+  const timers = useNamedTimeouts();
 
   // 쿨다운 타이머 갱신 (1분마다)
   useEffect(() => {
     if (!open) return;
     const interval = setInterval(() => {
-      forceUpdate(n => n + 1);
-    }, 60000); // 1분마다 갱신
+      forceUpdate((n) => n + 1);
+    }, COOLDOWN_REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [open]);
 
-  // 미션 사용 시각 맵
-  const missionUsedAt = dailyState?.missionUsedAt ?? {};
+  // 미션 사용 시각 맵 (useMemo로 래핑하여 매 렌더마다 새 객체 생성 방지)
+  const missionUsedAt = useMemo(
+    () => dailyState?.missionUsedAt ?? {},
+    [dailyState?.missionUsedAt],
+  );
 
+  // 미션 정렬 함수
   const sortMissions = useCallback((list: BattleMission[]) => {
     // 1순위: 데미지 낮은 순, 2순위: order
     return [...list].sort((a, b) => {
@@ -316,20 +93,37 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
     [dailyState?.completedMissionIds],
   );
 
-  // 활성 미션 (사용 가능한 것 앞으로, 쿨다운/완료 뒤로)
+  // 활성 미션 (시간대 필터링 + 사용 가능한 것 앞으로)
   const enabledMissionsList = useMemo(() => {
-    const enabled = missions.filter(m => m.enabled);
-    
+    const now = new Date();
+
+    // 1. 활성화된 미션만
+    // 2. 현재 시간대에 표시되어야 하는 미션만
+    const enabled = missions.filter(
+      (m) => m.enabled && shouldShowMissionByTime(m.timeSlots, now),
+    );
+
     // 사용 가능 여부로 분리
-    const available = sortMissions(enabled.filter(m => isMissionAvailable(m, completedMissionIds, missionUsedAt)));
-    const unavailable = sortMissions(enabled.filter(m => !isMissionAvailable(m, completedMissionIds, missionUsedAt)));
-    
+    const available = sortMissions(
+      enabled.filter((m) =>
+        isMissionAvailable(m, completedMissionIds, missionUsedAt),
+      ),
+    );
+    const unavailable = sortMissions(
+      enabled.filter(
+        (m) => !isMissionAvailable(m, completedMissionIds, missionUsedAt),
+      ),
+    );
+
     return [...available, ...unavailable];
   }, [missions, completedMissionIds, missionUsedAt, sortMissions]);
 
   // 사용 가능한 미션 수
   const availableMissionsCount = useMemo(
-    () => enabledMissionsList.filter(m => isMissionAvailable(m, completedMissionIds, missionUsedAt)).length,
+    () =>
+      enabledMissionsList.filter((m) =>
+        isMissionAvailable(m, completedMissionIds, missionUsedAt),
+      ).length,
     [enabledMissionsList, completedMissionIds, missionUsedAt],
   );
 
@@ -342,269 +136,137 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
   const isCurrentBossDefeated = currentBossProgress?.defeatedAt !== undefined;
 
   // 남은 보스 수
-  const remainingCounts = useMemo(() => ({
-    easy: getRemainingBossCount('easy'),
-    normal: getRemainingBossCount('normal'),
-    hard: getRemainingBossCount('hard'),
-    epic: getRemainingBossCount('epic'),
-  }), [getRemainingBossCount, dailyState]);
+  const remainingCounts = useMemo(
+    () => ({
+      easy: getRemainingBossCount('easy'),
+      normal: getRemainingBossCount('normal'),
+      hard: getRemainingBossCount('hard'),
+      epic: getRemainingBossCount('epic'),
+    }),
+    [getRemainingBossCount],
+  );
 
   const totalRemaining = getTotalRemainingBossCount();
 
   useModalEscapeClose(open, onClose);
 
   // 미션 완료 핸들러
-  const handleCompleteMission = useCallback(async (missionId: string) => {
-    const mission = missions.find(m => m.id === missionId);
-    if (!mission) return;
+  const handleCompleteMission = useCallback(
+    async (missionId: string) => {
+      const mission = missions.find((m) => m.id === missionId);
+      if (!mission) return;
 
-    // 효과음 재생
-    if (settings.battleSoundEffects) {
-      playAttackSound();
-    }
-
-    // 데미지 표시 (기존 타이머 정리 후 설정)
-    if (damageTimeoutRef.current) {
-      clearTimeout(damageTimeoutRef.current);
-    }
-    setLastDamage(mission.damage);
-    damageTimeoutRef.current = setTimeout(() => {
-      setLastDamage(null);
-      damageTimeoutRef.current = null;
-    }, 1000);
-
-    const result = await completeMission(missionId);
-
-    // 보스 처치 시
-    if (result.bossDefeated) {
+      // 효과음 재생
       if (settings.battleSoundEffects) {
-        // 기존 사운드 타이머 정리 후 설정
-        if (soundTimeoutRef.current) {
-          clearTimeout(soundTimeoutRef.current);
-        }
-        soundTimeoutRef.current = setTimeout(() => {
-          playBossDefeatSound();
-          soundTimeoutRef.current = null;
-        }, 200);
+        playAttackSound();
       }
-      toast.success(`🎉 보스 처치! +${result.xpEarned} XP`, { duration: 2500 });
-    }
 
-    // XP 보상 지급
-    if (result.xpEarned > 0) {
-      addXP(result.xpEarned, 'boss_defeat');
-    }
-  }, [completeMission, addXP, missions, settings.battleSoundEffects]);
+      // 데미지 표시
+      setLastDamage(mission.damage);
+      timers.set('damage', () => setLastDamage(null), DAMAGE_DISPLAY_DURATION_MS);
+
+      const result = await completeMission(missionId);
+
+      // 보스 처치 시
+      if (result.bossDefeated) {
+        if (settings.battleSoundEffects) {
+          timers.set('sound', () => playBossDefeatSound(), BOSS_DEFEAT_SOUND_DELAY_MS);
+        }
+        toast.success(`🎉 보스 처치! +${result.xpEarned} XP`, { duration: 2500 });
+      }
+
+      // XP 보상 지급
+      if (result.xpEarned > 0) {
+        addXP(result.xpEarned, 'boss_defeat');
+      }
+    },
+    [completeMission, addXP, missions, settings.battleSoundEffects, timers],
+  );
 
   // 현재 시간대(hour bar)에 추가 핸들러
-  const handleAddMissionToSchedule = useCallback(async (mission: BattleMission) => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    const blockId = getBlockIdFromHour(currentHour);
+  const handleAddMissionToSchedule = useCallback(
+    async (mission: BattleMission) => {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const blockId = getBlockIdFromHour(currentHour);
 
-    if (!blockId) {
-      toast.error('현재 시간대에 배치할 타임블록이 없어요.');
-      return;
-    }
-
-    const task = createNewTask(`미션 ${mission.text}`, {
-      baseDuration: 15,
-      timeBlock: blockId,
-      hourSlot: currentHour,
-    });
-
-    const tryAdd = async () => {
-      await addDailyTask(task);
-      toast.success(`${currentHour}:00 시간대에 미션을 추가했어요 (15분)`, { duration: 1800 });
-    };
-
-    try {
-      if (!dailyData) {
-        await refresh();
+      if (!blockId) {
+        toast.error('현재 시간대에 배치할 타임블록이 없어요.');
+        return;
       }
-      await tryAdd();
-    } catch (error) {
-      console.error('Failed to add mission task to schedule:', error);
-      toast.error('현재 시간대에 추가하지 못했어요');
-    }
-  }, [addDailyTask, dailyData, refresh]);
+
+      const task = createNewTask(`미션 ${mission.text}`, {
+        baseDuration: 15,
+        timeBlock: blockId,
+        hourSlot: currentHour,
+      });
+
+      const tryAdd = async () => {
+        await addDailyTask(task);
+        toast.success(`${currentHour}:00 시간대에 미션을 추가했어요 (15분)`, {
+          duration: 1800,
+        });
+      };
+
+      try {
+        if (!dailyData) {
+          await refresh();
+        }
+        await tryAdd();
+      } catch (error) {
+        console.error('Failed to add mission task to schedule:', error);
+        toast.error('현재 시간대에 추가하지 못했어요');
+      }
+    },
+    [addDailyTask, dailyData, refresh],
+  );
 
   // 난이도 선택 핸들러
-  const handleSelectDifficulty = useCallback(async (difficulty: BossDifficulty) => {
-    await spawnBossByDifficulty(difficulty);
-    toast.success(`${difficulty.toUpperCase()} 보스 등장!`, { duration: 1500 });
-  }, [spawnBossByDifficulty]);
+  const handleSelectDifficulty = useCallback(
+    async (difficulty: BossDifficulty) => {
+      await spawnBossByDifficulty(difficulty);
+      toast.success(`${difficulty.toUpperCase()} 보스 등장!`, { duration: 1500 });
+    },
+    [spawnBossByDifficulty],
+  );
 
   if (!open) return null;
 
   const noBoss = !currentBoss || isCurrentBossDefeated;
-  const allBossesExhausted = totalRemaining === 0 && isCurrentBossDefeated;
-
-  // 난이도 색상
-  const difficultyColors: Record<string, string> = {
-    easy: 'text-green-400 bg-green-500/20 border-green-500/50',
-    normal: 'text-blue-400 bg-blue-500/20 border-blue-500/50',
-    hard: 'text-orange-400 bg-orange-500/20 border-orange-500/50',
-    epic: 'text-purple-400 bg-purple-500/20 border-purple-500/50',
-  };
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center">
       {/* 배경 오버레이 - 배틀 분위기 */}
-      <div 
-        className="absolute inset-0 bg-gradient-to-b from-black/90 via-red-950/30 to-black/90 backdrop-blur-md"
-      />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/90 via-red-950/30 to-black/90 backdrop-blur-md" />
 
       {/* 메인 컨테이너 - 좌우 배치 */}
       <div className="relative w-full max-w-6xl mx-6 max-h-[92vh] flex gap-6">
-        
-        {/* 왼쪽 - 보스 영역 (세로 직사각형) */}
+        {/* 왼쪽 - 보스 영역 */}
         <div className="shrink-0 w-64 flex flex-col">
-          {/* 보스가 있을 때 */}
-          {currentBoss && currentBossProgress && !isCurrentBossDefeated && (
-            <div className="flex-1 flex flex-col bg-slate-900/90 rounded-2xl border border-red-900/30 overflow-hidden">
-              {/* 보스 세로 이미지 */}
-              <div className="relative flex-1 min-h-[300px]">
-                <img
-                  src={getBossImageSrc(currentBoss.image)}
-                  alt={currentBoss.name}
-                  className="absolute inset-0 w-full h-full object-cover object-top"
-                />
-                {/* 그라데이션 오버레이 */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
-                
-                {/* 데미지 플로팅 */}
-                {lastDamage && (
-                  <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-bounce">
-                    <span className="text-5xl font-black text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]">
-                      -{lastDamage}
-                    </span>
-                  </div>
-                )}
-
-                {/* 난이도 뱃지 */}
-                <div className={`absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-bold border ${difficultyColors[currentBoss.difficulty]}`}>
-                  {currentBoss.difficulty.toUpperCase()}
-                </div>
-
-                {/* 보스 정보 오버레이 */}
-                <div className="absolute bottom-0 left-0 right-0 p-4">
-                  <p className="text-xl font-black text-white drop-shadow-lg">{currentBoss.name}</p>
-                  <p className="text-xs text-gray-400 mt-1">오늘 처치: <span className="text-yellow-400 font-bold">{dailyState?.totalDefeated ?? 0}마리</span></p>
-                </div>
-              </div>
-
-              {/* HP 바 */}
-              <div className="shrink-0 p-3 bg-black/50">
-                <BossHPBar 
-                  current={currentBossProgress.currentHP} 
-                  max={currentBossProgress.maxHP}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* 보스 처치됨 - 난이도 선택 */}
-          {isCurrentBossDefeated && totalRemaining > 0 && (
-            <div className="flex-1 bg-slate-900/90 rounded-2xl p-4 border border-emerald-500/30 flex flex-col">
-              <div className="text-center mb-4">
-                <div className="inline-block animate-bounce">
-                  <span className="text-5xl">🎉</span>
-                </div>
-                <p className="text-xl font-black text-emerald-400 mt-2">VICTORY!</p>
-                <p className="text-sm text-gray-400">다음 보스 선택</p>
-                <p className="text-xs text-gray-500">(남은 {totalRemaining}마리)</p>
-              </div>
-              <div className="flex-1 flex flex-col justify-center">
-                <DifficultySelectButtons
-                  onSelect={handleSelectDifficulty}
-                  remainingCounts={remainingCounts}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* 모든 보스 소진 */}
-          {allBossesExhausted && (
-            <div className="flex-1 bg-gradient-to-b from-yellow-900/30 via-yellow-800/20 to-yellow-900/30 rounded-2xl p-6 border border-yellow-500/30 flex flex-col items-center justify-center text-center">
-              <div className="inline-block animate-pulse">
-                <span className="text-6xl">🏆</span>
-              </div>
-              <p className="text-xl font-black text-yellow-400 mt-3">전투 완료!</p>
-              <p className="text-sm text-gray-400 mt-1">모든 보스를<br/>처치했습니다</p>
-            </div>
-          )}
-
-          {/* 보스 없는 초기 상태 */}
-          {!currentBoss && !isCurrentBossDefeated && (
-            <div className="flex-1 bg-slate-900/90 rounded-2xl p-4 border border-slate-700/50 flex flex-col items-center justify-center text-center">
-              <span className="text-5xl opacity-50">👹</span>
-              <p className="text-gray-400 mt-3">보스 없음</p>
-              <p className="text-xs text-gray-500 mt-1">난이도를 선택하세요</p>
-            </div>
-          )}
+          <BossPanel
+            currentBoss={currentBoss}
+            currentBossProgress={currentBossProgress}
+            isCurrentBossDefeated={isCurrentBossDefeated}
+            dailyState={dailyState}
+            lastDamage={lastDamage}
+            remainingCounts={remainingCounts}
+            totalRemaining={totalRemaining}
+            onSelectDifficulty={handleSelectDifficulty}
+          />
         </div>
 
         {/* 오른쪽 - 미션 카드 영역 */}
-        <div className="flex-1 min-h-0 bg-slate-900/80 rounded-2xl border border-slate-700/50 overflow-hidden flex flex-col">
-          {/* 미션 헤더 */}
-          <div className="shrink-0 px-5 py-4 border-b border-slate-700/50 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">⚔️</span>
-              <span className="font-bold text-white">미션 카드</span>
-              <span className="text-xs text-gray-400 ml-2">
-                사용 가능: <span className="text-red-400 font-bold">{availableMissionsCount}</span>/{enabledMissionsList.length}
-              </span>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white transition text-xl"
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* 미션 그리드 */}
-          <div className="flex-1 overflow-y-auto p-5">
-            {enabledMissionsList.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-                <span className="text-5xl opacity-50">📋</span>
-                <p className="text-gray-400">등록된 미션이 없습니다</p>
-                <p className="text-xs text-gray-500">설정 → 전투에서 미션을 추가하세요</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {enabledMissionsList.map((mission, index) => {
-                  const cooldownRemaining = getMissionCooldownRemaining(mission, missionUsedAt);
-                  const isOnCooldown = cooldownRemaining > 0;
-                  // 하루 1회 제한 미션인 경우 (cooldownRemaining === -1)
-                  const isUsed = cooldownRemaining === -1 && completedMissionIds.includes(mission.id);
-                  
-                  return (
-                    <BattleMissionCard
-                      key={mission.id}
-                      mission={mission}
-                      isUsed={isUsed}
-                      isOnCooldown={isOnCooldown}
-                      cooldownRemaining={cooldownRemaining}
-                      onComplete={handleCompleteMission}
-                      onAddToSchedule={handleAddMissionToSchedule}
-                      disabled={noBoss}
-                      index={index}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* 하단 안내 */}
-          <div className="shrink-0 px-5 py-3 border-t border-slate-700/50 bg-slate-800/50">
-            <p className="text-[10px] text-gray-500 text-center">
-              💡 쿨다운 미션은 시간 후 재사용 가능 • 🔄 표시 = 쿨다운 • ✓ = 하루 1회 완료 • ESC로 닫기
-            </p>
-          </div>
-        </div>
+        <MissionCardGrid
+          missions={enabledMissionsList}
+          completedMissionIds={completedMissionIds}
+          missionUsedAt={missionUsedAt}
+          availableMissionsCount={availableMissionsCount}
+          onCompleteMission={handleCompleteMission}
+          onAddMissionToSchedule={handleAddMissionToSchedule}
+          disabled={noBoss}
+          onClose={onClose}
+          currentBossHp={currentBossProgress?.currentHP}
+        />
       </div>
     </div>
   );

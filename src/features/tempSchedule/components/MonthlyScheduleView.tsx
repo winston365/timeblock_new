@@ -14,13 +14,14 @@ import { memo, useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { TempScheduleTask } from '@/shared/types/tempSchedule';
 import { shouldShowOnDate } from '@/data/repositories/tempScheduleRepository';
-import { getLocalDate } from '@/shared/lib/utils';
+import { getLocalDate, minutesToTimeStr } from '@/shared/lib/utils';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 const WEEK_DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
+const POPOVER_CLOSE_DELAY = 300; // 팝오버 닫기 지연 시간 (ms)
 
 // ============================================================================
 // Helper Functions
@@ -70,9 +71,19 @@ interface TaskPopoverProps {
   position: { x: number; y: number };
   onClose: () => void;
   onDayClick: (date: string) => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
 }
 
-const TaskPopover = memo(function TaskPopover({ tasks, date, position, onClose, onDayClick }: TaskPopoverProps) {
+const TaskPopover = memo(function TaskPopover({ 
+  tasks, 
+  date, 
+  position, 
+  onClose: _onClose, // 명시적 닫기용 (현재 미사용)
+  onDayClick,
+  onMouseEnter,
+  onMouseLeave,
+}: TaskPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const [adjustedPosition, setAdjustedPosition] = useState(position);
 
@@ -116,7 +127,8 @@ const TaskPopover = memo(function TaskPopover({ tasks, date, position, onClose, 
         left: `${adjustedPosition.x}px`,
         top: `${adjustedPosition.y}px`,
       }}
-      onMouseLeave={onClose}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       {/* 헤더 */}
       <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2">
@@ -153,7 +165,7 @@ const TaskPopover = memo(function TaskPopover({ tasks, date, position, onClose, 
                   {task.name}
                 </div>
                 <div className="text-[10px] text-[var(--color-text-tertiary)]">
-                  {task.startTime} - {task.endTime}
+                  {minutesToTimeStr(task.startTime)} - {minutesToTimeStr(task.endTime)}
                 </div>
               </div>
             </div>
@@ -203,18 +215,31 @@ const DayCell = memo(function DayCell({ date, currentMonth, tasks, onDayClick, o
 
   return (
     <div
-      className={`border-b border-r border-[var(--color-border)]/30 p-1 min-h-[80px] cursor-pointer transition-colors hover:bg-[var(--color-bg-secondary)]/50 ${
-        !isCurrentMonth ? 'bg-[var(--color-bg-tertiary)]/50' : ''
-      } ${isWeekend ? 'bg-[var(--color-bg-tertiary)]/30' : ''}`}
+      className={`
+        relative border-b border-r p-1 min-h-[80px] cursor-pointer transition-all
+        ${isToday 
+          ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/50 ring-2 ring-inset ring-[var(--color-primary)]/30 hover:bg-[var(--color-primary)]/15' 
+          : !isCurrentMonth 
+            ? 'bg-[var(--color-bg-tertiary)]/50 border-[var(--color-border)]/30 hover:bg-[var(--color-bg-secondary)]/50'
+            : isWeekend 
+              ? 'bg-[var(--color-bg-tertiary)]/30 border-[var(--color-border)]/30 hover:bg-[var(--color-bg-secondary)]/50'
+              : 'border-[var(--color-border)]/30 hover:bg-[var(--color-bg-secondary)]/50'
+        }
+      `}
       onClick={() => onDayClick(date)}
       onMouseEnter={(e) => tasks.length > 0 && onHover(date, e)}
       onMouseLeave={onLeave}
     >
+      {/* 오늘 마커 - 상단 컬러바 */}
+      {isToday && (
+        <div className="absolute top-0 left-0 right-0 h-1 bg-[var(--color-primary)]" />
+      )}
+      
       {/* 날짜 */}
       <div className="flex items-center justify-between mb-1">
         <div className={`text-xs font-semibold ${
           isToday
-            ? 'text-white bg-[var(--color-primary)] rounded-full w-5 h-5 flex items-center justify-center'
+            ? 'text-white bg-[var(--color-primary)] rounded-full w-6 h-6 flex items-center justify-center shadow-sm shadow-[var(--color-primary)]/50'
             : !isCurrentMonth
               ? 'text-[var(--color-text-tertiary)]'
               : isWeekend
@@ -223,8 +248,14 @@ const DayCell = memo(function DayCell({ date, currentMonth, tasks, onDayClick, o
         }`}>
           {day}
         </div>
-        {/* 색상 도트 */}
-        {colorDots.length > 0 && (
+        {/* 오늘 라벨 */}
+        {isToday && (
+          <span className="text-[8px] font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/20 px-1.5 py-0.5 rounded-full">
+            오늘
+          </span>
+        )}
+        {/* 색상 도트 (오늘이 아닐 때만) */}
+        {!isToday && colorDots.length > 0 && (
           <div className="flex items-center gap-0.5">
             {colorDots.map((color, i) => (
               <div
@@ -275,6 +306,9 @@ function MonthlyScheduleViewComponent() {
 
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const [popoverPosition, setPopoverPosition] = useState<{ x: number; y: number } | null>(null);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMouseOverPopoverRef = useRef(false);
+  const isMouseOverCellRef = useRef(false);
 
   // 월간 날짜 계산 (selectedDate가 변경될 때만 재계산)
   const monthDates = useMemo(() => calculateMonthDates(selectedDate), [selectedDate]);
@@ -290,6 +324,44 @@ function MonthlyScheduleViewComponent() {
     return result;
   }, [tasks, monthDates]);
 
+  // 이번 달 통계 계산
+  const monthStats = useMemo(() => {
+    const today = getLocalDate();
+    let totalTasks = 0;
+    let todayTasks = 0;
+    let upcomingTasks = 0;
+    let completedDays = 0; // 일정이 있는 지난 날
+    const upcomingList: Array<{ date: string; task: TempScheduleTask }> = [];
+    
+    for (const date of monthDates) {
+      const dateTasks = tasksByDate[date] || [];
+      const dateMonth = new Date(date).getMonth() + 1;
+      
+      // 이번 달만 카운트
+      if (dateMonth === currentMonth) {
+        totalTasks += dateTasks.length;
+        
+        if (date === today) {
+          todayTasks = dateTasks.length;
+        } else if (date > today) {
+          upcomingTasks += dateTasks.length;
+          // 다가오는 일정 최대 5개
+          if (upcomingList.length < 5) {
+            for (const task of dateTasks) {
+              if (upcomingList.length < 5) {
+                upcomingList.push({ date, task });
+              }
+            }
+          }
+        } else if (dateTasks.length > 0) {
+          completedDays++;
+        }
+      }
+    }
+    
+    return { totalTasks, todayTasks, upcomingTasks, completedDays, upcomingList };
+  }, [monthDates, tasksByDate, currentMonth]);
+
   const handleDayClick = useCallback((date: string) => {
     setHoveredDate(null);
     setPopoverPosition(null);
@@ -298,6 +370,13 @@ function MonthlyScheduleViewComponent() {
   }, [setSelectedDate, setViewMode]);
 
   const handleHover = useCallback((date: string, e: React.MouseEvent) => {
+    // 닫기 타이머 취소
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    
+    isMouseOverCellRef.current = true;
     const rect = e.currentTarget.getBoundingClientRect();
     setHoveredDate(date);
     setPopoverPosition({
@@ -307,14 +386,42 @@ function MonthlyScheduleViewComponent() {
   }, []);
 
   const handleLeave = useCallback(() => {
-    // 팝오버로 마우스가 이동할 수 있도록 약간의 딜레이
-    setTimeout(() => {
-      setHoveredDate(null);
-      setPopoverPosition(null);
-    }, 100);
+    isMouseOverCellRef.current = false;
+    
+    // 팝오버로 마우스가 이동할 수 있도록 딜레이
+    closeTimeoutRef.current = setTimeout(() => {
+      // 셀이나 팝오버 위에 없을 때만 닫기
+      if (!isMouseOverCellRef.current && !isMouseOverPopoverRef.current) {
+        setHoveredDate(null);
+        setPopoverPosition(null);
+      }
+    }, POPOVER_CLOSE_DELAY);
+  }, []);
+
+  const handlePopoverMouseEnter = useCallback(() => {
+    isMouseOverPopoverRef.current = true;
+    // 닫기 타이머 취소
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }, []);
+
+  const handlePopoverMouseLeave = useCallback(() => {
+    isMouseOverPopoverRef.current = false;
+    
+    // 팝오버에서 나갔을 때도 딜레이 후 닫기
+    closeTimeoutRef.current = setTimeout(() => {
+      if (!isMouseOverCellRef.current && !isMouseOverPopoverRef.current) {
+        setHoveredDate(null);
+        setPopoverPosition(null);
+      }
+    }, POPOVER_CLOSE_DELAY);
   }, []);
 
   const handlePopoverClose = useCallback(() => {
+    isMouseOverCellRef.current = false;
+    isMouseOverPopoverRef.current = false;
     setHoveredDate(null);
     setPopoverPosition(null);
   }, []);
@@ -345,23 +452,102 @@ function MonthlyScheduleViewComponent() {
       </div>
 
       {/* 캘린더 그리드 */}
-      <div className="flex-1 overflow-y-auto">
-        {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="flex">
-            {week.map((date) => (
-              <div key={date} className="flex-1">
-                <DayCell
-                  date={date}
-                  currentMonth={currentMonth}
-                  tasks={tasksByDate[date] || []}
-                  onDayClick={handleDayClick}
-                  onHover={handleHover}
-                  onLeave={handleLeave}
-                />
+      <div className="flex-1 min-h-0">
+        <div className="h-full flex flex-col">
+          {/* 캘린더 셀들 */}
+          <div className="flex-shrink-0">
+            {weeks.map((week, weekIndex) => (
+              <div key={weekIndex} className="flex">
+                {week.map((date) => (
+                  <div key={date} className="flex-1">
+                    <DayCell
+                      date={date}
+                      currentMonth={currentMonth}
+                      tasks={tasksByDate[date] || []}
+                      onDayClick={handleDayClick}
+                      onHover={handleHover}
+                      onLeave={handleLeave}
+                    />
+                  </div>
+                ))}
               </div>
             ))}
           </div>
-        ))}
+          
+          {/* 하단 요약 패널 */}
+          <div className="flex-1 min-h-[120px] border-t border-[var(--color-border)] bg-[var(--color-bg-surface)]/50 p-4">
+            <div className="flex gap-6 h-full">
+              {/* 이번 달 통계 */}
+              <div className="flex-shrink-0 space-y-3">
+                <h4 className="text-xs font-bold text-[var(--color-text-secondary)] flex items-center gap-1">
+                  📊 {currentMonth}월 요약
+                </h4>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-[var(--color-primary)]">{monthStats.totalTasks}</span>
+                    <span className="text-[10px] text-[var(--color-text-tertiary)]">총 일정</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-green-400">{monthStats.todayTasks}</span>
+                    <span className="text-[10px] text-[var(--color-text-tertiary)]">오늘 일정</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-blue-400">{monthStats.upcomingTasks}</span>
+                    <span className="text-[10px] text-[var(--color-text-tertiary)]">예정 일정</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-amber-400">{monthStats.completedDays}</span>
+                    <span className="text-[10px] text-[var(--color-text-tertiary)]">활동일</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 구분선 */}
+              <div className="w-px bg-[var(--color-border)]" />
+              
+              {/* 다가오는 일정 미리보기 */}
+              <div className="flex-1 min-w-0">
+                <h4 className="text-xs font-bold text-[var(--color-text-secondary)] flex items-center gap-1 mb-2">
+                  📅 다가오는 일정
+                </h4>
+                {monthStats.upcomingList.length === 0 ? (
+                  <div className="text-xs text-[var(--color-text-tertiary)] py-2">
+                    예정된 일정이 없습니다
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {monthStats.upcomingList.map(({ date, task }) => {
+                      const dateObj = new Date(date);
+                      const day = dateObj.getDate();
+                      const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
+                      
+                      return (
+                        <div
+                          key={`${date}-${task.id}`}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-secondary)] cursor-pointer transition-colors"
+                          onClick={() => handleDayClick(date)}
+                        >
+                          <div 
+                            className="w-1 h-6 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: task.color }}
+                          />
+                          <div className="min-w-0">
+                            <div className="text-[10px] text-[var(--color-text-tertiary)]">
+                              {day}일 ({dayOfWeek})
+                            </div>
+                            <div className="text-xs font-medium text-[var(--color-text)] truncate max-w-[120px]">
+                              {task.name}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 팝오버 */}
@@ -372,6 +558,8 @@ function MonthlyScheduleViewComponent() {
           position={popoverPosition}
           onClose={handlePopoverClose}
           onDayClick={handleDayClick}
+          onMouseEnter={handlePopoverMouseEnter}
+          onMouseLeave={handlePopoverMouseLeave}
         />
       )}
     </div>

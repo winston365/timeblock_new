@@ -14,7 +14,7 @@
 import { memo, useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import { TEMP_SCHEDULE_DEFAULTS, type TempScheduleTask, type DragTooltipInfo } from '@/shared/types/tempSchedule';
-import { timeToMinutes, minutesToTime } from '@/data/repositories/tempScheduleRepository';
+import { minutesToTimeStr } from '@/shared/lib/utils';
 import { TempScheduleContextMenu } from './TempScheduleContextMenu';
 import { Repeat } from 'lucide-react';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
@@ -50,14 +50,14 @@ function calculateBlockPositions(tasks: TempScheduleTask[]): BlockPosition[] {
   if (tasks.length === 0) return [];
 
   // 시작 시간 순으로 정렬
-  const sorted = [...tasks].sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+  const sorted = [...tasks].sort((a, b) => a.startTime - b.startTime);
 
   const positions: BlockPosition[] = [];
   const columns: { endTime: number }[] = [];
 
   for (const task of sorted) {
-    const startMinutes = timeToMinutes(task.startTime);
-    const endMinutes = timeToMinutes(task.endTime);
+    const startMinutes = task.startTime;
+    const endMinutes = task.endTime;
     const top = (startMinutes - timelineStartHour * 60) * PIXELS_PER_MINUTE;
     const height = Math.max((endMinutes - startMinutes) * PIXELS_PER_MINUTE, 20);
 
@@ -83,12 +83,12 @@ function calculateBlockPositions(tasks: TempScheduleTask[]): BlockPosition[] {
 
   // totalColumns 업데이트 (같은 시간대에 겹치는 블록들의 최대 열 수)
   for (const pos of positions) {
-    const startMinutes = timeToMinutes(pos.task.startTime);
-    const endMinutes = timeToMinutes(pos.task.endTime);
+    const startMinutes = pos.task.startTime;
+    const endMinutes = pos.task.endTime;
 
     const overlapping = positions.filter(other => {
-      const otherStart = timeToMinutes(other.task.startTime);
-      const otherEnd = timeToMinutes(other.task.endTime);
+      const otherStart = other.task.startTime;
+      const otherEnd = other.task.endTime;
       return !(endMinutes <= otherStart || startMinutes >= otherEnd);
     });
 
@@ -203,7 +203,7 @@ const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDelete, 
           </div>
         </div>
         <div className="text-[10px] opacity-90 font-medium">
-          {task.startTime} - {task.endTime}
+          {minutesToTimeStr(task.startTime)} - {minutesToTimeStr(task.endTime)}
         </div>
       </div>
 
@@ -264,8 +264,8 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
       .filter((b): b is MainSnapshotPosition => b !== null);
   }, [dailyData]);
 
-  const [createPreview, setCreatePreview] = useState<{ top: number; height: number; startTime: string; endTime: string } | null>(null);
-  const [dragPreview, setDragPreview] = useState<{ top: number; height: number; color: string; name: string; startTime: string; endTime: string } | null>(null);
+  const [createPreview, setCreatePreview] = useState<{ top: number; height: number; startTime: number; endTime: number } | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ top: number; height: number; color: string; name: string; startTime: number; endTime: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ task: TempScheduleTask; x: number; y: number } | null>(null);
 
   const tasks = useMemo(() => getTasksForDate(selectedDate), [getTasksForDate, selectedDate, allTasks]);
@@ -294,10 +294,10 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
   }, []);
 
   // Y 좌표를 시간으로 변환
-  const yToTime = useCallback((y: number): string => {
+  const yToTime = useCallback((y: number): number => {
     const minutes = (y / PIXELS_PER_MINUTE) + (timelineStartHour * 60);
     const snapped = Math.round(minutes / gridSnapInterval) * gridSnapInterval;
-    return minutesToTime(Math.max(timelineStartHour * 60, Math.min(timelineEndHour * 60 - 1, snapped)));
+    return Math.max(timelineStartHour * 60, Math.min(timelineEndHour * 60 - 1, snapped));
   }, [gridSnapInterval]);
 
   // 드래그 시작 핸들러
@@ -357,15 +357,15 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
 
     if (dragState.mode === 'create') {
       const startTime = dragState.startTimeAtDrag!;
-      const startMinutes = timeToMinutes(startTime);
-      const currentMinutes = timeToMinutes(currentTime);
+      const startMinutes = startTime;
+      const currentMinutes = currentTime;
 
       const [finalStart, finalEnd] = startMinutes <= currentMinutes
         ? [startTime, currentTime]
         : [currentTime, startTime];
 
-      const top = (timeToMinutes(finalStart) - timelineStartHour * 60) * PIXELS_PER_MINUTE;
-      const height = Math.max((timeToMinutes(finalEnd) - timeToMinutes(finalStart)) * PIXELS_PER_MINUTE, 10);
+      const top = (finalStart - timelineStartHour * 60) * PIXELS_PER_MINUTE;
+      const height = Math.max((finalEnd - finalStart) * PIXELS_PER_MINUTE, 10);
 
       setCreatePreview({
         top,
@@ -377,7 +377,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
       setTooltip({
         startTime: finalStart,
         endTime: finalEnd,
-        durationMinutes: timeToMinutes(finalEnd) - timeToMinutes(finalStart),
+        durationMinutes: finalEnd - finalStart,
         x: e.clientX,
         y: e.clientY,
       });
@@ -390,35 +390,39 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
 
       switch (dragState.mode) {
         case 'move':
-          newStartTime = minutesToTime(timeToMinutes(dragState.originalStartTime!) + snappedDelta);
-          newEndTime = minutesToTime(timeToMinutes(dragState.originalEndTime!) + snappedDelta);
+          newStartTime = dragState.originalStartTime! + snappedDelta;
+          newEndTime = dragState.originalEndTime! + snappedDelta;
           break;
         case 'resize-top':
-          newStartTime = minutesToTime(Math.min(
-            timeToMinutes(dragState.originalStartTime!) + snappedDelta,
-            timeToMinutes(dragState.originalEndTime!) - gridSnapInterval
-          ));
+          newStartTime = Math.min(
+            dragState.originalStartTime! + snappedDelta,
+            dragState.originalEndTime! - gridSnapInterval
+          );
           break;
         case 'resize-bottom':
-          newEndTime = minutesToTime(Math.max(
-            timeToMinutes(dragState.originalEndTime!) + snappedDelta,
-            timeToMinutes(dragState.originalStartTime!) + gridSnapInterval
-          ));
+          newEndTime = Math.max(
+            dragState.originalEndTime! + snappedDelta,
+            dragState.originalStartTime! + gridSnapInterval
+          );
           break;
       }
+
+      // Clamp values
+      newStartTime = Math.max(timelineStartHour * 60, Math.min(timelineEndHour * 60 - gridSnapInterval, newStartTime));
+      newEndTime = Math.max(timelineStartHour * 60 + gridSnapInterval, Math.min(timelineEndHour * 60, newEndTime));
 
       setTooltip({
         startTime: newStartTime,
         endTime: newEndTime,
-        durationMinutes: timeToMinutes(newEndTime) - timeToMinutes(newStartTime),
+        durationMinutes: newEndTime - newStartTime,
         x: e.clientX,
         y: e.clientY,
       });
 
       const task = tasks.find(t => t.id === dragState.taskId);
       if (task) {
-        const previewTop = (timeToMinutes(newStartTime) - timelineStartHour * 60) * PIXELS_PER_MINUTE;
-        const previewHeight = Math.max((timeToMinutes(newEndTime) - timeToMinutes(newStartTime)) * PIXELS_PER_MINUTE, 10);
+        const previewTop = (newStartTime - timelineStartHour * 60) * PIXELS_PER_MINUTE;
+        const previewHeight = Math.max((newEndTime - newStartTime) * PIXELS_PER_MINUTE, 10);
         setDragPreview({
           top: previewTop,
           height: previewHeight,
@@ -436,7 +440,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
     if (!dragState) return;
 
     if (dragState.mode === 'create' && createPreview) {
-      const duration = timeToMinutes(createPreview.endTime) - timeToMinutes(createPreview.startTime);
+      const duration = createPreview.endTime - createPreview.startTime;
       if (duration >= TEMP_SCHEDULE_DEFAULTS.minBlockDuration) {
         // 블록 생성 후 바로 편집 모달 열기
         const newTask = await addTask({
@@ -579,7 +583,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
                 <div className="flex items-center justify-between px-2 py-1 text-[10px] text-white/80">
                   <span className="font-semibold">{dragPreview.name}</span>
                   <span className="font-mono">
-                    {dragPreview.startTime} - {dragPreview.endTime}
+                    {minutesToTimeStr(dragPreview.startTime)} - {minutesToTimeStr(dragPreview.endTime)}
                   </span>
                 </div>
               </div>
@@ -632,7 +636,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
             top: `${tooltip.y - 40}px`,
           }}
         >
-          <div>{tooltip.startTime} - {tooltip.endTime}</div>
+          <div>{minutesToTimeStr(tooltip.startTime)} - {minutesToTimeStr(tooltip.endTime)}</div>
           <div className="text-[10px] text-white/70">
             {Math.floor(tooltip.durationMinutes / 60)}시간 {tooltip.durationMinutes % 60}분
           </div>

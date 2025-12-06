@@ -43,10 +43,10 @@ export interface TempScheduleTask {
   id: string;
   /** 작업 이름 */
   name: string;
-  /** 시작 시간 (HH:MM 형식, 예: "08:00") */
-  startTime: string;
-  /** 종료 시간 (HH:MM 형식, 예: "17:00") */
-  endTime: string;
+  /** 시작 시간 (0~1439 분) */
+  startTime: number;
+  /** 종료 시간 (0~1439 분) */
+  endTime: number;
   /** 예정 날짜 (YYYY-MM-DD) - null이면 매일 표시 */
   scheduledDate: string | null;
   /** 블록 색상 (CSS color) */
@@ -106,12 +106,12 @@ export interface TempScheduleDragState {
   startY: number;
   /** 현재 Y 좌표 (픽셀) */
   currentY: number;
-  /** 원본 시작 시간 */
-  originalStartTime?: string;
-  /** 원본 종료 시간 */
-  originalEndTime?: string;
-  /** 드래그 시작 시간 (HH:MM) */
-  startTimeAtDrag?: string;
+  /** 원본 시작 시간 (분) */
+  originalStartTime?: number;
+  /** 원본 종료 시간 (분) */
+  originalEndTime?: number;
+  /** 드래그 시작 시간 (분) */
+  startTimeAtDrag?: number;
 }
 
 // ============================================================================
@@ -122,10 +122,10 @@ export interface TempScheduleDragState {
  * 드래그 툴팁 정보
  */
 export interface DragTooltipInfo {
-  /** 시작 시간 (HH:MM) */
-  startTime: string;
-  /** 종료 시간 (HH:MM) */
-  endTime: string;
+  /** 시작 시간 (분) */
+  startTime: number;
+  /** 종료 시간 (분) */
+  endTime: number;
   /** 기간 (분) */
   durationMinutes: number;
   /** 툴팁 위치 X */
@@ -184,8 +184,8 @@ export const TEMP_SCHEDULE_DEFAULTS = {
  * 시간 범위
  */
 export interface TimeRange {
-  startTime: string;
-  endTime: string;
+  startTime: number;
+  endTime: number;
 }
 
 /**

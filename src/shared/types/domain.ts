@@ -567,6 +567,12 @@ export interface BattleMission {
   order: number;                 // 표시 순서
   enabled: boolean;              // 활성화 여부
   cooldownMinutes: number;       // 쿨다운 (분 단위, 0이면 하루 1회)
+  /**
+   * 미션 출현 시간대 (최대 3개)
+   * 형식: "HH:MM-HH:MM" (예: "11:00-13:00")
+   * 비어있으면 항상 표시
+   */
+  timeSlots?: string[];
   createdAt: string;
   updatedAt: string;
 }
