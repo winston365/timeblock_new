@@ -179,6 +179,7 @@ const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDelete, 
       }}
       onMouseDown={(e) => {
         if (e.button === 0) {
+          e.stopPropagation(); // 부모의 handleCreateStart 방지
           onDragStart(task, 'move', e);
         }
       }}
@@ -320,6 +321,8 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
   // 새 블록 생성 드래그 시작
   const handleCreateStart = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
+    // 이미 드래그 중이면 무시 (블록 이동 중일 수 있음)
+    if (dragState) return;
     setContextMenu(null); // 생성 시작 시 메뉴 닫기
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -341,7 +344,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
       startTime,
       endTime: startTime,
     });
-  }, [startDrag, yToTime]);
+  }, [startDrag, yToTime, dragState]);
 
   // 마우스 이동 핸들러
   const handleMouseMove = useCallback((e: React.MouseEvent) => {

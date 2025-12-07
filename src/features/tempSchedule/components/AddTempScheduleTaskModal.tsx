@@ -14,7 +14,7 @@
 import { memo, useState, useCallback, useEffect } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { RecurrenceRule, TempScheduleRecurrenceType } from '@/shared/types/tempSchedule';
-import { TEMP_SCHEDULE_COLORS, TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
+import { TEMP_SCHEDULE_COLOR_PALETTE, TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
 import { useModalEscapeClose } from '@/shared/hooks';
 import { minutesToTimeStr, timeStrToMinutes } from '@/shared/lib/utils';
 
@@ -45,16 +45,18 @@ const RECURRENCE_TYPES: { value: TempScheduleRecurrenceType; label: string }[] =
 // ============================================================================
 
 function AddTempScheduleTaskModalComponent() {
-  const { 
-    isTaskModalOpen, 
-    closeTaskModal, 
-    editingTask, 
-    addTask, 
+  const {
+    isTaskModalOpen,
+    closeTaskModal,
+    editingTask,
+    addTask,
     updateTask,
     deleteTask,
     tasks,
     selectedDate,
   } = useTempScheduleStore();
+
+  const taskCount = tasks.length;
 
   useModalEscapeClose(isTaskModalOpen, closeTaskModal);
 
@@ -64,16 +66,12 @@ function AddTempScheduleTaskModalComponent() {
   const [endTime, setEndTime] = useState('10:00');
   const [scheduledDate, setScheduledDate] = useState<string>('');
   const [color, setColor] = useState<string>(TEMP_SCHEDULE_DEFAULTS.defaultColor);
-  const [parentId, setParentId] = useState<string | null>(null);
   const [memo, setMemo] = useState('');
   const [recurrenceType, setRecurrenceType] = useState<TempScheduleRecurrenceType>('none');
   const [weeklyDays, setWeeklyDays] = useState<number[]>([]);
   const [intervalDays, setIntervalDays] = useState(1);
   const [endDate, setEndDate] = useState<string>('');
   const [isFavorite, setIsFavorite] = useState(false);
-
-  // 부모 후보 (중첩 가능한 작업들)
-  const parentCandidates = tasks.filter(t => t.id !== editingTask?.id && !t.parentId);
 
   // 편집 모드일 때 초기값 설정
   useEffect(() => {
@@ -83,7 +81,6 @@ function AddTempScheduleTaskModalComponent() {
       setEndTime(minutesToTimeStr(editingTask.endTime));
       setScheduledDate(editingTask.scheduledDate || '');
       setColor(editingTask.color);
-      setParentId(editingTask.parentId || null);
       setMemo(editingTask.memo || '');
       setRecurrenceType(editingTask.recurrence.type);
       setWeeklyDays(editingTask.recurrence.weeklyDays || []);
@@ -97,7 +94,6 @@ function AddTempScheduleTaskModalComponent() {
       setEndTime('10:00');
       setScheduledDate(selectedDate);
       setColor(TEMP_SCHEDULE_DEFAULTS.defaultColor);
-      setParentId(null);
       setMemo('');
       setRecurrenceType('none');
       setWeeklyDays([]);
@@ -141,9 +137,9 @@ function AddTempScheduleTaskModalComponent() {
       endTime: timeStrToMinutes(endTime),
       scheduledDate: recurrenceType === 'none' ? (scheduledDate || null) : null,
       color,
-      parentId,
+      parentId: null,
       recurrence,
-      order: editingTask?.order ?? tasks.length,
+      order: editingTask?.order ?? taskCount,
       memo: memo.trim(),
       favorite: isFavorite,
     };
@@ -263,17 +259,33 @@ function AddTempScheduleTaskModalComponent() {
             <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5">
               색상
             </label>
-            <div className="flex gap-2 flex-wrap">
-              {TEMP_SCHEDULE_COLORS.map((c) => (
+            <div className="grid grid-cols-6 gap-2">
+              {TEMP_SCHEDULE_COLOR_PALETTE.map((c) => (
                 <button
-                  key={c}
+                  key={c.hex}
                   type="button"
-                  className={`w-8 h-8 rounded-full border-2 transition-all ${
-                    color === c ? 'border-white scale-110 ring-2 ring-[var(--color-primary)]' : 'border-transparent'
+                  className={`group relative flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${
+                    color === c.hex
+                      ? 'bg-[var(--color-bg-elevated)] ring-2 ring-[var(--color-primary)] scale-105'
+                      : 'hover:bg-[var(--color-bg-tertiary)]'
                   }`}
-                  style={{ backgroundColor: c }}
-                  onClick={() => setColor(c)}
-                />
+                  onClick={() => setColor(c.hex)}
+                  title={c.name}
+                >
+                  <div
+                    className={`w-7 h-7 rounded-full shadow-sm transition-transform ${
+                      color === c.hex ? 'ring-2 ring-white/50' : 'group-hover:scale-110'
+                    }`}
+                    style={{ backgroundColor: c.hex }}
+                  />
+                  <span className={`text-[9px] font-medium transition-colors ${
+                    color === c.hex
+                      ? 'text-[var(--color-text)]'
+                      : 'text-[var(--color-text-tertiary)]'
+                  }`}>
+                    {c.name}
+                  </span>
+                </button>
               ))}
             </div>
           </div>
@@ -368,28 +380,6 @@ function AddTempScheduleTaskModalComponent() {
               />
               <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1">
                 비워두면 무한 반복
-              </p>
-            </div>
-          )}
-
-          {/* 중첩 (부모 선택) */}
-          {parentCandidates.length > 0 && (
-            <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5">
-                상위 스케줄 (중첩)
-              </label>
-              <select
-                value={parentId || ''}
-                onChange={(e) => setParentId(e.target.value || null)}
-                className="w-full px-3 py-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-base)] text-sm text-[var(--color-text)] focus:border-[var(--color-primary)] focus:outline-none"
-              >
-                <option value="">없음</option>
-                {parentCandidates.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-              <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1">
-                큰 블록 안에 작은 블록 배치 (예: "업무" 안에 "회의")
               </p>
             </div>
           )}

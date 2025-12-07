@@ -240,11 +240,11 @@ function groupTasksByDate(tasks: TempScheduleTask[]): DateGroup[] {
     let sortOrder: number;
     
     if (diff < 0) {
-      // 지난 일정
+      // 지난 일정 (맨 아래로)
       groupKey = 'past';
       label = '지난 일정';
       emoji = '⏰';
-      sortOrder = -1;
+      sortOrder = 99;
     } else if (diff === 0) {
       groupKey = 'today';
       label = '오늘';
@@ -380,11 +380,6 @@ const TaskItem = memo(function TaskItem({
           <span className={`font-semibold text-sm truncate ${past ? 'text-[var(--color-text-tertiary)] line-through' : 'text-[var(--color-text)]'}`}>
             {task.name}
           </span>
-          {task.parentId && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]">
-              중첩
-            </span>
-          )}
         </div>
 
         {/* 시간 행 - 강조 표시 */}

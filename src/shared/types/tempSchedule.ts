@@ -139,20 +139,27 @@ export interface DragTooltipInfo {
 // ============================================================================
 
 /**
- * 블록 기본 색상 팔레트
+ * 블록 기본 색상 팔레트 (이름 포함)
  */
-export const TEMP_SCHEDULE_COLORS = [
-  '#3b82f6', // blue
-  '#22c55e', // green
-  '#f59e0b', // amber
-  '#ef4444', // red
-  '#8b5cf6', // violet
-  '#06b6d4', // cyan
-  '#ec4899', // pink
-  '#84cc16', // lime
-  '#f97316', // orange
-  '#6366f1', // indigo
+export const TEMP_SCHEDULE_COLOR_PALETTE = [
+  { hex: '#3b82f6', name: '파랑' },
+  { hex: '#22c55e', name: '초록' },
+  { hex: '#f59e0b', name: '황금' },
+  { hex: '#ef4444', name: '빨강' },
+  { hex: '#8b5cf6', name: '보라' },
+  { hex: '#06b6d4', name: '청록' },
+  { hex: '#ec4899', name: '분홍' },
+  { hex: '#84cc16', name: '연두' },
+  { hex: '#f97316', name: '주황' },
+  { hex: '#6366f1', name: '남색' },
+  { hex: '#14b8a6', name: '민트' },
+  { hex: '#a855f7', name: '자주' },
 ] as const;
+
+/**
+ * 블록 기본 색상 팔레트 (hex 배열 - 호환용)
+ */
+export const TEMP_SCHEDULE_COLORS = TEMP_SCHEDULE_COLOR_PALETTE.map(c => c.hex);
 
 // ============================================================================
 // 기본값
