@@ -139,8 +139,9 @@ function computeNewMission_core(params: {
   idSeed: number;
   timestamp: string;
   cooldownMinutes?: number;
+  tier?: number;
 }): BattleMission {
-  const { text, damage, order, idSeed, timestamp, cooldownMinutes = 0 } = params;
+  const { text, damage, order, idSeed, timestamp, cooldownMinutes = 0, tier = 10 } = params;
   return {
     id: `mission_${idSeed}`,
     text,
@@ -148,6 +149,7 @@ function computeNewMission_core(params: {
     order,
     enabled: true,
     cooldownMinutes, // 0이면 하루 1회 제한
+    tier,            // 미션 등급 (1-10, 기본 10)
     createdAt: timestamp,
     updatedAt: timestamp,
   };

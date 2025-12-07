@@ -568,6 +568,13 @@ export interface BattleMission {
   enabled: boolean;              // 활성화 여부
   cooldownMinutes: number;       // 쿨다운 (분 단위, 0이면 하루 1회)
   /**
+   * 미션 등급 (1~10, 낮을수록 우선 표시)
+   * - 기본값: 10
+   * - 같은 등급의 미션들이 모두 완료되어야 다음 등급 미션이 표시됨
+   * - ADHD 친화적 설계: 시각적 과부하 감소
+   */
+  tier?: number;
+  /**
    * 미션 출현 시간대 (최대 3개)
    * 형식: "HH:MM-HH:MM" (예: "11:00-13:00")
    * 비어있으면 항상 표시

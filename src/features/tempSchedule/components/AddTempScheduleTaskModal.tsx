@@ -155,7 +155,7 @@ function AddTempScheduleTaskModalComponent() {
       console.error('Failed to save task:', error);
       alert('저장에 실패했습니다.');
     }
-  }, [name, startTime, endTime, scheduledDate, color, parentId, memo, recurrenceType, weeklyDays, intervalDays, endDate, editingTask, tasks.length, addTask, updateTask, closeTaskModal, isFavorite]);
+  }, [name, startTime, endTime, scheduledDate, color, memo, recurrenceType, weeklyDays, intervalDays, endDate, editingTask, taskCount, addTask, updateTask, closeTaskModal, isFavorite]);
 
   const handleDelete = useCallback(async () => {
     if (!editingTask) return;

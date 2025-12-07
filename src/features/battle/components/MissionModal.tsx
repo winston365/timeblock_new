@@ -32,6 +32,7 @@ import {
   DAMAGE_DISPLAY_DURATION_MS,
   BOSS_DEFEAT_SOUND_DELAY_MS,
   COOLDOWN_REFRESH_INTERVAL_MS,
+  MISSION_TIER_DEFAULT,
   shouldShowMissionByTime,
 } from '../constants/battleConstants';
 
@@ -80,8 +81,11 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
 
   // 미션 정렬 함수
   const sortMissions = useCallback((list: BattleMission[]) => {
-    // 1순위: 데미지 낮은 순, 2순위: order
+    // 1순위: tier 낮은 순, 2순위: 데미지 낮은 순, 3순위: order
     return [...list].sort((a, b) => {
+      const tierA = a.tier ?? MISSION_TIER_DEFAULT;
+      const tierB = b.tier ?? MISSION_TIER_DEFAULT;
+      if (tierA !== tierB) return tierA - tierB;
       if (a.damage === b.damage) return a.order - b.order;
       return a.damage - b.damage;
     });
@@ -93,14 +97,52 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
     [dailyState?.completedMissionIds],
   );
 
-  // 활성 미션 (시간대 필터링 + 사용 가능한 것 앞으로)
+  /**
+   * 현재 표시할 tier 계산
+   * - 가장 낮은 tier부터 시작
+   * - 해당 tier의 모든 미션이 완료되면 다음 tier로 이동
+   * - 시간대/쿨다운 상관없이 "오늘 완료 가능한 미션"만 기준으로 판단
+   */
+  const currentVisibleTier = useMemo(() => {
+    const now = new Date();
+    
+    // 활성화된 미션만 (시간대 필터링 적용)
+    const enabledMissions = missions.filter(
+      (m) => m.enabled && shouldShowMissionByTime(m.timeSlots, now),
+    );
+    
+    if (enabledMissions.length === 0) return MISSION_TIER_DEFAULT;
+    
+    // 모든 tier 수집 및 정렬
+    const allTiers = [...new Set(enabledMissions.map(m => m.tier ?? MISSION_TIER_DEFAULT))].sort((a, b) => a - b);
+    
+    // 각 tier별로 "해당 tier의 모든 미션이 완료되었는지" 확인
+    for (const tier of allTiers) {
+      const tierMissions = enabledMissions.filter(m => (m.tier ?? MISSION_TIER_DEFAULT) === tier);
+      
+      // 이 tier의 미션 중 하나라도 오늘 아직 완료 안 된 게 있으면 이 tier가 현재 tier
+      const hasIncomplete = tierMissions.some(m => !completedMissionIds.includes(m.id));
+      
+      if (hasIncomplete) {
+        return tier;
+      }
+    }
+    
+    // 모든 tier가 완료되었으면 가장 높은 tier 반환 (전부 잠긴 상태로 표시)
+    return allTiers[allTiers.length - 1] ?? MISSION_TIER_DEFAULT;
+  }, [missions, completedMissionIds]);
+
+  // 활성 미션 (tier 필터링 + 시간대 필터링 + 사용 가능한 것 앞으로)
   const enabledMissionsList = useMemo(() => {
     const now = new Date();
 
     // 1. 활성화된 미션만
     // 2. 현재 시간대에 표시되어야 하는 미션만
+    // 3. 현재 표시할 tier의 미션만
     const enabled = missions.filter(
-      (m) => m.enabled && shouldShowMissionByTime(m.timeSlots, now),
+      (m) => m.enabled && 
+             shouldShowMissionByTime(m.timeSlots, now) &&
+             (m.tier ?? MISSION_TIER_DEFAULT) === currentVisibleTier,
     );
 
     // 사용 가능 여부로 분리
@@ -116,7 +158,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
     );
 
     return [...available, ...unavailable];
-  }, [missions, completedMissionIds, missionUsedAt, sortMissions]);
+  }, [missions, completedMissionIds, missionUsedAt, sortMissions, currentVisibleTier]);
 
   // 사용 가능한 미션 수
   const availableMissionsCount = useMemo(
@@ -266,6 +308,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
           disabled={noBoss}
           onClose={onClose}
           currentBossHp={currentBossProgress?.currentHP}
+          currentTier={currentVisibleTier}
         />
       </div>
     </div>

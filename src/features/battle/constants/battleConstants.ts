@@ -42,6 +42,15 @@ export const MISSION_DAMAGE_DEFAULT = 15;
 /** 미션 시간대 최대 설정 개수 */
 export const MISSION_TIME_SLOTS_MAX = 3;
 
+/** 미션 등급(tier) 최소값 */
+export const MISSION_TIER_MIN = 1;
+
+/** 미션 등급(tier) 최대값 */
+export const MISSION_TIER_MAX = 10;
+
+/** 미션 등급(tier) 기본값 (미설정 시 가장 낮은 우선순위) */
+export const MISSION_TIER_DEFAULT = 10;
+
 // ============================================================================
 // 보스 관련 상수
 // ============================================================================

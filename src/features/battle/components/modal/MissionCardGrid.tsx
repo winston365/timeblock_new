@@ -36,6 +36,8 @@ interface MissionCardGridProps {
   onClose: () => void;
   /** 현재 보스 HP */
   currentBossHp?: number;
+  /** 현재 표시 중인 미션 등급 (tier) */
+  currentTier?: number;
 }
 
 /**
@@ -51,6 +53,7 @@ export function MissionCardGrid({
   disabled,
   onClose,
   currentBossHp,
+  currentTier,
 }: MissionCardGridProps) {
   // 추천 미션 계산 (사용 가능 + 데미지 높은 순 상위 3개)
   const { recommendedMissions, otherMissions, recommendedIds } = useMemo(() => {
@@ -104,6 +107,17 @@ export function MissionCardGrid({
         <div className="flex items-center gap-2">
           <span className="text-lg">⚔️</span>
           <span className="font-bold text-white">미션 카드</span>
+          {currentTier !== undefined && (
+            <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+              currentTier <= 3 
+                ? 'bg-purple-500/30 text-purple-300' 
+                : currentTier <= 6 
+                  ? 'bg-blue-500/30 text-blue-300' 
+                  : 'bg-slate-500/30 text-slate-300'
+            }`}>
+              Lv.{currentTier}
+            </span>
+          )}
           <span className="text-xs text-gray-400 ml-2">
             사용 가능:{' '}
             <span className="text-red-400 font-bold">

@@ -25,6 +25,9 @@ import {
   MISSION_DAMAGE_MIN,
   MISSION_DAMAGE_MAX,
   MISSION_DAMAGE_DEFAULT,
+  MISSION_TIER_MIN,
+  MISSION_TIER_MAX,
+  MISSION_TIER_DEFAULT,
 } from '@/features/battle/constants/battleConstants';
 
 /** 시간대 편집 모달 Props */
@@ -157,7 +160,7 @@ export function BattleMissionsSection() {
   const [newMissionText, setNewMissionText] = useState('');
   const [newMissionDamage, setNewMissionDamage] = useState(MISSION_DAMAGE_DEFAULT);
   const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
-  const [editingField, setEditingField] = useState<'text' | 'damage' | 'cooldown' | null>(null);
+  const [editingField, setEditingField] = useState<'text' | 'damage' | 'cooldown' | 'tier' | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [orderedMissions, setOrderedMissions] = useState<BattleMission[]>([]);
@@ -185,13 +188,15 @@ export function BattleMissionsSection() {
     setNewMissionDamage(settings.defaultMissionDamage);
   };
 
-  const startEditing = (mission: BattleMission, field: 'text' | 'damage' | 'cooldown') => {
+  const startEditing = (mission: BattleMission, field: 'text' | 'damage' | 'cooldown' | 'tier') => {
     setEditingMissionId(mission.id);
     setEditingField(field);
     if (field === 'text') {
       setEditingValue(mission.text);
     } else if (field === 'damage') {
       setEditingValue(String(mission.damage));
+    } else if (field === 'tier') {
+      setEditingValue(String(mission.tier ?? MISSION_TIER_DEFAULT));
     } else {
       setEditingValue(String(mission.cooldownMinutes ?? 0));
     }
@@ -205,6 +210,8 @@ export function BattleMissionsSection() {
       updates = { text: editingValue.trim() || '미션' };
     } else if (editingField === 'damage') {
       updates = { damage: Math.max(MISSION_DAMAGE_MIN, Math.min(MISSION_DAMAGE_MAX, Number(editingValue) || MISSION_DAMAGE_DEFAULT)) };
+    } else if (editingField === 'tier') {
+      updates = { tier: Math.max(MISSION_TIER_MIN, Math.min(MISSION_TIER_MAX, Number(editingValue) || MISSION_TIER_DEFAULT)) };
     } else {
       updates = { cooldownMinutes: Math.max(0, Number(editingValue) || 0) };
     }
@@ -358,6 +365,7 @@ export function BattleMissionsSection() {
               <span className="w-6"></span>
               <span className="w-6"></span>
               <span className="flex-1">미션 내용</span>
+              <span className="w-10 text-center">등급</span>
               <span className="w-14 text-center">데미지</span>
               <span className="w-16 text-center">쿨다운</span>
               <span className="w-20 text-center">시간대</span>
@@ -412,6 +420,38 @@ export function BattleMissionsSection() {
                     title={mission.text}
                   >
                     {mission.text}
+                  </span>
+                )}
+
+                {/* 등급 (tier) */}
+                {editingMissionId === mission.id && editingField === 'tier' ? (
+                  <input
+                    type="number"
+                    min={MISSION_TIER_MIN}
+                    max={MISSION_TIER_MAX}
+                    value={editingValue}
+                    onChange={(e) => setEditingValue(e.target.value)}
+                    onBlur={handleSaveEdit}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveEdit();
+                      if (e.key === 'Escape') handleCancelEdit();
+                    }}
+                    className="w-10 bg-[var(--color-bg)] border border-[var(--color-primary)] rounded px-1 py-0.5 text-xs text-center outline-none"
+                    autoFocus
+                  />
+                ) : (
+                  <span 
+                    className={`w-10 text-center rounded px-1.5 py-0.5 text-xs font-semibold cursor-pointer transition ${
+                      (mission.tier ?? MISSION_TIER_DEFAULT) <= 3
+                        ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30'
+                        : (mission.tier ?? MISSION_TIER_DEFAULT) <= 6
+                          ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+                          : 'bg-slate-500/20 text-slate-400 hover:bg-slate-500/30'
+                    }`}
+                    onClick={() => startEditing(mission, 'tier')}
+                    title="클릭하여 등급 수정 (1~10, 낮을수록 우선)"
+                  >
+                    {mission.tier ?? MISSION_TIER_DEFAULT}
                   </span>
                 )}
 
