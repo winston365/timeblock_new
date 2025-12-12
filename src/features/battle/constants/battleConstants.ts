@@ -130,6 +130,7 @@ export const HP_CRITICAL_THRESHOLD_PERCENT = 15;
 /** 쿨다운 프리셋 옵션 */
 export const COOLDOWN_PRESETS = [
   { value: 0, label: '하루 1회' },
+  { value: 5, label: '5분' },
   { value: 30, label: '30분' },
   { value: 60, label: '1시간' },
   { value: 120, label: '2시간' },
