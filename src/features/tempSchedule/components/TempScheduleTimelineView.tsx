@@ -148,12 +148,11 @@ function deriveMainSnapshotPosition(task: Task): MainSnapshotPosition | null {
 interface TimelineBlockProps {
   position: BlockPosition;
   onEdit: (task: TempScheduleTask) => void;
-  onDelete: (id: string) => void;
   onDragStart: (task: TempScheduleTask, mode: 'move' | 'resize-top' | 'resize-bottom', e: React.MouseEvent) => void;
   onContextMenu: (task: TempScheduleTask, e: React.MouseEvent) => void;
 }
 
-const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDelete, onDragStart, onContextMenu }: TimelineBlockProps) {
+const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDragStart, onContextMenu }: TimelineBlockProps) {
   const { task, column, totalColumns, top, height } = position;
   const widthPercent = 100 / totalColumns;
   const leftPercent = column * widthPercent;
@@ -232,7 +231,6 @@ interface TempScheduleTimelineViewProps {
 function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelineViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const {
-    tasks: allTasks,
     getTasksForDate,
     gridSnapInterval,
     dragState,
@@ -241,7 +239,6 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
     endDrag,
     addTask,
     updateTask,
-    deleteTask,
     openTaskModal,
   } = useTempScheduleStore();
 
@@ -269,7 +266,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
   const [dragPreview, setDragPreview] = useState<{ top: number; height: number; color: string; name: string; startTime: number; endTime: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ task: TempScheduleTask; x: number; y: number } | null>(null);
 
-  const tasks = useMemo(() => getTasksForDate(selectedDate), [getTasksForDate, selectedDate, allTasks]);
+  const tasks = getTasksForDate(selectedDate);
   const blockPositions = useMemo(() => calculateBlockPositions(tasks), [tasks]);
 
   // 현재 시간 마커
@@ -473,13 +470,6 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
     setDragPreview(null);
   }, [dragState, createPreview, tooltip, addTask, updateTask, endDrag, selectedDate, tasks.length, openTaskModal]);
 
-  // 작업 삭제
-  const handleDelete = useCallback(async (id: string) => {
-    if (confirm('이 스케줄을 삭제하시겠습니까?')) {
-      await deleteTask(id);
-    }
-  }, [deleteTask]);
-
   // 컨텍스트 메뉴 핸들러
   const handleContextMenu = useCallback((task: TempScheduleTask, e: React.MouseEvent) => {
     setContextMenu({
@@ -568,7 +558,6 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
                 key={pos.task.id}
                 position={pos}
                 onEdit={openTaskModal}
-                onDelete={handleDelete}
                 onDragStart={handleDragStart}
                 onContextMenu={handleContextMenu}
               />

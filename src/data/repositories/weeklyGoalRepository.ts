@@ -27,10 +27,24 @@ import { generateId } from '@/shared/lib/utils';
  */
 export function getWeekStartDate(date: Date = new Date()): string {
   const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
   const day = d.getDay(); // 0=일요일, 1=월요일, ...
   const diff = d.getDate() - day + (day === 0 ? -6 : 1); // 월요일로 조정
   d.setDate(diff);
-  return d.toISOString().split('T')[0];
+  d.setHours(0, 0, 0, 0);
+  return formatLocalYyyyMmDd(d);
+}
+
+/**
+ * 로컬 기준 날짜 문자열 (YYYY-MM-DD)
+ */
+function formatLocalYyyyMmDd(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function normalizeDayIndex(dayIndex: number): number {
+  if (!Number.isFinite(dayIndex)) return 0;
+  return Math.min(6, Math.max(0, Math.floor(dayIndex)));
 }
 
 /**
@@ -45,9 +59,11 @@ export function getDayOfWeekIndex(date: Date = new Date()): number {
  * 오늘까지 해야 하는 목표량 계산 (진행 일수 기준)
  */
 export function getTodayTarget(target: number, dayIndex: number = getDayOfWeekIndex()): number {
+  if (target <= 0) return 0;
   // dayIndex: 0=월요일, 1=화요일, ..., 6=일요일
   // 예: 화요일(1)이면 2/7 만큼 해야함
-  const completedDays = dayIndex + 1;
+  const normalizedDayIndex = normalizeDayIndex(dayIndex);
+  const completedDays = normalizedDayIndex + 1;
   return Math.ceil((target / 7) * completedDays);
 }
 
@@ -55,16 +71,39 @@ export function getTodayTarget(target: number, dayIndex: number = getDayOfWeekIn
  * 남은 일수 계산 (오늘 포함)
  */
 export function getRemainingDays(dayIndex: number = getDayOfWeekIndex()): number {
-  return 7 - dayIndex;
+  const normalizedDayIndex = normalizeDayIndex(dayIndex);
+  return 7 - normalizedDayIndex;
 }
 
 /**
  * 오늘의 목표량 계산 (남은량 / 남은일수)
  */
 export function getDailyTargetForToday(target: number, currentProgress: number, dayIndex: number = getDayOfWeekIndex()): number {
-  const remaining = target - currentProgress;
-  const remainingDays = getRemainingDays(dayIndex);
+  if (target <= 0) return 0;
+  const remaining = Math.max(0, target - currentProgress);
+  if (remaining === 0) return 0;
+  const normalizedDayIndex = normalizeDayIndex(dayIndex);
+  const remainingDays = getRemainingDays(normalizedDayIndex);
+  if (remainingDays <= 0) return remaining;
   return Math.ceil(remaining / remainingDays);
+}
+
+function normalizeWeeklyGoal(goal: WeeklyGoal, fallbackOrder: number, currentWeekStart: string): WeeklyGoal {
+  const safeHistory = Array.isArray(goal.history) ? goal.history : [];
+
+  return {
+    ...goal,
+    title: typeof goal.title === 'string' ? goal.title : '',
+    unit: typeof goal.unit === 'string' ? goal.unit : '',
+    target: typeof goal.target === 'number' && Number.isFinite(goal.target) ? goal.target : 0,
+    currentProgress:
+      typeof goal.currentProgress === 'number' && Number.isFinite(goal.currentProgress)
+        ? goal.currentProgress
+        : 0,
+    order: typeof goal.order === 'number' && Number.isFinite(goal.order) ? goal.order : fallbackOrder,
+    weekStartDate: typeof goal.weekStartDate === 'string' && goal.weekStartDate ? goal.weekStartDate : currentWeekStart,
+    history: safeHistory,
+  };
 }
 
 // ============================================================================
@@ -95,8 +134,9 @@ export async function loadWeeklyGoals(): Promise<WeeklyGoal[]> {
       }
     }
 
-    // 3. 주간 초기화 체크 및 수행
+    // 3. 데이터 정규화 + 주간 초기화 체크 및 수행
     const currentWeekStart = getWeekStartDate();
+    loadedGoals = loadedGoals.map((g, index) => normalizeWeeklyGoal(g, index, currentWeekStart));
     const goalsNeedingReset = loadedGoals.filter(g => g.weekStartDate !== currentWeekStart);
 
     if (goalsNeedingReset.length > 0) {

@@ -353,11 +353,6 @@ function getResistanceLabel(resistance: string): string {
 // Calendar 이벤트 CRUD
 // ============================================================================
 
-// ... existing imports
-import type { TempScheduleTask } from '@/shared/types/tempSchedule';
-
-// ...
-
 /**
  * Generic Event 생성 (Task 외의 용도)
  */

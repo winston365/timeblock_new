@@ -154,12 +154,12 @@ export function BattleSidebar() {
   const isSequentialComplete = sequentialPhase >= 5;
 
   // 남은 보스 수
-  const remainingCounts = useMemo(() => ({
+  const remainingCounts = {
     easy: getRemainingBossCount('easy'),
     normal: getRemainingBossCount('normal'),
     hard: getRemainingBossCount('hard'),
     epic: getRemainingBossCount('epic'),
-  }), [getRemainingBossCount, dailyState]);
+  };
 
   const totalRemaining = getTotalRemainingBossCount();
 

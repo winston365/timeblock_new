@@ -48,6 +48,7 @@ import { trackTaskTimeBlockChange } from '@/shared/services/behavior/procrastina
 import { db } from '@/data/db/dexieClient';
 import { scheduleEmojiSuggestion } from '@/shared/services/ai/emojiSuggester';
 import { eventBus } from '@/shared/lib/eventBus';
+import { toStandardError } from '@/shared/lib/standardError';
 
 interface DailyDataStore {
   // 상태
@@ -133,8 +134,13 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       const data = await loadDailyData(targetDate);
       set({ dailyData: data, loading: false });
     } catch (err) {
-      console.error('[DailyDataStore] ❌ Failed to load daily data:', err);
-      set({ error: err as Error, loading: false });
+      const standardError = toStandardError({
+        code: 'DAILY_DATA_LOAD_FAILED',
+        error: err,
+        context: { targetDate, force },
+      });
+      console.error('[DailyDataStore] ❌ Failed to load daily data:', standardError);
+      set({ error: standardError, loading: false });
     }
   },
 
@@ -156,8 +162,13 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         },
       });
     } catch (err) {
-      console.error('[DailyDataStore] Failed to save daily data:', err);
-      set({ error: err as Error });
+      const standardError = toStandardError({
+        code: 'DAILY_DATA_SAVE_FAILED',
+        error: err,
+        context: { currentDate },
+      });
+      console.error('[DailyDataStore] Failed to save daily data:', standardError);
+      set({ error: standardError });
     }
   },
 
@@ -201,10 +212,15 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         await loadData(currentDate, true);
       }
     } catch (err) {
-      console.error('[DailyDataStore] Failed to add task, rolling back:', err);
+      const standardError = toStandardError({
+        code: 'DAILY_TASK_ADD_FAILED',
+        error: err,
+        context: { taskId: task.id, currentDate },
+      });
+      console.error('[DailyDataStore] Failed to add task, rolling back:', standardError);
       // ❌ Rollback
-      set(createRollbackState(dailyData, dailyData.tasks, err as Error));
-      throw err;
+      set(createRollbackState(dailyData, dailyData.tasks, standardError));
+      throw standardError;
     }
   },
 

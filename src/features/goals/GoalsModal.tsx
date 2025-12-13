@@ -75,13 +75,25 @@ export function GoalsModal({ open, onClose }: GoalsModalProps) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
+        // 모달 스택: 자식 모달이 열려있으면 자식부터 닫기
+        if (isWeeklyGoalModalOpen) {
+          setIsWeeklyGoalModalOpen(false);
+          setEditingWeeklyGoal(undefined);
+          return;
+        }
+        if (isDailyGoalModalOpen) {
+          setIsDailyGoalModalOpen(false);
+          setEditingDailyGoal(undefined);
+          return;
+        }
+
         onClose();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, isDailyGoalModalOpen, isWeeklyGoalModalOpen]);
 
   if (!open) return null;
 

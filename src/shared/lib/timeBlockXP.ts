@@ -15,6 +15,7 @@
  */
 
 import { TIME_BLOCKS } from '@/shared/types/domain';
+import { getBlockById, getBlockIdFromHour as getBlockIdFromHourCore, getBlockLabel as getBlockLabelCore } from '@/shared/utils/timeBlockUtils';
 
 /**
  * 타임블록 정보 인터페이스
@@ -63,18 +64,18 @@ export function getCurrentTimeBlockInfo(hour?: number): TimeBlockInfo {
     };
   }
   
-  // 활성 타임블록 찾기
-  for (const block of TIME_BLOCKS) {
-    if (currentHour >= block.start && currentHour < block.end) {
-      return {
-        id: block.id,
-        label: block.label,
-        start: block.start,
-        end: block.end,
-        isActive: true,
-        isNightTime: false,
-      };
-    }
+  // 활성 타임블록 찾기 (공용 유틸 재사용)
+  const blockId = getBlockIdFromHourCore(currentHour);
+  const block = getBlockById(blockId);
+  if (block) {
+    return {
+      id: block.id,
+      label: block.label,
+      start: block.start,
+      end: block.end,
+      isActive: true,
+      isNightTime: false,
+    };
   }
   
   // 기본값 (이론적으로 도달하지 않음)
@@ -170,8 +171,7 @@ export function calculateTimeBlockXPProgress(
  * @returns 타임블록 라벨. 찾지 못한 경우 blockId 그대로 반환
  */
 export function getBlockLabel(blockId: string): string {
-  const block = TIME_BLOCKS.find(b => b.id === blockId);
-  return block?.label ?? blockId;
+  return getBlockLabelCore(blockId, blockId);
 }
 
 /**

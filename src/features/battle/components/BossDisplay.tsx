@@ -210,7 +210,7 @@ export function BossDisplay({
   const bossImageSrc = getBossImageSrc(boss.image);
   const battleQuote = useMemo(
     () => computeBattleQuote_core(boss.quotes, boss.defeatQuote),
-    [boss.id, boss.quotes, boss.defeatQuote],
+    [boss.quotes, boss.defeatQuote],
   );
 
   // 저장된 이미지 설정 가져오기 (없으면 bossData의 기본값 사용)

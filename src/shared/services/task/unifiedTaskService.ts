@@ -28,6 +28,22 @@ import {
   toggleInboxTaskCompletion,
 } from '@/data/repositories/inboxRepository';
 import { getLocalDate } from '@/shared/lib/utils';
+import { toStandardError } from '@/shared/lib/standardError';
+
+// ============================================================================
+// Core (Pure) Helpers
+// ============================================================================
+
+const findTaskInDailyData_core = (taskId: string, dailyData: { tasks: Task[] } | null | undefined): Task | null => {
+  const tasks = dailyData?.tasks;
+  if (!tasks) return null;
+  return tasks.find(t => t.id === taskId) ?? null;
+};
+
+const mergeTaskUpdates_core = (task: Task, updates: Partial<Task>): Task => ({
+  ...task,
+  ...updates,
+});
 
 // ============================================================================
 // Task Location Detection
@@ -49,44 +65,48 @@ interface TaskLocationResult {
  * @returns TaskLocationResult
  */
 export async function findTaskLocation(taskId: string, dateHint?: string): Promise<TaskLocationResult> {
-  // 1. Inbox에서 먼저 찾기 (빠름)
-  const inboxTask = await db.globalInbox.get(taskId);
-  if (inboxTask) {
-    return { location: 'inbox', task: inboxTask };
-  }
-
-  // 2. DailyData에서 찾기
-  const targetDate = dateHint || getLocalDate();
-  const dailyData = await db.dailyData.get(targetDate);
-  
-  if (dailyData) {
-    const task = dailyData.tasks.find(t => t.id === taskId);
-    if (task) {
-      return { location: 'daily', task, date: targetDate };
+  try {
+    // 1. Inbox에서 먼저 찾기 (빠름)
+    const inboxTask = await db.globalInbox.get(taskId);
+    if (inboxTask) {
+      return { location: 'inbox', task: inboxTask };
     }
-  }
 
-  // 3. 다른 날짜의 DailyData에서 찾기 (최근 7일)
-  const recentDates = getRecentDates(7);
-  for (const date of recentDates) {
-    if (date === targetDate) continue;
-    
-    const data = await db.dailyData.get(date);
-    if (data) {
-      const task = data.tasks.find(t => t.id === taskId);
-      if (task) {
-        return { location: 'daily', task, date };
+    // 2. DailyData에서 찾기
+    const targetDate = dateHint || getLocalDate();
+    const dailyData = await db.dailyData.get(targetDate);
+
+    const taskInTarget = findTaskInDailyData_core(taskId, dailyData);
+    if (taskInTarget) {
+      return { location: 'daily', task: taskInTarget, date: targetDate };
+    }
+
+    // 3. 다른 날짜의 DailyData에서 찾기 (최근 7일)
+    const recentDates = getRecentDates(7);
+    for (const date of recentDates) {
+      if (date === targetDate) continue;
+
+      const data = await db.dailyData.get(date);
+      const taskInRecent = findTaskInDailyData_core(taskId, data);
+      if (taskInRecent) {
+        return { location: 'daily', task: taskInRecent, date };
       }
     }
-  }
 
-  // 4. completedInbox에서도 찾기
-  const completedInboxTask = await db.completedInbox.get(taskId);
-  if (completedInboxTask) {
-    return { location: 'inbox', task: completedInboxTask };
-  }
+    // 4. completedInbox에서도 찾기
+    const completedInboxTask = await db.completedInbox.get(taskId);
+    if (completedInboxTask) {
+      return { location: 'inbox', task: completedInboxTask };
+    }
 
-  return { location: 'not_found', task: null };
+    return { location: 'not_found', task: null };
+  } catch (error) {
+    throw toStandardError({
+      code: 'TASK_LOCATION_FIND_FAILED',
+      error,
+      context: { taskId, dateHint },
+    });
+  }
 }
 
 // ============================================================================
@@ -127,30 +147,38 @@ export async function updateAnyTask(
   dateHint?: string,
   options?: UpdateAnyTaskOptions
 ): Promise<Task | null> {
-  const { location, task, date } = await findTaskLocation(taskId, dateHint);
+  try {
+    const { location, task, date } = await findTaskLocation(taskId, dateHint);
 
-  if (location === 'not_found' || !task) {
-    console.warn(`[UnifiedTaskService] Task not found: ${taskId}`);
+    if (location === 'not_found' || !task) {
+      console.warn(`[UnifiedTaskService] Task not found: ${taskId}`);
+      return null;
+    }
+
+    if (location === 'inbox') {
+      await updateInboxTask(taskId, updates);
+      if (!options?.skipStoreRefresh) {
+        await refreshInboxStore();
+      }
+      return mergeTaskUpdates_core(task, updates);
+    }
+
+    if (location === 'daily' && date) {
+      await updateDailyTask(taskId, updates, date);
+      if (!options?.skipStoreRefresh) {
+        await refreshDailyDataStore();
+      }
+      return mergeTaskUpdates_core(task, updates);
+    }
+
     return null;
+  } catch (error) {
+    throw toStandardError({
+      code: 'TASK_UPDATE_FAILED',
+      error,
+      context: { taskId, updates, dateHint, options },
+    });
   }
-
-  if (location === 'inbox') {
-    await updateInboxTask(taskId, updates);
-    if (!options?.skipStoreRefresh) {
-      await refreshInboxStore();
-    }
-    return { ...task, ...updates };
-  }
-
-  if (location === 'daily' && date) {
-    await updateDailyTask(taskId, updates, date);
-    if (!options?.skipStoreRefresh) {
-      await refreshDailyDataStore();
-    }
-    return { ...task, ...updates };
-  }
-
-  return null;
 }
 
 /**
@@ -166,30 +194,38 @@ export async function deleteAnyTask(
   dateHint?: string,
   options?: UpdateAnyTaskOptions
 ): Promise<boolean> {
-  const { location, date } = await findTaskLocation(taskId, dateHint);
+  try {
+    const { location, date } = await findTaskLocation(taskId, dateHint);
 
-  if (location === 'not_found') {
-    console.warn(`[UnifiedTaskService] Task not found for deletion: ${taskId}`);
+    if (location === 'not_found') {
+      console.warn(`[UnifiedTaskService] Task not found for deletion: ${taskId}`);
+      return false;
+    }
+
+    if (location === 'inbox') {
+      await deleteInboxTask(taskId);
+      if (!options?.skipStoreRefresh) {
+        await refreshInboxStore();
+      }
+      return true;
+    }
+
+    if (location === 'daily' && date) {
+      await deleteDailyTask(taskId, date);
+      if (!options?.skipStoreRefresh) {
+        await refreshDailyDataStore();
+      }
+      return true;
+    }
+
     return false;
+  } catch (error) {
+    throw toStandardError({
+      code: 'TASK_DELETE_FAILED',
+      error,
+      context: { taskId, dateHint, options },
+    });
   }
-
-  if (location === 'inbox') {
-    await deleteInboxTask(taskId);
-    if (!options?.skipStoreRefresh) {
-      await refreshInboxStore();
-    }
-    return true;
-  }
-
-  if (location === 'daily' && date) {
-    await deleteDailyTask(taskId, date);
-    if (!options?.skipStoreRefresh) {
-      await refreshDailyDataStore();
-    }
-    return true;
-  }
-
-  return false;
 }
 
 /**
@@ -205,30 +241,38 @@ export async function toggleAnyTaskCompletion(
   dateHint?: string,
   options?: UpdateAnyTaskOptions
 ): Promise<Task | null> {
-  const { location, date } = await findTaskLocation(taskId, dateHint);
+  try {
+    const { location, date } = await findTaskLocation(taskId, dateHint);
 
-  if (location === 'not_found') {
-    console.warn(`[UnifiedTaskService] Task not found for toggle: ${taskId}`);
+    if (location === 'not_found') {
+      console.warn(`[UnifiedTaskService] Task not found for toggle: ${taskId}`);
+      return null;
+    }
+
+    if (location === 'inbox') {
+      const result = await toggleInboxTaskCompletion(taskId);
+      if (!options?.skipStoreRefresh) {
+        await refreshInboxStore();
+      }
+      return result;
+    }
+
+    if (location === 'daily' && date) {
+      const result = await toggleDailyTaskCompletion(taskId, date);
+      if (!options?.skipStoreRefresh) {
+        await refreshDailyDataStore();
+      }
+      return result;
+    }
+
     return null;
+  } catch (error) {
+    throw toStandardError({
+      code: 'TASK_TOGGLE_COMPLETION_FAILED',
+      error,
+      context: { taskId, dateHint, options },
+    });
   }
-
-  if (location === 'inbox') {
-    const result = await toggleInboxTaskCompletion(taskId);
-    if (!options?.skipStoreRefresh) {
-      await refreshInboxStore();
-    }
-    return result;
-  }
-
-  if (location === 'daily' && date) {
-    const result = await toggleDailyTaskCompletion(taskId, date);
-    if (!options?.skipStoreRefresh) {
-      await refreshDailyDataStore();
-    }
-    return result;
-  }
-
-  return null;
 }
 
 /**
@@ -239,8 +283,16 @@ export async function toggleAnyTaskCompletion(
  * @returns 작업 또는 null
  */
 export async function getAnyTask(taskId: string, dateHint?: string): Promise<Task | null> {
-  const { task } = await findTaskLocation(taskId, dateHint);
-  return task;
+  try {
+    const { task } = await findTaskLocation(taskId, dateHint);
+    return task;
+  } catch (error) {
+    throw toStandardError({
+      code: 'TASK_GET_FAILED',
+      error,
+      context: { taskId, dateHint },
+    });
+  }
 }
 
 // ============================================================================
@@ -255,15 +307,22 @@ export async function getAnyTask(taskId: string, dateHint?: string): Promise<Tas
  */
 export async function getAllActiveTasks(date?: string): Promise<Task[]> {
   const targetDate = date || getLocalDate();
-  
-  const [dailyData, inboxTasks] = await Promise.all([
-    db.dailyData.get(targetDate),
-    db.globalInbox.toArray(),
-  ]);
 
-  const dailyTasks = dailyData?.tasks || [];
-  
-  return [...dailyTasks, ...inboxTasks];
+  try {
+    const [dailyData, inboxTasks] = await Promise.all([
+      db.dailyData.get(targetDate),
+      db.globalInbox.toArray(),
+    ]);
+
+    const dailyTasks = dailyData?.tasks || [];
+    return [...dailyTasks, ...inboxTasks];
+  } catch (error) {
+    throw toStandardError({
+      code: 'TASK_GET_ALL_ACTIVE_FAILED',
+      error,
+      context: { date: targetDate },
+    });
+  }
 }
 
 /**

@@ -18,7 +18,6 @@ import type { GameState, Quest, Task } from '@/shared/types/domain';
 import { getLocalDate } from '@/shared/lib/utils';
 import { gameStateStrategy } from '@/shared/services/sync/firebase/strategies';
 import { loadData, saveData, type RepositoryConfig } from '../baseRepository';
-import { GAME_STATE_DEFAULTS } from '@/shared/constants/defaults';
 
 // Domain operations
 import {

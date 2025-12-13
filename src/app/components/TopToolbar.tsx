@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * TopToolbar - 상단 툴바
  *
@@ -9,7 +8,6 @@
  */
 
 import { useEffect, useRef, useMemo, useState } from 'react';
-import type React from 'react';
 import type { GameState } from '@/shared/types/domain';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { getAffectionColor } from '@/features/waifu/waifuImageUtils';

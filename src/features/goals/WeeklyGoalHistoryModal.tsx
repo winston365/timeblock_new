@@ -23,7 +23,7 @@ interface WeeklyGoalHistoryModalProps {
  * 주차 라벨 포맷팅 (예: "11/25 ~ 12/1")
  */
 function formatWeekLabel(weekStartDate: string): string {
-  const start = new Date(weekStartDate);
+  const start = new Date(`${weekStartDate}T00:00:00`);
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
   
@@ -46,16 +46,16 @@ export default function WeeklyGoalHistoryModal({ isOpen, onClose, goal }: Weekly
 
   // 통계 계산
   const completedWeeks = history.filter(h => h.completed).length;
-  const totalWeeks = history.length;
-  const averageProgress = totalWeeks > 0
-    ? Math.round(history.reduce((sum, h) => sum + (h.finalProgress / h.target) * 100, 0) / totalWeeks)
+  const validWeeks = history.filter(h => h.target > 0);
+  const averageProgress = validWeeks.length > 0
+    ? Math.round(validWeeks.reduce((sum, h) => sum + (h.finalProgress / h.target) * 100, 0) / validWeeks.length)
     : 0;
-  const maxProgress = totalWeeks > 0
+  const maxProgress = history.length > 0
     ? Math.max(...history.map(h => h.finalProgress))
     : 0;
 
   // 현재 주 데이터
-  const currentWeekProgress = (goal.currentProgress / goal.target) * 100;
+  const currentWeekProgress = goal.target > 0 ? (goal.currentProgress / goal.target) * 100 : 0;
 
   const accent = goal.color || '#6366f1';
 
@@ -126,7 +126,7 @@ export default function WeeklyGoalHistoryModal({ isOpen, onClose, goal }: Weekly
               <h3 className="text-sm font-bold text-white mb-3">📊 지난 성과</h3>
               <div className="space-y-3">
                 {history.slice().reverse().map((week) => {
-                  const progressPercent = Math.min(100, (week.finalProgress / week.target) * 100);
+                  const progressPercent = week.target > 0 ? Math.min(100, (week.finalProgress / week.target) * 100) : 0;
                   
                   return (
                     <div key={week.weekStartDate} className="group">

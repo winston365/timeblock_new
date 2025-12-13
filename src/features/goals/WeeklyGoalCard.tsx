@@ -17,12 +17,53 @@
  *     - catchUpUtils: 만회 심각도 계산
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import type { WeeklyGoal } from '@/shared/types/domain';
 import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
 import WeeklyProgressBar from './WeeklyProgressBar';
 import { QUICK_UPDATE_BUTTONS } from './constants/goalConstants';
 import { calculateCatchUpInfo } from './utils/catchUpUtils';
+
+/** 짧은 효과음 재생 (Web Audio API) */
+const playFeedbackSound = (type: 'increment' | 'decrement' | 'complete') => {
+  try {
+    const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    if (type === 'complete') {
+      // 완료: 상승하는 화음
+      oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+      oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+      oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+      gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+      gainNode.gain.exponentialDecayTo?.(0.01, audioContext.currentTime + 0.4) ?? gainNode.gain.setValueAtTime(0.01, audioContext.currentTime + 0.4);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.4);
+    } else if (type === 'increment') {
+      // 증가: 짧고 밝은 소리
+      oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
+      oscillator.type = 'sine';
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialDecayTo?.(0.01, audioContext.currentTime + 0.1) ?? gainNode.gain.setValueAtTime(0.01, audioContext.currentTime + 0.1);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.1);
+    } else {
+      // 감소: 낮고 짧은 소리
+      oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4
+      oscillator.type = 'sine';
+      gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
+      gainNode.gain.exponentialDecayTo?.(0.01, audioContext.currentTime + 0.08) ?? gainNode.gain.setValueAtTime(0.01, audioContext.currentTime + 0.08);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.08);
+    }
+  } catch {
+    // Audio API 지원하지 않는 환경에서는 무시
+  }
+};
 
 interface WeeklyGoalCardProps {
   goal: WeeklyGoal;
@@ -41,6 +82,9 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
   const [directInput, setDirectInput] = useState('');
   const [showDirectInput, setShowDirectInput] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [animating, setAnimating] = useState(false);
+  const [lastDelta, setLastDelta] = useState<number>(0);
+  const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const dayIndex = getDayOfWeekIndex();
   const todayTarget = getTodayTarget(goal.target);
@@ -53,14 +97,37 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
     [goal, todayTarget]
   );
 
-  const { isCompleted, isBehind, catchUpNeeded, config: severityConfig } = catchUpInfo;
-  const progressPercent = Math.round((goal.currentProgress / goal.target) * 100);
+  const { isCompleted, isBehind, catchUpNeeded, config: severityConfig, severity } = catchUpInfo;
+  const progressPercent = goal.target > 0 ? Math.round((goal.currentProgress / goal.target) * 100) : 0;
+
+  // 애니메이션 트리거
+  const triggerAnimation = useCallback((delta: number) => {
+    if (animationTimeoutRef.current) {
+      clearTimeout(animationTimeoutRef.current);
+    }
+    setAnimating(true);
+    setLastDelta(delta);
+    animationTimeoutRef.current = setTimeout(() => {
+      setAnimating(false);
+      setLastDelta(0);
+    }, 300);
+  }, []);
 
   const handleQuickUpdate = async (delta: number) => {
     if (updating) return;
     setUpdating(true);
     try {
+      const wasCompleted = goal.currentProgress >= goal.target;
       await updateProgress(goal.id, delta);
+      
+      // 애니메이션 & 효과음
+      triggerAnimation(delta);
+      const willBeCompleted = (goal.currentProgress + delta) >= goal.target;
+      if (!wasCompleted && willBeCompleted) {
+        playFeedbackSound('complete');
+      } else {
+        playFeedbackSound(delta > 0 ? 'increment' : 'decrement');
+      }
     } catch (error) {
       console.error('Failed to update progress:', error);
     } finally {
@@ -128,14 +195,14 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
           </div>
         </div>
 
-        {/* 진행률 배지 */}
-        <div className={`rounded-full font-bold shrink-0 ${
+        {/* 진행률 배지 (애니메이션 포함) */}
+        <div className={`rounded-full font-bold shrink-0 transition-all duration-200 ${
           isCompleted
             ? 'bg-emerald-500/20 text-emerald-300'
             : isBehind
             ? 'bg-orange-500/20 text-orange-300'
             : 'bg-blue-500/20 text-blue-300'
-        } ${compact ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs'}`}>
+        } ${animating ? 'scale-125 ring-2 ring-white/30' : ''} ${compact ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs'}`}>
           {progressPercent}%
         </div>
 
@@ -168,7 +235,22 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
         unit={goal.unit}
         height={compact ? 'h-4' : 'h-6'}
         compact={compact}
+        animating={animating}
       />
+
+      {/* 애니메이션 피드백 (숫자 변화 표시) */}
+      {animating && lastDelta !== 0 && (
+        <div 
+          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 font-bold text-2xl animate-bounce ${
+            lastDelta > 0 ? 'text-emerald-400' : 'text-red-400'
+          }`}
+          style={{ 
+            animation: 'fadeSlideUp 0.3s ease-out forwards',
+          }}
+        >
+          {lastDelta > 0 ? `+${lastDelta}` : lastDelta}
+        </div>
+      )}
 
       {/* 오늘의 목표량 & 만회 정보 (심각도 레벨 표시) */}
       <div className={`flex flex-wrap justify-between gap-1 ${compact ? 'text-[10px]' : 'text-xs'}`}>
@@ -178,22 +260,27 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
           <span className="text-white/40 ml-1">({remainingDays}일)</span>
         </div>
 
-        {isBehind && !isCompleted && (
+        {/* 상태 표시: 순항 / 뒤처짐 / 달성 */}
+        {isCompleted ? (
+          <div className={`rounded-lg bg-emerald-500/10 text-emerald-300 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
+            ✨ 달성!
+          </div>
+        ) : isBehind ? (
           <div
-            className={`rounded-lg ${severityConfig.bgClass} ${severityConfig.textClass} ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}
+            className={`rounded-lg ${severityConfig.bgClass} ${severityConfig.textClass} ${compact ? 'px-2 py-1' : 'px-3 py-1.5'} cursor-help`}
             title={severityConfig.description}
           >
             {severityConfig.icon}{' '}
             <span className="font-bold">{catchUpNeeded.toLocaleString()}</span>
             {!compact && (
-              <span className="ml-1 text-white/50">부족</span>
+              <span className="ml-1 opacity-70">
+                {severity === 'danger' ? '만회 필요!' : '부족'}
+              </span>
             )}
           </div>
-        )}
-
-        {isCompleted && (
+        ) : (
           <div className={`rounded-lg bg-emerald-500/10 text-emerald-300 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
-            ✨ 달성!
+            🟢 순조로워요!
           </div>
         )}
       </div>

@@ -19,7 +19,7 @@ import { fetchFromFirebase, syncToFirebase } from '@/shared/services/sync/fireba
 import type { SyncStrategy } from '@/shared/services/sync/firebase/syncCore';
 import type { TempScheduleTask, RecurrenceRule, TempScheduleTemplate } from '@/shared/types/tempSchedule';
 import { TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
-import { generateId, minutesToTimeStr, timeStrToMinutes } from '@/shared/lib/utils';
+import { generateId, timeStrToMinutes } from '@/shared/lib/utils';
 import { withFirebaseSync } from '@/shared/utils/firebaseGuard';
 import { eventBus } from '@/shared/lib/eventBus';
 
@@ -92,12 +92,13 @@ export function shouldShowOnDate(task: TempScheduleTask, date: string): boolean 
       // 매월 같은 날짜
       return targetDate.getDate() === taskStartDate.getDate();
 
-    case 'custom':
+    case 'custom': {
       if (!recurrence.intervalDays || recurrence.intervalDays <= 0) {
         return false;
       }
       const daysDiff = Math.floor((targetDate.getTime() - taskStartDate.getTime()) / (1000 * 60 * 60 * 24));
       return daysDiff % recurrence.intervalDays === 0;
+    }
 
     case 'none':
     default:

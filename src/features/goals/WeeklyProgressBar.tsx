@@ -6,6 +6,7 @@
  *   - Role: 주간 목표의 진행 상황을 7일 단위로 시각화
  *   - Responsibilities:
  *     - 7개 구분선 및 구분값 표시
+ *     - 오늘 칸 하이라이트 (현재 요일 강조)
  *     - 오늘까지 해야 하는 양 회색으로 표시
  *     - 만회 경고색 (뒤처짐 표시)
  *     - 현재 진행도 표시
@@ -30,6 +31,8 @@ interface WeeklyProgressBarProps {
   height?: string;
   /** 압축 모드 */
   compact?: boolean;
+  /** 애니메이션 트리거 (진행도 업데이트 시 true) */
+  animating?: boolean;
 }
 
 const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
@@ -46,6 +49,7 @@ export default function WeeklyProgressBar({
   unit = '',
   height = 'h-6',
   compact = false,
+  animating = false,
 }: WeeklyProgressBarProps) {
   // 퍼센트 계산
   const progressPercent = Math.min(100, (currentProgress / target) * 100);
@@ -77,6 +81,15 @@ export default function WeeklyProgressBar({
     <div className="w-full">
       {/* 진행바 컨테이너 */}
       <div className={`relative ${height} w-full overflow-hidden rounded-lg bg-gray-700/50`}>
+        {/* 오늘 칸 하이라이트 배경 */}
+        <div
+          className="absolute inset-y-0 bg-white/10 transition-all duration-300"
+          style={{
+            left: `${(dayIndex / 7) * 100}%`,
+            width: `${100 / 7}%`,
+          }}
+        />
+
         {/* 오늘까지 해야할 양 (회색 배경) */}
         <div
           className="absolute inset-y-0 left-0 bg-gray-500/30 transition-all duration-300"
@@ -85,7 +98,7 @@ export default function WeeklyProgressBar({
 
         {/* 현재 진행도 */}
         <div
-          className="absolute inset-y-0 left-0 transition-all duration-500"
+          className={`absolute inset-y-0 left-0 transition-all duration-500 ${animating ? 'animate-pulse' : ''}`}
           style={{
             width: `${progressPercent}%`,
             background: `linear-gradient(90deg, ${progressColor}, ${progressColor}dd)`,
@@ -105,18 +118,20 @@ export default function WeeklyProgressBar({
           />
         ))}
 
-        {/* 오늘 위치 마커 */}
+        {/* 오늘 위치 마커 (오늘 칸 끝) */}
         <div
-          className="absolute inset-y-0 w-0.5 bg-white/60"
+          className="absolute inset-y-0 w-1 rounded-full"
           style={{
             left: `${((dayIndex + 1) / 7) * 100}%`,
-            boxShadow: '0 0 4px rgba(255,255,255,0.5)',
+            transform: 'translateX(-50%)',
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.5))',
+            boxShadow: '0 0 8px rgba(255,255,255,0.6)',
           }}
         />
 
         {/* 진행도 텍스트 */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`font-bold text-white drop-shadow-md ${compact ? 'text-[10px]' : 'text-xs'}`}>
+          <span className={`font-bold text-white drop-shadow-md ${compact ? 'text-[10px]' : 'text-xs'} ${animating ? 'scale-110 transition-transform' : 'transition-transform'}`}>
             {currentProgress.toLocaleString()} / {target.toLocaleString()} {compact ? '' : unit}
           </span>
         </div>
@@ -128,15 +143,15 @@ export default function WeeklyProgressBar({
           {DAY_LABELS.map((label, i) => (
             <span
               key={label}
-              className={`text-[10px] font-medium ${
+              className={`text-[10px] font-medium transition-all ${
                 i === dayIndex
-                  ? 'text-white'
+                  ? 'text-white font-bold scale-110'
                   : i < dayIndex
                   ? 'text-white/60'
                   : 'text-white/30'
               }`}
             >
-              {label}
+              {i === dayIndex ? `[${label}]` : label}
             </span>
           ))}
         </div>

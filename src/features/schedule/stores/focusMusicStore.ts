@@ -1,3 +1,17 @@
+/**
+ * FocusMusic Store
+ *
+ * @role GitHub에 호스팅된 mp3 목록을 불러오고, 로컬 오디오 인스턴스를 통해 재생/정지/루프를 제어한다.
+ * @responsibilities
+ *   - 선택 폴더의 트랙 목록 로드 (GitHub Contents API)
+ *   - 랜덤 재생/다음 곡/루프 모드 제어
+ *   - 볼륨 및 재생 상태 유지
+ * @key_dependencies
+ *   - zustand: 상태 관리
+ *   - fetch: GitHub API 호출
+ *   - HTMLAudioElement: 재생 엔진
+ */
+
 import { create } from 'zustand';
 import { toast } from 'react-hot-toast';
 
@@ -16,6 +30,19 @@ export type MusicTrack = { name: string; url: string };
 
 /** 루프 모드: 단일 트랙 또는 폴더 전체 */
 export type LoopMode = 'track' | 'folder';
+
+type GithubContentsItem = {
+    readonly type: string;
+    readonly name: string;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null;
+
+const isGithubContentsItem = (value: unknown): value is GithubContentsItem => {
+    if (!isRecord(value)) return false;
+    return typeof value.type === 'string' && typeof value.name === 'string';
+};
 
 interface FocusMusicState {
     // State
@@ -42,6 +69,13 @@ interface FocusMusicState {
 // Audio Instance (Module Level Singleton)
 let audio: HTMLAudioElement | null = null;
 
+/**
+ * 포커스 모드 음악 재생 스토어.
+ *
+ * @remarks
+ * - 모듈 레벨의 `audio` 싱글톤을 사용하므로, 여러 컴포넌트가 구독해도 재생 인스턴스는 1개로 유지된다.
+ * - GitHub API 응답은 `unknown`으로 파싱 후 런타임 가드로 좁혀서 사용한다.
+ */
 export const useFocusMusicStore = create<FocusMusicState>((set, get) => ({
     selectedMusicFolder: MUSIC_FOLDERS[0].id,
     musicTracks: [],
@@ -181,16 +215,17 @@ export const useFocusMusicStore = create<FocusMusicState>((set, get) => ({
                 lastStatus = res.status;
                 if (!res.ok) continue;
 
-                const data = await res.json();
-                if (!Array.isArray(data)) continue;
+                const json: unknown = await res.json();
+                if (!Array.isArray(json)) continue;
 
-                tracks = data
-                    .filter((item: any) => item.type === 'file' && /\.mp3$/i.test(item.name))
-                    .map((item: any) => {
-                        const fileEncoded = encodeURIComponent(item.name);
+                const contentItems = json.filter(isGithubContentsItem);
+                tracks = contentItems
+                    .filter((contentItem) => contentItem.type === 'file' && /\.mp3$/i.test(contentItem.name))
+                    .map((contentItem) => {
+                        const fileEncoded = encodeURIComponent(contentItem.name);
                         const url = `https://cdn.jsdelivr.net/gh/${MUSIC_REPO.owner}/${MUSIC_REPO.repo}@${branch}/${folderEncoded}/${fileEncoded}`;
                         return {
-                            name: item.name.replace(/\.mp3$/i, ''),
+                            name: contentItem.name.replace(/\.mp3$/i, ''),
                             url,
                         };
                     });

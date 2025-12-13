@@ -97,7 +97,6 @@ export default function TaskCard({
 
   const xp = calculateTaskXP(task);
   const isPrepared = !!(task.preparation1 && task.preparation2 && task.preparation3);
-  const preparationCount = [task.preparation1, task.preparation2, task.preparation3].filter(Boolean).length;
   const displayText = task.emoji ? `${task.emoji} ${task.text}` : task.text;
   const expectedDurationLabel = formatDuration(task.baseDuration);
   const durationOptions = [5, 10, 15, 30, 45, 60];

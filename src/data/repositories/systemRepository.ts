@@ -15,6 +15,7 @@ export const SYSTEM_KEYS = {
     LAST_INSIGHT_TEXT: 'lastInsightText',
     PROCRASTINATION_MONITOR: 'procrastinationMonitorState',
     QUICK_WINS_COMPLETED: 'quickWinsCompletedState',
+    CATCH_UP_ALERT_SHOWN_DATE: 'catchUpAlertShownDate',
 } as const;
 
 /**

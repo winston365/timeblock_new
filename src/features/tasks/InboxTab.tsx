@@ -67,10 +67,6 @@ export default function InboxTab() {
     if (e.key === 'Enter' && inlineInputValue.trim()) {
       e.preventDefault();
       const trimmedText = inlineInputValue.trim();
-      if (trimmedText.length <= 10) {
-        toast.error('작업 제목을 10자 이상 입력해주세요.');
-        return;
-      }
       try {
         const newTask = createInboxTask(trimmedText, {
           baseDuration: 15,
@@ -80,7 +76,7 @@ export default function InboxTab() {
         setInlineInputValue('');
       } catch (error) {
         console.error('Failed to add inline task:', error);
-        alert('작업 추가에 실패했습니다.');
+        toast.error('작업 추가에 실패했습니다.');
       }
     } else if (e.key === 'Escape') {
       setInlineInputValue('');

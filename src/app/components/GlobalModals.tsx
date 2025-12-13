@@ -19,7 +19,6 @@ import GeminiFullscreenChat from '@/features/gemini/GeminiFullscreenChat';
 import BulkAddModal from '@/features/tasks/BulkAddModal';
 import SettingsModal from '@/features/settings/SettingsModal';
 import TemplatesModal from '@/features/template/TemplatesModal';
-import { RealityCheckModal } from '@/features/feedback/RealityCheckModal';
 import { MemoMissionModal } from '@/shared/components/MemoMissionModal';
 import CatchUpAlertModal from '@/features/goals/CatchUpAlertModal';
 import { useCatchUpAlert } from '@/features/goals/hooks/useCatchUpAlert';
@@ -99,7 +98,6 @@ export default function GlobalModals() {
                 onClose={() => closeModal('templates')}
                 onTaskCreate={handleTaskCreateFromTemplate}
             />
-            <RealityCheckModal />
             <MemoMissionModal />
             <CatchUpAlertModal
                 isOpen={catchUpAlertOpen}

@@ -1,5 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
-/**
+﻿/**
  * @file TemplatePanel.tsx
  * @description 사이드바용 템플릿 관리 패널 컴포넌트
  *
@@ -45,8 +44,8 @@ export default function TemplatePanel({ onTaskCreate }: TemplatePanelProps) {
   }, []);
 
   const loadTemplatesData = async () => {
-    const data = await loadTemplates();
-    setTemplates(data);
+    const loadedTemplates = await loadTemplates();
+    setTemplates(loadedTemplates);
   };
 
   // 카테고리 목록 추출 (중복 제거 + '전체' 포함)

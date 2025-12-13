@@ -15,7 +15,6 @@
  * - goalSubscriber: 목표 진행률 이벤트 처리
  * - waifuSubscriber: Waifu 메시지 이벤트 처리
  * - gameStateSubscriber: GameState 갱신 이벤트 처리
- * - realityCheckSubscriber: Reality Check 모달 이벤트 처리
  * - googleCalendarSubscriber: Google Calendar 동기화 이벤트 처리
  */
 
@@ -23,7 +22,6 @@ import { initXpSubscriber } from './xpSubscriber';
 import { initGoalSubscriber } from './goalSubscriber';
 import { initWaifuSubscriber } from './waifuSubscriber';
 import { initGameStateSubscriber } from './gameStateSubscriber';
-import { initRealityCheckSubscriber } from './realityCheckSubscriber';
 import { initGoogleSyncSubscriber } from './googleSyncSubscriber';
 
 export {
@@ -31,7 +29,6 @@ export {
     initGoalSubscriber,
     initWaifuSubscriber,
     initGameStateSubscriber,
-    initRealityCheckSubscriber,
     initGoogleSyncSubscriber,
 };
 
@@ -48,6 +45,5 @@ export function initAllSubscribers(): void {
     initGoalSubscriber();
     initWaifuSubscriber();
     initGameStateSubscriber();
-    initRealityCheckSubscriber();
     initGoogleSyncSubscriber();
 }

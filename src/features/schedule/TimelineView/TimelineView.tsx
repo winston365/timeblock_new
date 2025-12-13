@@ -30,7 +30,6 @@ import { generateId } from '@/shared/lib/utils';
 import TimelineTaskBlock from './TimelineTaskBlock';
 import TaskModal from '@/features/schedule/TaskModal';
 import { useTempScheduleStore } from '@/features/tempSchedule/stores/tempScheduleStore';
-import { TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
 
 /** 시간 초과 경고 임계값 (분) */
 const OVERTIME_THRESHOLD = 50;
@@ -79,7 +78,6 @@ function TimelineViewComponent() {
 
   // 임시 스케줄 데이터 가져오기 (오버레이용)
   const {
-    tasks: tempTasks,
     loadData: loadTempData,
     getTasksForDate: getTempTasksForDate
   } = useTempScheduleStore();
@@ -90,13 +88,11 @@ function TimelineViewComponent() {
   }, [loadTempData]);
 
   // 임시 스케줄 고스트 블록 계산
-  const tempScheduleBlocks = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]; // 일단 오늘 날짜 기준 (TimelineView가 날짜를 prop으로 받지 않음)
-    // TODO: TimelineView가 날짜를 prop으로 받게 되면 수정 필요. 현재는 오늘 기준.
+  const today = new Date().toISOString().split('T')[0]; // 일단 오늘 날짜 기준 (TimelineView가 날짜를 prop으로 받지 않음)
+  // TODO: TimelineView가 날짜를 prop으로 받게 되면 수정 필요. 현재는 오늘 기준.
 
-    const tasks = getTempTasksForDate(today);
-
-    return tasks.map(t => {
+  const tempScheduleBlocks = getTempTasksForDate(today)
+    .map(t => {
       const startMinutes = t.startTime;
       const endMinutes = t.endTime;
 
@@ -111,8 +107,8 @@ function TimelineViewComponent() {
         height,
         color: t.color,
       };
-    }).filter(b => b.height > 0);
-  }, [getTempTasksForDate, visibleStartHour, tempTasks]);
+    })
+    .filter(b => b.height > 0);
 
   // 시간대별 초과 여부 계산
   const overtimeHours = useMemo(() => {

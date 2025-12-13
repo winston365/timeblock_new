@@ -97,33 +97,6 @@ Always choose the action that satisfies the higher-priority rule.
   
   
   
-
-### Imports Rule
-
-Never add an import unless you confirm the referenced export exists.
-
-If uncertain, add:
-
-⚠️ The following import assumes that <module> exports <symbol>.
-
-### Assumptions Policy
-
-When information is missing:
-
-Do NOT guess silently.
-
-Instead, output:
-
-Assumptions:
-
-- <assumption1>
-
-- <assumption2>
-
-Then proceed with the answer.
-
-Never stop without outputting a result unless the request is impossible.
-
   
 
 ### Error Handling & Validation

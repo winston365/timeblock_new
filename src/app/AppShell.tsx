@@ -49,7 +49,6 @@ import SettingsModal from '@/features/settings/SettingsModal';
 import TemplatesModal from '@/features/template/TemplatesModal';
 
 // Global Components
-import { RealityCheckModal } from '@/features/feedback/RealityCheckModal';
 import GlobalTaskBreakdown from '@/features/tasks/GlobalTaskBreakdown';
 import { XPParticleOverlay } from '@/features/gamification/components/XPParticleOverlay';
 import { MemoMissionModal } from '@/shared/components/MemoMissionModal';
@@ -307,7 +306,6 @@ export default function AppShell() {
       ))}
 
       {/* Global Overlays */}
-      <RealityCheckModal />
       <GlobalTaskBreakdown />
       <XPParticleOverlay />
       <MemoMissionModal />

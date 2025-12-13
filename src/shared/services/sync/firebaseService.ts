@@ -87,14 +87,20 @@ export async function fetchDataFromFirebase(): Promise<{
       get(ref(db, `users/${userId}/settings`)),
     ]);
 
+    const isRecord = (value: unknown): value is Record<string, unknown> =>
+      typeof value === 'object' && value !== null;
+
     // DailyData 처리
-    const dailyDataValue = dailyDataSnapshot.val() || {};
+    const dailyDataValueRaw: unknown = dailyDataSnapshot.val() ?? {};
+    const dailyDataValue = isRecord(dailyDataValueRaw) ? dailyDataValueRaw : {};
     const dailyData: Record<string, DailyData> = {};
-    Object.entries(dailyDataValue).forEach(([date, syncData]: [string, any]) => {
-      if (syncData && syncData.data) {
-        dailyData[date] = syncData.data;
+    for (const [date, syncDataRaw] of Object.entries(dailyDataValue)) {
+      if (!isRecord(syncDataRaw)) continue;
+      const data = syncDataRaw.data;
+      if (data != null) {
+        dailyData[date] = data as DailyData;
       }
-    });
+    }
 
     // 각 컬렉션의 SyncData 래퍼 제거
     const gameStateValue = gameStateSnapshot.val();
@@ -107,13 +113,16 @@ export async function fetchDataFromFirebase(): Promise<{
       null;
 
     // CompletedInbox (date-keyed)
-    const completedInboxValue = completedInboxSnapshot.val() || {};
+    const completedInboxValueRaw: unknown = completedInboxSnapshot.val() ?? {};
+    const completedInboxValue = isRecord(completedInboxValueRaw) ? completedInboxValueRaw : {};
     const completedInbox: Record<string, Task[]> = {};
-    Object.entries(completedInboxValue).forEach(([date, syncData]: [string, any]) => {
-      if (syncData && Array.isArray(syncData.data)) {
-        completedInbox[date] = syncData.data as Task[];
+    for (const [date, syncDataRaw] of Object.entries(completedInboxValue)) {
+      if (!isRecord(syncDataRaw)) continue;
+      const data = syncDataRaw.data;
+      if (Array.isArray(data)) {
+        completedInbox[date] = data as Task[];
       }
-    });
+    }
 
     const shopItemsValue = shopItemsSnapshot.val();
     const shopItems = shopItemsValue?.data || null;
@@ -124,13 +133,16 @@ export async function fetchDataFromFirebase(): Promise<{
     const templatesValue = templatesSnapshot.val();
     const templates = templatesValue?.data || null;
 
-    const tokenUsageValue = tokenUsageSnapshot.val() || {};
+    const tokenUsageValueRaw: unknown = tokenUsageSnapshot.val() ?? {};
+    const tokenUsageValue = isRecord(tokenUsageValueRaw) ? tokenUsageValueRaw : {};
     const tokenUsage: Record<string, DailyTokenUsage> = {};
-    Object.entries(tokenUsageValue).forEach(([date, syncData]: [string, any]) => {
-      if (syncData && syncData.data) {
-        tokenUsage[date] = syncData.data;
+    for (const [date, syncDataRaw] of Object.entries(tokenUsageValue)) {
+      if (!isRecord(syncDataRaw)) continue;
+      const data = syncDataRaw.data;
+      if (data != null) {
+        tokenUsage[date] = data as DailyTokenUsage;
       }
-    });
+    }
 
     const globalGoalsValue = globalGoalsSnapshot.val();
     const globalGoals = globalGoalsValue?.data || null;

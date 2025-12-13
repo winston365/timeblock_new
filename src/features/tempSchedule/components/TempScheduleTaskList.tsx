@@ -136,14 +136,11 @@ function getDurationColorClass(startTime: number, endTime: number): string {
 /**
  * 현재 진행 중인 일정인지 확인
  */
-function isInProgress(task: TempScheduleTask): boolean {
+function isInProgress(task: TempScheduleTask, currentMinutes: number): boolean {
   const today = getTodayStr();
   const scheduledDate = task.scheduledDate ?? today;
   
   if (scheduledDate !== today) return false;
-  
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
   
   return task.startTime <= currentMinutes && currentMinutes < task.endTime;
 }
@@ -151,10 +148,8 @@ function isInProgress(task: TempScheduleTask): boolean {
 /**
  * 다음 예정 일정인지 확인 (오늘의 아직 시작 안 한 일정 중 가장 빠른 것)
  */
-function getNextUpcomingTask(tasks: TempScheduleTask[]): TempScheduleTask | null {
+function getNextUpcomingTask(tasks: TempScheduleTask[], currentMinutes: number): TempScheduleTask | null {
   const today = getTodayStr();
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
   
   const upcoming = tasks
     .filter(t => {
@@ -193,11 +188,12 @@ function getRecurrenceLabel(recurrence: RecurrenceRule): string {
   switch (recurrence.type) {
     case 'daily':
       return '매일';
-    case 'weekly':
+    case 'weekly': {
       if (!recurrence.weeklyDays || recurrence.weeklyDays.length === 0) return '매주';
       const days = ['일', '월', '화', '수', '목', '금', '토'];
       const dayNames = recurrence.weeklyDays.sort((a, b) => a - b).map(d => days[d]);
       return `매주 ${dayNames.join(', ')}`;
+    }
     case 'monthly':
       return '매월';
     case 'custom':
@@ -318,7 +314,7 @@ const TaskItem = memo(function TaskItem({
 }: TaskItemProps) {
   const imminent = isImminent(task);
   const past = isPast(task);
-  const inProgress = isInProgress(task);
+  const inProgress = isInProgress(task, currentTime);
   const imminentLabel = getImminentLabel(task);
   const durationLabel = getDurationLabel(task.startTime, task.endTime);
   const durationColorClass = getDurationColorClass(task.startTime, task.endTime);
@@ -521,10 +517,10 @@ function TempScheduleTaskListComponent({ tasks }: TempScheduleTaskListProps) {
     const todayTaskCount = todayGroup?.tasks.length ?? 0;
     
     // 진행 중인 일정 수
-    const progressCount = tasks.filter(isInProgress).length;
+    const progressCount = tasks.filter(task => isInProgress(task, currentTime)).length;
     
     // 다음 예정 일정
-    const nextTask = getNextUpcomingTask(oneTimeTasks);
+    const nextTask = getNextUpcomingTask(oneTimeTasks, currentTime);
 
     return { 
       recurring: recurringTasks, 
@@ -533,7 +529,7 @@ function TempScheduleTaskListComponent({ tasks }: TempScheduleTaskListProps) {
       inProgressCount: progressCount,
       nextUpTask: nextTask,
     };
-  }, [tasks, currentTime]); // currentTime 의존성 추가로 자동 갱신
+  }, [tasks, currentTime]);
 
   return (
     <div className="flex flex-col h-full">

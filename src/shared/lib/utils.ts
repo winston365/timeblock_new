@@ -10,6 +10,7 @@
 import type { Resistance, Task, TimeBlockId } from '../types/domain';
 import { RESISTANCE_MULTIPLIERS, TIME_BLOCKS } from '../types/domain';
 import { XP_PER_MINUTE } from './constants';
+import { getBlockIdFromHour as getBlockIdFromHourCore, getCurrentBlockId } from '@/shared/utils/timeBlockUtils';
 
 // ============================================================================
 // 날짜 & 시간 유틸
@@ -130,16 +131,7 @@ export function getRelativeTime(isoString: string): string {
  * @returns 타임블록 ID (예: '5-8', '8-11' 등) 또는 null
  */
 export function getCurrentTimeBlock(): TimeBlockId {
-  const now = new Date();
-  const hour = now.getHours();
-
-  for (const block of TIME_BLOCKS) {
-    if (hour >= block.start && hour < block.end) {
-      return block.id as TimeBlockId;
-    }
-  }
-
-  return null;
+  return getCurrentBlockId();
 }
 
 /**
@@ -151,13 +143,7 @@ export function getCurrentTimeBlock(): TimeBlockId {
  * @note 23~04시는 'other'로 분류
  */
 export function getBlockIdFromHour(hour: number): string {
-  if (hour >= 5 && hour < 8) return '5-8';
-  if (hour >= 8 && hour < 11) return '8-11';
-  if (hour >= 11 && hour < 14) return '11-14';
-  if (hour >= 14 && hour < 17) return '14-17';
-  if (hour >= 17 && hour < 20) return '17-20';
-  if (hour >= 20 && hour < 23) return '20-23';
-  return 'other';
+  return getBlockIdFromHourCore(hour) ?? 'other';
 }
 
 /**

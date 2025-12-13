@@ -49,7 +49,7 @@ export function BossDefeatOverlay({
   const [stage, setStage] = useState<'flash' | 'reveal' | 'quote' | 'reward' | 'select'>('flash');
   const defeatQuote = useMemo(
     () => pickRandomQuote(boss.defeatQuotes, boss.defeatQuote),
-    [boss.defeatQuotes, boss.defeatQuote, boss.id],
+    [boss.defeatQuotes, boss.defeatQuote],
   );
 
   // 남은 보스가 있는지 확인

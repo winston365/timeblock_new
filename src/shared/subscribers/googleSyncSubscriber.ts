@@ -24,7 +24,6 @@ import {
   updateCalendarEvent,
   deleteCalendarEvent, // For migration
   updateLastSyncTime,
-  getTaskCalendarMapping, // For migration
 } from '@/shared/services/calendar/googleCalendarService';
 import {
   deleteGoogleTask,

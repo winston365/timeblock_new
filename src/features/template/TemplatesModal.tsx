@@ -1,5 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
-/**
+﻿/**
  * @file TemplatesModal.tsx
  * @description 템플릿 관리 전체 화면 모달 컴포넌트
  *

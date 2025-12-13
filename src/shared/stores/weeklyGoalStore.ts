@@ -68,7 +68,7 @@ export const useWeeklyGoalStore = create<WeeklyGoalStore>((set, get) => ({
   loadGoals: async () => {
     return withAsyncAction(set, async () => {
       const loadedGoals = await loadWeeklyGoals();
-      set({ goals: loadedGoals.sort((a, b) => a.order - b.order) });
+      set({ goals: [...loadedGoals].sort((a, b) => a.order - b.order) });
     }, { errorPrefix: 'WeeklyGoalStore: loadGoals', rethrow: false });
   },
 
@@ -112,7 +112,7 @@ export const useWeeklyGoalStore = create<WeeklyGoalStore>((set, get) => ({
   reorderGoals: async (goals) => {
     return withAsyncAction(set, async () => {
       await reorderWeeklyGoals(goals);
-      set({ goals: goals.sort((a, b) => a.order - b.order) });
+      set({ goals: [...goals].sort((a, b) => a.order - b.order) });
     }, { errorPrefix: 'WeeklyGoalStore: reorderGoals' });
   },
 

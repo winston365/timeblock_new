@@ -67,7 +67,7 @@ export function calculateCatchUpInfo(
   goal: WeeklyGoal,
   todayTarget: number
 ): CatchUpInfo {
-  const isCompleted = goal.currentProgress >= goal.target;
+  const isCompleted = goal.target > 0 && goal.currentProgress >= goal.target;
   const isBehind = goal.currentProgress < todayTarget && !isCompleted;
   const catchUpNeeded = Math.max(0, todayTarget - goal.currentProgress);
   const dailyTarget = goal.target / 7;

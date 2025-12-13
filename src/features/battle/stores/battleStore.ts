@@ -857,7 +857,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     try {
       // 보스 처치 시 순차 진행 단계 업데이트 및 자동 스폰
       if (computation.result.bossDefeated) {
-        let currentPhase = finalState.sequentialPhase ?? 0;
+        const currentPhase = finalState.sequentialPhase ?? 0;
         let nextPhase = currentPhase + 1;
         finalState = { ...finalState, sequentialPhase: nextPhase };
 
