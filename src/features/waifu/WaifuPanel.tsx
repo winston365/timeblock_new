@@ -74,11 +74,8 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
   // useRef로 변경하여 리렌더링 및 의존성 사이클 방지
   const currentImageIndexRef = useRef<number>(-1);
 
-  const [waifuMode, setWaifuMode] = useState<WaifuMode>('characteristic');
-  const [waifuImageChangeInterval, setWaifuImageChangeInterval] = useState<number>(600000); // 기본 10분
-    const [waifuImageChangeInterval, setWaifuImageChangeInterval] = useState<number>(
-      SETTING_DEFAULTS.waifuImageChangeInterval
-    );
+  const waifuMode: WaifuMode = settings?.waifuMode ?? SETTING_DEFAULTS.waifuMode;
+  const waifuImageChangeInterval = settings?.waifuImageChangeInterval ?? SETTING_DEFAULTS.waifuImageChangeInterval;
   const lastImageChangeTime = useRef<number>(Date.now());
   const lastManualChangeTime = useRef<number>(0);
 
@@ -95,16 +92,8 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
   const [lightingClass, setLightingClass] = useState('');
   const isNormalMode = waifuMode === 'normal';
 
-  // 설정 로드 (와이푸 모드 및 이미지 변경 간격) + 이미지 프리로드
+  // 이미지 프리로드 + 시간대별 조명 효과
   useEffect(() => {
-    if (settings) {
-      setWaifuMode(settings.waifuMode);
-      setWaifuImageChangeInterval(settings.waifuImageChangeInterval ?? 600000);
-          setWaifuImageChangeInterval(
-            settings.waifuImageChangeInterval ?? SETTING_DEFAULTS.waifuImageChangeInterval
-          );
-    }
-
     // 이미지 프리로드 (백그라운드) - 초기 렌더링 후 지연 실행하여 첫 이미지 로딩 우선순위 보장
     const preloadTimer = setTimeout(() => {
       preloadWaifuImages().catch((preloadError) => console.error('[WaifuPanel] Image preload failed:', preloadError));
@@ -129,7 +118,7 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
       clearInterval(lightingInterval);
       clearTimeout(preloadTimer);
     };
-  }, [settings]);
+  }, []);
 
   // 이미지 변경 함수
   const changeImage = useCallback(async (affection: number, source: 'manual' | 'auto' = 'auto') => {
