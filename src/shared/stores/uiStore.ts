@@ -6,14 +6,15 @@
  *   - 활성 탭 상태 관리 (today, stats, completed, inbox)
  *   - 사이드바 및 패널 접힘 상태 관리
  *   - 전역 모달 열림/닫힘 상태 관리
- *   - localStorage 영속성 (레이아웃 상태만)
+ *   - Dexie systemState 영속성 (레이아웃 상태만)
  * @key_dependencies
  *   - zustand: 전역 상태 관리 라이브러리
- *   - zustand/middleware (persist): localStorage 영속성
+ *   - zustand/middleware (persist): Dexie systemState 영속성
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { createDexieSystemStateStorage } from '@/shared/stores/persist/dexieSystemStateStorage';
 
 interface UIState {
     // Layout
@@ -45,7 +46,7 @@ interface UIState {
  *
  * @returns {UIState} UI 상태 및 관리 함수
  * @sideEffects
- *   - localStorage에 레이아웃 상태 영속화 (사이드바 접힘 상태)
+ *   - Dexie systemState에 레이아웃 상태 영속화 (사이드바/패널 접힘 상태)
  *
  * @example
  * ```tsx
@@ -118,6 +119,9 @@ export const useUIStore = create<UIState>()(
         }),
         {
             name: 'ui-storage',
+            storage: createJSONStorage(() =>
+                createDexieSystemStateStorage({ prefix: 'persist:' })
+            ),
             partialize: (state) => ({
                 leftSidebarCollapsed: state.leftSidebarCollapsed,
                 rightPanelsCollapsed: state.rightPanelsCollapsed,

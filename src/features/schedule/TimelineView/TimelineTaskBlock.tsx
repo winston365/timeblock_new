@@ -7,6 +7,7 @@
 
 import { memo } from 'react';
 import type { Task } from '@/shared/types/domain';
+import { TASK_DEFAULTS } from '@/shared/constants/defaults';
 
 interface TimelineTaskBlockProps {
   task: Task;
@@ -64,7 +65,7 @@ function TimelineTaskBlockComponent({
     ? COMPLETED_STYLE
     : RESISTANCE_COLORS[task.resistance] || RESISTANCE_COLORS.medium;
 
-  const duration = task.adjustedDuration || task.baseDuration || 15;
+  const duration = task.adjustedDuration || task.baseDuration || TASK_DEFAULTS.baseDuration;
   const hourSlotLabel = task.hourSlot !== undefined
     ? `${String(task.hourSlot).padStart(2, '0')}:00`
     : '';

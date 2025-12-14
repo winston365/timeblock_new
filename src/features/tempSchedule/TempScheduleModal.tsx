@@ -19,6 +19,7 @@ import { WeeklyScheduleView } from './components/WeeklyScheduleView';
 import { MonthlyScheduleView } from './components/MonthlyScheduleView';
 import { TemplateModal } from './components/TemplateModal';
 import { useModalEscapeClose } from '@/shared/hooks';
+import AsyncStatePanel from '@/shared/components/status/AsyncStatePanel';
 
 // ============================================================================
 // Keyboard Shortcuts
@@ -290,7 +291,9 @@ function TempScheduleModalComponent({ isOpen, onClose }: TempScheduleModalProps)
           <div className="flex-1 border-r border-[var(--color-border)] overflow-hidden">
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
-                <div className="text-[var(--color-text-tertiary)]">로딩 중...</div>
+                <div className="w-full max-w-sm px-4">
+                  <AsyncStatePanel loading loadingTitle="임시 스케줄 불러오는 중..." />
+                </div>
               </div>
             ) : (
               <>

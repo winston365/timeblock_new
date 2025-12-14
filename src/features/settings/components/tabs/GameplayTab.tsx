@@ -9,7 +9,7 @@
 
 import type { BaseTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass } from './styles';
-import { IDLE_FOCUS_DEFAULTS } from '@/shared/constants/defaults';
+import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
 
 /**
  * 게임플레이 관련 설정을 관리하는 탭 컴포넌트입니다.
@@ -33,7 +33,7 @@ export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
                 <label className="flex items-center gap-3 cursor-pointer">
                     <input
                         type="checkbox"
-                        checked={localSettings?.idleFocusModeEnabled ?? IDLE_FOCUS_DEFAULTS.enabled}
+                        checked={localSettings?.idleFocusModeEnabled ?? SETTING_DEFAULTS.idleFocusModeEnabled}
                         onChange={(e) => {
                             setLocalSettings((prev: Settings | null) => prev ? ({
                                 ...prev,
@@ -57,7 +57,7 @@ export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
                         min="1"
                         max="30"
                         className={inputClass}
-                        value={localSettings?.idleFocusModeMinutes ?? IDLE_FOCUS_DEFAULTS.minutes}
+                        value={localSettings?.idleFocusModeMinutes ?? SETTING_DEFAULTS.idleFocusModeMinutes}
                         onChange={(e) => {
                             const value = parseInt(e.target.value) || 3;
                             const clamped = Math.max(1, Math.min(30, value));
@@ -95,9 +95,9 @@ export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
                         min={50}
                         max={500}
                         step={10}
-                        value={localSettings?.timeBlockXPGoal ?? 200}
+                        value={localSettings?.timeBlockXPGoal ?? SETTING_DEFAULTS.timeBlockXPGoal}
                         onChange={(e) =>
-                            setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, timeBlockXPGoal: parseInt(e.target.value) || 200 }) : prev)
+                            setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, timeBlockXPGoal: parseInt(e.target.value) || SETTING_DEFAULTS.timeBlockXPGoal }) : prev)
                         }
                     />
                     <span className="text-sm text-[var(--color-text-secondary)]">XP</span>
@@ -218,13 +218,21 @@ export function GameplayTab({ localSettings, setLocalSettings }: BaseTabProps) {
                 <select
                     id="waifu-interval-select"
                     className={inputClass}
-                    value={localSettings?.waifuImageChangeInterval ?? 600000}
+                    value={localSettings?.waifuImageChangeInterval ?? SETTING_DEFAULTS.waifuImageChangeInterval}
                     onChange={(e) =>
-                        setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, waifuImageChangeInterval: parseInt(e.target.value) }) : prev)
+                        setLocalSettings((prev: Settings | null) =>
+                          prev
+                            ? ({
+                              ...prev,
+                              waifuImageChangeInterval:
+                                Number.parseInt(e.target.value, 10) || SETTING_DEFAULTS.waifuImageChangeInterval,
+                            })
+                            : prev
+                        )
                     }
                 >
                     <option value="300000">5분마다 변경</option>
-                    <option value="600000">10분마다 변경 (기본)</option>
+                    <option value={SETTING_DEFAULTS.waifuImageChangeInterval}>10분마다 변경 (기본)</option>
                     <option value="900000">15분마다 변경</option>
                     <option value="1800000">30분마다 변경</option>
                     <option value="0">자동 변경 안함</option>

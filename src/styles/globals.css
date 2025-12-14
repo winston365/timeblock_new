@@ -597,6 +597,16 @@ select:disabled,
   }
 }
 
+.goal-delta-fade-slide-up {
+  animation: fadeSlideUp 0.3s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-delta-fade-slide-up {
+    animation: none;
+  }
+}
+
 /* 모달 콘텐츠 - 모든 모달에 공통 적용 */
 .modal-content {
   background: var(--color-bg-elevated);

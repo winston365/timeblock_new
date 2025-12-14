@@ -23,6 +23,7 @@ import { playAttackSound, playBossDefeatSound } from '../services/battleSoundSer
 import type { BattleMission, BossDifficulty } from '@/shared/types/domain';
 import { createNewTask } from '@/shared/utils/taskFactory';
 import { getBlockIdFromHour } from '@/shared/utils/timeBlockUtils';
+import { computeCurrentVisibleMissionTier } from '../utils/missionTier';
 
 // 분리된 컴포넌트 import
 import { BossPanel, MissionCardGrid } from './modal';
@@ -105,32 +106,13 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
    */
   const currentVisibleTier = useMemo(() => {
     const now = new Date();
-    
-    // 활성화된 미션만 (시간대 필터링 적용)
-    const enabledMissions = missions.filter(
-      (m) => m.enabled && shouldShowMissionByTime(m.timeSlots, now),
-    );
-    
-    if (enabledMissions.length === 0) return MISSION_TIER_DEFAULT;
-    
-    // 모든 tier 수집 및 정렬
-    const allTiers = [...new Set(enabledMissions.map(m => m.tier ?? MISSION_TIER_DEFAULT))].sort((a, b) => a - b);
-    
-    // 각 tier별로 "해당 tier의 모든 미션이 완료되었는지" 확인
-    for (const tier of allTiers) {
-      const tierMissions = enabledMissions.filter(m => (m.tier ?? MISSION_TIER_DEFAULT) === tier);
-      
-      // 이 tier의 미션 중 하나라도 오늘 아직 완료 안 된 게 있으면 이 tier가 현재 tier
-      const hasIncomplete = tierMissions.some(m => !completedMissionIds.includes(m.id));
-      
-      if (hasIncomplete) {
-        return tier;
-      }
-    }
-    
-    // 모든 tier가 완료되었으면 가장 높은 tier 반환 (전부 잠긴 상태로 표시)
-    return allTiers[allTiers.length - 1] ?? MISSION_TIER_DEFAULT;
-  }, [missions, completedMissionIds]);
+    return computeCurrentVisibleMissionTier({
+      missions,
+      completedMissionIds,
+      missionUsedAt,
+      now,
+    });
+  }, [missions, completedMissionIds, missionUsedAt]);
 
   // 활성 미션 (tier 필터링 + 시간대 필터링 + 사용 가능한 것 앞으로)
   const enabledMissionsList = useMemo(() => {

@@ -84,8 +84,8 @@ export type PartialTaskData = Partial<Task>;
  * ```
  */
 export function createNewTask(text: string, options: CreateTaskOptions = {}): Task {
-  const baseDuration = options.baseDuration ?? 15;
-  const resistance = options.resistance ?? 'low';
+  const baseDuration = options.baseDuration ?? TASK_DEFAULTS.baseDuration;
+  const resistance = options.resistance ?? TASK_DEFAULTS.resistance;
   const timeBlock = options.timeBlock ?? null;
 
   // hourSlot 자동 설정: timeBlock이 있고 hourSlot이 없으면 블록의 첫 시간대
@@ -162,8 +162,8 @@ export function createTaskFromPartial(
   defaults: CreateTaskOptions = {}
 ): Task {
   const text = data.text || '새 작업';
-  const baseDuration = data.baseDuration ?? defaults.baseDuration ?? 15;
-  const resistance = data.resistance ?? defaults.resistance ?? 'low';
+  const baseDuration = data.baseDuration ?? defaults.baseDuration ?? TASK_DEFAULTS.baseDuration;
+  const resistance = data.resistance ?? defaults.resistance ?? TASK_DEFAULTS.resistance;
   const timeBlock = data.timeBlock ?? defaults.timeBlock ?? null;
 
   // hourSlot 결정

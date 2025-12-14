@@ -15,7 +15,9 @@
  */
 
 import type { BaseTabProps, TimeSlotTagTemplate, Settings } from './types';
+import type { BaseTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass, primaryButtonClass, getBadgeTextColor } from './styles';
+import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
 
 /**
  * 스케줄 관련 설정을 관리하는 탭 컴포넌트
@@ -170,9 +172,17 @@ export function ScheduleTab({ localSettings, setLocalSettings }: BaseTabProps) {
                     placeholder="15"
                     min="5"
                     max="120"
-                    value={localSettings?.autoMessageInterval || 15}
+                    value={localSettings?.autoMessageInterval ?? SETTING_DEFAULTS.autoMessageInterval}
                     onChange={(e) =>
-                        setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, autoMessageInterval: parseInt(e.target.value) || 15 }) : prev)
+                        setLocalSettings((prev: Settings | null) =>
+                          prev
+                            ? ({
+                              ...prev,
+                              autoMessageInterval:
+                                Number.parseInt(e.target.value, 10) || SETTING_DEFAULTS.autoMessageInterval,
+                            })
+                            : prev
+                        )
                     }
                 />
                 <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">

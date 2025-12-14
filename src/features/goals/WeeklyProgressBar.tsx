@@ -51,9 +51,12 @@ export default function WeeklyProgressBar({
   compact = false,
   animating = false,
 }: WeeklyProgressBarProps) {
-  // 퍼센트 계산
-  const progressPercent = Math.min(100, (currentProgress / target) * 100);
-  const todayTargetPercent = Math.min(100, (todayTarget / target) * 100);
+  const safeTarget = target > 0 ? target : 0;
+  const safeDayIndex = Math.min(6, Math.max(0, dayIndex));
+
+  // 퍼센트 계산 (0 나누기 방지)
+  const progressPercent = safeTarget > 0 ? Math.min(100, (currentProgress / safeTarget) * 100) : 0;
+  const todayTargetPercent = safeTarget > 0 ? Math.min(100, (todayTarget / safeTarget) * 100) : 0;
   
   // 뒤처짐 상태 판단
   const isBehind = currentProgress < todayTarget;
@@ -71,21 +74,28 @@ export default function WeeklyProgressBar({
   // 색상 결정 (뒤처짐 정도에 따라)
   const progressColor = useMemo(() => {
     if (!isBehind) return color;
-    const behindRatio = catchUpNeeded / target;
+    const behindRatio = safeTarget > 0 ? catchUpNeeded / safeTarget : 0;
     if (behindRatio > 0.3) return '#ef4444'; // 빨간색 (30% 이상 뒤처짐)
     if (behindRatio > 0.15) return '#f97316'; // 주황색 (15% 이상 뒤처짐)
     return '#f59e0b'; // 노란색 (약간 뒤처짐)
-  }, [isBehind, catchUpNeeded, target, color]);
+  }, [isBehind, catchUpNeeded, safeTarget, color]);
 
   return (
     <div className="w-full">
       {/* 진행바 컨테이너 */}
-      <div className={`relative ${height} w-full overflow-hidden rounded-lg bg-gray-700/50`}>
+      <div
+        className={`relative ${height} w-full overflow-hidden rounded-lg bg-gray-700/50`}
+        role="progressbar"
+        aria-label="주간 목표 진행도"
+        aria-valuemin={0}
+        aria-valuemax={safeTarget}
+        aria-valuenow={Math.min(Math.max(currentProgress, 0), safeTarget)}
+      >
         {/* 오늘 칸 하이라이트 배경 */}
         <div
           className="absolute inset-y-0 bg-white/10 transition-all duration-300"
           style={{
-            left: `${(dayIndex / 7) * 100}%`,
+            left: `${(safeDayIndex / 7) * 100}%`,
             width: `${100 / 7}%`,
           }}
         />
@@ -98,7 +108,7 @@ export default function WeeklyProgressBar({
 
         {/* 현재 진행도 */}
         <div
-          className={`absolute inset-y-0 left-0 transition-all duration-500 ${animating ? 'animate-pulse' : ''}`}
+          className={`absolute inset-y-0 left-0 transition-all duration-500 ${animating ? 'animate-pulse motion-reduce:animate-none' : ''}`}
           style={{
             width: `${progressPercent}%`,
             background: `linear-gradient(90deg, ${progressColor}, ${progressColor}dd)`,
@@ -113,7 +123,7 @@ export default function WeeklyProgressBar({
             className="absolute inset-y-0 w-px"
             style={{
               left: `${(i / 7) * 100}%`,
-              background: i <= dayIndex + 1 ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)',
+              background: i <= safeDayIndex + 1 ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)',
             }}
           />
         ))}
@@ -122,7 +132,7 @@ export default function WeeklyProgressBar({
         <div
           className="absolute inset-y-0 w-1 rounded-full"
           style={{
-            left: `${((dayIndex + 1) / 7) * 100}%`,
+            left: `${((safeDayIndex + 1) / 7) * 100}%`,
             transform: 'translateX(-50%)',
             background: 'linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.5))',
             boxShadow: '0 0 8px rgba(255,255,255,0.6)',
@@ -131,7 +141,7 @@ export default function WeeklyProgressBar({
 
         {/* 진행도 텍스트 */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`font-bold text-white drop-shadow-md ${compact ? 'text-[10px]' : 'text-xs'} ${animating ? 'scale-110 transition-transform' : 'transition-transform'}`}>
+          <span className={`font-bold text-white drop-shadow-md ${compact ? 'text-[10px]' : 'text-xs'} ${animating ? 'scale-110 transition-transform motion-reduce:scale-100 motion-reduce:transition-none' : 'transition-transform motion-reduce:transition-none'}`}>
             {currentProgress.toLocaleString()} / {target.toLocaleString()} {compact ? '' : unit}
           </span>
         </div>
@@ -144,14 +154,14 @@ export default function WeeklyProgressBar({
             <span
               key={label}
               className={`text-[10px] font-medium transition-all ${
-                i === dayIndex
+                i === safeDayIndex
                   ? 'text-white font-bold scale-110'
-                  : i < dayIndex
+                  : i < safeDayIndex
                   ? 'text-white/60'
                   : 'text-white/30'
               }`}
             >
-              {i === dayIndex ? `[${label}]` : label}
+              {i === safeDayIndex ? `[${label}]` : label}
             </span>
           ))}
         </div>

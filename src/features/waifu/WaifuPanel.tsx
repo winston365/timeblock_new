@@ -30,6 +30,7 @@ import { preloadWaifuImages } from './waifuImagePreloader';
 import { audioService } from '@/shared/services/media/audioService';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
 import type { WaifuMode } from '@/shared/types/domain';
 import { Typewriter } from '@/shared/components/ui/Typewriter';
 import baseImage from './base.png';
@@ -75,6 +76,9 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
 
   const [waifuMode, setWaifuMode] = useState<WaifuMode>('characteristic');
   const [waifuImageChangeInterval, setWaifuImageChangeInterval] = useState<number>(600000); // 기본 10분
+    const [waifuImageChangeInterval, setWaifuImageChangeInterval] = useState<number>(
+      SETTING_DEFAULTS.waifuImageChangeInterval
+    );
   const lastImageChangeTime = useRef<number>(Date.now());
   const lastManualChangeTime = useRef<number>(0);
 
@@ -96,6 +100,9 @@ export default function WaifuPanel({ imagePath }: WaifuPanelProps) {
     if (settings) {
       setWaifuMode(settings.waifuMode);
       setWaifuImageChangeInterval(settings.waifuImageChangeInterval ?? 600000);
+          setWaifuImageChangeInterval(
+            settings.waifuImageChangeInterval ?? SETTING_DEFAULTS.waifuImageChangeInterval
+          );
     }
 
     // 이미지 프리로드 (백그라운드) - 초기 렌더링 후 지연 실행하여 첫 이미지 로딩 우선순위 보장

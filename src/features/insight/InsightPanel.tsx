@@ -18,6 +18,8 @@ import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
 import { callAIWithContext, getInsightPrompt } from '@/shared/services/ai/aiService';
 import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories';
 import { getLocalDate } from '@/shared/lib/utils';
+import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
+import AsyncStatePanel from '@/shared/components/status/AsyncStatePanel';
 import confetti from 'canvas-confetti';
 
 // ✅ 인사이트 데이터 구조 정의
@@ -328,7 +330,7 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
       initialLoadRef.current = true;
 
       const lastTimeStr = await getSystemState<string>(SYSTEM_KEYS.LAST_INSIGHT_TIME);
-      const refreshInterval = (settings.autoMessageInterval || 15) * 60 * 1000;
+      const refreshInterval = (settings.autoMessageInterval ?? SETTING_DEFAULTS.autoMessageInterval) * 60 * 1000;
 
       if (lastTimeStr) {
         const lastTime = new Date(lastTimeStr);
@@ -371,7 +373,7 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
   useEffect(() => {
     if (!settings?.geminiApiKey) return;
 
-    const refreshInterval = settings.autoMessageInterval || 15;
+    const refreshInterval = settings.autoMessageInterval ?? SETTING_DEFAULTS.autoMessageInterval;
     const totalSeconds = refreshInterval * 60;
     setTotalTime(totalSeconds);
 
@@ -450,18 +452,15 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
 
       {/* 컨텐츠 영역 */}
       <div className="flex-1 overflow-y-auto rounded-xl bg-[var(--color-bg-base)] p-3 text-sm scrollbar-hide">
-        {loading ? (
-          <div className="flex h-full flex-col items-center justify-center gap-4 text-[var(--color-text)]">
-            <div className="flex items-center justify-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-transparent border-t-blue-400 text-4xl text-blue-400 animate-spin">
-                <div className="h-16 w-16 rounded-full border-4 border-transparent border-t-red-400 text-2xl text-red-400 animate-spin" />
-              </div>
-            </div>
-            <p className="text-xs text-[var(--color-text-secondary)]">AI가 분석 중입니다...</p>
-          </div>
-        ) : error ? (
-          <div className="whitespace-pre-line text-xs text-[var(--color-danger)] text-center p-4">{error}</div>
-        ) : insightData ? (
+        <AsyncStatePanel
+          loading={loading}
+          loadingTitle="AI가 분석 중입니다..."
+          error={error}
+          errorTitle="인사이트 생성 중 문제가 발생했어요"
+          onRetry={() => generateInsight(false)}
+          retryLabel="다시 시도"
+        >
+        {insightData ? (
           <div className="flex flex-col gap-3 h-full">
             {/* 1. 상태 카드 */}
             <div className={`flex flex-col gap-2 rounded-xl border p-4 ${getStatusColor(insightData.status.color)}`}>
@@ -581,6 +580,7 @@ export default function InsightPanel({ collapsed = false }: InsightPanelProps) {
             <p className="text-xs">새로고침하여 인사이트를 받아보세요</p>
           </div>
         )}
+        </AsyncStatePanel>
       </div>
 
       {lastUpdated && settings && (

@@ -13,6 +13,7 @@ import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { db } from '@/data/db/dexieClient';
 import type { Task } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
+import { TASK_DEFAULTS } from '@/shared/constants/defaults';
 
 /** 타임라인 시간 범위 (05:00 ~ 23:00) */
 export const TIMELINE_START_HOUR = 5;
@@ -118,7 +119,7 @@ export function useTimelineData() {
         return orderA - orderB;
       });
       const totalDuration = hourTasks.reduce(
-        (sum, t) => sum + (t.adjustedDuration || t.baseDuration || 15),
+        (sum, t) => sum + (t.adjustedDuration || t.baseDuration || TASK_DEFAULTS.baseDuration),
         0
       );
       result.push({ hour: h, tasks: hourTasks, totalDuration });
@@ -135,7 +136,7 @@ export function useTimelineData() {
       let cumulativeTop = (group.hour - visibleStartHour) * HOUR_HEIGHT;
 
       group.tasks.forEach((task, index) => {
-        const duration = task.adjustedDuration || task.baseDuration || 15;
+        const duration = task.adjustedDuration || task.baseDuration || TASK_DEFAULTS.baseDuration;
         const height = Math.max(duration * PIXELS_PER_MINUTE, 20); // 최소 20px
 
         items.push({

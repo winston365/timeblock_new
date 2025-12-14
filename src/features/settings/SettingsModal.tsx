@@ -41,6 +41,8 @@ import {
     GoogleCalendarTab,
 } from './components/tabs';
 import { useModalEscapeClose } from '@/shared/hooks';
+import AsyncStatePanel from '@/shared/components/status/AsyncStatePanel';
+import StatusBanner from '@/shared/components/status/StatusBanner';
 
 const modalOverlayClass =
     'fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(0,0,0,0.65)] p-4 backdrop-blur';
@@ -301,10 +303,12 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
 
                     {/* Tab Content Area */}
                     <div className="flex-1 overflow-y-auto px-6 py-5">
-                        {loading ? (
-                            <div className="flex h-64 items-center justify-center text-sm text-[var(--color-text-secondary)]">로딩 중...</div>
-                        ) : (
-                            <>
+                        <div className="space-y-4">
+                          {saving ? (
+                            <StatusBanner variant="loading" title="설정 저장 중..." />
+                          ) : null}
+
+                          <AsyncStatePanel loading={loading} loadingTitle="설정 불러오는 중...">
                                 {activeTab === 'appearance' && (
                                     <AppearanceTab
                                         currentTheme={currentTheme}
@@ -368,8 +372,8 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                                         handleClearLogs={handleClearLogs}
                                     />
                                 )}
-                            </>
-                        )}
+                          </AsyncStatePanel>
+                        </div>
                     </div>
                 </div>
 

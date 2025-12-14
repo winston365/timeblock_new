@@ -19,6 +19,8 @@
  * @see copilot-instructions.md - "Default Values" 섹션
  */
 
+import { TEN_MINUTES_MS } from '@/shared/lib/constants';
+
 // ============================================================================
 // 비활동 감지 시스템 기본값
 // ============================================================================
@@ -71,6 +73,16 @@ export const AI_DEFAULTS = {
 } as const;
 
 // ============================================================================
+// 시간/간격 기본값
+// ============================================================================
+
+export const TIME_INTERVAL_DEFAULTS = {
+  /** 인사이트 자동 갱신 주기 (분) */
+  autoMessageInterval: 15,
+} as const;
+
+
+// ============================================================================
 // 통합 설정 기본값 (Settings 타입과 매칭)
 // ============================================================================
 
@@ -90,9 +102,14 @@ export const SETTING_DEFAULTS = {
   waifuVisible: WAIFU_DEFAULTS.visible,
   waifuSize: WAIFU_DEFAULTS.size,
   waifuName: WAIFU_DEFAULTS.name,
+  waifuMode: 'characteristic' as const,
+  waifuImageChangeInterval: TEN_MINUTES_MS,
 
   // AI
   geminiModel: AI_DEFAULTS.geminiModel,
+
+  // 시간/간격
+  autoMessageInterval: TIME_INTERVAL_DEFAULTS.autoMessageInterval,
 } as const;
 
 // ============================================================================

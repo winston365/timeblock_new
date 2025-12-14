@@ -17,53 +17,13 @@
  *     - catchUpUtils: 만회 심각도 계산
  */
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import type { KeyboardEvent } from 'react';
 import type { WeeklyGoal } from '@/shared/types/domain';
 import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
 import WeeklyProgressBar from './WeeklyProgressBar';
 import { QUICK_UPDATE_BUTTONS } from './constants/goalConstants';
 import { calculateCatchUpInfo } from './utils/catchUpUtils';
-
-/** 짧은 효과음 재생 (Web Audio API) */
-const playFeedbackSound = (type: 'increment' | 'decrement' | 'complete') => {
-  try {
-    const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    if (type === 'complete') {
-      // 완료: 상승하는 화음
-      oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
-      oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
-      oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
-      gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-      gainNode.gain.exponentialDecayTo?.(0.01, audioContext.currentTime + 0.4) ?? gainNode.gain.setValueAtTime(0.01, audioContext.currentTime + 0.4);
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.4);
-    } else if (type === 'increment') {
-      // 증가: 짧고 밝은 소리
-      oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
-      oscillator.type = 'sine';
-      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-      gainNode.gain.exponentialDecayTo?.(0.01, audioContext.currentTime + 0.1) ?? gainNode.gain.setValueAtTime(0.01, audioContext.currentTime + 0.1);
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.1);
-    } else {
-      // 감소: 낮고 짧은 소리
-      oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4
-      oscillator.type = 'sine';
-      gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
-      gainNode.gain.exponentialDecayTo?.(0.01, audioContext.currentTime + 0.08) ?? gainNode.gain.setValueAtTime(0.01, audioContext.currentTime + 0.08);
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.08);
-    }
-  } catch {
-    // Audio API 지원하지 않는 환경에서는 무시
-  }
-};
 
 interface WeeklyGoalCardProps {
   goal: WeeklyGoal;
@@ -78,13 +38,27 @@ interface WeeklyGoalCardProps {
  * 장기목표 카드 컴포넌트
  */
 export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, compact = false }: WeeklyGoalCardProps) {
-  const { updateProgress, setProgress, getDayOfWeekIndex, getTodayTarget, getRemainingDays, getDailyTargetForToday } = useWeeklyGoalStore();
+  const updateProgress = useWeeklyGoalStore((s) => s.updateProgress);
+  const setProgress = useWeeklyGoalStore((s) => s.setProgress);
+  const getDayOfWeekIndex = useWeeklyGoalStore((s) => s.getDayOfWeekIndex);
+  const getTodayTarget = useWeeklyGoalStore((s) => s.getTodayTarget);
+  const getRemainingDays = useWeeklyGoalStore((s) => s.getRemainingDays);
+  const getDailyTargetForToday = useWeeklyGoalStore((s) => s.getDailyTargetForToday);
   const [directInput, setDirectInput] = useState('');
   const [showDirectInput, setShowDirectInput] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [lastDelta, setLastDelta] = useState<number>(0);
   const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+        animationTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const dayIndex = getDayOfWeekIndex();
   const todayTarget = getTodayTarget(goal.target);
@@ -117,17 +91,10 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
     if (updating) return;
     setUpdating(true);
     try {
-      const wasCompleted = goal.currentProgress >= goal.target;
       await updateProgress(goal.id, delta);
       
-      // 애니메이션 & 효과음
+      // 애니메이션
       triggerAnimation(delta);
-      const willBeCompleted = (goal.currentProgress + delta) >= goal.target;
-      if (!wasCompleted && willBeCompleted) {
-        playFeedbackSound('complete');
-      } else {
-        playFeedbackSound(delta > 0 ? 'increment' : 'decrement');
-      }
     } catch (error) {
       console.error('Failed to update progress:', error);
     } finally {
@@ -160,7 +127,7 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleDirectInputSubmit();
     } else if (e.key === 'Escape') {
@@ -169,18 +136,32 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
     }
   };
 
+  const handleHeaderKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onShowHistory();
+    }
+  };
+
   const accent = goal.color || '#6366f1';
   const quickButtons = compact ? QUICK_UPDATE_BUTTONS.COMPACT : QUICK_UPDATE_BUTTONS.NORMAL;
 
   return (
     <div
-      className={`group relative flex flex-col rounded-2xl border border-white/5 bg-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] transition-all hover:border-white/10 hover:bg-white/8 ${
+      className={`group relative flex flex-col rounded-2xl border border-white/5 bg-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] transition-all hover:border-white/10 hover:bg-white/10 ${
         isCompleted ? 'ring-1 ring-emerald-400/30' : ''
       } ${compact ? 'gap-2 p-3' : 'gap-3 p-4'}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className={`flex items-center cursor-pointer ${compact ? 'gap-2' : 'gap-3'}`} onClick={onShowHistory}>
+        <div
+          className={`flex items-center cursor-pointer ${compact ? 'gap-2' : 'gap-3'}`}
+          onClick={onShowHistory}
+          role="button"
+          tabIndex={0}
+          onKeyDown={handleHeaderKeyDown}
+          aria-label="목표 히스토리 보기"
+        >
           <div
             className={`shrink-0 flex items-center justify-center rounded-full ${compact ? 'h-8 w-8 text-base' : 'h-10 w-10 text-xl'}`}
             style={{ backgroundColor: `${accent}20` }}
@@ -212,6 +193,7 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
             className={`rounded text-white/50 hover:bg-white/10 hover:text-white ${compact ? 'p-1 text-xs' : 'p-1.5'}`}
             title="수정"
+            aria-label="목표 수정"
           >
             ✏️
           </button>
@@ -219,6 +201,7 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
             className={`rounded text-white/50 hover:bg-red-500/20 hover:text-red-400 ${compact ? 'p-1 text-xs' : 'p-1.5'}`}
             title="삭제"
+            aria-label="목표 삭제"
           >
             🗑️
           </button>
@@ -241,12 +224,9 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
       {/* 애니메이션 피드백 (숫자 변화 표시) */}
       {animating && lastDelta !== 0 && (
         <div 
-          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 font-bold text-2xl animate-bounce ${
+          className={`goal-delta-fade-slide-up absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 font-bold text-2xl motion-reduce:hidden ${
             lastDelta > 0 ? 'text-emerald-400' : 'text-red-400'
           }`}
-          style={{ 
-            animation: 'fadeSlideUp 0.3s ease-out forwards',
-          }}
         >
           {lastDelta > 0 ? `+${lastDelta}` : lastDelta}
         </div>

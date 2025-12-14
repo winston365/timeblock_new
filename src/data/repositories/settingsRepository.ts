@@ -14,7 +14,7 @@
 
 import { db } from '../db/dexieClient';
 import type { Settings, TimeSlotTagTemplate } from '@/shared/types/domain';
-import { DEFAULT_AUTO_MESSAGE_INTERVAL, TEN_MINUTES_MS } from '@/shared/lib/constants';
+import { DEFAULT_AUTO_MESSAGE_INTERVAL } from '@/shared/lib/constants';
 import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
 import { loadData, saveData, updateData, type RepositoryConfig } from './baseRepository';
 import { settingsStrategy } from '@/shared/services/sync/firebase/strategies';
@@ -51,8 +51,8 @@ const settingsConfig: RepositoryConfig<Settings> = {
     githubToken: '',
     autoMessageInterval: DEFAULT_AUTO_MESSAGE_INTERVAL,
     autoMessageEnabled: true,
-    waifuMode: 'characteristic',
-    waifuImageChangeInterval: TEN_MINUTES_MS,
+    waifuMode: SETTING_DEFAULTS.waifuMode,
+    waifuImageChangeInterval: SETTING_DEFAULTS.waifuImageChangeInterval,
     templateCategories: ['업무', '건강', '공부', '취미'],
     aiBreakdownTrigger: 'high_difficulty',
     autoEmojiEnabled: false,
@@ -69,8 +69,8 @@ const settingsConfig: RepositoryConfig<Settings> = {
     // 기존 사용자를 위한 마이그레이션 - 중앙화된 기본값 사용
     return {
       ...data,
-      waifuMode: data.waifuMode || 'characteristic',
-      waifuImageChangeInterval: data.waifuImageChangeInterval ?? TEN_MINUTES_MS,
+      waifuMode: data.waifuMode || SETTING_DEFAULTS.waifuMode,
+      waifuImageChangeInterval: data.waifuImageChangeInterval ?? SETTING_DEFAULTS.waifuImageChangeInterval,
       templateCategories: data.templateCategories || ['업무', '건강', '공부', '취미'],
       aiBreakdownTrigger: data.aiBreakdownTrigger || 'high_difficulty',
       autoEmojiEnabled: data.autoEmojiEnabled ?? false,

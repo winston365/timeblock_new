@@ -20,6 +20,7 @@ import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { toast } from 'react-hot-toast';
 import type { Template, Task } from '@/shared/types/domain';
 import SyncErrorToast from '@/shared/components/SyncErrorToast';
+import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
 
 // Custom Hooks
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -237,11 +238,11 @@ export default function AppShell() {
           />
           <DailyXPBar
             timeBlockXP={gameState?.timeBlockXP}
-            goalPerBlock={settings?.timeBlockXPGoal ?? 200}
+            goalPerBlock={settings?.timeBlockXPGoal ?? SETTING_DEFAULTS.timeBlockXPGoal}
           />
           <TimeBlockXPBar
             timeBlockXP={gameState?.timeBlockXP}
-            goalXP={settings?.timeBlockXPGoal ?? 200}
+            goalXP={settings?.timeBlockXPGoal ?? SETTING_DEFAULTS.timeBlockXPGoal}
             availableXP={gameState?.availableXP ?? 0}
           />
         </>
