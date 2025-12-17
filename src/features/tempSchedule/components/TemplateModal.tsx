@@ -9,7 +9,6 @@ import { memo, useState, useCallback } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { TempScheduleTemplate } from '@/shared/types/tempSchedule';
 import { useModalEscapeClose } from '@/shared/hooks';
-import StatusBanner from '@/shared/components/status/StatusBanner';
 
 // ============================================================================
 // Sub Components

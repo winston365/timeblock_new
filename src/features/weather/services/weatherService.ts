@@ -5,19 +5,23 @@
  * @role WeatherAPI.com을 통한 날씨 정보 조회 및 캐싱, Gemini AI 복장 추천 생성
  * @responsibilities
  *   - WeatherAPI.com을 통한 날씨 데이터 조회
- *   - Dexie 캐시 관리 (일별 만료)
+ *   - weatherRepository를 통한 캐시 관리
  *   - Gemini AI 기반 날씨 분석 및 복장 추천
  * @dependencies
  *   - fetchWeatherFromApi: WeatherAPI.com 날씨 조회
  *   - callGeminiAPI: Gemini AI 호출
  *   - useSettingsStore: API 키 조회
- *   - db.weather: Dexie 캐시 테이블
+ *   - weatherRepository: 날씨 캐시 저장소
  */
 
 import type { DayForecast } from '@/shared/types/weather';
 import { fetchWeatherFromApi } from './weatherApi';
-import { db } from '@/data/db/dexieClient';
-import { getLocalDate } from '@/shared/lib/utils';
+import {
+    loadCachedWeather,
+    cacheWeather,
+    clearWeatherCache,
+} from '@/data/repositories/weatherRepository';
+
 import { callGeminiAPI } from '@/shared/services/ai/gemini';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { trackTokenUsage } from '@/shared/utils/tokenUtils';
@@ -56,7 +60,7 @@ export async function fetchWeatherFromGoogle(
     forceRefresh: boolean = false
 ): Promise<WeatherFetchResult> {
     try {
-        // 1. Dexie 캐시 확인 (강제 새로고침이 아닐 경우)
+        // 1. weatherRepository 캐시 확인 (강제 새로고침이 아닐 경우)
         if (!forceRefresh) {
             const cached = await loadCachedWeather();
             if (cached && isValidForecast(cached.forecast)) {
@@ -85,7 +89,7 @@ export async function fetchWeatherFromGoogle(
             };
         }
 
-        // 3. Dexie에 저장
+        // 3. weatherRepository에 저장
         const timestamp = Date.now();
         await cacheWeather(result.forecast, timestamp);
 
@@ -96,66 +100,8 @@ export async function fetchWeatherFromGoogle(
     }
 }
 
-/**
- * Dexie에서 캐시된 날씨 데이터를 로드합니다.
- *
- * @returns 캐시된 날씨 데이터 또는 null (만료/없음)
- */
-export async function loadCachedWeather(): Promise<{ forecast: DayForecast[]; timestamp: number } | null> {
-    try {
-        const cached = await db.weather.get('latest');
-        if (!cached) return null;
-
-        // 기본 필드 검증
-        if (!cached.data || !isValidForecast(cached.data.forecast) || !cached.timestamp || !cached.lastUpdatedDate) {
-            console.warn('[WeatherService] Cached weather data invalid. Ignoring cache.');
-            await db.weather.delete('latest').catch((err) => console.error('[WeatherService] Failed to clear invalid cache', err));
-            return null;
-        }
-
-        // 오늘 날짜 확인 (YYYY-MM-DD)
-        const todayDate = getLocalDate();
-        if (cached.lastUpdatedDate !== todayDate) {
-            return null;
-        }
-
-        return { forecast: cached.data.forecast, timestamp: cached.timestamp };
-    } catch (error) {
-        console.error('[WeatherService] Dexie load failed:', error);
-        return null;
-    }
-}
-
-/**
- * 날씨 데이터를 Dexie에 캐시합니다.
- *
- * @param forecast - 저장할 날씨 예보 배열
- * @param timestamp - 저장 시점 타임스탬프
- */
-export async function cacheWeather(forecast: DayForecast[], timestamp: number): Promise<void> {
-    try {
-        const today = getLocalDate();
-        await db.weather.put({
-            id: 'latest',
-            data: { forecast },
-            timestamp: timestamp,
-            lastUpdatedDate: today
-        });
-    } catch (error) {
-        console.error('[WeatherService] Dexie save failed:', error);
-    }
-}
-
-/**
- * Dexie에 저장된 날씨 캐시를 삭제합니다.
- */
-export async function clearWeatherCache(): Promise<void> {
-    try {
-        await db.weather.delete('latest');
-    } catch (error) {
-        console.error('[WeatherService] Dexie cache clear failed:', error);
-    }
-}
+// Re-export repository functions for backward compatibility
+export { loadCachedWeather, cacheWeather, clearWeatherCache };
 
 type InsightContext = {
     humidity?: number;

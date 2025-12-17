@@ -437,12 +437,12 @@ function MonthlyScheduleViewComponent() {
 
   return (
     <div className="flex h-full flex-col relative">
-      {/* 요일 헤더 */}
-      <div className="flex border-b border-[var(--color-border)] bg-[var(--color-bg-surface)]">
+      {/* 요일 헤더 (Phase 4: grid 레이아웃으로 변경하여 바디와 정렬 일치) */}
+      <div className="grid grid-cols-7 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)]">
         {WEEK_DAY_LABELS.map((label, index) => (
           <div
             key={label}
-            className={`flex-1 py-2 text-center text-xs font-semibold ${
+            className={`py-2 text-center text-xs font-semibold ${
               index >= 5 ? 'text-red-400' : 'text-[var(--color-text-secondary)]'
             }`}
           >
@@ -454,21 +454,20 @@ function MonthlyScheduleViewComponent() {
       {/* 캘린더 그리드 */}
       <div className="flex-1 min-h-0">
         <div className="h-full flex flex-col">
-          {/* 캘린더 셀들 */}
+          {/* 캘린더 셀들 (Phase 4: grid 레이아웃으로 변경하여 헤더와 정렬 일치) */}
           <div className="flex-shrink-0">
             {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="flex">
+              <div key={weekIndex} className="grid grid-cols-7">
                 {week.map((date) => (
-                  <div key={date} className="flex-1">
-                    <DayCell
-                      date={date}
-                      currentMonth={currentMonth}
-                      tasks={tasksByDate[date] || []}
-                      onDayClick={handleDayClick}
-                      onHover={handleHover}
-                      onLeave={handleLeave}
-                    />
-                  </div>
+                  <DayCell
+                    key={date}
+                    date={date}
+                    currentMonth={currentMonth}
+                    tasks={tasksByDate[date] || []}
+                    onDayClick={handleDayClick}
+                    onHover={handleHover}
+                    onLeave={handleLeave}
+                  />
                 ))}
               </div>
             ))}

@@ -7,11 +7,11 @@
  *        메시지, 데이터, 에러 객체
  * @output SyncLogEntry 배열 (최대 100개 유지, Dexie에 영구 저장)
  * @external_dependencies
- *   - Dexie (systemState): 로그 영구 저장
+ *   - syncLogRepository: 로그 영구 저장
  * @note localStorage 대신 Dexie systemState 테이블 사용 (앱 전체 일관성)
  */
 
-import { db } from '@/data/db/dexieClient';
+import { getSyncLogs as loadLogsFromRepo, saveSyncLogs as saveLogsToRepo } from '@/data/repositories/syncLogRepository';
 import { generateId } from '@/shared/lib/utils';
 
 export type SyncType = 'dexie' | 'firebase';
@@ -27,9 +27,6 @@ export interface SyncLogEntry {
   error?: string;
 }
 
-// Dexie systemState 키
-const STORAGE_KEY = 'syncLogs';
-
 // 메모리 내 로그 캐시 (최대 10,000개)
 const MAX_LOGS = 10_000;
 let syncLogs: SyncLogEntry[] = [];
@@ -39,25 +36,18 @@ let isInitialized = false;
 let initPromise: Promise<void> | null = null;
 
 /**
- * Dexie에서 로그 로드 (비동기)
+ * Repository에서 로그 로드 (비동기)
  */
 async function loadLogsFromStorage(): Promise<SyncLogEntry[]> {
-  try {
-    const record = await db.systemState.get(STORAGE_KEY);
-    if (!record || !record.value) return [];
-    return record.value as SyncLogEntry[];
-  } catch (error) {
-    console.error('Failed to load sync logs from Dexie:', error);
-    return [];
-  }
+  return await loadLogsFromRepo();
 }
 
 /**
- * Dexie에 로그 저장 (비동기, fire-and-forget)
+ * Repository에 로그 저장 (비동기, fire-and-forget)
  */
 function saveLogsToStorage(logs: SyncLogEntry[]): void {
-  db.systemState.put({ key: STORAGE_KEY, value: logs }).catch(error => {
-    console.error('Failed to save sync logs to Dexie:', error);
+  saveLogsToRepo(logs).catch(error => {
+    console.error('Failed to save sync logs:', error);
   });
 }
 

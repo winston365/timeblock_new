@@ -12,20 +12,21 @@
  *   - inboxRepository: 전역 인박스 작업
  *   - dailyDataStore: UI 상태 (dailyData)
  *   - inboxStore: UI 상태 (inbox)
- *   - dexieClient: IndexedDB 직접 조회
  */
 
 import type { Task } from '@/shared/types/domain';
-import { db } from '@/data/db/dexieClient';
 import { 
   updateTask as updateDailyTask,
   deleteTask as deleteDailyTask,
   toggleTaskCompletion as toggleDailyTaskCompletion,
+  loadDailyData,
 } from '@/data/repositories/dailyDataRepository';
 import {
   updateInboxTask,
   deleteInboxTask,
   toggleInboxTaskCompletion,
+  getInboxTaskById,
+  loadInboxTasks,
 } from '@/data/repositories/inboxRepository';
 import { getLocalDate } from '@/shared/lib/utils';
 import { toStandardError } from '@/shared/lib/standardError';
@@ -66,15 +67,15 @@ interface TaskLocationResult {
  */
 export async function findTaskLocation(taskId: string, dateHint?: string): Promise<TaskLocationResult> {
   try {
-    // 1. Inbox에서 먼저 찾기 (빠름)
-    const inboxTask = await db.globalInbox.get(taskId);
+    // 1. Inbox에서 먼저 찾기 (globalInbox + completedInbox)
+    const inboxTask = await getInboxTaskById(taskId);
     if (inboxTask) {
       return { location: 'inbox', task: inboxTask };
     }
 
     // 2. DailyData에서 찾기
     const targetDate = dateHint || getLocalDate();
-    const dailyData = await db.dailyData.get(targetDate);
+    const dailyData = await loadDailyData(targetDate);
 
     const taskInTarget = findTaskInDailyData_core(taskId, dailyData);
     if (taskInTarget) {
@@ -86,17 +87,11 @@ export async function findTaskLocation(taskId: string, dateHint?: string): Promi
     for (const date of recentDates) {
       if (date === targetDate) continue;
 
-      const data = await db.dailyData.get(date);
+      const data = await loadDailyData(date);
       const taskInRecent = findTaskInDailyData_core(taskId, data);
       if (taskInRecent) {
         return { location: 'daily', task: taskInRecent, date };
       }
-    }
-
-    // 4. completedInbox에서도 찾기
-    const completedInboxTask = await db.completedInbox.get(taskId);
-    if (completedInboxTask) {
-      return { location: 'inbox', task: completedInboxTask };
     }
 
     return { location: 'not_found', task: null };
@@ -310,8 +305,8 @@ export async function getAllActiveTasks(date?: string): Promise<Task[]> {
 
   try {
     const [dailyData, inboxTasks] = await Promise.all([
-      db.dailyData.get(targetDate),
-      db.globalInbox.toArray(),
+      loadDailyData(targetDate),
+      loadInboxTasks(),
     ]);
 
     const dailyTasks = dailyData?.tasks || [];

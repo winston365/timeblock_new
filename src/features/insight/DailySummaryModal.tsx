@@ -20,7 +20,7 @@ import { getLocalDate, calculateTaskXP } from '@/shared/lib/utils';
 import { loadDailyData } from '@/data/repositories/dailyDataRepository';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { callGeminiAPI } from '@/shared/services/ai/geminiApi';
-import { db } from '@/data/db/dexieClient';
+import { getSystemState, setSystemState } from '@/data/repositories/systemRepository';
 import type { DailyData, Task } from '@/shared/types/domain';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -514,9 +514,9 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
     // Try loading from cache first
     if (!forceRegenerate) {
       try {
-        const cached = await db.systemState.get(cacheKey);
-        if (cached?.value) {
-          setReport(cached.value as DailyReport);
+        const cached = await getSystemState<DailyReport>(cacheKey);
+        if (cached) {
+          setReport(cached);
           setIsLoading(false);
           return;
         }
@@ -534,7 +534,7 @@ export default function DailySummaryModal({ open, onClose }: DailySummaryModalPr
       
       // Cache the report
       try {
-        await db.systemState.put({ key: cacheKey, value: newReport });
+        await setSystemState(cacheKey, newReport);
       } catch (e) {
         console.warn('Failed to cache report:', e);
       }

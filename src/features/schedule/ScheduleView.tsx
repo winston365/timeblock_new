@@ -7,7 +7,6 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { db } from '@/data/db/dexieClient';
 import { getSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
 import { useDailyData } from '@/shared/hooks';
 import { useGameState } from '@/shared/hooks/useGameState';

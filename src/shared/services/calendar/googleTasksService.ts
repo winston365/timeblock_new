@@ -9,9 +9,9 @@
  * @external_dependencies
  *   - Google Tasks API v1
  *   - googleCalendarService (토큰 관리 공유)
+ *   - calendarRepository (매핑 데이터)
  */
 
-import { db } from '@/data/db/dexieClient';
 import type { Task } from '@/shared/types/domain';
 import { getLocalDate } from '@/shared/lib/utils';
 import {
@@ -22,6 +22,10 @@ import {
     deleteCalendarEvent,
 } from './googleCalendarService';
 import type { GoogleCalendarEvent } from './googleCalendarTypes';
+import {
+    getTaskCalendarMapping,
+    deleteTaskCalendarMapping,
+} from '@/data/repositories/calendarRepository';
 
 // ============================================================================
 // Types
@@ -167,7 +171,7 @@ export async function deleteGoogleTask(taskId: string): Promise<void> {
         }
     }
 
-    await deleteTaskGoogleTaskMapping(taskId);
+    await deleteTaskGoogleTaskMappingById(taskId);
 }
 
 // ============================================================================
@@ -175,17 +179,21 @@ export async function deleteGoogleTask(taskId: string): Promise<void> {
 // ============================================================================
 
 export async function getTaskGoogleTaskMapping(taskId: string): Promise<TaskGoogleTaskMapping | undefined> {
-    try {
-        return await db.table('taskGoogleTaskMappings').get(taskId);
-    } catch (error) {
-        console.error('[GoogleTasks] Failed to get mapping:', error);
-        return undefined;
-    }
+    const mapping = await getTaskCalendarMapping(taskId);
+    if (!mapping) return undefined;
+    // Convert to TaskGoogleTaskMapping format (legacy support)
+    return {
+        taskId: mapping.taskId,
+        googleTaskId: mapping.eventId,
+        googleTaskListId: mapping.calendarId,
+        lastSyncedAt: mapping.lastSyncedAt,
+        syncStatus: 'synced',
+    };
 }
 
-async function deleteTaskGoogleTaskMapping(taskId: string): Promise<void> {
+async function deleteTaskGoogleTaskMappingById(taskId: string): Promise<void> {
     try {
-        await db.table('taskGoogleTaskMappings').delete(taskId);
+        await deleteTaskCalendarMapping(taskId);
     } catch (error) {
         console.error('[GoogleTasks] Failed to delete mapping:', error);
     }

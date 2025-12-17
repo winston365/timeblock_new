@@ -5,17 +5,27 @@
  * Role: RAG 문서와 벡터 임베딩을 IndexedDB에 영구 저장
  * 
  * Responsibilities:
- *   - Dexie(IndexedDB)를 활용한 벡터 데이터 영구 저장
+ *   - ragDocumentRepository를 활용한 벡터 데이터 영구 저장
  *   - 앱 재시작 시 Orama DB로 복원
  *   - 콘텐츠 해시 기반 변경 감지 (재인덱싱 방지)
  *   - 오래된 문서 정리
  * 
  * Key Dependencies:
- *   - dexieClient: IndexedDB 접근
+ *   - ragDocumentRepository: IndexedDB ragDocuments 테이블 접근
  *   - RAGDocument: 문서 타입 정의
  */
 
-import { db, type RAGDocumentRecord } from '@/data/db/dexieClient';
+import {
+    saveRagDocument,
+    saveRagDocuments,
+    getRagDocument,
+    getAllRagDocuments,
+    getRagDocumentsBefore,
+    deleteRagDocument,
+    deleteRagDocuments,
+    clearAllRagDocuments,
+} from '@/data/repositories/ragDocumentRepository';
+import type { RAGDocumentRecord } from '@/data/db';
 import type { RAGDocument } from './vectorStore';
 import { getLocalDate } from '@/shared/lib/utils';
 
@@ -57,7 +67,7 @@ export class VectorPersistence {
     }
 
     /**
-     * 문서가 이미 인덱싱되어 있고 변경되지 않았는지 확인
+ * 문서가 이미 인덱싱되어 있고 변경되지 않았는지 확인
      * @param id - 문서 ID
      * @param content - 문서 내용
      * @param completed - 완료 여부
@@ -65,7 +75,7 @@ export class VectorPersistence {
      */
     public async isDocumentUnchanged(id: string, content: string, completed: boolean): Promise<boolean> {
         try {
-            const existingDoc = await db.ragDocuments.get(id);
+            const existingDoc = await getRagDocument(id);
             if (!existingDoc) return false;
 
             const newHash = hashContent(content, completed);
@@ -99,7 +109,7 @@ export class VectorPersistence {
                 indexedAt: Date.now(),
             };
 
-            await db.ragDocuments.put(documentRecord);
+            await saveRagDocument(documentRecord);
         } catch (saveError) {
             console.error('❌ VectorPersistence: Failed to save document', saveError);
         }
@@ -125,7 +135,7 @@ export class VectorPersistence {
             }));
 
         if (documentRecords.length > 0) {
-            await db.ragDocuments.bulkPut(documentRecords);
+            await saveRagDocuments(documentRecords);
         }
     }
 
@@ -135,7 +145,7 @@ export class VectorPersistence {
      */
     public async loadAllDocuments(): Promise<RAGDocument[]> {
         try {
-            const storedRecords = await db.ragDocuments.toArray();
+            const storedRecords = await getAllRagDocuments();
 
             return storedRecords.map(storedRecord => ({
                 id: storedRecord.id,
@@ -159,7 +169,7 @@ export class VectorPersistence {
      */
     public async getDocument(id: string): Promise<RAGDocument | null> {
         try {
-            const storedRecord = await db.ragDocuments.get(id);
+            const storedRecord = await getRagDocument(id);
             if (!storedRecord) return null;
 
             return {
@@ -183,7 +193,7 @@ export class VectorPersistence {
      */
     public async deleteDocument(id: string): Promise<void> {
         try {
-            await db.ragDocuments.delete(id);
+            await deleteRagDocument(id);
         } catch (deleteError) {
             console.warn('⚠️ VectorPersistence: Failed to delete document', deleteError);
         }
@@ -194,7 +204,7 @@ export class VectorPersistence {
      */
     public async clearAll(): Promise<void> {
         try {
-            await db.ragDocuments.clear();
+            await clearAllRagDocuments();
         } catch (clearError) {
             console.error('❌ VectorPersistence: Failed to clear documents', clearError);
         }
@@ -206,7 +216,8 @@ export class VectorPersistence {
      */
     public async getDocumentCount(): Promise<number> {
         try {
-            return await db.ragDocuments.count();
+            const docs = await getAllRagDocuments();
+            return docs.length;
         } catch (error) {
             return 0;
         }
@@ -223,14 +234,11 @@ export class VectorPersistence {
             cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
             const cutoffDateStr = getLocalDate(cutoffDate);
 
-            const oldDocuments = await db.ragDocuments
-                .where('date')
-                .below(cutoffDateStr)
-                .toArray();
+            const oldDocuments = await getRagDocumentsBefore(cutoffDateStr);
 
             if (oldDocuments.length > 0) {
                 const idsToDelete = oldDocuments.map(oldDoc => oldDoc.id);
-                await db.ragDocuments.bulkDelete(idsToDelete);
+                await deleteRagDocuments(idsToDelete);
             }
 
             return oldDocuments.length;

@@ -43,11 +43,21 @@ function calculateWeekDates(selectedDate: string): string[] {
 
 const WEEK_DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
 const DEFAULT_HOUR_HEIGHT = 24; // 시간당 기본 높이 (픽셀)
-const HEADER_HEIGHT = 52; // 요일 헤더 높이 (px)
+const HEADER_HEIGHT = 52; // 요일 헤더 높이 (px) - CSS에서도 h-[52px]로 고정
 const START_HOUR = 5;
 const END_HOUR = 24;
 const TIME_RAIL_WIDTH = 48; // 시간 레일 너비 (px)
 const CURRENT_TIME_REFRESH_INTERVAL = 60_000; // 현재 시간 갱신 간격 (1분)
+
+/**
+ * Subpixel 스냅 유틸리티
+ * devicePixelRatio를 고려하여 픽셀 경계에 맞춰 반올림
+ * 이로써 시간 구분선과 현재시간선이 동일한 그리드에 정렬됨
+ */
+function snapToPixel(value: number): number {
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  return Math.round(value * dpr) / dpr;
+}
 
 // ============================================================================
 // Helper Functions
@@ -250,9 +260,9 @@ const DayColumn = memo(function DayColumn({
         <div className="absolute inset-0 border-2 border-[var(--color-primary)]/50 pointer-events-none z-[5]" />
       )}
       
-      {/* 요일 헤더 */}
+      {/* 요일 헤더 - 고정 높이로 레이아웃 안정화 */}
       <div className={`
-        sticky top-0 z-10 border-b border-[var(--color-border)] px-1 py-2 text-center
+        sticky top-0 z-10 border-b border-[var(--color-border)] px-1 py-2 text-center h-[52px] box-border
         ${isToday 
           ? 'bg-[var(--color-primary)]/20 border-b-2 border-b-[var(--color-primary)]' 
           : 'bg-[var(--color-bg-surface)]'
@@ -284,13 +294,13 @@ const DayColumn = memo(function DayColumn({
           height: `${(END_HOUR - START_HOUR) * hourHeight}px`,
         }}
       >
-        {/* 시간별 구분선 (Phase 3) - pointer-events: none으로 드래그&드롭 방해 방지 */}
+        {/* 시간별 구분선 - snapToPixel로 서브픽셀 정렬 */}
         <div className="absolute inset-0 pointer-events-none z-0">
           {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
             <div
               key={i}
               className="absolute left-0 right-0 border-t border-[var(--color-border)]/20"
-              style={{ top: `${i * hourHeight}px` }}
+              style={{ top: `${snapToPixel(i * hourHeight)}px` }}
             />
           ))}
         </div>
@@ -522,18 +532,18 @@ function WeeklyScheduleViewComponent() {
 
         {/* 7일 열 */}
         <div className="flex flex-1 overflow-y-auto relative">
-          {/* 현재 시간선 (7일 전체에 걸쳐) */}
+          {/* 현재 시간선 (7일 전체에 걸쳐) - offsetY에만 snapToPixel 적용하여 시간 구분선과 동일한 rounding */}
           {weekDates.includes(today) && currentTimeMinutes >= START_HOUR * 60 && currentTimeMinutes <= END_HOUR * 60 && (
             <div
-              className="absolute left-0 right-0 z-[15] pointer-events-none flex items-center"
+              className="absolute left-0 right-0 z-[15] pointer-events-none"
               style={{ 
-                top: `${HEADER_HEIGHT + (currentTimeMinutes - START_HOUR * 60) / 60 * hourHeight}px` 
+                top: `${HEADER_HEIGHT + snapToPixel((currentTimeMinutes - START_HOUR * 60) / 60 * hourHeight)}px`,
               }}
             >
               {/* 빨간 선 */}
-              <div className="flex-1 h-[2px] bg-red-500 shadow-sm shadow-red-500/50" />
-              {/* 현재 시간 점 */}
-              <div className="absolute left-0 w-2 h-2 bg-red-500 rounded-full -ml-1 shadow-sm shadow-red-500/50" />
+              <div className="h-[2px] bg-red-500 shadow-sm shadow-red-500/50" />
+              {/* 현재 시간 점 - 선과 수직 중앙 정렬 */}
+              <div className="absolute w-2 h-2 bg-red-500 rounded-full shadow-sm shadow-red-500/50 -top-[3px] -left-1" />
             </div>
           )}
           

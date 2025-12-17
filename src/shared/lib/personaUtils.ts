@@ -14,15 +14,14 @@
  * @dependencies
  *   - inboxRepository: Inbox 작업 조회
  *   - dailyDataRepository: 최근 일일 데이터 조회
- *   - dexieClient: completedInbox 테이블 접근
+ *   - loadCompletedInboxTasks: completedInbox 테이블 접근
  *   - domain types: Task, TimeBlockState, TIME_BLOCKS
  */
-import { loadInboxTasks } from '@/data/repositories/inboxRepository';
+import { loadInboxTasks, loadCompletedInboxTasks } from '@/data/repositories/inboxRepository';
 import type { PersonaContext } from '@/shared/services/ai/geminiApi';
 import type { DailyData, GameState, Task, TimeBlockState, WaifuState } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
-import { db } from '@/data/db/dexieClient';
 
 /**
  * PersonaContext 빌드에 필요한 파라미터
@@ -146,7 +145,7 @@ export async function buildPersonaContext(
   });
 
   // completedInbox에서 완료일자 기준으로 편입 (10일 범위 내)
-  const completedInboxTasks = await db.completedInbox.toArray();
+  const completedInboxTasks = await loadCompletedInboxTasks();
   completedInboxTasks.forEach(task => {
     const date = task.completedAt ? task.completedAt.slice(0, 10) : null;
     if (date && tenDayDates.has(date)) {

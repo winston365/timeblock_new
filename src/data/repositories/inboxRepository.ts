@@ -122,6 +122,28 @@ export async function loadCompletedInboxTasks(): Promise<Task[]> {
 }
 
 /**
+ * ID로 인박스 작업 조회 (globalInbox + completedInbox 모두 검색)
+ *
+ * @param {string} taskId - 조회할 작업 ID
+ * @returns {Promise<Task | undefined>} 작업 객체 또는 undefined
+ * @throws 없음
+ */
+export async function getInboxTaskById(taskId: string): Promise<Task | undefined> {
+  try {
+    // globalInbox에서 먼저 찾기
+    const inboxTask = await db.globalInbox.get(taskId);
+    if (inboxTask) return inboxTask;
+
+    // completedInbox에서 찾기
+    const completedTask = await db.completedInbox.get(taskId);
+    return completedTask;
+  } catch (error) {
+    console.error('Failed to get inbox task by id:', error);
+    return undefined;
+  }
+}
+
+/**
  * 인박스 작업 추가
  *
  * @param {Task} task - 추가할 작업

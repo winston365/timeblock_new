@@ -45,7 +45,7 @@ import {
 } from '../lib/storeUtils';
 import { taskCompletionService } from '@/shared/services/gameplay/taskCompletion';
 import { trackTaskTimeBlockChange } from '@/shared/services/behavior/procrastinationMonitor';
-import { db } from '@/data/db/dexieClient';
+import { getInboxTaskById } from '@/data/repositories/inboxRepository';
 import { scheduleEmojiSuggestion } from '@/shared/services/ai/emojiSuggester';
 import { eventBus } from '@/shared/lib/eventBus';
 import { toStandardError } from '@/shared/lib/standardError';
@@ -243,10 +243,10 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     let isInboxToBlockMove = false;
     let isBlockToInboxMove = false;
 
-    // ✅ globalInbox 확인
+    // ✅ inboxRepository 확인
     if (!originalTask) {
       try {
-        inboxTask = await db.globalInbox.get(taskId);
+        inboxTask = await getInboxTaskById(taskId) ?? null;
         originalTask = inboxTask || undefined;
       } catch (error) {
         console.error('[DailyDataStore] Failed to check globalInbox:', error);
@@ -422,7 +422,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         });
         set(createOptimisticTaskUpdate(dailyData, optimisticTasks));
       } else {
-        const inboxTask = await db.globalInbox.get(taskId);
+        const inboxTask = await getInboxTaskById(taskId);
         if (!inboxTask) {
           throw new Error(`Task not found: ${taskId}`);
         }

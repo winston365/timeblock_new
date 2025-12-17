@@ -6,15 +6,15 @@
  * @responsibilities
  *   - 좌/우 패널 접힘 상태 관리
  *   - 타임라인 뷰 표시/숨김 상태 관리
- *   - Dexie systemState 영속화
+ *   - systemRepository 영속화
  *   - 반응형 레이아웃 (창 크기에 따른 자동 패널 접기)
  *   - 집중 모드 적용
  * @dependencies
- *   - dexieClient: systemState 영속화
+ *   - systemRepository: systemState 영속화
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { db } from '@/data/db/dexieClient';
+import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
 
 /**
  * 패널 레이아웃 상태 인터페이스
@@ -42,62 +42,62 @@ interface PanelLayoutState {
   toggleTimeline: () => void;
 }
 
-// Dexie systemState 키
-const LEFT_SIDEBAR_KEY = 'leftSidebarCollapsed';
-const RIGHT_PANELS_KEY = 'rightPanelsCollapsed';
-const TIMELINE_VISIBLE_KEY = 'timelineVisible';
+// systemRepository 키는 SYSTEM_KEYS를 사용
+// SYSTEM_KEYS.LEFT_SIDEBAR_COLLAPSED = 'leftSidebarCollapsed'
+// SYSTEM_KEYS.RIGHT_PANELS_COLLAPSED = 'rightPanelsCollapsed'
+// SYSTEM_KEYS.TIMELINE_VISIBLE = 'timelineVisible'
 
 /**
  * 패널 레이아웃 관리 훅
  *
  * 좌측 사이드바와 우측 패널의 접힘 상태를 관리합니다.
- * 상태는 Dexie systemState에 영속화되고, 창 크기에 따라 자동으로 패널이 접힙니다.
+ * 상태는 systemRepository에 영속화되고, 창 크기에 따라 자동으로 패널이 접힙니다.
  * 집중 모드에서는 모든 패널이 강제로 접힙니다.
  *
  * @param {boolean} isFocusMode - 집중 모드 활성화 여부
  * @returns {PanelLayoutState} 패널 상태 및 토글 함수
  */
 export function usePanelLayout(isFocusMode: boolean): PanelLayoutState {
-  // 패널 접힘 상태 (초기값 false, Dexie에서 로드 후 업데이트)
+  // 패널 접힘 상태 (초기값 false, systemRepository에서 로드 후 업데이트)
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [rightPanelsCollapsed, setRightPanelsCollapsed] = useState(false);
   const [timelineVisible, setTimelineVisible] = useState(true); // 기본값: 표시
   const [initialized, setInitialized] = useState(false);
 
-  // Dexie에서 초기값 로드
+  // systemRepository에서 초기값 로드
   useEffect(() => {
-    const loadFromDexie = async () => {
+    const loadFromRepository = async () => {
       try {
-        const leftState = await db.systemState.get(LEFT_SIDEBAR_KEY);
-        const rightState = await db.systemState.get(RIGHT_PANELS_KEY);
-        const timelineState = await db.systemState.get(TIMELINE_VISIBLE_KEY);
+        const leftState = await getSystemState<boolean>(SYSTEM_KEYS.LEFT_SIDEBAR_COLLAPSED);
+        const rightState = await getSystemState<boolean>(SYSTEM_KEYS.RIGHT_PANELS_COLLAPSED);
+        const timelineState = await getSystemState<boolean>(SYSTEM_KEYS.TIMELINE_VISIBLE);
         
-        if (leftState?.value === true) {
+        if (leftState === true) {
           setLeftSidebarCollapsed(true);
         }
-        if (rightState?.value === true) {
+        if (rightState === true) {
           setRightPanelsCollapsed(true);
         }
         // 타임라인은 명시적으로 false인 경우에만 숨김 (기본 true)
-        if (timelineState?.value === false) {
+        if (timelineState === false) {
           setTimelineVisible(false);
         }
       } catch (error) {
-        console.error('Failed to load panel layout from Dexie:', error);
+        console.error('Failed to load panel layout from repository:', error);
       } finally {
         setInitialized(true);
       }
     };
 
-    loadFromDexie();
+    loadFromRepository();
   }, []);
 
-  // Dexie에 상태 저장 헬퍼
+  // systemRepository에 상태 저장 헬퍼
   const saveToSystemState = useCallback(async (key: string, value: boolean) => {
     try {
-      await db.systemState.put({ key, value });
+      await setSystemState(key, value);
     } catch (error) {
-      console.error(`Failed to save ${key} to Dexie:`, error);
+      console.error(`Failed to save ${key} to repository:`, error);
     }
   }, []);
 
@@ -112,7 +112,7 @@ export function usePanelLayout(isFocusMode: boolean): PanelLayoutState {
       if (width < 1200) {
         setRightPanelsCollapsed(prev => {
           if (!prev) {
-            saveToSystemState(RIGHT_PANELS_KEY, true);
+            saveToSystemState(SYSTEM_KEYS.RIGHT_PANELS_COLLAPSED, true);
             return true;
           }
           return prev;
@@ -123,7 +123,7 @@ export function usePanelLayout(isFocusMode: boolean): PanelLayoutState {
       if (width < 800) {
         setLeftSidebarCollapsed(prev => {
           if (!prev) {
-            saveToSystemState(LEFT_SIDEBAR_KEY, true);
+            saveToSystemState(SYSTEM_KEYS.LEFT_SIDEBAR_COLLAPSED, true);
             return true;
           }
           return prev;
@@ -162,7 +162,7 @@ export function usePanelLayout(isFocusMode: boolean): PanelLayoutState {
   const toggleLeftSidebar = useCallback(() => {
     setLeftSidebarCollapsed(prev => {
       const newValue = !prev;
-      saveToSystemState(LEFT_SIDEBAR_KEY, newValue);
+      saveToSystemState(SYSTEM_KEYS.LEFT_SIDEBAR_COLLAPSED, newValue);
       return newValue;
     });
   }, [saveToSystemState]);
@@ -170,7 +170,7 @@ export function usePanelLayout(isFocusMode: boolean): PanelLayoutState {
   const toggleRightPanels = useCallback(() => {
     setRightPanelsCollapsed(prev => {
       const newValue = !prev;
-      saveToSystemState(RIGHT_PANELS_KEY, newValue);
+      saveToSystemState(SYSTEM_KEYS.RIGHT_PANELS_COLLAPSED, newValue);
       return newValue;
     });
   }, [saveToSystemState]);
@@ -178,7 +178,7 @@ export function usePanelLayout(isFocusMode: boolean): PanelLayoutState {
   const toggleTimeline = useCallback(() => {
     setTimelineVisible(prev => {
       const newValue = !prev;
-      saveToSystemState(TIMELINE_VISIBLE_KEY, newValue);
+      saveToSystemState(SYSTEM_KEYS.TIMELINE_VISIBLE, newValue);
       return newValue;
     });
   }, [saveToSystemState]);

@@ -5,12 +5,12 @@
  *   - dailyDataStore에서 tasks 구독
  *   - hourSlot 기준 그룹화 및 order 정렬
  *   - 시간대별 작업 블록 위치/높이 계산
- * @dependencies dailyDataStore, Task 타입
+ * @dependencies dailyDataStore, Task 타입, systemRepository
  */
 
 import { useMemo, useState, useEffect } from 'react';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
-import { db } from '@/data/db/dexieClient';
+import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
 import type { Task } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
@@ -43,8 +43,6 @@ export interface HourGroup {
   totalDuration: number;
 }
 
-const TIMELINE_SHOW_PAST_KEY = 'timelineShowPastBlocks';
-
 /**
  * 타임라인 데이터 훅
  * @returns timelineItems (위치 계산된 작업 목록), hourGroups (시간대별 그룹)
@@ -55,12 +53,12 @@ export function useTimelineData() {
   // 타임라인 전용 showPastBlocks 상태 (독립적으로 관리)
   const [showPastBlocks, setShowPastBlocks] = useState(false); // 기본값: 지난 블록 숨김
 
-  // Dexie에서 초기값 로드
+  // systemRepository에서 초기값 로드
   useEffect(() => {
     const loadState = async () => {
       try {
-        const state = await db.systemState.get(TIMELINE_SHOW_PAST_KEY);
-        if (state?.value === true) {
+        const state = await getSystemState<boolean>(SYSTEM_KEYS.TIMELINE_SHOW_PAST);
+        if (state === true) {
           setShowPastBlocks(true);
         }
       } catch (error) {
@@ -75,7 +73,7 @@ export function useTimelineData() {
     const newValue = !showPastBlocks;
     setShowPastBlocks(newValue);
     try {
-      await db.systemState.put({ key: TIMELINE_SHOW_PAST_KEY, value: newValue });
+      await setSystemState(SYSTEM_KEYS.TIMELINE_SHOW_PAST, newValue);
     } catch (error) {
       console.error('Failed to save timeline showPastBlocks:', error);
     }

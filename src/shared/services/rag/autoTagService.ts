@@ -5,8 +5,8 @@
  *       시간대, 소요시간, 난이도, 메모, 준비물 등을 요약 제공
  */
 
-import { db } from '@/data/db/dexieClient';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
+import { loadCompletedInboxTasks } from '@/data/repositories/inboxRepository';
 import type { Task, Resistance, TimeBlockId } from '@/shared/types/domain';
 
 export interface TagSuggestion {
@@ -101,7 +101,7 @@ function calculateSimilarity(text1: string, text2: string): number {
  */
 export async function suggestTagsForTask(taskText: string, limit: number = 5): Promise<AutoTagResult> {
     const recentData = await getRecentDailyData(60); // 최근 60일
-    const completedInbox = await db.completedInbox.toArray();
+    const completedInbox = await loadCompletedInboxTasks();
     
     // 모든 작업 수집
     const allTasks: Array<Task & { date: string }> = [];
@@ -174,7 +174,7 @@ export async function suggestTagsForTask(taskText: string, limit: number = 5): P
  */
 export async function getAllTagStats(): Promise<Map<string, number>> {
     const recentData = await getRecentDailyData(90);
-    const completedInbox = await db.completedInbox.toArray();
+    const completedInbox = await loadCompletedInboxTasks();
     
     const tagCounts = new Map<string, number>();
     
@@ -286,7 +286,7 @@ const RESISTANCE_LABELS: Record<Resistance, string> = {
  */
 export async function suggestTaskContext(taskText: string): Promise<TaskContextSuggestion> {
     const recentData = await getRecentDailyData(90); // 최근 90일
-    const completedInbox = await db.completedInbox.toArray();
+    const completedInbox = await loadCompletedInboxTasks();
     
     // 모든 작업 수집 (timeBlock 포함)
     interface TaskWithMeta extends Task {

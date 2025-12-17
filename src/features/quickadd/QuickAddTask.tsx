@@ -13,7 +13,7 @@ import { useState, useEffect } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
 import { calculateAdjustedDuration, generateId } from '@/shared/lib/utils';
 import { useInboxStore } from '@/shared/stores/inboxStore';
-import { initializeDatabase } from '@/data/db/dexieClient';
+import { initializeDatabase } from '@/data/db';
 
 /**
  * 글로벌 단축키용 빠른 작업 추가 컴포넌트

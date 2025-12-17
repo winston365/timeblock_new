@@ -3,7 +3,7 @@
  * @role 1시간 단위 작업 구간 UI 컴포넌트
  * @input hour (시간), blockId, tasks, tagId, 콜백 핸들러들
  * @output 시간 범위 표시, 작업 카드 목록, 인라인 입력, 태그 선택 UI
- * @dependencies TaskCard, useDragDropManager, dexieClient
+ * @dependencies TaskCard, useDragDropManager, systemRepository
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -12,7 +12,7 @@ import type { Task, TimeBlockId, TimeSlotTagTemplate } from '@/shared/types/doma
 import { useToastStore } from '@/shared/stores/toastStore';
 import TaskCard from './TaskCard';
 import { useDragDropManager } from './hooks/useDragDropManager';
-import { db } from '@/data/db/dexieClient';
+import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
 
 const MAX_TASKS_PER_HOUR = 3;
 
@@ -76,12 +76,12 @@ export default function HourBar({
   const { getDragData, isSameLocation } = useDragDropManager();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Load collapse state from Dexie
+  // Load collapse state from systemRepository
   useEffect(() => {
     const loadState = async () => {
       try {
-        const record = await db.systemState.get('collapsedHourBars');
-        const collapsedSet = new Set((record?.value as string[]) || []);
+        const collapsedBars = await getSystemState<string[]>(SYSTEM_KEYS.COLLAPSED_HOUR_BARS);
+        const collapsedSet = new Set(collapsedBars || []);
         setIsCollapsed(collapsedSet.has(`${blockId}_${hour}`));
       } catch (error) {
         console.error('Failed to load collapse state:', error);
@@ -97,8 +97,8 @@ export default function HourBar({
 
     try {
       const key = `${blockId}_${hour}`;
-      const record = await db.systemState.get('collapsedHourBars');
-      const collapsedSet = new Set((record?.value as string[]) || []);
+      const collapsedBars = await getSystemState<string[]>(SYSTEM_KEYS.COLLAPSED_HOUR_BARS);
+      const collapsedSet = new Set(collapsedBars || []);
 
       if (newState) {
         collapsedSet.add(key);
@@ -106,7 +106,7 @@ export default function HourBar({
         collapsedSet.delete(key);
       }
 
-      await db.systemState.put({ key: 'collapsedHourBars', value: Array.from(collapsedSet) });
+      await setSystemState(SYSTEM_KEYS.COLLAPSED_HOUR_BARS, Array.from(collapsedSet));
     } catch (error) {
       console.error('Failed to save collapse state:', error);
     }

@@ -18,6 +18,26 @@ export const SYSTEM_KEYS = {
     CATCH_UP_ALERT_SHOWN_DATE: 'catchUpAlertShownDate',
     /** 워밍업 자동생성 활성화 여부 (기본: true) */
     WARMUP_AUTO_GENERATE_ENABLED: 'schedule:warmupAutoGenerateEnabled',
+    /** HourBar 접힘 상태 */
+    COLLAPSED_HOUR_BARS: 'collapsedHourBars',
+    /** 타임라인 지난 블록 표시 여부 */
+    TIMELINE_SHOW_PAST: 'timelineShowPastBlocks',
+    /** 하지않기 체크리스트 접힘 상태 */
+    DONT_DO_COLLAPSED: 'dontDoCollapsed',
+    /** 좌측 사이드바 접힘 상태 */
+    LEFT_SIDEBAR_COLLAPSED: 'leftSidebarCollapsed',
+    /** 우측 패널 접힘 상태 */
+    RIGHT_PANELS_COLLAPSED: 'rightPanelsCollapsed',
+    /** 타임라인 표시 상태 */
+    TIMELINE_VISIBLE: 'timelineVisible',
+    /** 동기화 로그 저장 키 */
+    SYNC_LOGS: 'syncLogs',
+    /** 디바이스 ID */
+    DEVICE_ID: 'deviceId',
+    /** Google Calendar 설정 */
+    GOOGLE_CALENDAR_SETTINGS: 'googleCalendarSettings',
+    /** 일일 요약 보고서 캐시 접두사 */
+    DAILY_SUMMARY_REPORT_PREFIX: 'daily_summary_report',
 } as const;
 
 /**

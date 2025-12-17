@@ -15,7 +15,6 @@
  */
 
 import type { BaseTabProps, TimeSlotTagTemplate, Settings } from './types';
-import type { BaseTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass, primaryButtonClass, getBadgeTextColor } from './styles';
 import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
 

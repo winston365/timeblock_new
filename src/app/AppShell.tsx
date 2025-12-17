@@ -20,7 +20,6 @@ import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { toast } from 'react-hot-toast';
 import type { Template, Task } from '@/shared/types/domain';
 import SyncErrorToast from '@/shared/components/SyncErrorToast';
-import { SETTING_DEFAULTS } from '@/shared/constants/defaults';
 
 // Custom Hooks
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -36,7 +35,7 @@ import TopToolbar from './components/TopToolbar';
 import LeftSidebar from './components/LeftSidebar';
 import CenterContent from './components/CenterContent';
 import RightPanel from './components/RightPanel';
-import { TimeBlockXPBar } from './components/TimeBlockXPBar';
+// TimeBlockXPBar import 제거됨 (Phase 1 - 오늘 하루 전체 XP바(목표x6) 제거, 컴포넌트 파일은 유지)
 // DailyXPBar import 제거됨 (Phase 1 - UI에서 제거, 컴포넌트 파일은 유지)
 import { WaifuAside } from './components/WaifuAside';
 import { AppToaster } from './components/AppToaster';
@@ -238,11 +237,7 @@ export default function AppShell() {
             leftPanelVisible={!effectiveLeftCollapsed}
           />
           {/* DailyXPBar 제거됨 (Phase 1) - 컴포넌트 파일은 유지 */}
-          <TimeBlockXPBar
-            timeBlockXP={gameState?.timeBlockXP}
-            goalXP={settings?.timeBlockXPGoal ?? SETTING_DEFAULTS.timeBlockXPGoal}
-            availableXP={gameState?.availableXP ?? 0}
-          />
+          {/* TimeBlockXPBar 제거됨 (Phase 1 - 오늘 하루 전체 XP바(목표x6) 제거) - 컴포넌트 파일은 유지 */}
         </>
       )}
 

@@ -7,6 +7,7 @@
 |---|---|---|---|
 | 2025-12-17 | Initial master doc created (no-memory mode) | Workspace에 `agent-output/architecture/`가 없어서 생성. 향후 아키텍처 결정을 단일 출처로 유지 | 001-focus-only-blocks-warmup-toggle-architecture-findings.md |
 | 2025-12-17 | Phased rollout 설계: UI 5개 변경(탭/목표/TempSchedule/XP바) | 회귀 위험이 높은 UI 삭제를 “엔트리 제거→정리”로 단계화하여 롤백/검증을 단순화 | 002-ui-five-changes-phased-rollout-architecture-findings.md |
+| 2025-12-17 | 구조 개선 대안(A/B) 및 추천안 정리(프론트/UI 중심) | 레이어는 존재하지만 DB 접근/이벤트 발행이 경계 밖으로 새어 결합도가 증가 → “경계 재정착”을 최우선으로 제안 | 003-frontend-structural-improvements-architecture-findings.md |
 
 ## Purpose
 - Renderer(Electron + React) 중심의 시스템 경계/데이터 흐름/결정(ADR)을 기록하는 단일 출처.
@@ -84,3 +85,33 @@
 
 **Consequences**
 - “보이지 않는 기능(데이터는 남아있음)”이 일시적으로 생길 수 있어, Phase 경계/검증 체크리스트를 명확히 유지해야 함.
+
+### ADR-004: Dexie(DB) 접근은 Repository를 단일 관문으로 강제한다
+**Context**
+- 원칙상 CRUD는 `src/data/repositories/*`를 통해서만 수행해야 하나, 실제로는 `db` 직접 import가 store/subscriber/service 일부에 잔존.
+- 결과: 마이그레이션/폴백/키 관리가 분산되고, 회귀 범위가 넓어짐.
+
+**Choice**
+- `src/data/db/*` 및 `src/data/repositories/*` 외부에서는 `db` 직접 접근을 금지한다.
+- systemState는 `systemRepository.ts`를 정본으로 삼아 키/CRUD를 수렴한다.
+
+**Alternatives**
+- store/service에서 DB 접근을 허용(편의성): 단기 속도는 오르나 결합도/회귀 위험이 누적.
+
+**Consequences**
+- 단기적으로 wrapper/치환 작업이 필요하나, 장기적으로 디버깅/변경 비용이 감소.
+
+### ADR-005: EventBus 발행(emit)은 Store(또는 오케스트레이터 서비스)만 담당한다
+**Context**
+- EventBus README는 Store→Subscriber 패턴을 권장.
+- repository에서 `eventBus.emit`이 발생하면 “데이터 저장 계층”과 “도메인 이벤트”가 결합되어 추적/테스트가 어려워짐.
+
+**Choice**
+- emit은 store(또는 usecase/orchestrator)에서만 수행하고, subscriber는 `src/shared/subscribers/*`에 집중한다.
+- repository는 순수하게 데이터 접근/영속화 책임만 가진다.
+
+**Alternatives**
+- repository emit 유지: 저장 성공/실패를 이벤트로 알리기 쉽지만, 계층 경계가 무너짐.
+
+**Consequences**
+- 이벤트 발행 타이밍(optimistic update vs commit 이후)을 store 레벨에서 명시적으로 관리해야 함.

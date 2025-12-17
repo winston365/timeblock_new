@@ -8,11 +8,15 @@
  *   - Task ↔ Calendar Event 변환
  * @external_dependencies
  *   - Google Calendar API v3
- *   - Dexie (토큰 저장)
+ *   - calendarRepository (토큰 저장)
  *   - Electron IPC (OAuth 처리)
  */
 
-import { db } from '@/data/db/dexieClient';
+import {
+  getGoogleCalendarSettings as getCalendarSettings,
+  saveGoogleCalendarSettings as saveCalendarSettings,
+  disconnectGoogleCalendar as disconnectCalendar,
+} from '@/data/repositories/calendarRepository';
 import type { Task } from '@/shared/types/domain';
 import {
   type GoogleCalendarEvent,
@@ -27,7 +31,6 @@ import {
 // Constants
 // ============================================================================
 
-const STORAGE_KEY = 'googleCalendarSettings';
 const TOKEN_REFRESH_BUFFER = 5 * 60 * 1000; // 5분 전에 토큰 갱신
 
 // ============================================================================
@@ -38,43 +41,21 @@ const TOKEN_REFRESH_BUFFER = 5 * 60 * 1000; // 5분 전에 토큰 갱신
  * Google Calendar 설정 로드
  */
 export async function getGoogleCalendarSettings(): Promise<GoogleCalendarSettings | null> {
-  try {
-    const record = await db.systemState.get(STORAGE_KEY);
-    return record?.value as GoogleCalendarSettings | null;
-  } catch (error) {
-    console.error('[GoogleCalendar] Failed to load settings:', error);
-    return null;
-  }
+  return await getCalendarSettings();
 }
 
 /**
  * Google Calendar 설정 저장
  */
 export async function saveGoogleCalendarSettings(settings: GoogleCalendarSettings): Promise<void> {
-  try {
-    await db.systemState.put({ key: STORAGE_KEY, value: settings });
-  } catch (error) {
-    console.error('[GoogleCalendar] Failed to save settings:', error);
-    throw error;
-  }
+  await saveCalendarSettings(settings);
 }
 
 /**
  * Google Calendar 연동 해제
  */
 export async function disconnectGoogleCalendar(): Promise<void> {
-  try {
-    // 설정 초기화
-    await db.systemState.put({
-      key: STORAGE_KEY,
-      value: { enabled: false } as GoogleCalendarSettings,
-    });
-    // 매핑 데이터 삭제
-    await db.table('taskCalendarMappings').clear();
-  } catch (error) {
-    console.error('[GoogleCalendar] Failed to disconnect:', error);
-    throw error;
-  }
+  await disconnectCalendar();
 }
 
 // ============================================================================

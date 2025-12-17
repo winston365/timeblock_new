@@ -32,7 +32,8 @@ import type { Task } from '@/shared/types/domain';
 import type { TempScheduleTask } from '@/shared/types/tempSchedule';
 import type { GoogleCalendarEvent } from '@/shared/services/calendar/googleCalendarTypes';
 import { getLocalDate, minutesToTimeStr } from '@/shared/lib/utils';
-import { db } from '@/data/db/dexieClient';
+import { loadDailyData } from '@/data/repositories/dailyDataRepository';
+import { getInboxTaskById } from '@/data/repositories/inboxRepository';
 
 // 중복 동기화 방지용 Set
 const pendingSyncs = new Set<string>();
@@ -201,19 +202,15 @@ async function getTaskById(taskId: string): Promise<Task | null> {
     const today = getLocalDate();
 
     // dailyData에서 검색
-    const dailyData = await db.dailyData.get(today);
+    const dailyData = await loadDailyData(today);
     if (dailyData) {
       const task = dailyData.tasks.find((t: Task) => t.id === taskId);
       if (task) return task;
     }
 
-    // globalInbox에서 검색
-    const inboxTask = await db.globalInbox.get(taskId);
+    // globalInbox + completedInbox에서 검색
+    const inboxTask = await getInboxTaskById(taskId);
     if (inboxTask) return inboxTask;
-
-    // completedInbox에서 검색
-    const completedTask = await db.completedInbox.get(taskId);
-    if (completedTask) return completedTask;
 
     return null;
   } catch (error) {

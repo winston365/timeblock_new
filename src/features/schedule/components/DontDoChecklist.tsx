@@ -2,26 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { NeonCheckbox } from '@/shared/components/ui/NeonCheckbox';
-import { db } from '@/data/db/dexieClient';
+import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
 
 interface DontDoChecklistProps {
     timeBlockId: string;
 }
 
-// Dexie에서 접기 상태 로드
+// systemRepository에서 접기 상태 로드
 async function loadCollapsedState(): Promise<boolean> {
     try {
-        const state = await db.systemState.get('dontDoCollapsed');
-        return state?.value ?? true; // 기본값: 접힘
+        const state = await getSystemState<boolean>(SYSTEM_KEYS.DONT_DO_COLLAPSED);
+        return state ?? true; // 기본값: 접힘
     } catch {
         return true;
     }
 }
 
-// Dexie에 접기 상태 저장
+// systemRepository에 접기 상태 저장
 async function saveCollapsedState(collapsed: boolean): Promise<void> {
     try {
-        await db.systemState.put({ key: 'dontDoCollapsed', value: collapsed });
+        await setSystemState(SYSTEM_KEYS.DONT_DO_COLLAPSED, collapsed);
     } catch (error) {
         console.error('Failed to save collapsed state:', error);
     }

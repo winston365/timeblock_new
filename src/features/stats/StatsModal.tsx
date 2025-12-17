@@ -6,7 +6,7 @@
  *   - 탭 기반 UI (개요, XP 분석, 타임블록, 인사이트)
  *   - AI 인사이트 생성 및 캐싱
  *   - 필터링 옵션 (기간, 주말 포함, 지난주 비교 등)
- * @dependencies useGameState, useCompletedTasksStore, useSettingsStore, Gemini API
+ * @dependencies useGameState, useCompletedTasksStore, useSettingsStore, Gemini API, aiInsightsRepository
  */
 
 import { TIME_BLOCKS } from '@/shared/types/domain';
@@ -16,7 +16,7 @@ import { useCompletedTasksStore } from '@/shared/stores/completedTasksStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { callGeminiAPI } from '@/shared/services/ai/geminiApi';
 import { trackTokenUsage } from '@/shared/utils/tokenUtils';
-import { db } from '@/data/db/dexieClient';
+import { getAIInsight } from '@/data/repositories/aiInsightsRepository';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
     OverviewTab,
@@ -136,12 +136,12 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
     const today = getLocalDate();
     const todayXP = gameState?.dailyXP ?? 0;
 
-    // Load insight from DB
+    // Load insight from aiInsightsRepository
     useEffect(() => {
         if (activeTab === 'insights' && open) {
             const loadInsight = async () => {
                 try {
-                    const savedInsight = await db.aiInsights.get(today);
+                    const savedInsight = await getAIInsight(today);
                     if (savedInsight) {
                         setInsight(savedInsight.content);
                     }

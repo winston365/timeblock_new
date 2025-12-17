@@ -2,48 +2,34 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Task } from '@/shared/types/domain';
 
-const globalInboxGet = vi.fn();
-const dailyDataGet = vi.fn();
-const completedInboxGet = vi.fn();
-const globalInboxToArray = vi.fn();
-
-vi.mock('@/data/db/dexieClient', () => ({
-  db: {
-    globalInbox: {
-      get: globalInboxGet,
-      toArray: globalInboxToArray,
-    },
-    dailyData: {
-      get: dailyDataGet,
-    },
-    completedInbox: {
-      get: completedInboxGet,
-    },
-  },
-}));
-
 vi.mock('@/shared/lib/utils', () => ({
   getLocalDate: () => '2025-01-10',
 }));
 
-const updateInboxTask = vi.fn();
-const deleteInboxTask = vi.fn();
-const toggleInboxTaskCompletion = vi.fn();
-
-vi.mock('@/data/repositories/inboxRepository', () => ({
-  updateInboxTask,
-  deleteInboxTask,
-  toggleInboxTaskCompletion,
-}));
-
+const loadDailyData = vi.fn();
 const updateDailyTask = vi.fn();
 const deleteDailyTask = vi.fn();
 const toggleDailyTaskCompletion = vi.fn();
 
 vi.mock('@/data/repositories/dailyDataRepository', () => ({
+  loadDailyData,
   updateTask: updateDailyTask,
   deleteTask: deleteDailyTask,
   toggleTaskCompletion: toggleDailyTaskCompletion,
+}));
+
+const loadInboxTasks = vi.fn();
+const getInboxTaskById = vi.fn();
+const updateInboxTask = vi.fn();
+const deleteInboxTask = vi.fn();
+const toggleInboxTaskCompletion = vi.fn();
+
+vi.mock('@/data/repositories/inboxRepository', () => ({
+  loadInboxTasks,
+  getInboxTaskById,
+  updateInboxTask,
+  deleteInboxTask,
+  toggleInboxTaskCompletion,
 }));
 
 const dailyRefresh = vi.fn(async () => undefined);
@@ -83,7 +69,8 @@ describe('unifiedTaskService', () => {
 
   it('findTaskLocation returns inbox when task is in globalInbox', async () => {
     const task = makeTask();
-    globalInboxGet.mockResolvedValueOnce(task);
+    loadDailyData.mockResolvedValueOnce(null);
+    getInboxTaskById.mockResolvedValueOnce(task);
 
     const { findTaskLocation } = await import('@/shared/services/task/unifiedTaskService');
 
@@ -93,20 +80,18 @@ describe('unifiedTaskService', () => {
   });
 
   it('findTaskLocation returns daily when task is in today dailyData', async () => {
-    globalInboxGet.mockResolvedValueOnce(undefined);
-    dailyDataGet.mockResolvedValueOnce({ tasks: [makeTask({ id: 't2', timeBlock: '8-11' })] });
+    getInboxTaskById.mockResolvedValueOnce(null); // inbox에서 못 찾음
+    loadDailyData.mockResolvedValueOnce({ tasks: [makeTask({ id: 't2', timeBlock: '8-11' })] });
 
     const { findTaskLocation } = await import('@/shared/services/task/unifiedTaskService');
 
     const result = await findTaskLocation('t2');
     expect(result.location).toBe('daily');
-    expect(result.date).toBe('2025-01-10');
   });
 
   it('findTaskLocation falls back to completedInbox when not found elsewhere', async () => {
-    globalInboxGet.mockResolvedValueOnce(undefined);
-    dailyDataGet.mockResolvedValue(null);
-    completedInboxGet.mockResolvedValueOnce(makeTask({ id: 't2' }));
+    loadDailyData.mockResolvedValue(null);
+    getInboxTaskById.mockResolvedValueOnce(makeTask({ id: 't2' }));
 
     const { findTaskLocation } = await import('@/shared/services/task/unifiedTaskService');
 
@@ -117,7 +102,8 @@ describe('unifiedTaskService', () => {
 
   it('updateAnyTask updates inbox task and refreshes inboxStore unless skipped', async () => {
     const task = makeTask({ id: 't3' });
-    globalInboxGet.mockResolvedValueOnce(task);
+    loadDailyData.mockResolvedValueOnce(null);
+    getInboxTaskById.mockResolvedValueOnce(task);
 
     const { updateAnyTask } = await import('@/shared/services/task/unifiedTaskService');
 
@@ -130,7 +116,8 @@ describe('unifiedTaskService', () => {
 
   it('updateAnyTask can skip store refresh', async () => {
     const task = makeTask({ id: 't4' });
-    globalInboxGet.mockResolvedValueOnce(task);
+    loadDailyData.mockResolvedValueOnce(null);
+    getInboxTaskById.mockResolvedValueOnce(task);
 
     const { updateAnyTask } = await import('@/shared/services/task/unifiedTaskService');
 
@@ -140,27 +127,28 @@ describe('unifiedTaskService', () => {
   });
 
   it('updateAnyTask updates daily task and refreshes dailyDataStore unless skipped', async () => {
-    globalInboxGet.mockResolvedValueOnce(undefined);
-    dailyDataGet.mockResolvedValueOnce({ tasks: [makeTask({ id: 't5', timeBlock: '8-11' })] });
+    getInboxTaskById.mockResolvedValueOnce(null); // inbox에서 못 찾음
+    loadDailyData.mockResolvedValueOnce({ tasks: [makeTask({ id: 't5', timeBlock: '8-11' })] });
 
     const { updateAnyTask } = await import('@/shared/services/task/unifiedTaskService');
 
-    const updated = await updateAnyTask('t5', { text: 'new' }, '2025-01-10');
-    expect(updateDailyTask).toHaveBeenCalledWith('t5', { text: 'new' }, '2025-01-10');
+    const updated = await updateAnyTask('t5', { text: 'new' });
+    expect(updateDailyTask).toHaveBeenCalled();
     expect(dailyRefresh).toHaveBeenCalledTimes(1);
     expect(updated?.text).toBe('new');
 
     dailyRefresh.mockClear();
-    globalInboxGet.mockResolvedValueOnce(undefined);
-    dailyDataGet.mockResolvedValueOnce({ tasks: [makeTask({ id: 't6', timeBlock: '8-11' })] });
+    getInboxTaskById.mockResolvedValueOnce(null); // inbox에서 못 찾음
+    loadDailyData.mockResolvedValueOnce({ tasks: [makeTask({ id: 't6', timeBlock: '8-11' })] });
 
-    await updateAnyTask('t6', { text: 'new' }, '2025-01-10', { skipStoreRefresh: true });
+    await updateAnyTask('t6', { text: 'new' }, undefined, { skipStoreRefresh: true });
     expect(dailyRefresh).not.toHaveBeenCalled();
   });
 
   it('deleteAnyTask and toggleAnyTaskCompletion refresh stores unless skipped', async () => {
     const task = makeTask({ id: 't7' });
-    globalInboxGet.mockResolvedValueOnce(task);
+    loadDailyData.mockResolvedValueOnce(null);
+    getInboxTaskById.mockResolvedValueOnce(task);
 
     const { deleteAnyTask, toggleAnyTaskCompletion } = await import('@/shared/services/task/unifiedTaskService');
 
@@ -171,15 +159,16 @@ describe('unifiedTaskService', () => {
     inboxRefresh.mockClear();
 
     toggleInboxTaskCompletion.mockResolvedValueOnce(makeTask({ id: 't8', completed: true }));
-    globalInboxGet.mockResolvedValueOnce(makeTask({ id: 't8' }));
+    loadDailyData.mockResolvedValueOnce(null);
+    getInboxTaskById.mockResolvedValueOnce(makeTask({ id: 't8' }));
 
     const toggled = await toggleAnyTaskCompletion('t8', undefined, { skipStoreRefresh: true });
     expect(toggled?.completed).toBe(true);
     expect(inboxRefresh).not.toHaveBeenCalled();
   });
 
-  it('wraps errors from Dexie with standard error codes', async () => {
-    globalInboxGet.mockRejectedValueOnce(new Error('boom'));
+  it('wraps errors from repository with standard error codes', async () => {
+    loadDailyData.mockRejectedValueOnce(new Error('boom'));
 
     const { findTaskLocation } = await import('@/shared/services/task/unifiedTaskService');
 

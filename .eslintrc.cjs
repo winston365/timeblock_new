@@ -31,6 +31,18 @@ module.exports = {
         message: '❌ localStorage 사용 금지! Dexie systemState를 사용하세요. 예외: theme 키만 허용. 자세한 내용은 CLAUDE.md 참고.',
       },
     ],
+    // ⚠️ dexieClient 직접 import 금지 (repositories/db 외부)
+    'no-restricted-imports': [
+      'error',
+      {
+        patterns: [
+          {
+            group: ['@/data/db/dexieClient', '**/data/db/dexieClient'],
+            message: '❌ dexieClient 직접 import 금지! Repository 레이어(@/data/repositories/*)를 사용하세요. 예외: src/data/repositories/**, src/data/db/**'
+          }
+        ]
+      }
+    ],
     // 기존 프로젝트 규칙
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/no-explicit-any': 'warn',
@@ -52,6 +64,16 @@ module.exports = {
       rules: {
         'no-restricted-globals': 'off',
         'no-restricted-properties': 'off',
+      },
+    },
+    // dexieClient 직접 접근 허용 경로 (Repository & DB Infra)
+    {
+      files: [
+        'src/data/repositories/**',
+        'src/data/db/**',
+      ],
+      rules: {
+        'no-restricted-imports': 'off',
       },
     },
   ],

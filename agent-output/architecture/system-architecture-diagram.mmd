@@ -19,6 +19,14 @@ flowchart LR
   subgraph Stores[Zustand Stores]
     DailyStore[dailyDataStore]
     SettingsStore[settingsStore]
+    InboxStore[inboxStore]
+  end
+
+  subgraph CrossCutting[Cross-cutting]
+    EventBus[EventBus]
+    Subscribers[subscribers/*]
+    TaskCompletion[taskCompletionService
+(handler pipeline)]
   end
 
   subgraph Data[Data Layer]
@@ -39,6 +47,12 @@ flowchart LR
   ScheduleView --> DailyHook
   TimelineView --> TimelineHook
   TimelineHook --> DailyStore
+
+  DailyStore --> TaskCompletion
+  InboxStore --> EventBus
+  DailyStore --> EventBus
+  EventBus --> Subscribers
+  Subscribers --> Repo
 
   DailyHook --> Repo --> Dexie
   ScheduleStore --> SystemState

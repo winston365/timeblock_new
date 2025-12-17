@@ -1,0 +1,54 @@
+===A===
+src/app/hooks/useAppInitialization.ts
+src/features/quickadd/QuickAddTask.tsx
+src/shared/services/calendar/googleCalendarService.ts
+src/shared/services/calendar/googleTasksService.ts
+src/shared/services/imageStorageService.ts
+src/shared/services/rag/autoTagService.ts
+src/shared/services/rag/directQueryService.ts
+src/shared/services/rag/ragSyncHandler.ts
+src/shared/services/rag/vectorPersistence.ts
+src/shared/services/sync/firebase/syncUtils.ts
+src/shared/services/sync/syncEngine.ts
+src/shared/services/sync/syncLogger.ts
+===B===
+src/app/hooks/useAppInitialization.ts
+src/features/schedule/ScheduleView.tsx
+src/features/stats/StatsModal.tsx
+src/shared/lib/errorHandler.ts
+src/shared/services/calendar/googleCalendarService.ts
+src/shared/services/calendar/googleTasksService.ts
+src/shared/services/imageStorageService.ts
+src/shared/services/rag/autoTagService.ts
+src/shared/services/rag/directQueryService.ts
+src/shared/services/rag/ragSyncHandler.ts
+src/shared/services/rag/vectorPersistence.ts
+src/shared/services/sync/firebase/syncUtils.ts
+src/shared/services/sync/syncEngine.ts
+src/shared/services/sync/syncLogger.ts
+===C===
+src/app/hooks/useAppInitialization.ts
+src/features/insight/DailySummaryModal.tsx
+src/features/schedule/components/WarmupPresetModal.tsx
+src/features/schedule/ScheduleView.tsx
+src/features/settings/components/tabs/LogsTab.tsx
+src/features/settings/SyncLogModal.tsx
+src/shared/constants/defaults.ts
+src/shared/lib/errorHandler.ts
+src/shared/services/behavior/procrastinationMonitor.ts
+src/shared/services/calendar/googleCalendarService.ts
+src/shared/services/imageStorageService.ts
+src/shared/services/rag/ragSyncHandler.ts
+src/shared/services/rag/README.md
+src/shared/services/rag/vectorPersistence.ts
+src/shared/services/sync/firebase/syncUtils.ts
+src/shared/services/sync/syncEngine.ts
+src/shared/services/sync/syncLogger.ts
+src/shared/stores/uiStore.ts
+===D===
+src/shared/services/sync/syncEngine.ts - db. 직접 접근 32회, dexieClient import, Dexie 직접 사용 키워드 8회
+src/app/hooks/useAppInitialization.ts - db. 직접 접근 18회, dexieClient import, Dexie 직접 사용 키워드 3회
+src/shared/services/calendar/googleCalendarService.ts - db. 직접 접근 11회, dexieClient import, Dexie 직접 사용 키워드 1회
+src/shared/services/rag/vectorPersistence.ts - db. 직접 접근 10회, dexieClient import, Dexie 직접 사용 키워드 1회
+src/shared/services/sync/syncLogger.ts - db. 직접 접근 2회, dexieClient import, Dexie 직접 사용 키워드 9회
+

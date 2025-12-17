@@ -1,12 +1,12 @@
 /**
  * DirectQueryService - 구조화된 데이터 직접 조회
  * 
- * @role RAG 벡터 검색 대신 IndexedDB를 직접 쿼리하여 정확한 결과 반환
+ * @role RAG 벡터 검색 대신 Repository를 통해 정확한 결과 반환
  *       날짜, 완료 상태 등 구조화된 조건은 벡터 검색보다 직접 쿼리가 효율적
  */
 
-import { db } from '@/data/db/dexieClient';
-import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
+import { getRecentDailyData, loadDailyData } from '@/data/repositories/dailyDataRepository';
+import { loadCompletedInboxTasks } from '@/data/repositories/inboxRepository';
 import type { Task } from '@/shared/types/domain';
 import type { ParsedQuery } from './queryParser';
 import { getLocalDate } from '@/shared/lib/utils';
@@ -26,7 +26,7 @@ export interface TaskWithDate extends Task {
 }
 
 /**
- * 파싱된 쿼리를 기반으로 IndexedDB에서 직접 데이터 조회
+ * 파싱된 쿼리를 기반으로 Repository에서 직접 데이터 조회
  */
 export async function executeDirectQuery(parsed: ParsedQuery): Promise<QueryResult> {
     const tasks: TaskWithDate[] = [];
@@ -48,7 +48,7 @@ export async function executeDirectQuery(parsed: ParsedQuery): Promise<QueryResu
 
     // DailyData에서 작업 수집
     for (const date of dates) {
-        const dailyData = await db.dailyData.get(date);
+        const dailyData = await loadDailyData(date);
         if (dailyData?.tasks) {
             for (const task of dailyData.tasks) {
                 // 완료 상태 필터
@@ -78,7 +78,7 @@ export async function executeDirectQuery(parsed: ParsedQuery): Promise<QueryResu
 
     // CompletedInbox에서도 수집 (날짜 범위에 해당하는 것만)
     if (parsed.completedFilter !== false) {
-        const completedInboxTasks = await db.completedInbox.toArray();
+        const completedInboxTasks = await loadCompletedInboxTasks();
         for (const task of completedInboxTasks) {
             if (!task.completedAt) continue;
             

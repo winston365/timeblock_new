@@ -1,7 +1,7 @@
 /**
  * Image Storage Service
  *
- * @fileoverview IndexedDB(Dexie)를 사용하여 이미지를 저장하고 조회하는 서비스 모듈
+ * @fileoverview 이미지 저장/조회 서비스 (Repository 레이어 사용)
  *
  * @role 이미지 데이터의 로컬 영속화 관리
  * @responsibilities
@@ -11,10 +11,15 @@
  *   - 이미지 존재 여부 확인
  *
  * @dependencies
- *   - dexieClient: IndexedDB 접근을 위한 Dexie 인스턴스 (images 테이블)
+ *   - imageRepository: IndexedDB images 테이블 접근
  */
 
-import { db } from '@/data/db/dexieClient';
+import {
+    saveImage,
+    getImage,
+    deleteImage,
+    imageExists,
+} from '@/data/repositories/imageRepository';
 
 export const imageStorageService = {
     /**
@@ -27,7 +32,7 @@ export const imageStorageService = {
      */
     async save(id: string, imageData: Blob | string): Promise<void> {
         try {
-            await db.images.put({ id, data: imageData });
+            await saveImage(id, imageData);
         } catch (error) {
             console.error('Failed to save image to IndexedDB:', error);
             throw error;
@@ -42,8 +47,7 @@ export const imageStorageService = {
      */
     async get(id: string): Promise<Blob | string | undefined> {
         try {
-            const imageRecord = await db.images.get(id);
-            return imageRecord?.data;
+            return await getImage(id);
         } catch (error) {
             console.error('Failed to get image from IndexedDB:', error);
             return undefined;
@@ -59,7 +63,7 @@ export const imageStorageService = {
      */
     async delete(id: string): Promise<void> {
         try {
-            await db.images.delete(id);
+            await deleteImage(id);
         } catch (error) {
             console.error('Failed to delete image from IndexedDB:', error);
             throw error;
@@ -74,8 +78,7 @@ export const imageStorageService = {
      */
     async exists(id: string): Promise<boolean> {
         try {
-            const count = await db.images.where('id').equals(id).count();
-            return count > 0;
+            return await imageExists(id);
         } catch (error) {
             console.error('Failed to check image existence:', error);
             return false;
