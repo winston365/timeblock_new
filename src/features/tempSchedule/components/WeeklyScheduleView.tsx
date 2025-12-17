@@ -284,6 +284,17 @@ const DayColumn = memo(function DayColumn({
           height: `${(END_HOUR - START_HOUR) * hourHeight}px`,
         }}
       >
+        {/* 시간별 구분선 (Phase 3) - pointer-events: none으로 드래그&드롭 방해 방지 */}
+        <div className="absolute inset-0 pointer-events-none z-0">
+          {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
+            <div
+              key={i}
+              className="absolute left-0 right-0 border-t border-[var(--color-border)]/20"
+              style={{ top: `${i * hourHeight}px` }}
+            />
+          ))}
+        </div>
+        
         {tasks.map(task => (
           <TaskBlock
             key={task.id}

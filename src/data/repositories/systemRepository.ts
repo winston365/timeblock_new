@@ -16,6 +16,8 @@ export const SYSTEM_KEYS = {
     PROCRASTINATION_MONITOR: 'procrastinationMonitorState',
     QUICK_WINS_COMPLETED: 'quickWinsCompletedState',
     CATCH_UP_ALERT_SHOWN_DATE: 'catchUpAlertShownDate',
+    /** 워밍업 자동생성 활성화 여부 (기본: true) */
+    WARMUP_AUTO_GENERATE_ENABLED: 'schedule:warmupAutoGenerateEnabled',
 } as const;
 
 /**

@@ -37,7 +37,7 @@ import LeftSidebar from './components/LeftSidebar';
 import CenterContent from './components/CenterContent';
 import RightPanel from './components/RightPanel';
 import { TimeBlockXPBar } from './components/TimeBlockXPBar';
-import { DailyXPBar } from './components/DailyXPBar';
+// DailyXPBar import 제거됨 (Phase 1 - UI에서 제거, 컴포넌트 파일은 유지)
 import { WaifuAside } from './components/WaifuAside';
 import { AppToaster } from './components/AppToaster';
 import { LoadingScreen } from './components/LoadingScreen';
@@ -150,7 +150,8 @@ export default function AppShell() {
   // ============================================================================
   // 탭 상태
   // ============================================================================
-  const [rightPanelTab, setRightPanelTab] = useState<'shop' | 'inventory'>('shop');
+  // inventory 탭 제거됨 (Phase 2) - shop만 유지
+  const [rightPanelTab, setRightPanelTab] = useState<'shop'>('shop');
 
   // ============================================================================
   // 이벤트 핸들러
@@ -236,10 +237,7 @@ export default function AppShell() {
             onToggleLeftPanel={toggleLeftSidebar}
             leftPanelVisible={!effectiveLeftCollapsed}
           />
-          <DailyXPBar
-            timeBlockXP={gameState?.timeBlockXP}
-            goalPerBlock={settings?.timeBlockXPGoal ?? SETTING_DEFAULTS.timeBlockXPGoal}
-          />
+          {/* DailyXPBar 제거됨 (Phase 1) - 컴포넌트 파일은 유지 */}
           <TimeBlockXPBar
             timeBlockXP={gameState?.timeBlockXP}
             goalXP={settings?.timeBlockXPGoal ?? SETTING_DEFAULTS.timeBlockXPGoal}

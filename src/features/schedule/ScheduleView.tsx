@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { db } from '@/data/db/dexieClient';
+import { getSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
 import { useDailyData } from '@/shared/hooks';
 import { useGameState } from '@/shared/hooks/useGameState';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
@@ -15,6 +16,7 @@ import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { createNewTask, createTaskFromPartial, isTaskPrepared, isNewlyPrepared } from '@/shared/utils/taskFactory';
 import type { Task, TimeBlockId, WarmupPresetItem } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
+import { SYSTEM_STATE_DEFAULTS } from '@/shared/constants/defaults';
 import TaskModal from './TaskModal';
 import TimeBlock from './TimeBlock';
 import { FocusView } from './components/FocusView';
@@ -23,6 +25,7 @@ import { useFocusModeStore } from './stores/focusModeStore';
 import { useScheduleViewStore } from './stores/scheduleViewStore';
 import { fetchFromFirebase, syncToFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { warmupPresetStrategy } from '@/shared/services/sync/firebase/strategies';
+import { getVisibleBlocks, getCurrentBlock, type VisibilityMode } from './utils/timeBlockVisibility';
 
 const DEFAULT_WARMUP_PRESET: WarmupPresetItem[] = [
   { text: '책상 정리', baseDuration: 5, resistance: 'low' },
@@ -53,7 +56,6 @@ export default function ScheduleView() {
   const { isFocusMode, toggleFocusMode, setFocusMode } = useFocusModeStore();
   const { 
     showPastBlocks, 
-    setShowPastBlocks, 
     isWarmupModalOpen, 
     closeWarmupModal 
   } = useScheduleViewStore();
@@ -64,6 +66,10 @@ export default function ScheduleView() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<TimeBlockId>(null);
   const [warmupPreset, setWarmupPreset] = useState<WarmupPresetItem[]>(DEFAULT_WARMUP_PRESET);
+  /** 워밍업 자동생성 활성화 여부 (Dexie systemState에서 로드) */
+  const [warmupAutoGenerateEnabled, setWarmupAutoGenerateEnabled] = useState<boolean>(
+    SYSTEM_STATE_DEFAULTS.warmupAutoGenerateEnabled
+  );
 
   const autoInsertedRef = useRef<Set<string>>(new Set());
   const lastAutoCheckRef = useRef<string | null>(null);
@@ -93,9 +99,31 @@ export default function ScheduleView() {
       mounted = false;
     };
   }, []);
+
+  // 워밍업 자동생성 플래그 로드 (Dexie systemState)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const storedValue = await getSystemState<boolean>(SYSTEM_KEYS.WARMUP_AUTO_GENERATE_ENABLED);
+        if (mounted && storedValue !== undefined) {
+          setWarmupAutoGenerateEnabled(storedValue);
+        }
+      } catch (error) {
+        console.error('Failed to load warmup auto-generate setting:', error);
+        // 실패 시 기본값 유지
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // 매 시간 50분에 자동 체크 후 다음 시간대(같은 블록이든 다음 블록이든)에 삽입 (22:50~03:50 제외)
   useEffect(() => {
     const interval = setInterval(() => {
+      // 워밍업 자동생성이 비활성화되어 있으면 early-return
+      if (!warmupAutoGenerateEnabled) return;
       if (!dailyData) return;
       const now = new Date();
       const hour = now.getHours();
@@ -140,7 +168,7 @@ export default function ScheduleView() {
 
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dailyData, warmupPreset]);
+  }, [dailyData, warmupPreset, warmupAutoGenerateEnabled]);
 
   const getCurrentBlockId = (): TimeBlockId => {
     const hour = currentHour;
@@ -157,12 +185,13 @@ export default function ScheduleView() {
     });
 
   const currentBlockTasks = dailyData ? sortTasks(dailyData.tasks.filter(task => task.timeBlock === currentBlockId)) : [];
-  const pastBlocks = TIME_BLOCKS.filter(block => currentHour >= block.end);
-  const blocksToRender = TIME_BLOCKS.filter(block => {
-    const isPast = currentHour >= block.end;
-    if (isPast && !showPastBlocks) return false;
-    return true;
-  });
+
+  // 표시 정책: 기본적으로 현재 블록만 표시.
+  // showPastBlocks가 true면 과거+현재만 표시(미래는 항상 가림)
+  const visibilityMode: VisibilityMode = showPastBlocks ? 'hide-future' : 'current-only';
+  const blocksToRender = getVisibleBlocks(currentHour, visibilityMode);
+  const currentBlock = getCurrentBlock(currentHour);
+
   const hourSlotTags = dailyData?.hourSlotTags || {};
   const tagTemplates = settings?.timeSlotTags || [];
   const recentTagIds = Array.from(
@@ -523,17 +552,11 @@ export default function ScheduleView() {
               </div>
             );
           })}
-          {!showPastBlocks && pastBlocks.length > 0 && (
-            <div className="text-center text-xs text-[var(--color-text-tertiary)]">
-              지난 블록이 숨겨져 있습니다.{' '}
-              <button
-                type="button"
-                className="underline underline-offset-4 text-[var(--color-primary)]"
-                onClick={() => setShowPastBlocks(true)}
-              >
-                지난 블록 보기
-              </button>
-            </div>
+          {/* 현재 블록이 없는 시간대 (05:00 이전 또는 23:00 이후) - 빈 상태 표시 */}
+          {blocksToRender.length === 0 && !currentBlock && (
+            <p className="py-8 text-center text-sm text-[var(--color-text-secondary)]">
+              현재 진행 중인 타임블록이 없습니다.
+            </p>
           )}
         </div>
       )}
@@ -554,6 +577,7 @@ export default function ScheduleView() {
           onClose={closeWarmupModal}
           onSave={handleSaveWarmupPreset}
           onApply={handleApplyWarmupFromModal}
+          onAutoGenerateToggle={setWarmupAutoGenerateEnabled}
         />
       )}
     </div>

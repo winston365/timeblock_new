@@ -140,6 +140,25 @@ export const GAME_STATE_DEFAULTS = {
 } as const;
 
 // ============================================================================
+// SystemState 기본값 (Dexie systemState 키별 기본값)
+// ============================================================================
+
+/**
+ * Dexie systemState에 저장되는 키별 기본값
+ * UI 토글/레이아웃 등 로컬 지속 상태에 사용
+ * 
+ * 사용 방법:
+ * ```typescript
+ * import { SYSTEM_STATE_DEFAULTS } from '@/shared/constants/defaults';
+ * const isEnabled = storedValue ?? SYSTEM_STATE_DEFAULTS.warmupAutoGenerateEnabled;
+ * ```
+ */
+export const SYSTEM_STATE_DEFAULTS = {
+  /** 워밍업 작업 자동생성 활성화 여부 */
+  warmupAutoGenerateEnabled: false,
+} as const;
+
+// ============================================================================
 // 타입 유틸리티
 // ============================================================================
 

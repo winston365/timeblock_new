@@ -4,20 +4,58 @@
  * @role 워밍업 작업 프리셋을 관리하는 모달 컴포넌트
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { WarmupPresetItem } from '@/shared/types/domain';
 import { useModalEscapeClose } from '@/shared/hooks';
+import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
+import { SYSTEM_STATE_DEFAULTS } from '@/shared/constants/defaults';
 
 interface WarmupPresetModalProps {
   preset: WarmupPresetItem[];
   onSave: (preset: WarmupPresetItem[]) => void;
   onApply: (preset: WarmupPresetItem[]) => void;
   onClose: () => void;
+  /** 토글 변경 시 외부로 알림 (ScheduleView 상태 동기화용) */
+  onAutoGenerateToggle?: (enabled: boolean) => void;
 }
 
-export function WarmupPresetModal({ preset, onSave, onApply, onClose }: WarmupPresetModalProps) {
+export function WarmupPresetModal({ preset, onSave, onApply, onClose, onAutoGenerateToggle }: WarmupPresetModalProps) {
   const [draft, setDraft] = useState<WarmupPresetItem[]>(preset);
+  const [autoGenerateEnabled, setAutoGenerateEnabled] = useState<boolean>(
+    SYSTEM_STATE_DEFAULTS.warmupAutoGenerateEnabled
+  );
   useModalEscapeClose(true, onClose);
+
+  // Dexie systemState에서 자동생성 설정 로드
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const storedValue = await getSystemState<boolean>(SYSTEM_KEYS.WARMUP_AUTO_GENERATE_ENABLED);
+        if (mounted && storedValue !== undefined) {
+          setAutoGenerateEnabled(storedValue);
+        }
+      } catch (error) {
+        console.error('Failed to load warmup auto-generate setting:', error);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleAutoGenerateToggle = async () => {
+    const newValue = !autoGenerateEnabled;
+    setAutoGenerateEnabled(newValue);
+    try {
+      await setSystemState(SYSTEM_KEYS.WARMUP_AUTO_GENERATE_ENABLED, newValue);
+      onAutoGenerateToggle?.(newValue);
+    } catch (error) {
+      console.error('Failed to save warmup auto-generate setting:', error);
+      // 저장 실패 시 UI 롤백
+      setAutoGenerateEnabled(!newValue);
+    }
+  };
 
   const handleChange = (index: number, field: keyof WarmupPresetItem, value: string) => {
     setDraft(prev =>
@@ -59,6 +97,32 @@ export function WarmupPresetModal({ preset, onSave, onApply, onClose }: WarmupPr
             className="h-9 w-9 rounded-full text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]"
           >
             ✕
+          </button>
+        </div>
+
+        {/* 자동생성 토글 섹션 */}
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-3 bg-[var(--color-bg-surface)]">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-[var(--color-text)]">자동 삽입</span>
+            <span className="text-xs text-[var(--color-text-tertiary)]">
+              매 시간 50분에 다음 시간대로 워밍업 작업 자동 추가
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleAutoGenerateToggle}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 ${
+              autoGenerateEnabled ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-bg-tertiary)]'
+            }`}
+            role="switch"
+            aria-checked={autoGenerateEnabled}
+            aria-label="워밍업 자동 삽입 토글"
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                autoGenerateEnabled ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
           </button>
         </div>
 

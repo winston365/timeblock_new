@@ -1,22 +1,21 @@
 ﻿/**
- * RightPanel - 우측 패널 (퀘스트 & 포인트)
+ * RightPanel - 우측 패널 (포인트)
  *
- * @role 퀘스트와 포인트 관련 기능을 한 눈에 제공하는 우측 패널 컴포넌트
+ * @role 포인트 관련 기능을 제공하는 우측 패널 컴포넌트
  * @input activeTab: 현재 활성화된 탭, onTabChange: 탭 전환 핸들러, onShopPurchaseSuccess: 상점 구매 성공 시 콜백
- * @output 퀘스트/포인트 UI
- * @dependencies ShopPanel, InventoryPanel
+ * @output 포인트 UI
+ * @dependencies ShopPanel
  */
 
 import ShopPanel from '@/features/shop/ShopPanel';
-import InventoryPanel from '@/features/inventory/InventoryPanel';
-import { useGameStateStore } from '@/shared/stores/gameStateStore';
+// InventoryPanel import 제거됨 (Phase 2 - UI 진입점 제거, 컴포넌트 파일은 유지)
 
 /** RightPanel 컴포넌트 Props */
 interface RightPanelProps {
   /** 현재 활성 탭 */
-  activeTab: 'shop' | 'inventory';
+  activeTab: 'shop';
   /** 탭 변경 콜백 */
-  onTabChange: (tab: 'shop' | 'inventory') => void;
+  onTabChange: (tab: 'shop') => void;
   /** 상점 구매 성공 시 콜백 */
   onShopPurchaseSuccess?: (message: string, waifuMessage?: string) => void;
   /** 패널 접힘 상태 */
@@ -26,7 +25,7 @@ interface RightPanelProps {
 /**
  * 우측 패널 컴포넌트
  * @param props - RightPanelProps
- * @returns 퀸스트/포인트 패널 UI
+ * @returns 포인트 패널 UI
  */
 export default function RightPanel({
   activeTab,
@@ -34,12 +33,10 @@ export default function RightPanel({
   onShopPurchaseSuccess,
   collapsed = false,
 }: RightPanelProps) {
-  const { gameState } = useGameStateStore();
+  // 인벤토리 탭 제거로 인해 gameState/inventoryTotal 미사용 (Phase 2)
 
-  const inventoryTotal = Object.values(gameState?.inventory || {}).reduce((sum, qty) => sum + (qty || 0), 0);
-
+  // 포인트 탭만 유지 (인벤토리 탭 제거됨)
   const tabs = [
-    { id: 'inventory' as const, label: '가방', icon: '🎒', badge: inventoryTotal },
     { id: 'shop' as const, label: '포인트', icon: '🛒' },
   ];
 
@@ -47,7 +44,7 @@ export default function RightPanel({
     <aside
       className={`right-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden border-l border-[var(--color-border)] bg-[var(--color-bg-base)] text-[var(--color-text)] transition-all duration-300 ${collapsed ? 'w-0 opacity-0' : 'w-full opacity-100'
         }`}
-      aria-label="퀘스트와 포인트 패널"
+      aria-label="포인트 패널"
       role="complementary"
       aria-hidden={collapsed}
     >
@@ -73,11 +70,6 @@ export default function RightPanel({
                 {tab.icon}
               </span>
               {tab.label}
-              {tab.badge && tab.badge > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold leading-none text-white">
-                  {tab.badge}
-                </span>
-              )}
             </button>
           );
         })}
@@ -95,17 +87,7 @@ export default function RightPanel({
             <ShopPanel onPurchaseSuccess={onShopPurchaseSuccess} />
           </div>
         )}
-
-        {activeTab === 'inventory' && (
-          <div
-            role="tabpanel"
-            id="right-panel-inventory"
-            aria-labelledby="right-panel-tab-inventory"
-            className="h-full"
-          >
-            <InventoryPanel />
-          </div>
-        )}
+        {/* inventory 탭 패널 제거됨 (Phase 2) */}
       </div>
     </aside>
   );

@@ -1,0 +1,52 @@
+%% System Architecture Diagram — TimeBlock Planner
+%% Updated: 2025-12-17
+
+flowchart LR
+  subgraph Renderer[Electron Renderer (React + TS)]
+    AppShell[AppShell/Layout]
+    ScheduleView[ScheduleView (List TimeBlocks)]
+    TimelineView[TimelineView (Timeline Panel)]
+    WarmupModal[WarmupPresetModal]
+
+    ScheduleStore[useScheduleViewStore
+(Zustand/UI state)]
+    DailyHook[useDailyData()
+(hook facade)]
+    TimelineHook[useTimelineData()
+(transform + UI state)]
+  end
+
+  subgraph Stores[Zustand Stores]
+    DailyStore[dailyDataStore]
+    SettingsStore[settingsStore]
+  end
+
+  subgraph Data[Data Layer]
+    Repo[Repositories
+(src/data/repositories/*)]
+    Dexie[(Dexie IndexedDB)]
+    SystemState[(Dexie.systemState)]
+  end
+
+  subgraph Sync[Sync Services]
+    Firebase[Firebase]
+    SyncCore[syncCore + strategies]
+  end
+
+  AppShell --> ScheduleView
+  AppShell --> TimelineView
+  ScheduleView --> ScheduleStore
+  ScheduleView --> DailyHook
+  TimelineView --> TimelineHook
+  TimelineHook --> DailyStore
+
+  DailyHook --> Repo --> Dexie
+  ScheduleStore --> SystemState
+  TimelineHook --> SystemState
+  WarmupModal --> ScheduleView
+
+  SettingsStore --> Repo
+  ScheduleView --> SyncCore --> Firebase
+  SyncCore --> Repo
+
+  Dexie --- SystemState
