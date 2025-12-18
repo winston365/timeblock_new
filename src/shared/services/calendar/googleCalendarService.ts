@@ -16,6 +16,10 @@ import {
   getGoogleCalendarSettings as getCalendarSettings,
   saveGoogleCalendarSettings as saveCalendarSettings,
   disconnectGoogleCalendar as disconnectCalendar,
+  getCalendarMappingGeneric,
+  saveCalendarMappingGeneric,
+  deleteCalendarMappingGeneric,
+  type CalendarMappingTable,
 } from '@/data/repositories/calendarRepository';
 import type { Task } from '@/shared/types/domain';
 import {
@@ -340,7 +344,7 @@ function getResistanceLabel(resistance: string): string {
 export async function createCalendarEventGeneric(
   event: GoogleCalendarEvent,
   mappingId: string,
-  mappingTable: 'taskCalendarMappings' | 'tempScheduleCalendarMappings'
+  mappingTable: CalendarMappingTable
 ): Promise<GoogleCalendarEvent> {
   const settings = await getGoogleCalendarSettings();
   const calendarId = settings?.calendarId || 'primary';
@@ -354,13 +358,13 @@ export async function createCalendarEventGeneric(
   );
 
   // 매핑 저장
-  await db.table(mappingTable).put({
+  await saveCalendarMappingGeneric({
     taskId: mappingId, // taskId 컬럼을 ID로 사용 (TempSchedule ID 포함)
     calendarEventId: createdEvent.id!,
     date: event.start.dateTime?.split('T')[0] || '',
     lastSyncedAt: Date.now(),
     syncStatus: 'synced',
-  });
+  }, mappingTable);
 
   return createdEvent;
 }
@@ -371,9 +375,9 @@ export async function createCalendarEventGeneric(
 export async function updateCalendarEventGeneric(
   event: GoogleCalendarEvent,
   mappingId: string,
-  mappingTable: 'taskCalendarMappings' | 'tempScheduleCalendarMappings'
+  mappingTable: CalendarMappingTable
 ): Promise<GoogleCalendarEvent | null> {
-  const mapping = await db.table(mappingTable).get(mappingId);
+  const mapping = await getCalendarMappingGeneric(mappingId, mappingTable);
   if (!mapping) {
     return createCalendarEventGeneric(event, mappingId, mappingTable);
   }
@@ -390,16 +394,16 @@ export async function updateCalendarEventGeneric(
       }
     );
 
-    await db.table(mappingTable).put({
+    await saveCalendarMappingGeneric({
       ...mapping,
       lastSyncedAt: Date.now(),
       syncStatus: 'synced',
-    });
+    }, mappingTable);
 
     return updatedEvent;
   } catch (error) {
     if ((error as Error).message.includes('404')) {
-      await db.table(mappingTable).delete(mappingId);
+      await deleteCalendarMappingGeneric(mappingId, mappingTable);
       return createCalendarEventGeneric(event, mappingId, mappingTable);
     }
     throw error;
@@ -411,9 +415,9 @@ export async function updateCalendarEventGeneric(
  */
 export async function deleteCalendarEventGeneric(
   mappingId: string,
-  mappingTable: 'taskCalendarMappings' | 'tempScheduleCalendarMappings'
+  mappingTable: CalendarMappingTable
 ): Promise<void> {
-  const mapping = await db.table(mappingTable).get(mappingId);
+  const mapping = await getCalendarMappingGeneric(mappingId, mappingTable);
   if (!mapping) return;
 
   const settings = await getGoogleCalendarSettings();
@@ -430,7 +434,7 @@ export async function deleteCalendarEventGeneric(
     }
   }
 
-  await db.table(mappingTable).delete(mappingId);
+  await deleteCalendarMappingGeneric(mappingId, mappingTable);
 }
 
 // ... existing functions
@@ -479,5 +483,13 @@ export async function deleteCalendarEvent(taskId: string): Promise<void> {
 }
 
 export async function getTaskCalendarMapping(taskId: string): Promise<TaskCalendarMapping | undefined> {
-  return db.table('taskCalendarMappings').get(taskId);
+  const mapping = await getCalendarMappingGeneric(taskId, 'taskCalendarMappings');
+  if (!mapping) return undefined;
+  // Convert GenericCalendarMapping to TaskCalendarMapping format
+  return {
+    taskId: mapping.taskId,
+    eventId: mapping.calendarEventId,
+    calendarId: 'primary', // Generic mapping doesn't store calendarId
+    lastSyncedAt: mapping.lastSyncedAt,
+  };
 }

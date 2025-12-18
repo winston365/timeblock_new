@@ -14,6 +14,7 @@
 import { initializeApp, FirebaseApp, deleteApp } from 'firebase/app';
 import { getDatabase, Database } from 'firebase/database';
 import type { Settings } from '@/shared/types/domain';
+import { stopAllRtdbListeners } from './rtdbListenerRegistry';
 
 // ============================================================================
 // Firebase 상태 (Module-level State)
@@ -49,6 +50,8 @@ export function initializeFirebase(config: Settings['firebaseConfig']): boolean 
   try {
     // 기존 앱이 있으면 삭제 후 재초기화
     if (firebaseApp) {
+      // 리스너 누수 방지: Firebase App 재초기화 전에 RTDB 리스너 해제
+      stopAllRtdbListeners();
       try {
         deleteApp(firebaseApp).catch(err =>
           console.warn('[Firebase Client] Failed to delete old app:', err)
@@ -125,6 +128,8 @@ export function getFirebaseDatabase(): Database {
  */
 export function disconnectFirebase(): void {
   if (firebaseApp) {
+    // 리스너 누수 방지: 연결 해제 전에 RTDB 리스너 해제
+    stopAllRtdbListeners();
     deleteApp(firebaseApp)
       .then(() => {
         firebaseApp = null;

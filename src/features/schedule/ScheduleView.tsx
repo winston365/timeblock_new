@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { getSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
+import { getInboxTaskById } from '@/data/repositories/inboxRepository';
 import { useDailyData } from '@/shared/hooks';
 import { useGameState } from '@/shared/hooks/useGameState';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
@@ -388,7 +389,7 @@ export default function ScheduleView() {
     try {
       let task = dailyData.tasks.find(t => t.id === taskId);
       if (!task) {
-        task = await db.globalInbox.get(taskId);
+        task = await getInboxTaskById(taskId);
       }
       if (!task) {
         console.error('Task not found:', taskId);

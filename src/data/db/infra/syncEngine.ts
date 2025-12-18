@@ -30,8 +30,10 @@ import {
     settingsStrategy,
 } from '@/shared/services/sync/firebase/strategies';
 import { db } from '../dexieClient';
-import { getFirebaseDatabase } from '@/shared/services/sync/firebase/firebaseClient';
-import { ref, onValue } from 'firebase/database';
+import { getFirebaseDatabase, isFirebaseInitialized } from '@/shared/services/sync/firebase/firebaseClient';
+import { attachRtdbOnValue } from '@/shared/services/sync/firebase/rtdbListenerRegistry';
+import { acquireFirebaseSyncLeaderLock, type FirebaseSyncLeaderHandle } from '@/shared/services/sync/firebase/firebaseSyncLeaderLock';
+import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { getDeviceId } from '@/shared/services/sync/firebase/syncUtils';
 import { useToastStore } from '@/shared/stores/toastStore';
 import type { Task, DailyTokenUsage } from '@/shared/types/domain';
@@ -63,6 +65,12 @@ export class SyncEngine {
     private static instance: SyncEngine;
     private isSyncingFromRemote = false;
     private initialized = false;
+
+    private isListening = false;
+    private listeningUnsubscribes: Array<() => void> = [];
+    private leaderHandle: FirebaseSyncLeaderHandle | null = null;
+
+    private debounceTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
     // Operation Queue: Race Condition 방지
     private operationQueue: Promise<void> = Promise.resolve();
@@ -156,32 +164,40 @@ export class SyncEngine {
             }
         });
 
-        // 3. Templates (Collection sync)
+        // 3. Templates (Collection sync) - debounce로 read/write 폭주 완화
         this.registerHooks(db.templates, async () => {
-            const allTemplates = await db.templates.toArray();
-            await syncToFirebase(templateStrategy, allTemplates);
+            this.scheduleDebounced('templates:all', 500, async () => {
+                const allTemplates = await db.templates.toArray();
+                await syncToFirebase(templateStrategy, allTemplates);
+            });
         });
 
-        // 4. ShopItems (Collection sync)
+        // 4. ShopItems (Collection sync) - debounce
         this.registerHooks(db.shopItems, async () => {
-            const allItems = await db.shopItems.toArray();
-            await syncToFirebase(shopItemsStrategy, allItems, 'all');
+            this.scheduleDebounced('shopItems:all', 500, async () => {
+                const allItems = await db.shopItems.toArray();
+                await syncToFirebase(shopItemsStrategy, allItems, 'all');
+            });
         });
 
-        // 5. GlobalInbox (Collection sync)
+        // 5. GlobalInbox (Collection sync) - debounce
         this.registerHooks(db.globalInbox, async () => {
-            const allTasks = await db.globalInbox.toArray();
-            await syncToFirebase(globalInboxStrategy, allTasks);
+            this.scheduleDebounced('globalInbox:all', 500, async () => {
+                const allTasks = await db.globalInbox.toArray();
+                await syncToFirebase(globalInboxStrategy, allTasks);
+            });
         });
 
-        // 5-1. CompletedInbox (Collection sync, grouped by completed date)
+        // 5-1. CompletedInbox (Collection sync, grouped by completed date) - debounce
         this.registerHooks(db.completedInbox, async () => {
-            const completedTasks = await db.completedInbox.toArray();
-            const grouped = groupCompletedByDate(completedTasks);
-            const syncPromises = Object.entries(grouped).map(([date, tasks]) =>
-                syncToFirebase(completedInboxStrategy, tasks, date)
-            );
-            await Promise.all(syncPromises);
+            this.scheduleDebounced('completedInbox:all', 750, async () => {
+                const completedTasks = await db.completedInbox.toArray();
+                const grouped = groupCompletedByDate(completedTasks);
+                const syncPromises = Object.entries(grouped).map(([date, tasks]) =>
+                    syncToFirebase(completedInboxStrategy, tasks, date)
+                );
+                await Promise.all(syncPromises);
+            });
         });
 
         // 6. DailyTokenUsage (Key-based sync)
@@ -213,20 +229,51 @@ export class SyncEngine {
      *   - Firebase onValue 리스너 등록 (8개 컬렉션)
      *   - 원격 변경 시 로컬 Dexie DB 업데이트
      */
-    public startListening(): void {
-        const database = getFirebaseDatabase();
+    public async startListening(): Promise<void> {
+        if (this.isListening) return;
+
+        if (!isFirebaseInitialized()) {
+            return;
+        }
+
+        // 멀티 윈도우 방지: 1개 렌더러만 RTDB 리스너 활성화
+        try {
+            this.leaderHandle = await acquireFirebaseSyncLeaderLock();
+        } catch (error) {
+            console.warn('[SyncEngine] Failed to acquire leader lock:', error);
+            this.leaderHandle = null;
+        }
+
+        if (this.leaderHandle && !this.leaderHandle.isLeader) {
+            addSyncLog('firebase', 'info', 'Skipped RTDB listeners (not leader window)', {
+                instanceId: this.leaderHandle.instanceId,
+            });
+            return;
+        }
+
+        let database;
+        try {
+            database = getFirebaseDatabase();
+        } catch (error) {
+            console.warn('[SyncEngine] Firebase database unavailable:', error);
+            return;
+        }
+
         const userId = 'user'; // TODO: 실제 유저 ID 사용
         const deviceId = getDeviceId();
 
+        this.isListening = true;
+        this.listeningUnsubscribes = [];
+
         // 1. DailyData Listener
-        const dailyDataRef = ref(database, `users/${userId}/dailyData`);
-        onValue(dailyDataRef, (snapshot) => {
+        const dailyPath = `users/${userId}/dailyData`;
+        this.listeningUnsubscribes.push(attachRtdbOnValue(database, dailyPath, (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
 
             // 각 날짜별로 개별 작업 생성 (Split-brain 방지)
             Object.entries(data).forEach(([date, syncData]: [string, any]) => {
-                if (syncData.deviceId === deviceId) return;
+                if (syncData?.deviceId === deviceId) return;
 
                 this.applyRemoteUpdate(async () => {
                     if (syncData.data) {
@@ -239,13 +286,13 @@ export class SyncEngine {
                     }
                 }, `dailyData:${date}`);
             });
-        });
+        }, { tag: 'SyncEngine.dailyData' }));
 
         // 2. GameState Listener
-        const gameStateRef = ref(database, `users/${userId}/gameState`);
-        onValue(gameStateRef, (snapshot) => {
+        const gameStatePath = `users/${userId}/gameState`;
+        this.listeningUnsubscribes.push(attachRtdbOnValue(database, gameStatePath, (snapshot) => {
             const syncData = snapshot.val();
-            if (!syncData || syncData.deviceId === deviceId) return;
+            if (!syncData || syncData?.deviceId === deviceId) return;
 
             if (syncData.data) {
                 this.applyRemoteUpdate(async () => {
@@ -270,13 +317,13 @@ export class SyncEngine {
                     await db.gameState.delete('current');
                 }, 'gameState:current');
             }
-        });
+        }, { tag: 'SyncEngine.gameState' }));
 
         // 3. Templates Listener
-        const templatesRef = ref(database, `users/${userId}/templates`);
-        onValue(templatesRef, (snapshot) => {
+        const templatesPath = `users/${userId}/templates`;
+        this.listeningUnsubscribes.push(attachRtdbOnValue(database, templatesPath, (snapshot) => {
             const syncData = snapshot.val();
-            if (!syncData || syncData.deviceId === deviceId) return;
+            if (!syncData || syncData?.deviceId === deviceId) return;
 
             if (Array.isArray(syncData.data)) {
                 this.applyRemoteUpdate(async () => {
@@ -284,13 +331,13 @@ export class SyncEngine {
                     await db.templates.bulkPut(syncData.data);
                 }, 'templates:all');
             }
-        });
+        }, { tag: 'SyncEngine.templates' }));
 
         // 4. ShopItems Listener
-        const shopItemsRef = ref(database, `users/${userId}/shopItems`);
-        onValue(shopItemsRef, (snapshot) => {
+        const shopItemsPath = `users/${userId}/shopItems`;
+        this.listeningUnsubscribes.push(attachRtdbOnValue(database, shopItemsPath, (snapshot) => {
             const syncData = snapshot.val();
-            if (!syncData || syncData.deviceId === deviceId) return;
+            if (!syncData || syncData?.deviceId === deviceId) return;
 
             if (Array.isArray(syncData.data)) {
                 this.applyRemoteUpdate(async () => {
@@ -298,11 +345,11 @@ export class SyncEngine {
                     await db.shopItems.bulkPut(syncData.data);
                 }, 'shopItems:all');
             }
-        });
+        }, { tag: 'SyncEngine.shopItems' }));
 
         // 5. GlobalInbox Listener
-        const globalInboxRef = ref(database, `users/${userId}/globalInbox`);
-        onValue(globalInboxRef, (snapshot) => {
+        const globalInboxPath = `users/${userId}/globalInbox`;
+        this.listeningUnsubscribes.push(attachRtdbOnValue(database, globalInboxPath, (snapshot) => {
             const syncData = snapshot.val();
             if (!syncData) return;
 
@@ -319,11 +366,11 @@ export class SyncEngine {
                 await db.globalInbox.clear();
                 await db.globalInbox.bulkPut(payload.data);
             }, 'globalInbox:all');
-        });
+        }, { tag: 'SyncEngine.globalInbox' }));
 
         // 5-1. CompletedInbox Listener (date-keyed)
-        const completedInboxRef = ref(database, `users/${userId}/completedInbox`);
-        onValue(completedInboxRef, (snapshot) => {
+        const completedInboxPath = `users/${userId}/completedInbox`;
+        this.listeningUnsubscribes.push(attachRtdbOnValue(database, completedInboxPath, (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
 
@@ -332,7 +379,7 @@ export class SyncEngine {
                 const map = new Map<string, Task>(existing.map(task => [task.id, task]));
 
                 Object.entries<any>(data).forEach(([_, syncData]) => {
-                    if (!syncData || syncData.deviceId === deviceId) return;
+                    if (!syncData || syncData?.deviceId === deviceId) return;
                     if (Array.isArray(syncData.data)) {
                         syncData.data.forEach((task: Task) => {
                             map.set(task.id, task);
@@ -346,17 +393,17 @@ export class SyncEngine {
                     await db.completedInbox.bulkPut(mergedTasks);
                 }
             }, 'completedInbox:all');
-        });
+        }, { tag: 'SyncEngine.completedInbox' }));
 
         // 6. TokenUsage Listener
-        const tokenUsageRef = ref(database, `users/${userId}/tokenUsage`);
-        onValue(tokenUsageRef, (snapshot) => {
+        const tokenUsagePath = `users/${userId}/tokenUsage`;
+        this.listeningUnsubscribes.push(attachRtdbOnValue(database, tokenUsagePath, (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
 
             // 각 날짜별로 개별 작업 생성
             Object.entries(data).forEach(([date, syncData]: [string, any]) => {
-                if (syncData.deviceId === deviceId) return;
+                if (syncData?.deviceId === deviceId) return;
 
                 this.applyRemoteUpdate(async () => {
                     if (syncData.data) {
@@ -370,13 +417,13 @@ export class SyncEngine {
                     }
                 }, `tokenUsage:${date}`);
             });
-        });
+        }, { tag: 'SyncEngine.tokenUsage' }));
 
         // 8. Settings Listener
-        const settingsRef = ref(database, `users/${userId}/settings`);
-        onValue(settingsRef, (snapshot) => {
+        const settingsPath = `users/${userId}/settings`;
+        this.listeningUnsubscribes.push(attachRtdbOnValue(database, settingsPath, (snapshot) => {
             const syncData = snapshot.val();
-            if (!syncData || syncData.deviceId === deviceId) return;
+            if (!syncData || syncData?.deviceId === deviceId) return;
 
             if (syncData.data) {
                 this.applyRemoteUpdate(async () => {
@@ -402,7 +449,56 @@ export class SyncEngine {
                     });
                 }, 'settings:current');
             }
+        }, { tag: 'SyncEngine.settings' }));
+
+        addSyncLog('firebase', 'info', 'RTDB listeners started', {
+            active: this.listeningUnsubscribes.length,
+            instanceId: this.leaderHandle?.instanceId,
         });
+    }
+
+    /**
+     * Firebase 실시간 리스너를 중지합니다.
+     * - 설정 변경/재초기화/창 종료 시 누수 방지
+     */
+    public stopListening(): void {
+        // debounce 타이머 정리
+        for (const timer of this.debounceTimers.values()) {
+            clearTimeout(timer);
+        }
+        this.debounceTimers.clear();
+
+        for (const unsubscribe of this.listeningUnsubscribes) {
+            try {
+                unsubscribe();
+            } catch (error) {
+                console.warn('[SyncEngine] Failed to unsubscribe listener:', error);
+            }
+        }
+        this.listeningUnsubscribes = [];
+        this.isListening = false;
+
+        this.leaderHandle?.release();
+        this.leaderHandle = null;
+
+        addSyncLog('firebase', 'info', 'RTDB listeners stopped');
+    }
+
+    private scheduleDebounced(key: string, delayMs: number, fn: () => Promise<void>): void {
+        const existing = this.debounceTimers.get(key);
+        if (existing) {
+            clearTimeout(existing);
+        }
+
+        const timer = setTimeout(() => {
+            this.debounceTimers.delete(key);
+            fn().catch((error) => {
+                console.error(`[SyncEngine] Debounced sync failed (${key}):`, error);
+                useToastStore.getState().addToast(`동기화 실패: ${key}`, 'error');
+            });
+        }, delayMs);
+
+        this.debounceTimers.set(key, timer);
     }
 
     /**

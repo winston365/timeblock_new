@@ -14,7 +14,7 @@
  *   - ../syncLogger: 동기화 로그 시스템
  */
 
-import { ref, set, get, onValue, off } from 'firebase/database';
+import { ref, set, get, onValue } from 'firebase/database';
 import type { SyncData } from './conflictResolver';
 import { resolveConflictLWW } from './conflictResolver';
 import { getDataHash, getServerTimestamp, getDeviceId, getFirebasePath } from './syncUtils';
@@ -22,6 +22,7 @@ import { getFirebaseDatabase, isFirebaseInitialized } from './firebaseClient';
 import { addSyncLog } from '../syncLogger';
 import { addToRetryQueue } from './syncRetryQueue';
 import { sanitizeForFirebase } from '@/shared/utils/firebaseSanitizer';
+import { recordRtdbGet, recordRtdbSet, recordRtdbError, isRtdbInstrumentationEnabled } from './rtdbMetrics';
 
 // ============================================================================
 // Types
@@ -61,6 +62,45 @@ export interface SyncStrategy<T> {
 // ============================================================================
 
 const lastSyncHash: Record<string, string> = {};
+
+// ============================================================================
+// Pre-get single-flight + short TTL cache (read amplification 완화)
+// ============================================================================
+
+type CachedRemote = { value: unknown; cachedAt: number };
+const remoteCache: Map<string, CachedRemote> = new Map();
+const inFlightGet: Map<string, Promise<unknown>> = new Map();
+
+function getRemoteCacheKey(path: string): string {
+  return path;
+}
+
+async function getRemoteOnce(dataRef: ReturnType<typeof ref>, path: string): Promise<unknown> {
+  const key = getRemoteCacheKey(path);
+  const cached = remoteCache.get(key);
+  const now = Date.now();
+
+  // 2초 TTL: 연속 훅(템플릿/인박스)에서 pre-get 폭주 완화
+  if (cached && now - cached.cachedAt < 2000) {
+    return cached.value;
+  }
+
+  const existing = inFlightGet.get(key);
+  if (existing) return existing;
+
+  const p = get(dataRef)
+    .then((snapshot) => snapshot.val())
+    .then((val) => {
+      remoteCache.set(key, { value: val, cachedAt: Date.now() });
+      return val;
+    })
+    .finally(() => {
+      inFlightGet.delete(key);
+    });
+
+  inFlightGet.set(key, p);
+  return p;
+}
 
 // ============================================================================
 // Generic Sync Functions - R8: 중복 제거
@@ -117,9 +157,12 @@ export async function syncToFirebase<T>(
       return;
     }
 
-    // 기존 데이터 확인
-    const snapshot = await get(dataRef);
-    const remoteData = snapshot.val() as SyncData<T> | null;
+    // 기존 데이터 확인 (single-flight + TTL cache로 다운로드 증폭 완화)
+    const remoteRaw = await getRemoteOnce(dataRef, path);
+    const remoteData = remoteRaw as SyncData<T> | null;
+    if (isRtdbInstrumentationEnabled()) {
+      recordRtdbGet(path, remoteRaw);
+    }
 
     const localSyncData: SyncData<T> = {
       data: sanitizedData,
@@ -139,6 +182,9 @@ export async function syncToFirebase<T>(
     }
 
     // Firebase에 업로드
+    if (isRtdbInstrumentationEnabled()) {
+      recordRtdbSet(path, localSyncData);
+    }
     await set(dataRef, localSyncData);
     lastSyncHash[hashKey] = dataHash;
 
@@ -150,6 +196,15 @@ export async function syncToFirebase<T>(
   } catch (error) {
     console.error(`Failed to sync ${strategy.collection} to Firebase:`, error);
     addSyncLog('firebase', 'error', `Failed to sync ${strategy.collection}`, undefined, error as Error);
+    if (isRtdbInstrumentationEnabled()) {
+      try {
+        const userId = strategy.getUserId?.() || 'user';
+        const path = getFirebasePath(userId, strategy.collection, key);
+        recordRtdbError(path);
+      } catch {
+        // ignore
+      }
+    }
 
     // 재시도 큐에 추가
     const retryId = `${strategy.collection}-${key || 'root'}-${Date.now()}`;
@@ -199,7 +254,7 @@ export function listenToFirebase<T>(
     const path = getFirebasePath(userId, strategy.collection, key);
     const dataRef = ref(db, path);
 
-    onValue(dataRef, snapshot => {
+    const unsubscribe = onValue(dataRef, snapshot => {
       const syncData = snapshot.val() as SyncData<T> | null;
 
       if (syncData && syncData.deviceId !== deviceId) {
@@ -209,7 +264,13 @@ export function listenToFirebase<T>(
       }
     });
 
-    return () => off(dataRef);
+    return () => {
+      try {
+        unsubscribe();
+      } catch (e) {
+        console.warn(`Failed to unsubscribe ${strategy.collection}:`, e);
+      }
+    };
   } catch (error) {
     console.error(`Failed to listen to ${strategy.collection}:`, error);
     return () => { }; // no-op

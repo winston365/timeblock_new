@@ -125,6 +125,9 @@ describe('syncCore', () => {
 
     const { listenToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
 
+    const unsubscribeImpl = vi.fn();
+    onValueSpy.mockReturnValueOnce(unsubscribeImpl);
+
     const onUpdate = vi.fn();
     const unsubscribe = listenToFirebase({ collection: 'c' }, onUpdate, 'k');
 
@@ -142,7 +145,7 @@ describe('syncCore', () => {
     expect(addSyncLogSpy).toHaveBeenCalledWith('firebase', 'sync', expect.stringContaining('Received'));
 
     unsubscribe();
-    expect(offSpy).toHaveBeenCalledTimes(1);
+    expect(unsubscribeImpl).toHaveBeenCalledTimes(1);
   });
 
   it('fetchFromFirebase returns data and logs load; returns null on missing data or errors', async () => {

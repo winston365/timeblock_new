@@ -263,7 +263,16 @@ export function useAppInitialization() {
                             });
 
                             // 실시간 동기화 활성화 (SyncEngine이 담당)
-                            syncEngine.startListening();
+                            await syncEngine.startListening();
+
+                            // 창 종료 시 리스너 정리(누수 방지)
+                            try {
+                                window?.addEventListener('beforeunload', () => {
+                                    syncEngine.stopListening();
+                                }, { once: true });
+                            } catch {
+                                // ignore
+                            }
                         }
                     } catch (firebaseError) {
                         console.warn('Firebase initialization failed (offline mode):', firebaseError);

@@ -16,7 +16,7 @@ import { useCompletedTasksStore } from '@/shared/stores/completedTasksStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { callGeminiAPI } from '@/shared/services/ai/geminiApi';
 import { trackTokenUsage } from '@/shared/utils/tokenUtils';
-import { getAIInsight } from '@/data/repositories/aiInsightsRepository';
+import { getAIInsight, saveAIInsight } from '@/data/repositories/aiInsightsRepository';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
     OverviewTab,
@@ -361,11 +361,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
             trackTokenUsage(tokenUsage);
 
             try {
-                await db.aiInsights.put({
-                    date: today,
-                    content: text,
-                    createdAt: new Date().toISOString()
-                });
+                await saveAIInsight(today, text);
             } catch (error) {
                 console.error('Failed to save insight:', error);
             }

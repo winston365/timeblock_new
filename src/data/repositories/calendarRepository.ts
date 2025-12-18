@@ -101,3 +101,61 @@ export async function deleteTaskCalendarMapping(taskId: string): Promise<void> {
         console.error('[CalendarRepository] Failed to delete mapping:', error);
     }
 }
+
+// ============================================================================
+// Generic Calendar Mapping (Task + TempSchedule 공용)
+// ============================================================================
+
+export type CalendarMappingTable = 'taskCalendarMappings' | 'tempScheduleCalendarMappings';
+
+export interface GenericCalendarMapping {
+    taskId: string;         // Task ID 또는 TempSchedule ID
+    calendarEventId: string;
+    date: string;
+    lastSyncedAt: number;
+    syncStatus: 'synced' | 'pending' | 'error';
+}
+
+/**
+ * Generic 매핑 조회
+ */
+export async function getCalendarMappingGeneric(
+    mappingId: string,
+    table: CalendarMappingTable
+): Promise<GenericCalendarMapping | undefined> {
+    try {
+        return await db.table(table).get(mappingId);
+    } catch (error) {
+        console.error(`[CalendarRepository] Failed to get mapping from ${table}:`, error);
+        return undefined;
+    }
+}
+
+/**
+ * Generic 매핑 저장
+ */
+export async function saveCalendarMappingGeneric(
+    mapping: GenericCalendarMapping,
+    table: CalendarMappingTable
+): Promise<void> {
+    try {
+        await db.table(table).put(mapping);
+    } catch (error) {
+        console.error(`[CalendarRepository] Failed to save mapping to ${table}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Generic 매핑 삭제
+ */
+export async function deleteCalendarMappingGeneric(
+    mappingId: string,
+    table: CalendarMappingTable
+): Promise<void> {
+    try {
+        await db.table(table).delete(mappingId);
+    } catch (error) {
+        console.error(`[CalendarRepository] Failed to delete mapping from ${table}:`, error);
+    }
+}

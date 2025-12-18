@@ -1,6 +1,6 @@
 # System Architecture — TimeBlock Planner (Renderer 중심)
 
-> Last updated: 2025-12-17
+> Last updated: 2025-12-18
 
 ## Changelog
 | Date | Change | Rationale | Plan/Ref |
@@ -8,6 +8,7 @@
 | 2025-12-17 | Initial master doc created (no-memory mode) | Workspace에 `agent-output/architecture/`가 없어서 생성. 향후 아키텍처 결정을 단일 출처로 유지 | 001-focus-only-blocks-warmup-toggle-architecture-findings.md |
 | 2025-12-17 | Phased rollout 설계: UI 5개 변경(탭/목표/TempSchedule/XP바) | 회귀 위험이 높은 UI 삭제를 “엔트리 제거→정리”로 단계화하여 롤백/검증을 단순화 | 002-ui-five-changes-phased-rollout-architecture-findings.md |
 | 2025-12-17 | 구조 개선 대안(A/B) 및 추천안 정리(프론트/UI 중심) | 레이어는 존재하지만 DB 접근/이벤트 발행이 경계 밖으로 새어 결합도가 증가 → “경계 재정착”을 최우선으로 제안 | 003-frontend-structural-improvements-architecture-findings.md |
+| 2025-12-18 | Firebase RTDB 다운로드 스파이크 완화(Phase 0~3) 설계 추가 | 백엔드 변경 없이도 리스너/초기 fetch 폭주를 즉시 차단하고, 계측→정합성→가드레일 순으로 리스크를 낮춤 | 004-firebase-rtdb-mitigation-phased-architecture-findings.md |
 
 ## Purpose
 - Renderer(Electron + React) 중심의 시스템 경계/데이터 흐름/결정(ADR)을 기록하는 단일 출처.
@@ -115,3 +116,27 @@
 
 **Consequences**
 - 이벤트 발행 타이밍(optimistic update vs commit 이후)을 store 레벨에서 명시적으로 관리해야 함.
+
+### ADR-006: Firebase RTDB Sync는 “폭주 방지(Containment) 우선”으로 단계적 완화한다
+**Context**
+- RTDB 저장량 대비 다운로드 급증이 관측되었고, 현재 구조는 (1) 앱 시작 시 다수 루트 `get()`(초기 전체 읽기), (2) 여러 컬렉션 루트 `onValue()` 리스너, (3) Dexie hook 기반 전체 업로드 + `syncToFirebase()`의 사전 `get()` 결합으로 “변경 1회 → 큰 서브트리 반복 다운로드”가 발생하기 쉬움.
+- Electron은 다중 렌더러(QuickAdd 등)에서 동일 리스너가 중복 등록되어 다운로드가 배수로 증가할 수 있음.
+
+**Choice**
+- 우선순위를 다음과 같이 고정한다.
+	- Phase 0: 백엔드 변경 없이 **리스너/초기 fetch 게이트(킬스위치 포함)** 로 다운로드 폭주를 먼저 멈춘다.
+	- Phase 1: `onValue`/`get`/`syncToFirebase` 경로의 **빈도·크기 계측** 으로 원인 TOP 경로를 확정한다.
+	- Phase 2: 루트 리스너 범위 축소, 리스너 생명주기(stopListening), 전체 업로드/사전 get 최적화로 **정합성+비용** 을 함께 개선한다.
+	- Phase 3: 세션 다운로드 budget, rate-limit, 회귀 테스트 등 **가드레일** 로 재발을 방지한다.
+
+**Constraints / Invariants**
+- 플래그/세이프모드 저장은 localStorage가 아니라 `Dexie.systemState`를 사용(테마 예외 유지).
+- Firebase SDK 직접 호출은 sync/service 경계 내부로 제한(Repository/Store/EventBus 규칙 유지).
+
+**Alternatives**
+- 즉시 대규모 리팩터(증분 모델 전환 포함): 근본 개선은 빠르나, 원인 확정 전 변경 범위가 커져 회귀/롤백 비용이 급증.
+- 백엔드 규칙(보안/인덱스/쿼터)만으로 해결: 가능한 경우도 있으나 “백엔드 변경 불가” 조건에서는 즉시 적용 불가.
+
+**Consequences**
+- Phase 0에서 동기화가 일부/전체 중단될 수 있으나, Local-first(Dexie)로 앱 기능은 유지되어야 한다.
+- Phase 2에서 `pre-get` 생략/부분 업로드는 충돌 정책(단일-writer 가정 등)을 문서화한 뒤에만 허용.
