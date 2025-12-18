@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Database } from 'firebase/database';
 
 const onValueSpy = vi.fn();
 const refSpy = vi.fn();
@@ -36,7 +37,7 @@ describe('rtdbListenerRegistry', () => {
       '@/shared/services/sync/firebase/rtdbListenerRegistry'
     );
 
-    const db = { kind: 'db' } as any;
+    const db = { kind: 'db' } as unknown as Database;
     const path = 'users/user/dailyData';
 
     const h1 = vi.fn();

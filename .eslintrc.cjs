@@ -43,6 +43,19 @@ module.exports = {
         ]
       }
     ],
+    // ⚠️ db.* 직접 접근 금지 (repositories/db 외부)
+    // import를 우회하거나 re-export로 가져오더라도 사용 자체를 차단
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector: 'MemberExpression[object.name="db"]',
+        message: '❌ db.* 직접 접근 금지! Repository 레이어(@/data/repositories/*)를 사용하세요. 예외: src/data/repositories/**, src/data/db/**'
+      },
+      {
+        selector: 'ChainExpression > MemberExpression[object.name="db"]',
+        message: '❌ db.* 직접 접근 금지! Repository 레이어(@/data/repositories/*)를 사용하세요. 예외: src/data/repositories/**, src/data/db/**'
+      }
+    ],
     // 기존 프로젝트 규칙
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/no-explicit-any': 'warn',
@@ -74,6 +87,7 @@ module.exports = {
       ],
       rules: {
         'no-restricted-imports': 'off',
+        'no-restricted-syntax': 'off',
       },
     },
   ],

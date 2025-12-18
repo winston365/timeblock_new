@@ -21,7 +21,7 @@ function generateInstanceId(): string {
 }
 
 function supportsWebLocks(): boolean {
-  return typeof (globalThis as any)?.navigator?.locks?.request === 'function';
+  return typeof navigator !== 'undefined' && typeof navigator.locks?.request === 'function';
 }
 
 export async function acquireFirebaseSyncLeaderLock(): Promise<FirebaseSyncLeaderHandle> {
@@ -52,7 +52,7 @@ export async function acquireFirebaseSyncLeaderLock(): Promise<FirebaseSyncLeade
   });
 
   // 락을 잡으면 callback이 종료될 때까지 락이 유지됩니다.
-  (globalThis as any).navigator.locks
+  navigator.locks
     .request(
       'timeblock-firebase-sync-listeners',
       { ifAvailable: true },

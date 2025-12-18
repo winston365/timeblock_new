@@ -30,7 +30,7 @@ export interface PerformanceOptions {
 class PerformanceMonitor {
     private stats: Map<EventType, PerformanceStats> = new Map();
     private options: Required<PerformanceOptions>;
-    private reportTimer?: number;
+    private reportTimer?: ReturnType<typeof setInterval>;
 
     constructor(options: PerformanceOptions = {}) {
         this.options = {
@@ -112,7 +112,7 @@ class PerformanceMonitor {
     }
 
     private startAutoReport(): void {
-        this.reportTimer = window.setInterval(() => {
+        this.reportTimer = globalThis.setInterval(() => {
             this.printReport();
         }, this.options.reportInterval);
     }
@@ -133,12 +133,13 @@ export function createPerformanceMiddleware(
     const monitor = new PerformanceMonitor(options);
 
     const middleware: Middleware = (event, _payload, _meta, next) => {
-        const startTime = performance.now();
+        const now = () => (globalThis.performance?.now ? globalThis.performance.now() : Date.now());
+        const startTime = now();
 
         try {
             next();
         } finally {
-            const duration = performance.now() - startTime;
+            const duration = now() - startTime;
             monitor.record(event, duration);
 
             // 느린 이벤트 경고

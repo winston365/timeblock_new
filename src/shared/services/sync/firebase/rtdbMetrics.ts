@@ -24,7 +24,7 @@ const metricsByPath: Map<string, RtdbPathMetrics> = new Map();
 function isDevEnv(): boolean {
   try {
     // Vite 환경
-    return Boolean((import.meta as any)?.env?.DEV);
+    return Boolean(import.meta.env?.DEV);
   } catch {
     return false;
   }
@@ -42,7 +42,7 @@ export function estimateJsonBytes(value: unknown): number {
     if (!json) return 0;
 
     // 브라우저/일렉트론: TextEncoder로 바이트 추정
-    const encoder = (globalThis as any).TextEncoder ? new TextEncoder() : null;
+    const encoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
     if (encoder) {
       return encoder.encode(json).byteLength;
     }

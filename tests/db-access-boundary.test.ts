@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
+import ts from 'typescript';
 
 // 허용 경로 패턴 (정규식)
 const ALLOWED_PATH_PATTERNS = [
@@ -16,16 +17,9 @@ const ALLOWED_PATH_PATTERNS = [
     /^src[\\/]data[\\/]db[\\/]/,
 ];
 
-// 금지된 import 패턴
-const FORBIDDEN_IMPORT_PATTERNS = [
-    /@\/data\/db\/dexieClient/,
-    /['"]\.\.?\/.*dexieClient['"]/,
-    /from\s+['"]@\/data\/db\/dexieClient['"]/,
-];
-
-// 금지된 db.* 직접 접근 패턴 (주석/문자열 제외는 findForbiddenDbAccess에서 처리)
-const FORBIDDEN_DB_ACCESS_PATTERNS = [
-    /\bdb\.(table|globalInbox|aiInsights|dailyData|templates|settings|systemState|shopItems|completedInbox|taskCalendarMappings)\b/,
+// 금지된 dexieClient 직접 import 식별자
+const FORBIDDEN_DEXIECLIENT_MODULE_IDS = [
+    '@/data/db/dexieClient',
 ];
 
 // 검사 대상 확장자
@@ -94,56 +88,96 @@ function isTargetFile(filePath: string): boolean {
     return TARGET_EXTENSIONS.some(ext => filePath.endsWith(ext));
 }
 
-/**
- * 파일 내용에서 금지된 import가 있는지 검사
- */
-function findForbiddenImports(content: string): string[] {
-    const violations: string[] = [];
+function createSourceFile(filePath: string, content: string): ts.SourceFile {
+    const isTsx = filePath.endsWith('.tsx');
+    return ts.createSourceFile(
+        filePath,
+        content,
+        ts.ScriptTarget.ES2022,
+        true,
+        isTsx ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+    );
+}
+
+function getLineSnippet(content: string, lineNumber1Based: number): string {
     const lines = content.split('\n');
-    
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        for (const pattern of FORBIDDEN_IMPORT_PATTERNS) {
-            if (pattern.test(line)) {
-                violations.push(`Line ${i + 1}: ${line.trim()}`);
+    const raw = lines[lineNumber1Based - 1] ?? '';
+    return raw.trim();
+}
+
+/**
+ * 파일 AST에서 금지된 dexieClient 직접 import를 검사
+ */
+function findForbiddenDexieClientImports(filePath: string, content: string): string[] {
+    const sourceFile = createSourceFile(filePath, content);
+    const violations: string[] = [];
+
+    const visit = (node: ts.Node) => {
+        if (ts.isImportDeclaration(node)) {
+            const moduleId = ts.isStringLiteral(node.moduleSpecifier)
+                ? node.moduleSpecifier.text
+                : '';
+
+            const isForbiddenExact = FORBIDDEN_DEXIECLIENT_MODULE_IDS.includes(moduleId);
+            const isForbiddenContains = moduleId.includes('dexieClient');
+
+            if (isForbiddenExact || isForbiddenContains) {
+                const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+                const lineNo = line + 1;
+                violations.push(`Line ${lineNo}: ${getLineSnippet(content, lineNo)}`);
             }
         }
-    }
-    
+
+        ts.forEachChild(node, visit);
+    };
+
+    visit(sourceFile);
     return violations;
 }
 
 /**
- * 파일 내용에서 금지된 db.* 직접 접근이 있는지 검사
- * 주석과 문자열 내부는 제외
+ * 파일 AST에서 금지된 db.* 직접 접근을 검사
+ * - 주석/문자열은 AST에 포함되지 않으므로 false positive를 자연스럽게 방지
  */
-function findForbiddenDbAccess(content: string): string[] {
+function findForbiddenDbAccessAst(filePath: string, content: string): string[] {
+    const sourceFile = createSourceFile(filePath, content);
     const violations: string[] = [];
-    const lines = content.split('\n');
-    
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const trimmed = line.trim();
-        
-        // 주석 라인 스킵 (// 또는 * 로 시작)
-        if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) {
-            continue;
+
+    const chainApi = ts as unknown as {
+        isPropertyAccessChain?: (node: ts.Node) => node is ts.PropertyAccessChain;
+        isElementAccessChain?: (node: ts.Node) => node is ts.ElementAccessChain;
+    };
+
+    const isDbIdentifier = (expr: ts.Expression): boolean =>
+        ts.isIdentifier(expr) && expr.text === 'db';
+
+    const report = (node: ts.Node) => {
+        const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+        const lineNo = line + 1;
+        violations.push(`Line ${lineNo}: ${getLineSnippet(content, lineNo)}`);
+    };
+
+    const visit = (node: ts.Node) => {
+        // db.property / db?.property
+        if (ts.isPropertyAccessExpression(node) && isDbIdentifier(node.expression)) {
+            report(node);
         }
-        
-        // 문자열 내부 제외를 위해 문자열 리터럴 제거
-        const lineWithoutStrings = line
-            .replace(/'[^']*'/g, '""')   // 싱글 쿼트 문자열 제거
-            .replace(/"[^"]*"/g, '""')   // 더블 쿼트 문자열 제거
-            .replace(/`[^`]*`/g, '""');  // 템플릿 리터럴 제거
-        
-        for (const pattern of FORBIDDEN_DB_ACCESS_PATTERNS) {
-            if (pattern.test(lineWithoutStrings)) {
-                violations.push(`Line ${i + 1}: ${line.trim()}`);
-                break; // 같은 라인에서 중복 보고 방지
-            }
+        // TypeScript 5.x: optional chaining은 PropertyAccessChain
+        if (chainApi.isPropertyAccessChain?.(node) && isDbIdentifier(node.expression)) {
+            report(node);
         }
-    }
-    
+        // db['property'] / db?.['property']
+        if (ts.isElementAccessExpression(node) && isDbIdentifier(node.expression)) {
+            report(node);
+        }
+        if (chainApi.isElementAccessChain?.(node) && isDbIdentifier(node.expression)) {
+            report(node);
+        }
+
+        ts.forEachChild(node, visit);
+    };
+
+    visit(sourceFile);
     return violations;
 }
 
@@ -173,7 +207,7 @@ describe('DB Access Boundary Guard', () => {
             const content = fs.readFileSync(fullPath, 'utf-8');
             
             // 금지된 import 검사
-            const issues = findForbiddenImports(content);
+            const issues = findForbiddenDexieClientImports(filePath, content);
             
             if (issues.length > 0) {
                 violations.push({ file: filePath, issues });
@@ -223,7 +257,7 @@ describe('DB Access Boundary Guard', () => {
             const content = fs.readFileSync(fullPath, 'utf-8');
             
             // 금지된 db.* 직접 접근 검사
-            const issues = findForbiddenDbAccess(content);
+            const issues = findForbiddenDbAccessAst(filePath, content);
             
             if (issues.length > 0) {
                 violations.push({ file: filePath, issues });
