@@ -15,6 +15,7 @@
  */
 
 import { memo, useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { toast } from 'react-hot-toast';
 import {
   useTimelineData,
   TIMELINE_END_HOUR,
@@ -27,21 +28,31 @@ import { useDragDropManager } from '@/features/schedule/hooks/useDragDropManager
 import { loadGlobalGoals } from '@/data/repositories';
 import { TIME_BLOCKS, type Task, type TimeBlockId, type DailyGoal } from '@/shared/types/domain';
 import { generateId } from '@/shared/lib/utils';
+import { TASK_DEFAULTS } from '@/shared/constants/defaults';
 import TimelineTaskBlock from './TimelineTaskBlock';
 import TaskModal from '@/features/schedule/TaskModal';
 import { useTempScheduleStore } from '@/features/tempSchedule/stores/tempScheduleStore';
-
-/** 시간 초과 경고 임계값 (분) */
-const OVERTIME_THRESHOLD = 50;
+import {
+  countItemsInBucket,
+  formatBucketRangeLabel,
+  BUCKET_TOTAL_MINUTES,
+  getBucketStartHour,
+  isBucketAtCapacity,
+  MAX_TASKS_PER_BUCKET,
+  normalizeDropTargetHourSlot,
+  THREE_HOUR_BUCKET_SIZE,
+} from '../utils/threeHourBucket';
 
 /** 3시간 블록 배경색 (오전/오후/저녁) */
 const BLOCK_BACKGROUND_COLORS: Record<number, string> = {
-  5: 'bg-blue-500/5',    // 이른 아침 (05-08)
-  8: 'bg-sky-500/5',     // 오전 (08-11)
-  11: 'bg-amber-500/5',  // 점심 (11-14)
-  14: 'bg-orange-500/5', // 오후 (14-17)
-  17: 'bg-purple-500/5', // 저녁 (17-20)
-  20: 'bg-indigo-500/5', // 밤 (20-23)
+  0: 'bg-indigo-500/5',  // 밤 (00-03)
+  3: 'bg-blue-500/5',    // 새벽 (03-06)
+  6: 'bg-sky-500/5',     // 아침 (06-09)
+  9: 'bg-amber-500/5',   // 오전 (09-12)
+  12: 'bg-orange-500/5', // 오후 (12-15)
+  15: 'bg-purple-500/5', // 늦은 오후 (15-18)
+  18: 'bg-indigo-500/5', // 저녁 (18-21)
+  21: 'bg-blue-500/5',   // 밤 (21-24)
 };
 
 /** 컨텍스트 메뉴 상태 */
@@ -56,8 +67,9 @@ interface ContextMenuState {
  * 왼쪽 사이드바와 스케줄뷰 사이에 배치되는 하루 스케줄 시각화
  */
 function TimelineViewComponent() {
-  const { timelineItems, hourGroups, totalHeight, visibleStartHour, showPastBlocks, toggleShowPastBlocks } = useTimelineData();
+  const { timelineItems, bucketGroups, totalHeight, visibleStartHour, showPastBlocks, toggleShowPastBlocks } = useTimelineData();
   const { updateTask, addTask, deleteTask } = useDailyDataStore();
+  const dailyTasks = useDailyDataStore((state) => state.dailyData?.tasks ?? []);
   const { setDragData, getDragData } = useDragDropManager();
 
   const [currentTimePosition, setCurrentTimePosition] = useState<number | null>(null);
@@ -70,7 +82,7 @@ function TimelineViewComponent() {
   const [selectedBlockId, setSelectedBlockId] = useState<TimeBlockId>(null);
 
   // 드래그 상태
-  const [dragOverHour, setDragOverHour] = useState<number | null>(null);
+  const [dragOverBucketStart, setDragOverBucketStart] = useState<number | null>(null);
 
   // 컨텍스트 메뉴 상태
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -111,15 +123,15 @@ function TimelineViewComponent() {
     .filter(b => b.height > 0);
 
   // 시간대별 초과 여부 계산
-  const overtimeHours = useMemo(() => {
+  const overtimeBuckets = useMemo(() => {
     const overtime = new Set<number>();
-    hourGroups.forEach(group => {
-      if (group.totalDuration > OVERTIME_THRESHOLD) {
-        overtime.add(group.hour);
+    bucketGroups.forEach((group) => {
+      if (group.totalDuration > BUCKET_TOTAL_MINUTES) {
+        overtime.add(group.bucketStartHour);
       }
     });
     return overtime;
-  }, [hourGroups]);
+  }, [bucketGroups]);
 
   // 목표 목록 로드
   useEffect(() => {
@@ -180,15 +192,19 @@ function TimelineViewComponent() {
     return () => clearInterval(interval);
   }, [visibleStartHour]);
 
-  // 시간 레이블 생성 (visibleStartHour ~ 23:00)
-  const hourLabels = Array.from(
-    { length: TIMELINE_END_HOUR - visibleStartHour + 1 },
-    (_, i) => visibleStartHour + i
+  // 버킷 레이블 생성 (visibleStartHour는 버킷 시작 시각)
+  const bucketStartHours = Array.from(
+    { length: Math.floor((TIMELINE_END_HOUR - visibleStartHour) / THREE_HOUR_BUCKET_SIZE) },
+    (_, i) => visibleStartHour + i * THREE_HOUR_BUCKET_SIZE,
   );
 
   // 시간 → 타임블록 ID 변환
   const getBlockIdFromHour = useCallback((hour: number): TimeBlockId => {
-    const block = TIME_BLOCKS.find(b => hour >= b.start && hour < b.end);
+    const block = TIME_BLOCKS.find((b) => {
+      // wrap-around(예: 23-05) 지원
+      if (b.start < b.end) return hour >= b.start && hour < b.end;
+      return hour >= b.start || hour < b.end;
+    });
     return block ? (block.id as TimeBlockId) : null;
   }, []);
 
@@ -196,16 +212,16 @@ function TimelineViewComponent() {
   const handleTaskClick = useCallback((task: Task) => {
     setEditingTask(task);
     setSelectedBlockId(task.timeBlock);
-    setSelectedHourSlot(task.hourSlot ?? null);
+    setSelectedHourSlot(typeof task.hourSlot === 'number' ? getBucketStartHour(task.hourSlot) : null);
     setIsModalOpen(true);
   }, []);
 
-  // 빈 시간대 클릭 핸들러
-  const handleEmptyHourClick = useCallback((hour: number) => {
-    const blockId = getBlockIdFromHour(hour);
+  // 빈 버킷 클릭 핸들러
+  const handleEmptyBucketClick = useCallback((bucketStartHour: number) => {
+    const blockId = getBlockIdFromHour(bucketStartHour);
     setEditingTask(null);
     setSelectedBlockId(blockId);
-    setSelectedHourSlot(hour);
+    setSelectedHourSlot(getBucketStartHour(bucketStartHour));
     setIsModalOpen(true);
   }, [getBlockIdFromHour]);
 
@@ -223,16 +239,30 @@ function TimelineViewComponent() {
       if (editingTask) {
         await updateTask(editingTask.id, taskData);
       } else {
+        const bucketStartHour = normalizeDropTargetHourSlot(selectedHourSlot);
+        if (bucketStartHour !== undefined && selectedBlockId) {
+          const tasksInBlock = dailyTasks.filter((t) => t.timeBlock === selectedBlockId);
+          const bucketCount = countItemsInBucket(tasksInBlock, bucketStartHour);
+          if (isBucketAtCapacity(bucketCount)) {
+            toast.error(`${formatBucketRangeLabel(bucketStartHour)} 버킷에는 최대 ${MAX_TASKS_PER_BUCKET}개의 작업만 추가할 수 있습니다.`);
+            return;
+          }
+        }
+
+        const baseDuration = taskData.baseDuration ?? TASK_DEFAULTS.baseDuration;
+        const resistance = taskData.resistance ?? TASK_DEFAULTS.resistance;
+        const adjustedDuration = taskData.adjustedDuration ?? baseDuration;
+
         // 새 작업 생성
         const newTask: Task = {
           id: generateId('task'),
           text: taskData.text || '',
           memo: taskData.memo || '',
-          baseDuration: taskData.baseDuration || 15,
-          resistance: taskData.resistance || 'low',
-          adjustedDuration: taskData.adjustedDuration || taskData.baseDuration || 15,
+          baseDuration,
+          resistance,
+          adjustedDuration,
           timeBlock: selectedBlockId,
-          hourSlot: selectedHourSlot ?? undefined,
+          hourSlot: bucketStartHour,
           completed: false,
           actualDuration: 0,
           createdAt: new Date().toISOString(),
@@ -249,53 +279,74 @@ function TimelineViewComponent() {
     } catch (error) {
       console.error('Failed to save task:', error);
     }
-  }, [editingTask, selectedBlockId, selectedHourSlot, updateTask, addTask, handleCloseModal]);
+  }, [editingTask, selectedBlockId, selectedHourSlot, updateTask, addTask, handleCloseModal, dailyTasks]);
 
   // 드래그 시작 핸들러
   const handleDragStart = useCallback((task: Task, e: React.DragEvent) => {
+    const sourceBucketStart = typeof task.hourSlot === 'number' ? getBucketStartHour(task.hourSlot) : undefined;
     setDragData({
       taskId: task.id,
       sourceBlockId: task.timeBlock,
       sourceHourSlot: task.hourSlot,
+      sourceBucketStart,
       taskData: task,
     }, e);
   }, [setDragData]);
 
   // 드래그 오버 핸들러
-  const handleDragOver = useCallback((e: React.DragEvent, hour: number) => {
+  const handleDragOver = useCallback((e: React.DragEvent, bucketStartHour: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    setDragOverHour(hour);
+    setDragOverBucketStart(bucketStartHour);
   }, []);
 
   // 드래그 리브 핸들러
   const handleDragLeave = useCallback(() => {
-    setDragOverHour(null);
+    setDragOverBucketStart(null);
   }, []);
 
   // 드롭 핸들러
-  const handleDrop = useCallback(async (e: React.DragEvent, targetHour: number) => {
+  const handleDrop = useCallback(async (e: React.DragEvent, targetBucketStartHour: number) => {
     e.preventDefault();
     e.stopPropagation();
-    setDragOverHour(null);
+    setDragOverBucketStart(null);
 
     const dragData = getDragData(e);
     if (!dragData) return;
 
-    // 같은 시간대면 무시
-    if (dragData.sourceHourSlot === targetHour) return;
+    const normalizedTargetHourSlot = normalizeDropTargetHourSlot(targetBucketStartHour);
+    if (normalizedTargetHourSlot === undefined) return;
 
-    const targetBlockId = getBlockIdFromHour(targetHour);
+    const targetBlockId = getBlockIdFromHour(targetBucketStartHour);
+    if (!targetBlockId) return;
+
+    const normalizedSourceHourSlot =
+      dragData.sourceBucketStart ?? normalizeDropTargetHourSlot(dragData.sourceHourSlot ?? undefined);
+
+    // 같은 위치(같은 블록 + 같은 버킷)이면 무시
+    if (dragData.sourceBlockId === targetBlockId && normalizedSourceHourSlot === normalizedTargetHourSlot) {
+      return;
+    }
+
+    // 버킷당 최대 3개 제한
+    const tasksInTargetBlock = dailyTasks
+      .filter((t) => t.timeBlock === targetBlockId)
+      .filter((t) => t.id !== dragData.taskId);
+    const bucketCount = countItemsInBucket(tasksInTargetBlock, normalizedTargetHourSlot);
+    if (isBucketAtCapacity(bucketCount)) {
+      toast.error(`${formatBucketRangeLabel(normalizedTargetHourSlot)} 버킷에는 최대 ${MAX_TASKS_PER_BUCKET}개의 작업만 배치할 수 있습니다.`);
+      return;
+    }
 
     try {
       await updateTask(dragData.taskId, {
         timeBlock: targetBlockId,
-        hourSlot: targetHour,
+        hourSlot: normalizedTargetHourSlot,
       });
     } catch (error) {
       console.error('Failed to move task:', error);
     }
-  }, [getDragData, getBlockIdFromHour, updateTask]);
+  }, [getDragData, getBlockIdFromHour, updateTask, dailyTasks]);
 
   // 컨텍스트 메뉴 열기
   const handleContextMenu = useCallback((task: Task, e: React.MouseEvent) => {
@@ -364,31 +415,29 @@ function TimelineViewComponent() {
       {/* 타임라인 본문 */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <div className="relative" style={{ height: `${totalHeight}px`, minHeight: '100%' }}>
-          {/* 시간 눈금 및 구분선 + 빈 시간대 클릭 영역 */}
-          {hourLabels.map((hour, index) => {
-            const isBlockBoundary = BLOCK_BOUNDARIES.includes(hour);
-            const top = index * HOUR_HEIGHT;
-            const isDragOver = dragOverHour === hour;
-            const isOvertime = overtimeHours.has(hour);
-            const hourGroup = hourGroups.find(g => g.hour === hour);
-            const overtimeMinutes = hourGroup ? hourGroup.totalDuration - 60 : 0;
-            const hasNoTasks = !hourGroup || hourGroup.tasks.length === 0;
+          {/* 버킷(3시간) 눈금 및 구분선 + 빈 버킷 클릭 영역 */}
+          {bucketStartHours.map((bucketStartHour) => {
+            const isBlockBoundary = BLOCK_BOUNDARIES.includes(bucketStartHour);
+            const top = (bucketStartHour - visibleStartHour) * HOUR_HEIGHT;
+            const height = THREE_HOUR_BUCKET_SIZE * HOUR_HEIGHT;
+            const isDragOver = dragOverBucketStart === bucketStartHour;
 
-            // 3시간 블록 배경색 계산
-            const blockStart = BLOCK_BOUNDARIES.find((b, i) =>
-              hour >= b && (i === BLOCK_BOUNDARIES.length - 1 || hour < BLOCK_BOUNDARIES[i + 1])
-            ) ?? 5;
-            const blockBgColor = BLOCK_BACKGROUND_COLORS[blockStart] || '';
+            const bucketGroup = bucketGroups.find((g) => g.bucketStartHour === bucketStartHour);
+            const isOvertime = overtimeBuckets.has(bucketStartHour);
+            const overtimeMinutes = bucketGroup ? bucketGroup.totalDuration - BUCKET_TOTAL_MINUTES : 0;
+            const hasNoTasks = !bucketGroup || bucketGroup.tasks.length === 0;
+
+            const blockBgColor = BLOCK_BACKGROUND_COLORS[bucketStartHour] || '';
 
             return (
               <div
-                key={hour}
+                key={bucketStartHour}
                 className={`absolute left-0 right-0 transition-colors duration-150 ${blockBgColor} ${isDragOver ? 'bg-[var(--color-primary)]/15' : ''
                   } ${isOvertime ? 'bg-red-500/15' : ''}`}
-                style={{ top: `${top}px`, height: `${HOUR_HEIGHT}px` }}
-                onDragOver={(e) => handleDragOver(e, hour)}
+                style={{ top: `${top}px`, height: `${height}px` }}
+                onDragOver={(e) => handleDragOver(e, bucketStartHour)}
                 onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, hour)}
+                onDrop={(e) => handleDrop(e, bucketStartHour)}
               >
                 {/* 시간 구분선 */}
                 <div
@@ -397,36 +446,34 @@ function TimelineViewComponent() {
                     : 'border-t border-[var(--color-border)]/40'
                     }`}
                 />
-                {/* 30분 보조선 */}
-                <div
-                  className="absolute left-6 right-0 border-t border-dashed border-[var(--color-border)]/20"
-                  style={{ top: `${HOUR_HEIGHT / 2}px` }}
-                />
-                {/* 시간 레이블 */}
+                {/* 버킷 내부 1시간 보조선 */}
+                <div className="absolute left-6 right-0 border-t border-dashed border-[var(--color-border)]/20" style={{ top: `${HOUR_HEIGHT}px` }} />
+                <div className="absolute left-6 right-0 border-t border-dashed border-[var(--color-border)]/20" style={{ top: `${HOUR_HEIGHT * 2}px` }} />
+
+                {/* 버킷 레이블 */}
                 <div
                   className={`absolute left-0.5 top-0.5 text-[10px] font-semibold ${isBlockBoundary
                     ? 'text-[var(--color-text-primary)]'
                     : 'text-[var(--color-text-secondary)]'
                     }`}
                 >
-                  {String(hour).padStart(2, '0')}
-                  {isBlockBoundary && <span className="text-[8px] ml-0.5 opacity-60">:00</span>}
+                  {formatBucketRangeLabel(bucketStartHour)}
                 </div>
                 {/* 시간 초과 경고 표시 */}
-                {isOvertime && (
+                {isOvertime && overtimeMinutes > 0 && (
                   <div
                     className="absolute right-1 top-0.5 text-[9px] text-red-400 font-medium flex items-center gap-0.5 animate-pulse"
-                    title={`${hourGroup?.totalDuration}분 계획됨 (+${overtimeMinutes}분 초과)`}
+                    title={`${bucketGroup?.totalDuration}분 계획됨 (+${overtimeMinutes}분 초과)`}
                   >
                     <span>⚠️</span>
                     <span>+{overtimeMinutes}분</span>
                   </div>
                 )}
-                {/* 빈 시간대 표시 및 클릭 영역 */}
+                {/* 빈 버킷 표시 및 클릭 영역 */}
                 <div
                   className="absolute left-6 right-0 top-0 bottom-0 cursor-pointer group transition-colors duration-150"
-                  onClick={() => handleEmptyHourClick(hour)}
-                  title={`${hour}시에 작업 추가`}
+                  onClick={() => handleEmptyBucketClick(bucketStartHour)}
+                  title={`${formatBucketRangeLabel(bucketStartHour)} 버킷에 작업 추가`}
                 >
                   {/* 빈 시간대 힌트 */}
                   {hasNoTasks && (

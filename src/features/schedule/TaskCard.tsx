@@ -16,6 +16,7 @@ import { toast } from 'react-hot-toast';
 import { useXPParticleStore } from '@/features/gamification/stores/xpParticleStore';
 import { useGoalStore } from '@/shared/stores/goalStore';
 import { useMemoMissionStore } from '@/shared/stores/memoMissionStore';
+import { getBucketStartHour } from './utils/threeHourBucket';
 
 interface TaskCardProps {
   task: Task;
@@ -125,11 +126,13 @@ export default function TaskCard({
   };
 
   const handleDragStart = (e: React.DragEvent) => {
+    const sourceBucketStart = typeof task.hourSlot === 'number' ? getBucketStartHour(task.hourSlot) : undefined;
     setDragData(
       {
         taskId: task.id,
         sourceBlockId: task.timeBlock,
         sourceHourSlot: task.hourSlot,
+        sourceBucketStart,
         taskData: task,
       },
       e

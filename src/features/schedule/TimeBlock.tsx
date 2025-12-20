@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, memo, useMemo } from 'react';
-import type { Task, TimeBlockState, TimeBlockId, TimeSlotTagTemplate } from '@/shared/types/domain';
+import type { Task, TimeBlockState, TimeBlockId } from '@/shared/types/domain';
 import { useDragDrop } from './hooks/useDragDrop';
 import { useTimeBlockStats } from './hooks/useTimeBlockStats';
 import { useTimeBlockCalculations } from './hooks/useTimeBlockCalculations';
@@ -36,10 +36,6 @@ interface TimeBlockProps {
   onToggleLock?: () => void;
   onUpdateBlockState?: (blockId: string, updates: Partial<TimeBlockState>) => Promise<void>;
   onDropTask?: (taskId: string, targetBlockId: TimeBlockId) => void;
-  hourSlotTags?: Record<number, string | null>;
-  tagTemplates?: TimeSlotTagTemplate[];
-  recentTagIds?: string[];
-  onSelectHourTag?: (hour: number, tagId: string | null) => void;
 }
 
 /**
@@ -63,10 +59,6 @@ const TimeBlock = memo(function TimeBlock({
   onToggleTask,
   onToggleLock,
   onUpdateBlockState,
-  hourSlotTags,
-  tagTemplates,
-  recentTagIds,
-  onSelectHourTag,
 }: TimeBlockProps) {
   const [isExpanded, setIsExpanded] = useState(isCurrentBlock);
 
@@ -240,10 +232,6 @@ const TimeBlock = memo(function TimeBlock({
           onUpdateTask={onUpdateTask}
           onDeleteTask={onDeleteTask}
           onToggleTask={handleTaskToggle}
-          hourSlotTags={hourSlotTags}
-          tagTemplates={tagTemplates}
-          recentTagIds={recentTagIds}
-          onSelectHourTag={onSelectHourTag}
         />
       </div>
     </div>

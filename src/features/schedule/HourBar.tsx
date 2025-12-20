@@ -7,14 +7,13 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'react-hot-toast';
 import type { Task, TimeBlockId, TimeSlotTagTemplate } from '@/shared/types/domain';
 import { useToastStore } from '@/shared/stores/toastStore';
 import TaskCard from './TaskCard';
 import { useDragDropManager } from './hooks/useDragDropManager';
-import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
+import { MAX_TASKS_PER_BUCKET } from './utils/threeHourBucket';
 
-const MAX_TASKS_PER_HOUR = 3;
+const MAX_TASKS_PER_HOUR = MAX_TASKS_PER_BUCKET;
 
 interface HourBarProps {
   hour: number;
@@ -76,40 +75,11 @@ export default function HourBar({
   const { getDragData, isSameLocation } = useDragDropManager();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Load collapse state from systemRepository
-  useEffect(() => {
-    const loadState = async () => {
-      try {
-        const collapsedBars = await getSystemState<string[]>(SYSTEM_KEYS.COLLAPSED_HOUR_BARS);
-        const collapsedSet = new Set(collapsedBars || []);
-        setIsCollapsed(collapsedSet.has(`${blockId}_${hour}`));
-      } catch (error) {
-        console.error('Failed to load collapse state:', error);
-      }
-    };
-    loadState();
-  }, [blockId, hour]);
-
-  const toggleCollapse = async (e: React.MouseEvent) => {
+  // NOTE: This component is currently unused (Schedule uses 3h buckets).
+  // Keep collapse state local-only to avoid coupling to removed system keys.
+  const toggleCollapse = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const newState = !isCollapsed;
-    setIsCollapsed(newState);
-
-    try {
-      const key = `${blockId}_${hour}`;
-      const collapsedBars = await getSystemState<string[]>(SYSTEM_KEYS.COLLAPSED_HOUR_BARS);
-      const collapsedSet = new Set(collapsedBars || []);
-
-      if (newState) {
-        collapsedSet.add(key);
-      } else {
-        collapsedSet.delete(key);
-      }
-
-      await setSystemState(SYSTEM_KEYS.COLLAPSED_HOUR_BARS, Array.from(collapsedSet));
-    } catch (error) {
-      console.error('Failed to save collapse state:', error);
-    }
+    setIsCollapsed((prev) => !prev);
   };
 
   const sortedTasks = useMemo(() => {
@@ -230,11 +200,6 @@ export default function HourBar({
     if (e.key === 'Enter' && inlineInputValue.trim()) {
       e.preventDefault();
       const trimmedText = inlineInputValue.trim();
-
-      if (trimmedText.length <= 10) {
-        toast.error('작업 제목을 10자 이상 입력해주세요.');
-        return;
-      }
 
       // 최대 개수 제한 검증
       if (tasks.length >= MAX_TASKS_PER_HOUR) {

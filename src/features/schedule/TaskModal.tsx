@@ -13,7 +13,6 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { toast } from 'react-hot-toast';
 import type { Task, Resistance, TimeBlockId, DailyGoal } from '@/shared/types/domain';
 import { calculateAdjustedDuration } from '@/shared/lib/utils';
 import { suggestTaskEmoji } from '@/shared/services/ai/geminiApi';
@@ -57,8 +56,8 @@ export default function TaskModal({
   const isOpen = !!task;
   const [text, setText] = useState('');
   const [memo, setMemo] = useState('');
-  const [baseDuration, setBaseDuration] = useState(15);
-  const [resistance, setResistance] = useState<Resistance>('low');
+  const [baseDuration, setBaseDuration] = useState(TASK_DEFAULTS.baseDuration);
+  const [resistance, setResistance] = useState<Resistance>(TASK_DEFAULTS.resistance);
   const [preparation1, setPreparation1] = useState('');
   const [preparation2, setPreparation2] = useState('');
   const [preparation3, setPreparation3] = useState('');
@@ -252,14 +251,6 @@ export default function TaskModal({
 
     if (!trimmedText) {
       setError('작업 제목을 입력해주세요.');
-      document.getElementById('task-text')?.focus();
-      return;
-    }
-
-    if (trimmedText.length <= 10) {
-      const message = '작업 제목을 10자 이상 입력해주세요.';
-      setError(message);
-      toast.error(message);
       document.getElementById('task-text')?.focus();
       return;
     }

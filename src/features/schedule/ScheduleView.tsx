@@ -49,7 +49,6 @@ export default function ScheduleView() {
     toggleTaskCompletion,
     toggleBlockLock,
     updateBlockState,
-    setHourSlotTag,
   } = useDailyData();
   const { updateQuestProgress } = useGameState();
   const { show: showWaifu } = useWaifuCompanionStore();
@@ -59,7 +58,7 @@ export default function ScheduleView() {
     isWarmupModalOpen, 
     closeWarmupModal 
   } = useScheduleViewStore();
-  const { settings, loadData: loadSettingsData } = useSettingsStore();
+  const { loadData: loadSettingsData } = useSettingsStore();
 
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -192,15 +191,6 @@ export default function ScheduleView() {
   const blocksToRender = getVisibleBlocks(currentHour, visibilityMode);
   const currentBlock = getCurrentBlock(currentHour);
 
-  const hourSlotTags = dailyData?.hourSlotTags || {};
-  const tagTemplates = settings?.timeSlotTags || [];
-  const recentTagIds = Array.from(
-    new Set(
-      Object.values(hourSlotTags || {})
-        .filter((id): id is string => Boolean(id))
-        .reverse()
-    )
-  ).slice(0, 3);
 
   // 현재 블록이 없으면 집중모드 해제
   useEffect(() => {
@@ -297,13 +287,6 @@ export default function ScheduleView() {
     setIsModalOpen(true);
   };
 
-  const handleSelectHourTag = async (hour: number, tagId: string | null) => {
-    try {
-      await setHourSlotTag(hour, tagId);
-    } catch (error) {
-      console.error('Failed to update hour tag:', error);
-    }
-  };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
@@ -544,10 +527,6 @@ export default function ScheduleView() {
                   onToggleLock={() => handleToggleLock(block.id)}
                   onUpdateBlockState={updateBlockState}
                   onDropTask={handleDropTask}
-                  hourSlotTags={hourSlotTags}
-                  tagTemplates={tagTemplates}
-                  recentTagIds={recentTagIds}
-                  onSelectHourTag={handleSelectHourTag}
                 />
               </div>
             );

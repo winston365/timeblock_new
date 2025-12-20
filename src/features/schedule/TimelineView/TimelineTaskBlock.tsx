@@ -8,6 +8,7 @@
 import { memo } from 'react';
 import type { Task } from '@/shared/types/domain';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
+import { formatBucketRangeLabel, getBucketStartHour } from '../utils/threeHourBucket';
 
 interface TimelineTaskBlockProps {
   task: Task;
@@ -66,8 +67,8 @@ function TimelineTaskBlockComponent({
     : RESISTANCE_COLORS[task.resistance] || RESISTANCE_COLORS.medium;
 
   const duration = task.adjustedDuration || task.baseDuration || TASK_DEFAULTS.baseDuration;
-  const hourSlotLabel = task.hourSlot !== undefined
-    ? `${String(task.hourSlot).padStart(2, '0')}:00`
+  const bucketLabel = typeof task.hourSlot === 'number'
+    ? formatBucketRangeLabel(getBucketStartHour(task.hourSlot))
     : '';
 
   const handleClick = (e: React.MouseEvent) => {
@@ -100,7 +101,7 @@ function TimelineTaskBlockComponent({
         height: `${height}px`,
         minHeight: '20px',
       }}
-      title={`${task.text} (${duration}분) - ${hourSlotLabel}`}
+      title={`${task.text} (${duration}분) - ${bucketLabel}`}
     >
       {/* 목표 연결 스트라이프 */}
       {goalColor && (

@@ -12,33 +12,33 @@ import { useMemo, useState, useEffect } from 'react';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
 import type { Task } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
+import { getBucketStartHour, THREE_HOUR_BUCKET_SIZE } from '../utils/threeHourBucket';
 
-/** 타임라인 시간 범위 (05:00 ~ 23:00) */
-export const TIMELINE_START_HOUR = 5;
-export const TIMELINE_END_HOUR = 23;
-export const TIMELINE_TOTAL_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR; // 18시간
+/** 타임라인 시간 범위 (00:00 ~ 24:00) */
+export const TIMELINE_START_HOUR = 0;
+export const TIMELINE_END_HOUR = 24;
+export const TIMELINE_TOTAL_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR; // 24시간
 
 /** 픽셀 상수 */
 export const HOUR_HEIGHT = 60; // 1시간당 60px
 export const PIXELS_PER_MINUTE = HOUR_HEIGHT / 60; // 1분당 1px
 
-/** 3시간 블록 구분선 위치 (시작 시간) */
-export const BLOCK_BOUNDARIES = [5, 8, 11, 14, 17, 20, 23];
+/** 3시간 버킷 구분선 위치 (시작 시간) */
+export const BLOCK_BOUNDARIES = [0, 3, 6, 9, 12, 15, 18, 21, 24];
 
 /** 타임라인 작업 블록 정보 */
 export interface TimelineTaskItem {
   task: Task;
   top: number;       // 시작 위치 (px)
   height: number;    // 블록 높이 (px)
-  hour: number;      // 시간대
-  orderInHour: number; // 같은 시간대 내 순서 (0-based)
+  bucketStartHour: number; // 버킷 시작 시간
+  orderInBucket: number; // 같은 버킷 내 순서 (0-based)
 }
 
-/** 시간대별 작업 그룹 */
-export interface HourGroup {
-  hour: number;
+/** 버킷별 작업 그룹 */
+export interface BucketGroup {
+  bucketStartHour: number;
   tasks: Task[];
   totalDuration: number;
 }
@@ -79,48 +79,52 @@ export function useTimelineData() {
     }
   };
 
-  // 현재 시간 기준으로 지난 블록의 끝 시간 계산
+  // 현재 시간 기준으로 지난 버킷의 시작 시간 계산
   const currentHour = new Date().getHours();
-  const currentBlock = TIME_BLOCKS.find(b => currentHour >= b.start && currentHour < b.end);
-  // 지난 블록 숨기기 모드일 때: 현재 블록의 시작 시간부터 표시
-  const visibleStartHour = showPastBlocks 
-    ? TIMELINE_START_HOUR 
-    : (currentBlock ? currentBlock.start : TIMELINE_START_HOUR);
+  const currentBucketStartHour = getBucketStartHour(currentHour);
+  // 지난 블록 숨기기 모드일 때: 현재 버킷부터 표시
+  const visibleStartHour = showPastBlocks
+    ? TIMELINE_START_HOUR
+    : currentBucketStartHour;
 
-  // 시간대별 작업 그룹화 및 정렬
-  const hourGroups = useMemo<HourGroup[]>(() => {
+  // 버킷별 작업 그룹화 및 정렬
+  const bucketGroups = useMemo<BucketGroup[]>(() => {
     const tasks = dailyData?.tasks ?? [];
     const groups: Map<number, Task[]> = new Map();
 
-    // visibleStartHour ~ 22:00 시간대만 처리 (지난 블록 숨기기 적용)
-    for (let h = visibleStartHour; h < TIMELINE_END_HOUR; h++) {
+    // visibleStartHour ~ 24:00 범위에서 3시간 버킷만 처리
+    for (let h = visibleStartHour; h < TIMELINE_END_HOUR; h += THREE_HOUR_BUCKET_SIZE) {
       groups.set(h, []);
     }
 
-    // 작업을 시간대별로 분류 (visibleStartHour 이후만)
-    tasks.forEach(task => {
-      if (task.hourSlot !== undefined && task.hourSlot >= visibleStartHour && task.hourSlot < TIMELINE_END_HOUR) {
-        const hourTasks = groups.get(task.hourSlot);
-        if (hourTasks) {
-          hourTasks.push(task);
-        }
+    // 작업을 버킷별로 분류 (visibleStartHour 이후만)
+    tasks.forEach((task) => {
+      if (typeof task.hourSlot !== 'number' || !Number.isInteger(task.hourSlot)) return;
+      if (task.hourSlot < visibleStartHour || task.hourSlot >= TIMELINE_END_HOUR) return;
+      const bucketStart = getBucketStartHour(task.hourSlot);
+      const bucketTasks = groups.get(bucketStart);
+      if (bucketTasks) {
+        bucketTasks.push(task);
       }
     });
 
-    // 각 시간대 내에서 order로 정렬
-    const result: HourGroup[] = [];
-    for (let h = visibleStartHour; h < TIMELINE_END_HOUR; h++) {
-      const hourTasks = groups.get(h) ?? [];
-      hourTasks.sort((a, b) => {
+    // 각 버킷 내에서 hourSlot(세부) -> order로 정렬
+    const result: BucketGroup[] = [];
+    for (let h = visibleStartHour; h < TIMELINE_END_HOUR; h += THREE_HOUR_BUCKET_SIZE) {
+      const bucketTasks = groups.get(h) ?? [];
+      bucketTasks.sort((a, b) => {
+        const hourSlotA = typeof a.hourSlot === 'number' ? a.hourSlot : -1;
+        const hourSlotB = typeof b.hourSlot === 'number' ? b.hourSlot : -1;
+        if (hourSlotA !== hourSlotB) return hourSlotA - hourSlotB;
         const orderA = a.order ?? new Date(a.createdAt).getTime();
         const orderB = b.order ?? new Date(b.createdAt).getTime();
         return orderA - orderB;
       });
-      const totalDuration = hourTasks.reduce(
+      const totalDuration = bucketTasks.reduce(
         (sum, t) => sum + (t.adjustedDuration || t.baseDuration || TASK_DEFAULTS.baseDuration),
         0
       );
-      result.push({ hour: h, tasks: hourTasks, totalDuration });
+      result.push({ bucketStartHour: h, tasks: bucketTasks, totalDuration });
     }
 
     return result;
@@ -130,8 +134,8 @@ export function useTimelineData() {
   const timelineItems = useMemo<TimelineTaskItem[]>(() => {
     const items: TimelineTaskItem[] = [];
 
-    hourGroups.forEach(group => {
-      let cumulativeTop = (group.hour - visibleStartHour) * HOUR_HEIGHT;
+    bucketGroups.forEach((group) => {
+      let cumulativeTop = (group.bucketStartHour - visibleStartHour) * HOUR_HEIGHT;
 
       group.tasks.forEach((task, index) => {
         const duration = task.adjustedDuration || task.baseDuration || TASK_DEFAULTS.baseDuration;
@@ -141,8 +145,8 @@ export function useTimelineData() {
           task,
           top: cumulativeTop,
           height,
-          hour: group.hour,
-          orderInHour: index,
+          bucketStartHour: group.bucketStartHour,
+          orderInBucket: index,
         });
 
         cumulativeTop += height;
@@ -150,7 +154,7 @@ export function useTimelineData() {
     });
 
     return items;
-  }, [hourGroups, visibleStartHour]);
+  }, [bucketGroups, visibleStartHour]);
 
   // 현재 시간 위치 계산 - visibleStartHour 기준
   const currentTimePosition = useMemo(() => {
@@ -170,7 +174,7 @@ export function useTimelineData() {
   const visibleHours = TIMELINE_END_HOUR - visibleStartHour;
 
   return {
-    hourGroups,
+    bucketGroups,
     timelineItems,
     currentTimePosition,
     totalHeight: visibleHours * HOUR_HEIGHT,

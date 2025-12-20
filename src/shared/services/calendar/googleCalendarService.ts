@@ -266,6 +266,8 @@ async function callCalendarApi<T>(
  */
 export function taskToCalendarEvent(task: Task, date: string): GoogleCalendarEvent {
   // hourSlot이 없으면 timeBlock의 시작 시간 사용
+  // TODO(PR#4): hourSlot을 "정확한 시간"으로 해석할지, "3시간 버킷 anchor(시작 시각)"로 해석할지 UX 의미 결정 필요.
+  // TODO(PR#4): hourSlot/timeBlock 모두 없을 때 fallback(현재 9시)은 defaults/설정 기반으로 정합화 필요(동작은 현재 유지).
   let startHour = task.hourSlot ?? 9;
 
   // timeBlock에서 시작 시간 추출 (예: '8-11' -> 8)

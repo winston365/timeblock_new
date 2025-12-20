@@ -18,8 +18,6 @@ export const SYSTEM_KEYS = {
     CATCH_UP_ALERT_SHOWN_DATE: 'catchUpAlertShownDate',
     /** 워밍업 자동생성 활성화 여부 (기본: true) */
     WARMUP_AUTO_GENERATE_ENABLED: 'schedule:warmupAutoGenerateEnabled',
-    /** HourBar 접힘 상태 */
-    COLLAPSED_HOUR_BARS: 'collapsedHourBars',
     /** 타임라인 지난 블록 표시 여부 */
     TIMELINE_SHOW_PAST: 'timelineShowPastBlocks',
     /** 하지않기 체크리스트 접힘 상태 */

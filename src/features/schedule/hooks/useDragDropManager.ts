@@ -9,6 +9,7 @@
  */
 
 import type { Task, TimeBlockId } from '@/shared/types/domain';
+import { normalizeDropTargetHourSlot } from '../utils/threeHourBucket';
 
 /**
  * 드래그 데이터 인터페이스
@@ -17,6 +18,7 @@ export interface DragData {
   taskId: string;
   sourceBlockId: TimeBlockId;
   sourceHourSlot?: number;
+  sourceBucketStart?: number;
   taskData: Task; // 전체 객체 포함 (조회 제거)
 }
 
@@ -116,8 +118,16 @@ export const useDragDropManager = () => {
     }
 
     // hourSlot이 지정된 경우에만 비교
-    if (targetHourSlot !== undefined && dragData.sourceHourSlot !== undefined) {
-      return dragData.sourceHourSlot === targetHourSlot;
+    if (targetHourSlot !== undefined) {
+      const normalizedTarget = normalizeDropTargetHourSlot(targetHourSlot);
+      const normalizedSource =
+        dragData.sourceBucketStart ?? normalizeDropTargetHourSlot(dragData.sourceHourSlot ?? undefined);
+
+      if (normalizedTarget === undefined || normalizedSource === undefined) {
+        return false;
+      }
+
+      return normalizedSource === normalizedTarget;
     }
 
     // hourSlot이 없으면 블록만 같으면 같은 위치

@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { useDragDropManager } from './useDragDropManager';
+import { getBucketStartHour, normalizeDropTargetHourSlot } from '../utils/threeHourBucket';
 
 let lastDropEventId: number | null = null;
 
@@ -43,11 +44,13 @@ export const useDragDrop = (
    * @param e - React 드래그 이벤트
    */
   const handleDragStart = (task: Task, e: React.DragEvent) => {
+    const sourceBucketStart = typeof task.hourSlot === 'number' ? getBucketStartHour(task.hourSlot) : undefined;
     setDragData(
       {
         taskId: task.id,
         sourceBlockId: task.timeBlock,
         sourceHourSlot: task.hourSlot,
+        sourceBucketStart,
         taskData: task,
       },
       e
@@ -112,8 +115,10 @@ export const useDragDrop = (
       return;
     }
 
+    const normalizedTargetHourSlot = normalizeDropTargetHourSlot(hourSlot);
+
     // 같은 위치면 무시
-    if (isSameLocation(dragData, blockId, hourSlot)) {
+    if (isSameLocation(dragData, blockId, normalizedTargetHourSlot)) {
       return;
     }
 
@@ -122,7 +127,7 @@ export const useDragDrop = (
       // 업데이트 호출만 하면 됨 (repository에서 낙관적 업데이트 처리)
       await onUpdate(dragData.taskId, {
         timeBlock: blockId,
-        hourSlot: hourSlot,
+        hourSlot: normalizedTargetHourSlot,
       });
     } catch (error) {
       console.error('Failed to update task on drop:', error);
