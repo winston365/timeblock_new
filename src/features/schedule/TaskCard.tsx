@@ -16,7 +16,7 @@ import { toast } from 'react-hot-toast';
 import { useXPParticleStore } from '@/features/gamification/stores/xpParticleStore';
 import { useGoalStore } from '@/shared/stores/goalStore';
 import { useMemoMissionStore } from '@/shared/stores/memoMissionStore';
-import { getBucketStartHour } from './utils/threeHourBucket';
+import { getBucketStartHour } from './utils/timeBlockBucket';
 
 interface TaskCardProps {
   task: Task;

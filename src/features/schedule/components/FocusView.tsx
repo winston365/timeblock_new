@@ -25,14 +25,8 @@ import { QuickMemo } from './QuickMemo';
 import { BreakView } from './BreakView';
 import { FocusMusicPlayer } from './FocusMusicPlayer';
 import { useFocusMusicStore } from '../stores/focusMusicStore';
-import {
-    formatBucketRangeLabel,
-    getBucketEndHour,
-    getBucketStartHour,
-    isBucketAtCapacity,
-    MAX_TASKS_PER_BUCKET,
-    THREE_HOUR_BUCKET_SIZE,
-} from '../utils/threeHourBucket';
+import { getBlockById, getBlockDurationMinutes, getBlockLabel } from '@/shared/utils/timeBlockUtils';
+import { isBucketAtCapacity, MAX_TASKS_PER_BLOCK } from '../utils/timeBlockBucket';
 
 interface FocusViewProps {
     currentBlockId: TimeBlockId | null;
@@ -102,31 +96,28 @@ export function FocusView({
     const nowDate = useMemo(() => new Date(now), [now]);
     const currentHour = nowDate.getHours();
     const currentMinute = nowDate.getMinutes();
-    const currentBucketStartHour = getBucketStartHour(currentHour);
-    const bucketEndHour = getBucketEndHour(currentBucketStartHour);
-    const bucketEndTotalMinutes = Math.min(bucketEndHour, 24) * 60;
     const nowTotalMinutes = currentHour * 60 + currentMinute;
-    const slotLabel = formatBucketRangeLabel(currentBucketStartHour);
-    const remainingMinutes = Math.max(0, bucketEndTotalMinutes - nowTotalMinutes);
+    const currentBlock = getBlockById(currentBlockId);
+    const blockEndTotalMinutes = Math.min(currentBlock?.end ?? 24, 24) * 60;
+    const slotLabel = getBlockLabel(currentBlockId);
+    const remainingMinutes = Math.max(0, blockEndTotalMinutes - nowTotalMinutes);
 
-    const currentBucketTasks = useMemo(() => {
-        return tasks
-            .filter((t) => typeof t.hourSlot === 'number' && getBucketStartHour(t.hourSlot) === currentBucketStartHour)
-            .sort((a, b) => {
-                const orderA = a.order ?? new Date(a.createdAt).getTime();
-                const orderB = b.order ?? new Date(b.createdAt).getTime();
-                return orderA - orderB;
-            });
-    }, [tasks, currentBucketStartHour]);
+    const currentBlockTasks = useMemo(() => {
+        return [...tasks].sort((a, b) => {
+            const orderA = a.order ?? new Date(a.createdAt).getTime();
+            const orderB = b.order ?? new Date(b.createdAt).getTime();
+            return orderA - orderB;
+        });
+    }, [tasks]);
     const recommendedTask = useMemo(() => {
-        return currentBucketTasks.find(t => !t.completed) || null;
-    }, [currentBucketTasks]);
+        return currentBlockTasks.find(t => !t.completed) || null;
+    }, [currentBlockTasks]);
     const recommendationMessage = recommendedTask
         ? getRecommendationMessage(recommendedTask)
         : '';
     const initialUpcomingTasks = useMemo(() => {
-        return currentBucketTasks.filter(t => !t.completed && t.id !== recommendedTask?.id);
-    }, [currentBucketTasks, recommendedTask]);
+        return currentBlockTasks.filter(t => !t.completed && t.id !== recommendedTask?.id);
+    }, [currentBlockTasks, recommendedTask]);
     const [upcomingTasks, setUpcomingTasks] = useState(initialUpcomingTasks);
 
     // 활성 작업 변경 시 메모 동기화
@@ -137,20 +128,20 @@ export function FocusView({
             return;
         }
         const activeTask =
-            currentBucketTasks.find(t => t.id === activeTaskId) ||
+            currentBlockTasks.find(t => t.id === activeTaskId) ||
             allDailyTasks.find(t => t.id === activeTaskId) ||
             null;
         const nextMemo = activeTask?.memo ?? '';
         setMemoText(nextMemo);
         lastSavedMemoRef.current = { taskId: activeTaskId, memo: nextMemo };
-    }, [activeTaskId, currentBucketTasks, allDailyTasks]);
+    }, [activeTaskId, currentBlockTasks, allDailyTasks]);
 
     // 메모 자동 저장 (3초 딜레이)
     useEffect(() => {
         if (!activeTaskId) return;
         const saveTimer = setTimeout(async () => {
             const activeTask =
-                currentBucketTasks.find(t => t.id === activeTaskId) ||
+                currentBlockTasks.find(t => t.id === activeTaskId) ||
                 allDailyTasks.find(t => t.id === activeTaskId) ||
                 null;
             if (!activeTask) return;
@@ -165,7 +156,7 @@ export function FocusView({
         }, 3000);
 
         return () => clearTimeout(saveTimer);
-    }, [memoText, activeTaskId, currentBucketTasks, allDailyTasks, onUpdateTask]);
+    }, [memoText, activeTaskId, currentBlockTasks, allDailyTasks, onUpdateTask]);
 
     // 인라인 작업 추가
     const [inlineInputValue, setInlineInputValue] = useState('');
@@ -176,14 +167,18 @@ export function FocusView({
             e.preventDefault();
             const trimmedText = inlineInputValue.trim();
 
-            // 현재 버킷 작업 3개 제한
-            if (isBucketAtCapacity(currentBucketTasks.length)) {
-                toast.error(`이 버킷에는 최대 ${MAX_TASKS_PER_BUCKET}개의 작업만 추가할 수 있습니다.`);
+            // 현재 타임블럭 작업 3개 제한
+            if (isBucketAtCapacity(currentBlockTasks.length)) {
+                toast.error(`이 시간대에는 최대 ${MAX_TASKS_PER_BLOCK}개의 작업만 추가할 수 있습니다.`);
                 return;
             }
 
             try {
-                await onCreateTask(trimmedText, currentBlockId, currentBucketStartHour);
+                if (!currentBlockId || !currentBlock) {
+                    toast.error('현재 타임블록이 없어서 작업을 추가할 수 없습니다.');
+                    return;
+                }
+                await onCreateTask(trimmedText, currentBlockId, currentBlock.start);
                 setInlineInputValue('');
                 inlineInputRef.current?.focus();
             } catch (err) {
@@ -200,16 +195,16 @@ export function FocusView({
     type ToggleOptions = { skipBonus?: boolean; bonusReason?: 'autoTimer' };
 
     const startBreakForNextTask = useCallback((completedTaskId: string | null) => {
-        const nextTask = currentBucketTasks.find(t => !t.completed && t.id !== completedTaskId);
+        const nextTask = currentBlockTasks.find(t => !t.completed && t.id !== completedTaskId);
         setIsBreakTime(true);
         setBreakRemainingSeconds(60);
         setPendingNextTaskId(nextTask?.id ?? null);
-    }, [currentBucketTasks]);
+    }, [currentBlockTasks]);
 
     const handleToggleTaskWrapper = useCallback(async (taskId: string, options?: ToggleOptions) => {
         const isCompletingActiveTask = taskId === activeTaskId;
         const task =
-            currentBucketTasks.find(t => t.id === taskId) ||
+            currentBlockTasks.find(t => t.id === taskId) ||
             allDailyTasks.find(t => t.id === taskId) ||
             null;
 
@@ -235,7 +230,7 @@ export function FocusView({
             console.error('[FocusView] Failed to toggle task:', error);
             toast.error('작업 완료 처리 중 문제가 발생했습니다.');
         }
-    }, [activeTaskId, onToggleTask, startBreakForNextTask, stopTask, currentBucketTasks, allDailyTasks]);
+    }, [activeTaskId, onToggleTask, startBreakForNextTask, stopTask, currentBlockTasks, allDailyTasks]);
 
     // Sync state when props change
     useEffect(() => {
@@ -246,7 +241,7 @@ export function FocusView({
     useEffect(() => {
         if (!activeTaskId || !activeTaskStartTime || isPaused || isBreakTime) return;
         const activeTask =
-            currentBucketTasks.find(t => t.id === activeTaskId) ||
+            currentBlockTasks.find(t => t.id === activeTaskId) ||
             allDailyTasks.find(t => t.id === activeTaskId) ||
             null;
         if (!activeTask || activeTask.completed) return;
@@ -256,7 +251,7 @@ export function FocusView({
         if (totalSeconds > 0 && elapsedSeconds >= totalSeconds) {
             handleToggleTaskWrapper(activeTaskId, { bonusReason: 'autoTimer' });
         }
-    }, [now, activeTaskId, activeTaskStartTime, isPaused, isBreakTime, currentBucketTasks, allDailyTasks, handleToggleTaskWrapper]);
+    }, [now, activeTaskId, activeTaskStartTime, isPaused, isBreakTime, currentBlockTasks, allDailyTasks, handleToggleTaskWrapper]);
 
     // 휴식 타이머 관리
     useEffect(() => {
@@ -284,8 +279,8 @@ export function FocusView({
     const sendPipState = useCallback(() => {
         if (!window.electronAPI?.sendPipUpdate) return;
 
-        const activeTask = currentBucketTasks.find(t => t.id === activeTaskId);
-        const nextTask = currentBucketTasks.find(t => !t.completed && t.id !== activeTaskId);
+        const activeTask = currentBlockTasks.find(t => t.id === activeTaskId);
+        const nextTask = currentBlockTasks.find(t => !t.completed && t.id !== activeTaskId);
         const readyTask = recommendedTask || nextTask || null;
         const basePayload = {
             nextTaskTitle: nextTask?.text,
@@ -333,7 +328,7 @@ export function FocusView({
             breakRemainingSeconds: null,
             ...basePayload,
         }).catch(console.error);
-    }, [activeTaskId, activeTaskStartTime, breakRemainingSeconds, currentBucketTasks, isBreakTime, isPaused, now, recommendedTask]);
+    }, [activeTaskId, activeTaskStartTime, breakRemainingSeconds, currentBlockTasks, isBreakTime, isPaused, now, recommendedTask]);
 
     const handleOpenPip = useCallback((options?: { silent?: boolean }) => {
         if (!window.electronAPI?.openPip) {
@@ -392,8 +387,8 @@ export function FocusView({
     }, [isPaused, pauseTask, resumeTask, activeTaskId, handleToggleTaskWrapper, startBreakForNextTask, recommendedTask, setFocusMode, startTask]);
 
     // Progress calculation for current hour tasks only
-    const totalTasks = currentBucketTasks.length;
-    const completedCount = currentBucketTasks.filter(t => t.completed).length;
+    const totalTasks = currentBlockTasks.length;
+    const completedCount = currentBlockTasks.filter(t => t.completed).length;
     const completionPercentage = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
 
     const handleStartNow = (task: Task) => {
@@ -476,7 +471,7 @@ export function FocusView({
                             handleLoopModeChange={handleLoopModeChange}
                         />
                     </div>
-                    <FocusTimer remainingMinutes={remainingMinutes} totalMinutes={THREE_HOUR_BUCKET_SIZE * 60} />
+                    <FocusTimer remainingMinutes={remainingMinutes} totalMinutes={getBlockDurationMinutes(currentBlockId)} />
                 </div>
             </div>
 
@@ -511,11 +506,11 @@ export function FocusView({
             )}
 
             {/* 인라인 작업 추가 */}
-            {!isLocked && !isBucketAtCapacity(currentBucketTasks.length) && (
+            {!isLocked && !isBucketAtCapacity(currentBlockTasks.length) && (
                 <div className="rounded-2xl bg-[var(--color-bg-surface)] p-4">
                     <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm font-medium text-[var(--color-text-secondary)]">현재 버킷에 작업 추가</span>
-                        <span className="text-xs text-[var(--color-text-tertiary)]">({currentBucketTasks.length}/{MAX_TASKS_PER_BUCKET})</span>
+                        <span className="text-sm font-medium text-[var(--color-text-secondary)]">현재 타임블록에 작업 추가</span>
+                        <span className="text-xs text-[var(--color-text-tertiary)]">({currentBlockTasks.length}/{MAX_TASKS_PER_BLOCK})</span>
                     </div>
                     <input
                         ref={inlineInputRef}
@@ -542,7 +537,7 @@ export function FocusView({
             {/* Progress Section - Current hour only */}
             <div className="rounded-2xl bg-[var(--color-bg-surface)] p-6">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-[var(--color-text-secondary)]">이번 버킷 진행률</span>
+                    <span className="text-sm font-medium text-[var(--color-text-secondary)]">이번 타임블록 진행률</span>
                     <span className="text-lg font-bold text-[var(--color-primary)]">{completionPercentage}%</span>
                 </div>
                 <div className="h-4 overflow-hidden rounded-full bg-[var(--color-bg-tertiary)]">

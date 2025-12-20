@@ -12,20 +12,25 @@ import { useMemo, useState, useEffect } from 'react';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
 import type { Task } from '@/shared/types/domain';
+import { TIME_BLOCKS } from '@/shared/types/domain';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
-import { getBucketStartHour, THREE_HOUR_BUCKET_SIZE } from '../utils/threeHourBucket';
+import { getBucketStartHour } from '../utils/timeBlockBucket';
+import { getBlockById, getEffectiveTimeBlockIdForTask } from '@/shared/utils/timeBlockUtils';
 
-/** 타임라인 시간 범위 (00:00 ~ 24:00) */
-export const TIMELINE_START_HOUR = 0;
-export const TIMELINE_END_HOUR = 24;
-export const TIMELINE_TOTAL_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR; // 24시간
+/** 타임라인 시간 범위 (TIME_BLOCKS 기준) */
+export const TIMELINE_START_HOUR = TIME_BLOCKS[0]?.start ?? 0;
+export const TIMELINE_END_HOUR = TIME_BLOCKS[TIME_BLOCKS.length - 1]?.end ?? 24;
+export const TIMELINE_TOTAL_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR;
 
 /** 픽셀 상수 */
 export const HOUR_HEIGHT = 60; // 1시간당 60px
 export const PIXELS_PER_MINUTE = HOUR_HEIGHT / 60; // 1분당 1px
 
-/** 3시간 버킷 구분선 위치 (시작 시간) */
-export const BLOCK_BOUNDARIES = [0, 3, 6, 9, 12, 15, 18, 21, 24];
+/** TIME_BLOCKS 구분선 위치 (시작 시간) */
+export const BLOCK_BOUNDARIES = [
+  ...TIME_BLOCKS.map((b) => b.start),
+  TIMELINE_END_HOUR,
+];
 
 /** 타임라인 작업 블록 정보 */
 export interface TimelineTaskItem {
@@ -85,32 +90,37 @@ export function useTimelineData() {
   // 지난 블록 숨기기 모드일 때: 현재 버킷부터 표시
   const visibleStartHour = showPastBlocks
     ? TIMELINE_START_HOUR
-    : currentBucketStartHour;
+    : Math.max(TIMELINE_START_HOUR, currentBucketStartHour);
 
   // 버킷별 작업 그룹화 및 정렬
   const bucketGroups = useMemo<BucketGroup[]>(() => {
     const tasks = dailyData?.tasks ?? [];
     const groups: Map<number, Task[]> = new Map();
 
-    // visibleStartHour ~ 24:00 범위에서 3시간 버킷만 처리
-    for (let h = visibleStartHour; h < TIMELINE_END_HOUR; h += THREE_HOUR_BUCKET_SIZE) {
-      groups.set(h, []);
-    }
+    const bucketStartHours = TIME_BLOCKS
+      .map((b) => b.start)
+      .filter((start) => start >= visibleStartHour && start < TIMELINE_END_HOUR);
 
-    // 작업을 버킷별로 분류 (visibleStartHour 이후만)
+    bucketStartHours.forEach((start) => {
+      groups.set(start, []);
+    });
+
+    // 작업을 TIME_BLOCKS 버킷(타임블록)별로 분류 (visibleStartHour 이후만)
     tasks.forEach((task) => {
-      if (typeof task.hourSlot !== 'number' || !Number.isInteger(task.hourSlot)) return;
-      if (task.hourSlot < visibleStartHour || task.hourSlot >= TIMELINE_END_HOUR) return;
-      const bucketStart = getBucketStartHour(task.hourSlot);
+      const effectiveBlockId = getEffectiveTimeBlockIdForTask(task);
+      const effectiveBlock = getBlockById(effectiveBlockId);
+      if (!effectiveBlock) return;
+
+      const bucketStart = effectiveBlock.start;
+      if (bucketStart < visibleStartHour || bucketStart >= TIMELINE_END_HOUR) return;
+
       const bucketTasks = groups.get(bucketStart);
-      if (bucketTasks) {
-        bucketTasks.push(task);
-      }
+      bucketTasks?.push(task);
     });
 
     // 각 버킷 내에서 hourSlot(세부) -> order로 정렬
     const result: BucketGroup[] = [];
-    for (let h = visibleStartHour; h < TIMELINE_END_HOUR; h += THREE_HOUR_BUCKET_SIZE) {
+    for (const h of Array.from(groups.keys()).sort((a, b) => a - b)) {
       const bucketTasks = groups.get(h) ?? [];
       bucketTasks.sort((a, b) => {
         const hourSlotA = typeof a.hourSlot === 'number' ? a.hourSlot : -1;

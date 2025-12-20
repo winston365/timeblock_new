@@ -49,7 +49,7 @@ const makeTask = (overrides: Partial<Record<keyof Task, unknown>> = {}): Task =>
     baseDuration: 15,
     resistance: 'low',
     adjustedDuration: 15,
-    timeBlock: '8-11',
+    timeBlock: 'morning',
     completed: true,
     actualDuration: 0,
     createdAt: '2025-01-01T00:00:00.000Z',
@@ -95,7 +95,7 @@ describe('taskCompletion handlers', () => {
     const handler = new XPRewardHandler();
     const result = await handler.handle(makeContext());
 
-    expect(addXPStoreSpy).toHaveBeenCalledWith(0, '8-11', true);
+        expect(addXPStoreSpy).toHaveBeenCalledWith(0, 'morning', true);
     expect(result).toEqual([]);
   });
 
@@ -179,8 +179,8 @@ describe('taskCompletion handlers', () => {
     updateQuestProgressSpy.mockClear();
 
     const events = await handler.handle(makeContext());
-    expect(addXPRepoSpy).toHaveBeenCalledWith(40, '8-11', 'perfect_block');
-    expect(updateBlockStateSpy).toHaveBeenCalledWith('8-11', { isPerfect: true }, '2025-01-10');
+        expect(addXPRepoSpy).toHaveBeenCalledWith(40, 'morning', 'perfect_block');
+        expect(updateBlockStateSpy).toHaveBeenCalledWith('morning', { isPerfect: true }, '2025-01-10');
     expect(updateQuestProgressSpy).toHaveBeenCalledWith('perfect_blocks', 1);
     expect(events.length).toBeGreaterThan(0);
 

@@ -9,7 +9,7 @@
  */
 
 import type { Task, TimeBlockId } from '@/shared/types/domain';
-import { normalizeDropTargetHourSlot } from '../utils/threeHourBucket';
+import { getBucketStartHour } from '../utils/timeBlockBucket';
 
 /**
  * 드래그 데이터 인터페이스
@@ -119,14 +119,12 @@ export const useDragDropManager = () => {
 
     // hourSlot이 지정된 경우에만 비교
     if (targetHourSlot !== undefined) {
-      const normalizedTarget = normalizeDropTargetHourSlot(targetHourSlot);
+      // targetHourSlot은 UI에서 "버킷(=타임블록) 시작 시각"으로 전달되는 경우가 많다.
+      const normalizedTarget = getBucketStartHour(targetHourSlot);
       const normalizedSource =
-        dragData.sourceBucketStart ?? normalizeDropTargetHourSlot(dragData.sourceHourSlot ?? undefined);
+        dragData.sourceBucketStart ?? (typeof dragData.sourceHourSlot === 'number' ? getBucketStartHour(dragData.sourceHourSlot) : undefined);
 
-      if (normalizedTarget === undefined || normalizedSource === undefined) {
-        return false;
-      }
-
+      if (normalizedSource === undefined) return false;
       return normalizedSource === normalizedTarget;
     }
 

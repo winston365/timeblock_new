@@ -32,27 +32,25 @@ import { TASK_DEFAULTS } from '@/shared/constants/defaults';
 import TimelineTaskBlock from './TimelineTaskBlock';
 import TaskModal from '@/features/schedule/TaskModal';
 import { useTempScheduleStore } from '@/features/tempSchedule/stores/tempScheduleStore';
+import { getBlockById, getBlockDurationMinutes, getBlockIdFromHour as getBlockIdFromHourCore } from '@/shared/utils/timeBlockUtils';
 import {
-  countItemsInBucket,
+  clampHourSlotToBlock,
   formatBucketRangeLabel,
-  BUCKET_TOTAL_MINUTES,
   getBucketStartHour,
+  getSuggestedHourSlotForBlock,
   isBucketAtCapacity,
-  MAX_TASKS_PER_BUCKET,
+  MAX_TASKS_PER_BLOCK,
   normalizeDropTargetHourSlot,
-  THREE_HOUR_BUCKET_SIZE,
-} from '../utils/threeHourBucket';
+} from '../utils/timeBlockBucket';
 
-/** 3시간 블록 배경색 (오전/오후/저녁) */
+/** TIME_BLOCKS 블록 배경색 */
 const BLOCK_BACKGROUND_COLORS: Record<number, string> = {
-  0: 'bg-indigo-500/5',  // 밤 (00-03)
-  3: 'bg-blue-500/5',    // 새벽 (03-06)
-  6: 'bg-sky-500/5',     // 아침 (06-09)
-  9: 'bg-amber-500/5',   // 오전 (09-12)
-  12: 'bg-orange-500/5', // 오후 (12-15)
-  15: 'bg-purple-500/5', // 늦은 오후 (15-18)
-  18: 'bg-indigo-500/5', // 저녁 (18-21)
-  21: 'bg-blue-500/5',   // 밤 (21-24)
+  5: 'bg-blue-500/5',
+  8: 'bg-amber-500/5',
+  11: 'bg-orange-500/5',
+  14: 'bg-purple-500/5',
+  17: 'bg-indigo-500/5',
+  20: 'bg-blue-500/5',
 };
 
 /** 컨텍스트 메뉴 상태 */
@@ -126,9 +124,9 @@ function TimelineViewComponent() {
   const overtimeBuckets = useMemo(() => {
     const overtime = new Set<number>();
     bucketGroups.forEach((group) => {
-      if (group.totalDuration > BUCKET_TOTAL_MINUTES) {
-        overtime.add(group.bucketStartHour);
-      }
+      const blockId = getBlockIdFromHourCore(group.bucketStartHour);
+      const capacityMinutes = getBlockDurationMinutes(blockId);
+      if (group.totalDuration > capacityMinutes) overtime.add(group.bucketStartHour);
     });
     return overtime;
   }, [bucketGroups]);
@@ -192,38 +190,29 @@ function TimelineViewComponent() {
     return () => clearInterval(interval);
   }, [visibleStartHour]);
 
-  // 버킷 레이블 생성 (visibleStartHour는 버킷 시작 시각)
-  const bucketStartHours = Array.from(
-    { length: Math.floor((TIMELINE_END_HOUR - visibleStartHour) / THREE_HOUR_BUCKET_SIZE) },
-    (_, i) => visibleStartHour + i * THREE_HOUR_BUCKET_SIZE,
-  );
-
-  // 시간 → 타임블록 ID 변환
-  const getBlockIdFromHour = useCallback((hour: number): TimeBlockId => {
-    const block = TIME_BLOCKS.find((b) => {
-      // wrap-around(예: 23-05) 지원
-      if (b.start < b.end) return hour >= b.start && hour < b.end;
-      return hour >= b.start || hour < b.end;
-    });
-    return block ? (block.id as TimeBlockId) : null;
-  }, []);
+  // 버킷 레이블 생성 (TIME_BLOCKS 시작 시각 기준)
+  const bucketStartHours = useMemo(() => {
+    return TIME_BLOCKS
+      .map((b) => b.start)
+      .filter((start) => start >= visibleStartHour && start < TIMELINE_END_HOUR);
+  }, [visibleStartHour]);
 
   // 작업 클릭 핸들러 (TaskModal 열기)
   const handleTaskClick = useCallback((task: Task) => {
     setEditingTask(task);
     setSelectedBlockId(task.timeBlock);
-    setSelectedHourSlot(typeof task.hourSlot === 'number' ? getBucketStartHour(task.hourSlot) : null);
+    setSelectedHourSlot(typeof task.hourSlot === 'number' ? task.hourSlot : null);
     setIsModalOpen(true);
   }, []);
 
   // 빈 버킷 클릭 핸들러
   const handleEmptyBucketClick = useCallback((bucketStartHour: number) => {
-    const blockId = getBlockIdFromHour(bucketStartHour);
+    const blockId = getBlockIdFromHourCore(bucketStartHour);
     setEditingTask(null);
     setSelectedBlockId(blockId);
-    setSelectedHourSlot(getBucketStartHour(bucketStartHour));
+    setSelectedHourSlot(bucketStartHour);
     setIsModalOpen(true);
-  }, [getBlockIdFromHour]);
+  }, []);
 
   // 모달 닫기
   const handleCloseModal = useCallback(() => {
@@ -239,12 +228,13 @@ function TimelineViewComponent() {
       if (editingTask) {
         await updateTask(editingTask.id, taskData);
       } else {
-        const bucketStartHour = normalizeDropTargetHourSlot(selectedHourSlot);
-        if (bucketStartHour !== undefined && selectedBlockId) {
+        const normalizedHourSlot = normalizeDropTargetHourSlot(selectedHourSlot);
+
+        const blockStartHour = selectedBlockId ? (getBlockById(selectedBlockId)?.start ?? undefined) : undefined;
+        if (blockStartHour !== undefined && selectedBlockId) {
           const tasksInBlock = dailyTasks.filter((t) => t.timeBlock === selectedBlockId);
-          const bucketCount = countItemsInBucket(tasksInBlock, bucketStartHour);
-          if (isBucketAtCapacity(bucketCount)) {
-            toast.error(`${formatBucketRangeLabel(bucketStartHour)} 버킷에는 최대 ${MAX_TASKS_PER_BUCKET}개의 작업만 추가할 수 있습니다.`);
+          if (isBucketAtCapacity(tasksInBlock.length)) {
+            toast.error(`${formatBucketRangeLabel(blockStartHour)}에는 최대 ${MAX_TASKS_PER_BLOCK}개의 작업만 추가할 수 있습니다.`);
             return;
           }
         }
@@ -254,6 +244,11 @@ function TimelineViewComponent() {
         const adjustedDuration = taskData.adjustedDuration ?? baseDuration;
 
         // 새 작업 생성
+        const nextHourSlot =
+          (selectedBlockId ? clampHourSlotToBlock(normalizedHourSlot ?? undefined, selectedBlockId) : undefined) ??
+          (selectedBlockId ? getSuggestedHourSlotForBlock(selectedBlockId, selectedHourSlot) : undefined) ??
+          blockStartHour;
+
         const newTask: Task = {
           id: generateId('task'),
           text: taskData.text || '',
@@ -262,7 +257,7 @@ function TimelineViewComponent() {
           resistance,
           adjustedDuration,
           timeBlock: selectedBlockId,
-          hourSlot: bucketStartHour,
+          hourSlot: nextHourSlot,
           completed: false,
           actualDuration: 0,
           createdAt: new Date().toISOString(),
@@ -283,7 +278,9 @@ function TimelineViewComponent() {
 
   // 드래그 시작 핸들러
   const handleDragStart = useCallback((task: Task, e: React.DragEvent) => {
-    const sourceBucketStart = typeof task.hourSlot === 'number' ? getBucketStartHour(task.hourSlot) : undefined;
+    const sourceBucketStart =
+      (task.timeBlock ? getBlockById(task.timeBlock)?.start : undefined) ??
+      (typeof task.hourSlot === 'number' ? getBucketStartHour(task.hourSlot) : undefined);
     setDragData({
       taskId: task.id,
       sourceBlockId: task.timeBlock,
@@ -314,39 +311,44 @@ function TimelineViewComponent() {
     const dragData = getDragData(e);
     if (!dragData) return;
 
-    const normalizedTargetHourSlot = normalizeDropTargetHourSlot(targetBucketStartHour);
-    if (normalizedTargetHourSlot === undefined) return;
-
-    const targetBlockId = getBlockIdFromHour(targetBucketStartHour);
+    const targetBlockId = getBlockIdFromHourCore(targetBucketStartHour);
     if (!targetBlockId) return;
+
+    const normalizedTargetBucketStart = normalizeDropTargetHourSlot(targetBucketStartHour);
+    if (normalizedTargetBucketStart === undefined) return;
+
+    const nextHourSlot =
+      clampHourSlotToBlock(dragData.sourceHourSlot ?? undefined, targetBlockId) ??
+      getSuggestedHourSlotForBlock(targetBlockId, targetBucketStartHour) ??
+      targetBucketStartHour;
 
     const normalizedSourceHourSlot =
       dragData.sourceBucketStart ?? normalizeDropTargetHourSlot(dragData.sourceHourSlot ?? undefined);
 
     // 같은 위치(같은 블록 + 같은 버킷)이면 무시
-    if (dragData.sourceBlockId === targetBlockId && normalizedSourceHourSlot === normalizedTargetHourSlot) {
+    if (dragData.sourceBlockId === targetBlockId && normalizedSourceHourSlot === normalizedTargetBucketStart) {
       return;
     }
 
-    // 버킷당 최대 3개 제한
-    const tasksInTargetBlock = dailyTasks
+    // TIME_BLOCK(=버킷)당 최대 작업 수 제한
+    const tasksInTargetBlock = (dailyTasks ?? [])
       .filter((t) => t.timeBlock === targetBlockId)
       .filter((t) => t.id !== dragData.taskId);
-    const bucketCount = countItemsInBucket(tasksInTargetBlock, normalizedTargetHourSlot);
-    if (isBucketAtCapacity(bucketCount)) {
-      toast.error(`${formatBucketRangeLabel(normalizedTargetHourSlot)} 버킷에는 최대 ${MAX_TASKS_PER_BUCKET}개의 작업만 배치할 수 있습니다.`);
+    if (isBucketAtCapacity(tasksInTargetBlock.length)) {
+      toast.error(`${formatBucketRangeLabel(targetBucketStartHour)}에는 최대 ${MAX_TASKS_PER_BLOCK}개의 작업만 배치할 수 있습니다.`);
       return;
     }
 
     try {
       await updateTask(dragData.taskId, {
         timeBlock: targetBlockId,
-        hourSlot: normalizedTargetHourSlot,
+        hourSlot: nextHourSlot,
       });
     } catch (error) {
       console.error('Failed to move task:', error);
     }
-  }, [getDragData, getBlockIdFromHour, updateTask, dailyTasks]);
+  }, [getDragData, updateTask, dailyTasks]);
+
 
   // 컨텍스트 메뉴 열기
   const handleContextMenu = useCallback((task: Task, e: React.MouseEvent) => {
@@ -415,16 +417,20 @@ function TimelineViewComponent() {
       {/* 타임라인 본문 */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <div className="relative" style={{ height: `${totalHeight}px`, minHeight: '100%' }}>
-          {/* 버킷(3시간) 눈금 및 구분선 + 빈 버킷 클릭 영역 */}
+          {/* 타임블럭 눈금 및 구분선 + 빈 타임블럭 클릭 영역 */}
           {bucketStartHours.map((bucketStartHour) => {
             const isBlockBoundary = BLOCK_BOUNDARIES.includes(bucketStartHour);
             const top = (bucketStartHour - visibleStartHour) * HOUR_HEIGHT;
-            const height = THREE_HOUR_BUCKET_SIZE * HOUR_HEIGHT;
+            const blockId = getBlockIdFromHourCore(bucketStartHour);
+            const block = getBlockById(blockId);
+            const blockHours = (block?.end ?? (bucketStartHour + 3)) - (block?.start ?? bucketStartHour);
+            const height = Math.max(0, blockHours) * HOUR_HEIGHT;
             const isDragOver = dragOverBucketStart === bucketStartHour;
 
             const bucketGroup = bucketGroups.find((g) => g.bucketStartHour === bucketStartHour);
             const isOvertime = overtimeBuckets.has(bucketStartHour);
-            const overtimeMinutes = bucketGroup ? bucketGroup.totalDuration - BUCKET_TOTAL_MINUTES : 0;
+            const capacityMinutes = getBlockDurationMinutes(blockId);
+            const overtimeMinutes = bucketGroup ? bucketGroup.totalDuration - capacityMinutes : 0;
             const hasNoTasks = !bucketGroup || bucketGroup.tasks.length === 0;
 
             const blockBgColor = BLOCK_BACKGROUND_COLORS[bucketStartHour] || '';
@@ -446,9 +452,14 @@ function TimelineViewComponent() {
                     : 'border-t border-[var(--color-border)]/40'
                     }`}
                 />
-                {/* 버킷 내부 1시간 보조선 */}
-                <div className="absolute left-6 right-0 border-t border-dashed border-[var(--color-border)]/20" style={{ top: `${HOUR_HEIGHT}px` }} />
-                <div className="absolute left-6 right-0 border-t border-dashed border-[var(--color-border)]/20" style={{ top: `${HOUR_HEIGHT * 2}px` }} />
+                {/* 블록 내부 1시간 보조선 */}
+                {Array.from({ length: Math.max(0, blockHours - 1) }).map((_, i) => (
+                  <div
+                    key={`subline-${bucketStartHour}-${i}`}
+                    className="absolute left-6 right-0 border-t border-dashed border-[var(--color-border)]/20"
+                    style={{ top: `${HOUR_HEIGHT * (i + 1)}px` }}
+                  />
+                ))}
 
                 {/* 버킷 레이블 */}
                 <div
@@ -473,7 +484,7 @@ function TimelineViewComponent() {
                 <div
                   className="absolute left-6 right-0 top-0 bottom-0 cursor-pointer group transition-colors duration-150"
                   onClick={() => handleEmptyBucketClick(bucketStartHour)}
-                  title={`${formatBucketRangeLabel(bucketStartHour)} 버킷에 작업 추가`}
+                  title={`${formatBucketRangeLabel(bucketStartHour)}에 작업 추가`}
                 >
                   {/* 빈 시간대 힌트 */}
                   {hasNoTasks && (

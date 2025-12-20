@@ -11,9 +11,9 @@ import type { Task, TimeBlockId, TimeSlotTagTemplate } from '@/shared/types/doma
 import { useToastStore } from '@/shared/stores/toastStore';
 import TaskCard from './TaskCard';
 import { useDragDropManager } from './hooks/useDragDropManager';
-import { MAX_TASKS_PER_BUCKET } from './utils/threeHourBucket';
+import { MAX_TASKS_PER_BLOCK } from './utils/timeBlockBucket';
 
-const MAX_TASKS_PER_HOUR = MAX_TASKS_PER_BUCKET;
+const MAX_TASKS_PER_HOUR = MAX_TASKS_PER_BLOCK;
 
 interface HourBarProps {
   hour: number;

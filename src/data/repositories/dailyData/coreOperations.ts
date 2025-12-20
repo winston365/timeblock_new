@@ -18,6 +18,7 @@ import type { DailyData, Task, TimeBlockStates } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import { getLocalDate } from '@/shared/lib/utils';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
+import { getBlockById } from '@/shared/utils/timeBlockUtils';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { dailyDataStrategy } from '@/shared/services/sync/firebase/strategies';
@@ -171,8 +172,7 @@ export async function saveDailyData(
     // ✅ hourSlot이 undefined이고 timeBlock이 존재하면, 블록의 첫 시간대로 설정
     let hourSlot = task.hourSlot;
     if (hourSlot === undefined && task.timeBlock) {
-      const block = TIME_BLOCKS.find(b => b.id === task.timeBlock);
-      hourSlot = block ? block.start : undefined;
+      hourSlot = getBlockById(task.timeBlock)?.start;
     }
 
     return {

@@ -81,7 +81,7 @@ describe('unifiedTaskService', () => {
 
   it('findTaskLocation returns daily when task is in today dailyData', async () => {
     getInboxTaskById.mockResolvedValueOnce(null); // inbox에서 못 찾음
-    loadDailyData.mockResolvedValueOnce({ tasks: [makeTask({ id: 't2', timeBlock: '8-11' })] });
+    loadDailyData.mockResolvedValueOnce({ tasks: [makeTask({ id: 't2', timeBlock: 'morning' })] });
 
     const { findTaskLocation } = await import('@/shared/services/task/unifiedTaskService');
 
@@ -128,7 +128,7 @@ describe('unifiedTaskService', () => {
 
   it('updateAnyTask updates daily task and refreshes dailyDataStore unless skipped', async () => {
     getInboxTaskById.mockResolvedValueOnce(null); // inbox에서 못 찾음
-    loadDailyData.mockResolvedValueOnce({ tasks: [makeTask({ id: 't5', timeBlock: '8-11' })] });
+    loadDailyData.mockResolvedValueOnce({ tasks: [makeTask({ id: 't5', timeBlock: 'morning' })] });
 
     const { updateAnyTask } = await import('@/shared/services/task/unifiedTaskService');
 
@@ -139,7 +139,7 @@ describe('unifiedTaskService', () => {
 
     dailyRefresh.mockClear();
     getInboxTaskById.mockResolvedValueOnce(null); // inbox에서 못 찾음
-    loadDailyData.mockResolvedValueOnce({ tasks: [makeTask({ id: 't6', timeBlock: '8-11' })] });
+    loadDailyData.mockResolvedValueOnce({ tasks: [makeTask({ id: 't6', timeBlock: 'morning' })] });
 
     await updateAnyTask('t6', { text: 'new' }, undefined, { skipStoreRefresh: true });
     expect(dailyRefresh).not.toHaveBeenCalled();

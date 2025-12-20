@@ -22,7 +22,21 @@ export type Resistance = 'low' | 'medium' | 'high';
 /**
  * 타임블록 ID (5시간 단위)
  */
-export type TimeBlockId = '5-8' | '8-11' | '11-14' | '14-17' | '17-19' | '19-24' | null;
+export type TimeBlockId =
+  | 'dawn'
+  | 'morning'
+  | 'noon'
+  | 'afternoon'
+  | 'evening'
+  | 'night'
+  // Legacy IDs (기존 저장 데이터 호환)
+  | '5-8'
+  | '8-11'
+  | '11-14'
+  | '14-17'
+  | '17-20'
+  | '20-23'
+  | null;
 
 /**
  * 워밍업 프리셋 항목 (짧은 준비 작업)
@@ -434,12 +448,12 @@ export interface Settings {
 // ============================================================================
 
 export const TIME_BLOCKS = [
-  { id: '5-8', label: '05:00 - 08:00', start: 5, end: 8 },
-  { id: '8-11', label: '08:00 - 11:00', start: 8, end: 11 },
-  { id: '11-14', label: '11:00 - 14:00', start: 11, end: 14 },
-  { id: '14-17', label: '14:00 - 17:00', start: 14, end: 17 },
-  { id: '17-20', label: '17:00 - 20:00', start: 17, end: 20 },
-  { id: '20-23', label: '20:00 - 23:00', start: 20, end: 23 },
+  { id: 'dawn', label: '05:00 - 08:00', start: 5, end: 8 },
+  { id: 'morning', label: '08:00 - 11:00', start: 8, end: 11 },
+  { id: 'noon', label: '11:00 - 14:00', start: 11, end: 14 },
+  { id: 'afternoon', label: '14:00 - 17:00', start: 14, end: 17 },
+  { id: 'evening', label: '17:00 - 20:00', start: 17, end: 20 },
+  { id: 'night', label: '20:00 - 23:00', start: 20, end: 23 },
 ] as const;
 
 export const RESISTANCE_MULTIPLIERS: Record<Resistance, number> = {

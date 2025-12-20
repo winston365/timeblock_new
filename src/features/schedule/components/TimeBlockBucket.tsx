@@ -4,9 +4,9 @@ import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { useToastStore } from '@/shared/stores/toastStore';
 import TaskCard from '../TaskCard';
 import { useDragDropManager } from '../hooks/useDragDropManager';
-import { formatBucketRangeLabel, MAX_TASKS_PER_BLOCK } from '../utils/timeBlockBucket';
+import { clampHourSlotToBlock, formatBucketRangeLabel, MAX_TASKS_PER_BLOCK } from '../utils/timeBlockBucket';
 
-interface ThreeHourBucketProps {
+interface TimeBlockBucketProps {
   bucketStartHour: number;
   effectiveHourSlot: number;
   blockId: TimeBlockId;
@@ -19,7 +19,7 @@ interface ThreeHourBucketProps {
   onToggleTask: (taskId: string) => void;
 }
 
-export function ThreeHourBucket({
+export function TimeBlockBucket({
   bucketStartHour,
   effectiveHourSlot,
   blockId,
@@ -30,10 +30,10 @@ export function ThreeHourBucket({
   onUpdateTask,
   onDeleteTask,
   onToggleTask,
-}: ThreeHourBucketProps) {
+}: TimeBlockBucketProps) {
   const [inlineInputValue, setInlineInputValue] = useState('');
   const inlineInputRef = useRef<HTMLInputElement>(null);
-  const addToast = useToastStore(state => state.addToast);
+  const addToast = useToastStore((state) => state.addToast);
   const { getDragData, isSameLocation } = useDragDropManager();
 
   const sortedTasks = useMemo(() => {
@@ -97,9 +97,14 @@ export function ThreeHourBucket({
     const last = sortedTasks[sortedTasks.length - 1];
     const lastOrder = last ? last.order ?? sortedTasks.length : undefined;
 
+    const nextHourSlot =
+      clampHourSlotToBlock(dragData.sourceHourSlot ?? undefined, blockId) ??
+      clampHourSlotToBlock(effectiveHourSlot, blockId) ??
+      effectiveHourSlot;
+
     onUpdateTask(dragData.taskId, {
       timeBlock: blockId,
-      hourSlot: effectiveHourSlot,
+      hourSlot: nextHourSlot,
       order: (lastOrder ?? 0) + 1,
     });
   };
@@ -123,13 +128,18 @@ export function ThreeHourBucket({
     }
 
     const prevTask = sortedTasks[targetIndex - 1];
-    const prevOrder = prevTask?.order ?? (targetIndex - 1);
+    const prevOrder = prevTask?.order ?? targetIndex - 1;
     const nextOrder = targetTask.order ?? targetIndex;
     const newOrder = computeOrderBetween(prevOrder, nextOrder);
 
+    const nextHourSlot =
+      clampHourSlotToBlock(dragData.sourceHourSlot ?? undefined, blockId) ??
+      clampHourSlotToBlock(effectiveHourSlot, blockId) ??
+      effectiveHourSlot;
+
     onUpdateTask(dragData.taskId, {
       timeBlock: blockId,
-      hourSlot: effectiveHourSlot,
+      hourSlot: nextHourSlot,
       order: newOrder,
     });
   };
@@ -145,15 +155,21 @@ export function ThreeHourBucket({
     >
       <div className="mb-3 flex items-center justify-between">
         <div className="text-sm font-semibold text-[var(--color-text)]">{formatBucketRangeLabel(bucketStartHour)}</div>
-        <div className="text-xs text-[var(--color-text-tertiary)]">{tasks.length}/{MAX_TASKS_PER_BLOCK}</div>
+        <div className="text-xs text-[var(--color-text-tertiary)]">
+          {tasks.length}/{MAX_TASKS_PER_BLOCK}
+        </div>
       </div>
 
       <div className="space-y-2">
         {sortedTasks.map((task, index) => (
-          <div key={task.id} onDragOver={(e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-          }} onDrop={(e) => handleDropBefore(e, index)}>
+          <div
+            key={task.id}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+            }}
+            onDrop={(e) => handleDropBefore(e, index)}
+          >
             <TaskCard
               task={task}
               onEdit={() => onEditTask(task)}

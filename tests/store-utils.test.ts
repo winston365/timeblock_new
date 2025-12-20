@@ -62,7 +62,7 @@ describe('storeUtils', () => {
   });
 
   it('sanitizeTaskUpdates fills hourSlot from timeBlock when hourSlot is undefined', () => {
-    const updates = sanitizeTaskUpdates({ timeBlock: '8-11', hourSlot: undefined } as unknown as Partial<Task>);
+    const updates = sanitizeTaskUpdates({ timeBlock: 'morning', hourSlot: undefined } as unknown as Partial<Task>);
     expect(updates.hourSlot).toBe(8);
   });
 
@@ -136,8 +136,8 @@ describe('storeUtils', () => {
       updatedAt: 1,
     };
 
-    const result = createOptimisticBlockUpdate(base as unknown as never, '8-11', { isLocked: true } as never);
-    expect(result.dailyData.timeBlockStates['8-11']?.isLocked).toBe(true);
+    const result = createOptimisticBlockUpdate(base as unknown as never, 'morning', { isLocked: true } as never);
+    expect(result.dailyData.timeBlockStates['morning']?.isLocked).toBe(true);
     expect(result.dailyData.updatedAt).toBe(now);
   });
 
@@ -149,7 +149,7 @@ describe('storeUtils', () => {
       date: '2025-01-01',
       tasks: [{ id: 'a' }],
       goals: [],
-      timeBlockStates: { '8-11': { isLocked: false, isPerfect: false, isFailed: false } },
+      timeBlockStates: { morning: { isLocked: false, isPerfect: false, isFailed: false } },
       updatedAt: 1,
     };
     const err = new Error('x');
@@ -163,10 +163,10 @@ describe('storeUtils', () => {
 
     const r2 = createBlockRollbackState(
       base as unknown as never,
-      { '8-11': { isLocked: true, isPerfect: false, isFailed: false } } as never,
+      { morning: { isLocked: true, isPerfect: false, isFailed: false } } as never,
       err
     );
-    expect(r2.dailyData.timeBlockStates['8-11']?.isLocked).toBe(true);
+    expect(r2.dailyData.timeBlockStates['morning']?.isLocked).toBe(true);
     expect(r2.dailyData.updatedAt).toBe(8000);
 
     nowSpy.mockReturnValueOnce(9000);
@@ -174,11 +174,11 @@ describe('storeUtils', () => {
     const r3 = createFullRollbackState(
       base as unknown as never,
       [{ id: 'c' }] as unknown as Task[],
-      { '8-11': { isLocked: false, isPerfect: true, isFailed: false } } as never,
+      { morning: { isLocked: false, isPerfect: true, isFailed: false } } as never,
       err
     );
     expect(r3.dailyData.tasks[0]?.id).toBe('c');
-    expect(r3.dailyData.timeBlockStates['8-11']?.isPerfect).toBe(true);
+    expect(r3.dailyData.timeBlockStates['morning']?.isPerfect).toBe(true);
     expect(r3.dailyData.updatedAt).toBe(9000);
 
     nowSpy.mockRestore();

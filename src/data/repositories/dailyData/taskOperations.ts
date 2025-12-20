@@ -15,7 +15,7 @@
 
 import { db } from '../../db/dexieClient';
 import type { Task } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
+import { getBlockById } from '@/shared/utils/timeBlockUtils';
 import { getLocalDate } from '@/shared/lib/utils';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import {
@@ -103,10 +103,7 @@ export async function updateTask(taskId: string, updates: Partial<Task>, date: s
 
         // ✅ hourSlot이 없으면 블록의 첫 시간대로 설정 (UI 표시 보장)
         if (!movedTask.hourSlot && movedTask.timeBlock) {
-          const block = TIME_BLOCKS.find(b => b.id === movedTask.timeBlock);
-          if (block) {
-            movedTask.hourSlot = block.start;
-          }
+          movedTask.hourSlot = getBlockById(movedTask.timeBlock)?.start;
         }
 
         const todayData = await loadDailyData(date);

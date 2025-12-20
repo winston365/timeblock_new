@@ -35,6 +35,21 @@ const blockMap = new Map<string, TimeBlock>(
   TIME_BLOCKS.map(block => [block.id, block])
 );
 
+const FALLBACK_BLOCK_DURATION_MINUTES = 3 * 60;
+
+const LEGACY_TIME_BLOCK_ID_TO_CANONICAL: Readonly<Record<string, string>> = {
+  '5-8': 'dawn',
+  '8-11': 'morning',
+  '11-14': 'noon',
+  '14-17': 'afternoon',
+  '17-20': 'evening',
+  '20-23': 'night',
+} as const;
+
+function normalizeTimeBlockId(blockId: string): string {
+  return LEGACY_TIME_BLOCK_ID_TO_CANONICAL[blockId] ?? blockId;
+}
+
 // ============================================================================
 // 조회 헬퍼
 // ============================================================================
@@ -51,7 +66,7 @@ const blockMap = new Map<string, TimeBlock>(
  */
 export function getBlockById(blockId: TimeBlockId | string | null): TimeBlock | undefined {
   if (!blockId) return undefined;
-  return blockMap.get(blockId);
+  return blockMap.get(normalizeTimeBlockId(blockId));
 }
 
 /**
@@ -67,8 +82,9 @@ export function getBlockById(blockId: TimeBlockId | string | null): TimeBlock | 
  */
 export function getBlockLabel(blockId: TimeBlockId | string | null, fallback?: string): string {
   if (!blockId) return fallback ?? '';
-  const block = blockMap.get(blockId);
-  return block?.label ?? fallback ?? blockId;
+  const normalized = normalizeTimeBlockId(blockId);
+  const block = blockMap.get(normalized);
+  return block?.label ?? fallback ?? normalized;
 }
 
 /**
@@ -82,7 +98,7 @@ export function getBlockLabel(blockId: TimeBlockId | string | null, fallback?: s
  */
 export function getBlockStart(blockId: TimeBlockId | string | null): number | null {
   if (!blockId) return null;
-  const block = blockMap.get(blockId);
+  const block = blockMap.get(normalizeTimeBlockId(blockId));
   return block?.start ?? null;
 }
 
@@ -97,7 +113,7 @@ export function getBlockStart(blockId: TimeBlockId | string | null): number | nu
  */
 export function getBlockEnd(blockId: TimeBlockId | string | null): number | null {
   if (!blockId) return null;
-  const block = blockMap.get(blockId);
+  const block = blockMap.get(normalizeTimeBlockId(blockId));
   return block?.end ?? null;
 }
 
@@ -108,7 +124,7 @@ export function getBlockEnd(blockId: TimeBlockId | string | null): number | null
  * @returns 타임블록 ID 또는 null (05:00-23:00 외의 시간)
  *
  * @example
- * const blockId = getBlockIdFromHour(9); // '8-11'
+ * const blockId = getBlockIdFromHour(9); // 'morning'
  * const blockId = getBlockIdFromHour(2); // null (새벽)
  */
 export function getBlockIdFromHour(hour: number): TimeBlockId {
@@ -121,13 +137,53 @@ export function getBlockIdFromHour(hour: number): TimeBlockId {
 }
 
 /**
+ * 특정 hourSlot이 속한 타임블록 ID 반환
+ * - invalid/undefined면 null
+ */
+export function getBlockIdFromHourSlot(hourSlot?: number | null): TimeBlockId {
+  if (hourSlot === null || hourSlot === undefined) return null;
+  if (typeof hourSlot !== 'number' || !Number.isFinite(hourSlot) || !Number.isInteger(hourSlot)) return null;
+  if (hourSlot < 0 || hourSlot > 23) return null;
+  return getBlockIdFromHour(hourSlot);
+}
+
+/**
+ * 특정 시간이 속한 타임블록 객체 반환
+ */
+export function getBlockForHour(hour: number): TimeBlock | undefined {
+  const blockId = getBlockIdFromHour(hour);
+  return getBlockById(blockId);
+}
+
+/**
+ * hourSlot을 TIME_BLOCKS 기준 "블록 시작 시각"으로 정규화
+ * - 블록 밖이면 undefined
+ */
+export function normalizeHourSlotToBlockStart(hourSlot?: number | null): number | undefined {
+  const blockId = getBlockIdFromHourSlot(hourSlot);
+  const block = getBlockById(blockId);
+  return block?.start;
+}
+
+/**
+ * 작업을 TIME_BLOCKS 기준으로 분류할 때의 "효과적 timeBlock"을 계산
+ * - timeBlock이 있으면 우선
+ * - 없으면 hourSlot로 유추
+ */
+export function getEffectiveTimeBlockIdForTask(task?: { timeBlock: TimeBlockId; hourSlot?: number | null }): TimeBlockId {
+  const explicit = task?.timeBlock ?? null;
+  if (explicit) return normalizeTimeBlockId(explicit) as TimeBlockId;
+  return getBlockIdFromHourSlot(task?.hourSlot);
+}
+
+/**
  * 현재 시간이 속한 타임블록 조회
  *
  * @returns 현재 타임블록 객체 또는 undefined
  *
  * @example
  * const currentBlock = getCurrentBlock();
- * // 오전 9시라면: { id: '8-11', label: '08:00 - 11:00', start: 8, end: 11 }
+ * // 오전 9시라면: { id: 'morning', label: '08:00 - 11:00', start: 8, end: 11 }
  */
 export function getCurrentBlock(): TimeBlock | undefined {
   const currentBlockId = getBlockIdFromHour(new Date().getHours());
@@ -140,7 +196,7 @@ export function getCurrentBlock(): TimeBlock | undefined {
  * @returns 타임블록 ID 또는 null
  *
  * @example
- * const currentBlockId = getCurrentBlockId(); // '8-11'
+ * const currentBlockId = getCurrentBlockId(); // 'morning'
  */
 export function getCurrentBlockId(): TimeBlockId {
   return getBlockIdFromHour(new Date().getHours());
@@ -153,11 +209,11 @@ export function getCurrentBlockId(): TimeBlockId {
  * @returns 분 단위 총 시간 (기본값: 180분 = 3시간)
  *
  * @example
- * const minutes = getBlockDurationMinutes('8-11'); // 180
+ * const minutes = getBlockDurationMinutes('morning'); // 180
  */
 export function getBlockDurationMinutes(blockId: TimeBlockId | string | null): number {
   const block = getBlockById(blockId);
-  if (!block) return 180; // 기본값
+  if (!block) return FALLBACK_BLOCK_DURATION_MINUTES;
   return (block.end - block.start) * 60;
 }
 
@@ -168,7 +224,7 @@ export function getBlockDurationMinutes(blockId: TimeBlockId | string | null): n
  * @returns 블록의 시작 시간 또는 null
  *
  * @example
- * const hourSlot = getDefaultHourSlot('8-11'); // 8
+ * const hourSlot = getDefaultHourSlot('morning'); // 8
  */
 export function getDefaultHourSlot(blockId: TimeBlockId | string | null): number | null {
   return getBlockStart(blockId);

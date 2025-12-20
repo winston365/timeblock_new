@@ -1,3 +1,6 @@
+import { TIME_BLOCKS } from '@/shared/types/domain';
+import { getBlockById, getBlockIdFromHour } from '@/shared/utils/timeBlockUtils';
+
 export const THREE_HOUR_BUCKET_SIZE = 3;
 
 export const BUCKET_TOTAL_MINUTES = THREE_HOUR_BUCKET_SIZE * 60;
@@ -13,16 +16,23 @@ function pad2(value: number): string {
 }
 
 export function getBucketStartHour(hour: number): number {
-  return Math.floor(hour / THREE_HOUR_BUCKET_SIZE) * THREE_HOUR_BUCKET_SIZE;
+  if (!isValidHour(hour)) return hour;
+  const blockId = getBlockIdFromHour(hour);
+  const block = getBlockById(blockId);
+  return block?.start ?? hour;
 }
 
 export function getBucketEndHour(bucketStartHour: number): number {
-  return bucketStartHour + THREE_HOUR_BUCKET_SIZE;
+  const block = TIME_BLOCKS.find((b) => b.start === bucketStartHour);
+  return block?.end ?? (bucketStartHour + THREE_HOUR_BUCKET_SIZE);
 }
 
 export function formatBucketRangeLabel(bucketStartHour: number): string {
-  const endHour = (bucketStartHour + THREE_HOUR_BUCKET_SIZE) % 24;
-  return `${pad2(bucketStartHour)}:00-${pad2(endHour)}:00`;
+  const block = TIME_BLOCKS.find((b) => b.start === bucketStartHour);
+  if (block) {
+    return `${pad2(block.start)}:00-${pad2(block.end)}:00`;
+  }
+  return `${pad2(bucketStartHour)}:00`;
 }
 
 /**
@@ -36,7 +46,9 @@ export function normalizeDropTargetHourSlot(hourSlot?: number | null): number | 
     return undefined;
   }
   if (!isValidHour(hourSlot)) return undefined;
-  return getBucketStartHour(hourSlot);
+  const normalized = getBucketStartHour(hourSlot);
+  const block = TIME_BLOCKS.find((b) => b.start === normalized);
+  return block ? normalized : undefined;
 }
 
 export function isBucketAtCapacity(taskCount: number, maxPerBucket: number = MAX_TASKS_PER_BUCKET): boolean {
@@ -57,13 +69,8 @@ export function countItemsInBucket<T extends HasHourSlot>(items: readonly T[], b
 }
 
 export function getBucketStartHoursForBlock(blockStartHour: number, blockEndHour: number): number[] {
-  const bucketStarts = new Set<number>();
-
-  for (let hour = blockStartHour; hour < blockEndHour; hour += 1) {
-    bucketStarts.add(getBucketStartHour(hour));
-  }
-
-  return Array.from(bucketStarts).sort((a, b) => a - b);
+  const block = TIME_BLOCKS.find((b) => b.start === blockStartHour && b.end === blockEndHour);
+  return block ? [block.start] : [];
 }
 
 export function getEffectiveHourSlotForBucketInBlock(
@@ -71,14 +78,7 @@ export function getEffectiveHourSlotForBucketInBlock(
   blockStartHour: number,
   blockEndHour: number
 ): number {
-  const bucketEndHour = getBucketEndHour(bucketStartHour);
-  const intersectionStart = Math.max(bucketStartHour, blockStartHour);
-  const intersectionEnd = Math.min(bucketEndHour, blockEndHour);
-
-  if (intersectionStart < intersectionEnd) {
-    return intersectionStart;
-  }
-
-  // Fallback: should not happen when buckets are computed from block hours
+  const block = TIME_BLOCKS.find((b) => b.start === blockStartHour && b.end === blockEndHour);
+  if (block?.start === bucketStartHour) return block.start;
   return blockStartHour;
 }

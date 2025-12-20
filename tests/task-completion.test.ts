@@ -59,7 +59,7 @@ const makeTask = (overrides: Partial<Record<keyof Task, unknown>> = {}): Task =>
     baseDuration: 15,
     resistance: 'low',
     adjustedDuration: 15,
-    timeBlock: '8-11',
+    timeBlock: 'morning',
     completed: true,
     actualDuration: 0,
     createdAt: '2025-01-01T00:00:00.000Z',

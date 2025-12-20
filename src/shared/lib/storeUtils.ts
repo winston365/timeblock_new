@@ -19,7 +19,7 @@
  */
 
 import type { DailyData, Task, TimeBlockId } from '../types/domain';
-import { TIME_BLOCKS } from '../types/domain';
+import { getBlockById } from '@/shared/utils/timeBlockUtils';
 
 // ============================================================================
 // 비동기 액션 래퍼 (Async Action Wrapper)
@@ -179,8 +179,7 @@ export { sanitizeForFirebase } from '@/shared/utils/firebaseSanitizer';
 export function calculateDefaultHourSlot(timeBlock: TimeBlockId): number | null {
   if (timeBlock === null) return null;
 
-  const block = TIME_BLOCKS.find(b => b.id === timeBlock);
-  return block ? block.start : null;
+  return getBlockById(timeBlock)?.start ?? null;
 }
 
 /**

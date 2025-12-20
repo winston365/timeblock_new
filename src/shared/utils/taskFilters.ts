@@ -69,7 +69,7 @@ export function getCompletedCount(tasks: Task[]): number {
  * @returns 해당 블록에 할당된 작업 배열
  *
  * @example
- * const blockTasks = filterByBlock(dailyData.tasks, '8-11');
+ * const blockTasks = filterByBlock(dailyData.tasks, 'morning');
  */
 export function filterByBlock(tasks: Task[], blockId: TimeBlockId | string): Task[] {
   return tasks.filter(t => t.timeBlock === blockId);
@@ -83,7 +83,7 @@ export function filterByBlock(tasks: Task[], blockId: TimeBlockId | string): Tas
  * @returns 해당 블록에서 완료된 작업 배열
  *
  * @example
- * const completed = filterCompletedByBlock(dailyData.tasks, '8-11');
+ * const completed = filterCompletedByBlock(dailyData.tasks, 'morning');
  */
 export function filterCompletedByBlock(tasks: Task[], blockId: TimeBlockId | string): Task[] {
   return tasks.filter(t => t.timeBlock === blockId && t.completed);
@@ -97,7 +97,7 @@ export function filterCompletedByBlock(tasks: Task[], blockId: TimeBlockId | str
  * @returns 해당 블록에서 미완료된 작업 배열
  *
  * @example
- * const incomplete = filterIncompleteByBlock(dailyData.tasks, '8-11');
+ * const incomplete = filterIncompleteByBlock(dailyData.tasks, 'morning');
  */
 export function filterIncompleteByBlock(tasks: Task[], blockId: TimeBlockId | string): Task[] {
   return tasks.filter(t => t.timeBlock === blockId && !t.completed);

@@ -8,9 +8,9 @@
  */
 
 import type { Resistance, Task, TimeBlockId } from '../types/domain';
-import { RESISTANCE_MULTIPLIERS, TIME_BLOCKS } from '../types/domain';
+import { RESISTANCE_MULTIPLIERS } from '../types/domain';
 import { XP_PER_MINUTE } from './constants';
-import { getBlockIdFromHour as getBlockIdFromHourCore, getCurrentBlockId } from '@/shared/utils/timeBlockUtils';
+import { getBlockById, getBlockIdFromHour as getBlockIdFromHourCore, getCurrentBlockId } from '@/shared/utils/timeBlockUtils';
 
 // ============================================================================
 // 날짜 & 시간 유틸
@@ -153,7 +153,7 @@ export function getBlockIdFromHour(hour: number): string {
  * @returns 진행률 (0-100 사이의 정수)
  */
 export function getBlockProgress(blockId: string): number {
-  const block = TIME_BLOCKS.find(b => b.id === blockId);
+  const block = getBlockById(blockId);
   if (!block) return 0;
 
   const now = new Date();

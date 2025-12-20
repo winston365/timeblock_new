@@ -22,16 +22,13 @@ import { useDailyData, useModalEscapeClose, useNamedTimeouts } from '@/shared/ho
 import { playAttackSound, playBossDefeatSound } from '../services/battleSoundService';
 import type { BattleMission, BossDifficulty } from '@/shared/types/domain';
 import { createNewTask } from '@/shared/utils/taskFactory';
-import { getBlockIdFromHour } from '@/shared/utils/timeBlockUtils';
+import { getBlockById, getBlockIdFromHour, getBlockLabel } from '@/shared/utils/timeBlockUtils';
 import { computeCurrentVisibleMissionTier } from '../utils/missionTier';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
 import {
-  countItemsInBucket,
-  formatBucketRangeLabel,
-  getBucketStartHour,
   isBucketAtCapacity,
-  MAX_TASKS_PER_BUCKET,
-} from '@/features/schedule/utils/threeHourBucket';
+  MAX_TASKS_PER_BLOCK,
+} from '@/features/schedule/utils/timeBlockBucket';
 
 // 분리된 컴포넌트 import
 import { BossPanel, MissionCardGrid } from './modal';
@@ -215,35 +212,34 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
     [completeMission, addXP, missions, settings.battleSoundEffects, timers],
   );
 
-  // 현재 버킷(3시간)에 추가 핸들러
+  // 현재 타임블록에 추가 핸들러
   const handleAddMissionToSchedule = useCallback(
     async (mission: BattleMission) => {
       const now = new Date();
       const currentHour = now.getHours();
-      const currentBucketStartHour = getBucketStartHour(currentHour);
       const blockId = getBlockIdFromHour(currentHour);
+      const block = getBlockById(blockId);
 
-      if (!blockId) {
-        toast.error(`${formatBucketRangeLabel(currentBucketStartHour)} 버킷을 배치할 타임블록이 없어요.`);
+      if (!blockId || !block) {
+        toast.error('현재 시간대에 배치할 타임블록이 없어요.');
         return;
       }
 
       const tasksInBlock = (dailyData?.tasks ?? []).filter((t) => t.timeBlock === blockId);
-      const bucketCount = countItemsInBucket(tasksInBlock, currentBucketStartHour);
-      if (isBucketAtCapacity(bucketCount)) {
-        toast.error(`${formatBucketRangeLabel(currentBucketStartHour)} 버킷에는 최대 ${MAX_TASKS_PER_BUCKET}개의 작업만 추가할 수 있습니다.`);
+      if (isBucketAtCapacity(tasksInBlock.length)) {
+        toast.error(`${getBlockLabel(blockId)}에는 최대 ${MAX_TASKS_PER_BLOCK}개의 작업만 추가할 수 있습니다.`);
         return;
       }
 
       const task = createNewTask(`미션 ${mission.text}`, {
         baseDuration: TASK_DEFAULTS.baseDuration,
         timeBlock: blockId,
-        hourSlot: currentBucketStartHour,
+        hourSlot: block.start,
       });
 
       const tryAdd = async () => {
         await addDailyTask(task);
-        toast.success(`${formatBucketRangeLabel(currentBucketStartHour)} 버킷에 미션을 추가했어요 (${TASK_DEFAULTS.baseDuration}분)`, {
+        toast.success(`${getBlockLabel(blockId)}에 미션을 추가했어요 (${TASK_DEFAULTS.baseDuration}분)`, {
           duration: 1800,
         });
       };
@@ -255,7 +251,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
         await tryAdd();
       } catch (error) {
         console.error('Failed to add mission task to schedule:', error);
-        toast.error(`${formatBucketRangeLabel(currentBucketStartHour)} 버킷에 추가하지 못했어요.`);
+        toast.error(`${getBlockLabel(blockId)}에 추가하지 못했어요.`);
       }
     },
     [addDailyTask, dailyData, refresh],

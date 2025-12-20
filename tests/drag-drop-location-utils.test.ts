@@ -7,9 +7,9 @@ describe('drag/drop location contract (bucket-normalized)', () => {
 
     const dragData: DragData = {
       taskId: 't1',
-      sourceBlockId: '8-11',
+      sourceBlockId: 'morning',
       sourceHourSlot: 10,
-      sourceBucketStart: 9,
+      sourceBucketStart: 8,
       taskData: {
         id: 't1',
         text: 'x',
@@ -17,7 +17,7 @@ describe('drag/drop location contract (bucket-normalized)', () => {
         baseDuration: 15,
         resistance: 'low',
         adjustedDuration: 15,
-        timeBlock: '8-11',
+        timeBlock: 'morning',
         hourSlot: 10,
         completed: false,
         actualDuration: 0,
@@ -27,16 +27,19 @@ describe('drag/drop location contract (bucket-normalized)', () => {
     };
 
     // same block, raw hour inside same bucket
-    expect(isSameLocation(dragData, '8-11', 10)).toBe(true);
-    expect(isSameLocation(dragData, '8-11', 11)).toBe(true);
+    expect(isSameLocation(dragData, 'morning', 10)).toBe(true);
+    expect(isSameLocation(dragData, 'morning', 9)).toBe(true);
 
     // same block, bucket start explicitly
-    expect(isSameLocation(dragData, '8-11', 9)).toBe(true);
+    expect(isSameLocation(dragData, 'morning', 8)).toBe(true);
 
     // different bucket
-    expect(isSameLocation(dragData, '8-11', 12)).toBe(false);
+    expect(isSameLocation(dragData, 'morning', 12)).toBe(false);
 
     // different block
-    expect(isSameLocation(dragData, '11-14', 10)).toBe(false);
+    expect(isSameLocation(dragData, 'noon', 10)).toBe(false);
+
+    // boundary hour belongs to the next block
+    expect(isSameLocation(dragData, 'morning', 11)).toBe(false);
   });
 });

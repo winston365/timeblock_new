@@ -271,8 +271,8 @@ const TIME_BLOCK_LABELS: Record<NonNullTimeBlockId, string> = {
     '8-11': '오전 (8-11시)',
     '11-14': '점심 (11-14시)',
     '14-17': '오후 (14-17시)',
-    '17-19': '저녁 (17-19시)',
-    '19-24': '밤 (19-24시)',
+    '17-20': '저녁 (17-20시)',
+    '20-23': '밤 (20-23시)',
 };
 
 const RESISTANCE_LABELS: Record<Resistance, string> = {

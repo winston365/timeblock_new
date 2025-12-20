@@ -2,18 +2,18 @@
  * @file TimeBlockContent.tsx
  * @role 타임 블록 확장 콘텐츠 컴포넌트
  * @responsibilities
- *   - 3시간 버킷(3h bucket) 단위 렌더링
+ *   - 타임블럭(TIME_BLOCKS) 단위 렌더링
  *   - 작업 CRUD 이벤트 위임
  *   - DontDoChecklist 통합
  * @dependencies
- *   - ThreeHourBucket: 3시간 버킷 컴포넌트
+ *   - TimeBlockBucket: 타임블럭 단위 컴포넌트
  *   - DontDoChecklist: 금지 항목 체크리스트
  */
 import React from 'react';
 import type { Task, TimeBlockState, TimeBlockId } from '@/shared/types/domain';
 import { DontDoChecklist } from './DontDoChecklist';
-import { ThreeHourBucket } from './ThreeHourBucket';
-import { getBucketStartHour, getBucketStartHoursForBlock, getEffectiveHourSlotForBucketInBlock } from '../utils/threeHourBucket';
+import { TimeBlockBucket } from './TimeBlockBucket';
+import { getSuggestedHourSlotForBlock } from '../utils/timeBlockBucket';
 
 /**
  * TimeBlockContent 컴포넌트 Props
@@ -82,35 +82,27 @@ export const TimeBlockContent: React.FC<TimeBlockContentProps> = ({
             <DontDoChecklist timeBlockId={block.id} />
 
             <div className="flex flex-col gap-2 p-3">
-                {getBucketStartHoursForBlock(block.start, block.end).map((bucketStartHour) => {
-                    const bucketTasks = tasks.filter((task) => {
-                        const taskHourSlot = task?.hourSlot;
-                        if (typeof taskHourSlot !== 'number') return false;
-                        return getBucketStartHour(taskHourSlot) === bucketStartHour;
-                    });
-
-                    const effectiveHourSlot = getEffectiveHourSlotForBucketInBlock(bucketStartHour, block.start, block.end);
-
+                {(() => {
+                    const suggestedHourSlot = getSuggestedHourSlotForBlock(block.id as TimeBlockId) ?? block.start;
                     return (
-                        <ThreeHourBucket
-                            key={`${block.id}_${bucketStartHour}`}
-                            bucketStartHour={bucketStartHour}
-                            effectiveHourSlot={effectiveHourSlot}
-                            blockId={block.id as TimeBlockId}
-                            tasks={bucketTasks}
-                            isLocked={state?.isLocked || false}
-                            onCreateTask={async (text, hourSlot) => {
-                                if (onCreateTask) {
-                                    await onCreateTask(text, block.id as TimeBlockId, hourSlot);
-                                }
-                            }}
-                            onEditTask={onEditTask}
-                            onUpdateTask={onUpdateTask}
-                            onDeleteTask={onDeleteTask}
-                            onToggleTask={onToggleTask}
-                        />
+                <TimeBlockBucket
+                    bucketStartHour={block.start}
+                    effectiveHourSlot={suggestedHourSlot}
+                    blockId={block.id as TimeBlockId}
+                    tasks={tasks}
+                    isLocked={state?.isLocked || false}
+                    onCreateTask={async (text, hourSlot) => {
+                        if (onCreateTask) {
+                            await onCreateTask(text, block.id as TimeBlockId, hourSlot);
+                        }
+                    }}
+                    onEditTask={onEditTask}
+                    onUpdateTask={onUpdateTask}
+                    onDeleteTask={onDeleteTask}
+                    onToggleTask={onToggleTask}
+                />
                     );
-                })}
+                })()}
             </div>
         </div>
     );

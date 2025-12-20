@@ -11,8 +11,8 @@
 
 import { generateId, calculateAdjustedDuration } from '@/shared/lib/utils';
 import type { Task, Resistance, TimeBlockId } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
+import { getBlockById } from '@/shared/utils/timeBlockUtils';
 
 // ============================================================================
 // Types
@@ -69,7 +69,7 @@ export type PartialTaskData = Partial<Task>;
  *
  * // 타임블록에 배치된 작업
  * const task = createNewTask('회의 준비', {
- *   timeBlock: '8-11',
+ *   timeBlock: 'morning',
  *   hourSlot: 9,
  *   baseDuration: 30,
  *   resistance: 'medium'
@@ -91,10 +91,7 @@ export function createNewTask(text: string, options: CreateTaskOptions = {}): Ta
   // hourSlot 자동 설정: timeBlock이 있고 hourSlot이 없으면 블록의 첫 시간대
   let hourSlot = options.hourSlot;
   if (hourSlot === undefined && timeBlock) {
-    const block = TIME_BLOCKS.find(b => b.id === timeBlock);
-    if (block) {
-      hourSlot = block.start;
-    }
+    hourSlot = getBlockById(timeBlock)?.start;
   }
 
   return {
@@ -154,7 +151,7 @@ export function createInboxTask(
  *   resistance: 'medium',
  *   preparation1: '피로',
  *   preparation2: '방해'
- * }, { timeBlock: '8-11' });
+ * }, { timeBlock: 'morning' });
  * ```
  */
 export function createTaskFromPartial(
@@ -169,10 +166,7 @@ export function createTaskFromPartial(
   // hourSlot 결정
   let hourSlot = data.hourSlot ?? defaults.hourSlot;
   if (hourSlot === undefined && timeBlock) {
-    const block = TIME_BLOCKS.find(b => b.id === timeBlock);
-    if (block) {
-      hourSlot = block.start;
-    }
+    hourSlot = getBlockById(timeBlock)?.start;
   }
 
   return {

@@ -8,7 +8,7 @@
 import { memo } from 'react';
 import type { Task } from '@/shared/types/domain';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
-import { formatBucketRangeLabel, getBucketStartHour } from '../utils/threeHourBucket';
+import { formatBucketRangeLabel, getBucketStartHour } from '../utils/timeBlockBucket';
 
 interface TimelineTaskBlockProps {
   task: Task;
