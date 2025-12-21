@@ -14,7 +14,7 @@
 import { memo, useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import { TEMP_SCHEDULE_DEFAULTS, type TempScheduleTask, type DragTooltipInfo } from '@/shared/types/tempSchedule';
-import { minutesToTimeStr } from '@/shared/lib/utils';
+import { getLocalDate, minutesToTimeStr } from '@/shared/lib/utils';
 import { TempScheduleContextMenu } from './TempScheduleContextMenu';
 import { Repeat } from 'lucide-react';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
@@ -596,7 +596,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
           </div>
 
           {/* 현재 시간까지 지난 영역 음영 처리 */}
-          {currentTimeTop !== null && selectedDate === new Date().toISOString().split('T')[0] && (
+          {currentTimeTop !== null && selectedDate === getLocalDate() && (
             <div
               className="absolute left-0 right-0 top-0 pointer-events-none z-[5]"
               style={{
@@ -607,7 +607,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
           )}
 
           {/* 현재 시간 마커 */}
-          {currentTimeTop !== null && selectedDate === new Date().toISOString().split('T')[0] && (
+          {currentTimeTop !== null && selectedDate === getLocalDate() && (
             <div
               className="absolute left-0 right-0 z-20 pointer-events-none"
               style={{ top: `${currentTimeTop}px` }}

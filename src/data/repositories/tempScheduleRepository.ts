@@ -19,7 +19,7 @@ import { fetchFromFirebase, syncToFirebase } from '@/shared/services/sync/fireba
 import type { SyncStrategy } from '@/shared/services/sync/firebase/syncCore';
 import type { TempScheduleTask, RecurrenceRule, TempScheduleTemplate } from '@/shared/types/tempSchedule';
 import { TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
-import { generateId, timeStrToMinutes } from '@/shared/lib/utils';
+import { generateId, getLocalDate, timeStrToMinutes } from '@/shared/lib/utils';
 import { withFirebaseSync } from '@/shared/utils/firebaseGuard';
 import { eventBus } from '@/shared/lib/eventBus';
 
@@ -49,6 +49,33 @@ async function syncTempScheduleToFirebase(): Promise<void> {
 // Helper Functions
 // ============================================================================
 
+function parseYmdToLocalDate(dateStr: string): Date | null {
+  const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(dateStr);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const day = Number(match[3]);
+
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || !Number.isFinite(day)) return null;
+  const date = new Date(year, monthIndex, day);
+  if (date.getFullYear() !== year) return null;
+  if (date.getMonth() !== monthIndex) return null;
+  if (date.getDate() !== day) return null;
+  return date;
+}
+
+function normalizeYmd(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  const head = dateStr.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(head)) return head;
+
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return getLocalDate(parsed);
+}
+
 /**
  * 반복 규칙에 따라 특정 날짜에 작업이 표시되어야 하는지 확인
  * 
@@ -59,14 +86,26 @@ async function syncTempScheduleToFirebase(): Promise<void> {
 export function shouldShowOnDate(task: TempScheduleTask, date: string): boolean {
   const { scheduledDate, recurrence } = task;
 
+  const normalizedScheduledDate = normalizeYmd(scheduledDate);
+
   // 특정 날짜에만 표시되는 경우
-  if (scheduledDate && recurrence.type === 'none') {
-    return scheduledDate === date;
+  if (normalizedScheduledDate && recurrence.type === 'none') {
+    return normalizedScheduledDate === date;
   }
 
   // 반복 규칙 체크
-  const targetDate = new Date(date);
-  const taskStartDate = scheduledDate ? new Date(scheduledDate) : new Date(task.createdAt);
+  const targetDate = parseYmdToLocalDate(date);
+  if (!targetDate) return false;
+
+  const taskStartDate = (() => {
+    if (normalizedScheduledDate) {
+      return parseYmdToLocalDate(normalizedScheduledDate);
+    }
+    const createdAtYmd = getLocalDate(new Date(task.createdAt));
+    return parseYmdToLocalDate(createdAtYmd);
+  })();
+
+  if (!taskStartDate) return false;
 
   // 시작일 이전이면 표시하지 않음
   if (targetDate < taskStartDate) {
@@ -74,8 +113,12 @@ export function shouldShowOnDate(task: TempScheduleTask, date: string): boolean 
   }
 
   // 종료일 이후이면 표시하지 않음
-  if (recurrence.endDate && targetDate > new Date(recurrence.endDate)) {
-    return false;
+  if (recurrence.endDate) {
+    const endYmd = normalizeYmd(recurrence.endDate);
+    const endDate = endYmd ? parseYmdToLocalDate(endYmd) : null;
+    if (endDate && targetDate > endDate) {
+      return false;
+    }
   }
 
   switch (recurrence.type) {
@@ -102,7 +145,7 @@ export function shouldShowOnDate(task: TempScheduleTask, date: string): boolean 
 
     case 'none':
     default:
-      return scheduledDate === date;
+      return normalizedScheduledDate === date;
   }
 }
 
@@ -203,11 +246,12 @@ export async function loadTempScheduleTasksForRange(
   const allTasks = await loadTempScheduleTasks();
   const result: Record<string, TempScheduleTask[]> = {};
 
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = parseYmdToLocalDate(startDate);
+  const end = parseYmdToLocalDate(endDate);
+  if (!start || !end) return result;
 
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = getLocalDate(d);
     result[dateStr] = allTasks.filter(task => shouldShowOnDate(task, dateStr));
   }
 

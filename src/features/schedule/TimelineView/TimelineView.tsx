@@ -27,7 +27,7 @@ import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { useDragDropManager } from '@/features/schedule/hooks/useDragDropManager';
 import { loadGlobalGoals } from '@/data/repositories';
 import { TIME_BLOCKS, type Task, type TimeBlockId, type DailyGoal } from '@/shared/types/domain';
-import { generateId } from '@/shared/lib/utils';
+import { generateId, getLocalDate } from '@/shared/lib/utils';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
 import TimelineTaskBlock from './TimelineTaskBlock';
 import TaskModal from '@/features/schedule/TaskModal';
@@ -98,10 +98,12 @@ function TimelineViewComponent() {
   }, [loadTempData]);
 
   // 임시 스케줄 고스트 블록 계산
-  const today = new Date().toISOString().split('T')[0]; // 일단 오늘 날짜 기준 (TimelineView가 날짜를 prop으로 받지 않음)
+  // NOTE: UTC(toISOString) 기반 날짜 키는 로컬 기준과 어긋날 수 있어, 로컬 YYYY-MM-DD를 사용한다.
+  const today = getLocalDate();
   // TODO: TimelineView가 날짜를 prop으로 받게 되면 수정 필요. 현재는 오늘 기준.
 
-  const tempScheduleBlocks = getTempTasksForDate(today)
+  const tempTasksForToday = getTempTasksForDate?.(today) ?? [];
+  const tempScheduleBlocks = tempTasksForToday
     .map(t => {
       const startMinutes = t.startTime;
       const endMinutes = t.endTime;

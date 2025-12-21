@@ -20,8 +20,32 @@ import { getLocalDate, minutesToTimeStr } from '@/shared/lib/utils';
 // Helper: Calculate Week Dates
 // ============================================================================
 
-function calculateWeekDates(selectedDate: string): string[] {
-  const date = new Date(selectedDate);
+function parseYmdToLocalDate(dateStr: string): Date | null {
+  if (typeof dateStr !== 'string') return null;
+  const match = /^\d{4}-\d{2}-\d{2}$/.exec(dateStr);
+  if (!match) return null;
+
+  const [yearStr, monthStr, dayStr] = dateStr.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  if (month < 1 || month > 12) return null;
+  if (day < 1 || day > 31) return null;
+
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year) return null;
+  if (date.getMonth() !== month - 1) return null;
+  if (date.getDate() !== day) return null;
+  return date;
+}
+
+export function calculateWeekDates(selectedDate: string | null | undefined): string[] {
+  const parsed = typeof selectedDate === 'string' ? parseYmdToLocalDate(selectedDate) : null;
+  if (typeof selectedDate === 'string' && !parsed) return [];
+
+  const date = parsed ?? new Date();
   const day = date.getDay();
   const diff = date.getDate() - day + (day === 0 ? -6 : 1); // 월요일 시작
   const monday = new Date(date);
@@ -31,7 +55,7 @@ function calculateWeekDates(selectedDate: string): string[] {
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    dates.push(d.toISOString().split('T')[0]);
+    dates.push(getLocalDate(d));
   }
 
   return dates;
@@ -64,7 +88,7 @@ function snapToPixel(value: number): number {
 // ============================================================================
 
 function formatDate(dateStr: string): { day: number; month: number; isToday: boolean; isWeekend: boolean } {
-  const date = new Date(dateStr);
+  const date = parseYmdToLocalDate(dateStr) ?? new Date(dateStr);
   const today = getLocalDate();
   const dayOfWeek = date.getDay();
 

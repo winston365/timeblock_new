@@ -27,16 +27,40 @@ const POPOVER_CLOSE_DELAY = 300; // 팝오버 닫기 지연 시간 (ms)
 // Helper Functions
 // ============================================================================
 
+function parseYmdToLocalDate(dateStr: string): Date | null {
+  if (typeof dateStr !== 'string') return null;
+  const match = /^\d{4}-\d{2}-\d{2}$/.exec(dateStr);
+  if (!match) return null;
+
+  const [yearStr, monthStr, dayStr] = dateStr.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  if (month < 1 || month > 12) return null;
+  if (day < 1 || day > 31) return null;
+
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year) return null;
+  if (date.getMonth() !== month - 1) return null;
+  if (date.getDate() !== day) return null;
+  return date;
+}
+
 function getMonthInfo(dateStr: string): { year: number; month: number } {
-  const date = new Date(dateStr);
+  const date = parseYmdToLocalDate(dateStr) ?? new Date(dateStr);
   return {
     year: date.getFullYear(),
     month: date.getMonth() + 1,
   };
 }
 
-function calculateMonthDates(selectedDate: string): string[] {
-  const date = new Date(selectedDate);
+export function calculateMonthDates(selectedDate: string): string[] {
+  const parsed = parseYmdToLocalDate(selectedDate);
+  if (!parsed) return [];
+
+  const date = parsed;
   const year = date.getFullYear();
   const month = date.getMonth();
 
@@ -55,7 +79,7 @@ function calculateMonthDates(selectedDate: string): string[] {
 
   const dates: string[] = [];
   for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-    dates.push(d.toISOString().split('T')[0]);
+    dates.push(getLocalDate(d));
   }
 
   return dates;
@@ -116,7 +140,7 @@ const TaskPopover = memo(function TaskPopover({
     setAdjustedPosition({ x, y });
   }, [position]);
 
-  const dateObj = new Date(date);
+  const dateObj = parseYmdToLocalDate(date) ?? new Date(date);
   const formattedDate = `${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일`;
 
   return (
@@ -199,7 +223,7 @@ interface DayCellProps {
 }
 
 const DayCell = memo(function DayCell({ date, currentMonth, tasks, onDayClick, onHover, onLeave }: DayCellProps) {
-  const dateObj = new Date(date);
+  const dateObj = parseYmdToLocalDate(date) ?? new Date(date);
   const day = dateObj.getDate();
   const month = dateObj.getMonth() + 1;
   const dayOfWeek = dateObj.getDay();
@@ -335,7 +359,7 @@ function MonthlyScheduleViewComponent() {
     
     for (const date of monthDates) {
       const dateTasks = tasksByDate[date] || [];
-      const dateMonth = new Date(date).getMonth() + 1;
+      const dateMonth = (parseYmdToLocalDate(date) ?? new Date(date)).getMonth() + 1;
       
       // 이번 달만 카운트
       if (dateMonth === currentMonth) {
@@ -516,7 +540,7 @@ function MonthlyScheduleViewComponent() {
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {monthStats.upcomingList.map(({ date, task }) => {
-                      const dateObj = new Date(date);
+                      const dateObj = parseYmdToLocalDate(date) ?? new Date(date);
                       const day = dateObj.getDate();
                       const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
                       

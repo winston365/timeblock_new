@@ -15,7 +15,7 @@
 import { memo, useMemo, useState, useEffect } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { TempScheduleTask, RecurrenceRule } from '@/shared/types/tempSchedule';
-import { minutesToTimeStr } from '@/shared/lib/utils';
+import { getLocalDate, minutesToTimeStr } from '@/shared/lib/utils';
 
 // ============================================================================
 // Constants
@@ -43,15 +43,54 @@ const DURATION_THRESHOLDS = {
  * 오늘 날짜를 YYYY-MM-DD 형식으로 반환
  */
 function getTodayStr(): string {
-  return new Date().toISOString().split('T')[0];
+  return getLocalDate();
+}
+
+/**
+ * YYYY-MM-DD 문자열을 로컬 Date로 파싱
+ * @note new Date('YYYY-MM-DD')는 환경에 따라 UTC로 해석될 수 있어 사용하지 않는다.
+ */
+function parseYmdToLocalDate(dateStr: string): Date | null {
+  if (!dateStr) return null;
+
+  const head = dateStr.slice(0, 10);
+  const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(head);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || !Number.isFinite(day)) return null;
+
+  const date = new Date(year, monthIndex, day);
+  if (date.getFullYear() !== year) return null;
+  if (date.getMonth() !== monthIndex) return null;
+  if (date.getDate() !== day) return null;
+  return date;
+}
+
+function normalizeYmd(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  const head = dateStr.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(head)) return head;
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return getLocalDate(parsed);
 }
 
 /**
  * 두 날짜 사이의 일수 차이 계산
  */
 function getDaysDiff(dateStr: string, baseDate: string = getTodayStr()): number {
-  const date = new Date(dateStr);
-  const base = new Date(baseDate);
+  const normalizedDateStr = normalizeYmd(dateStr);
+  const normalizedBaseDate = normalizeYmd(baseDate) ?? baseDate;
+
+  if (!normalizedDateStr) return 0;
+
+  const date = parseYmdToLocalDate(normalizedDateStr);
+  const base = parseYmdToLocalDate(normalizedBaseDate);
+  if (!date || !base) return 0;
+
   const diffTime = date.getTime() - base.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
@@ -74,7 +113,7 @@ function getDDayLabel(dateStr: string): string {
  */
 function isImminent(task: TempScheduleTask): boolean {
   const today = getTodayStr();
-  const scheduledDate = task.scheduledDate ?? today;
+  const scheduledDate = normalizeYmd(task.scheduledDate) ?? today;
   
   if (scheduledDate !== today) return false;
   
@@ -90,7 +129,7 @@ function isImminent(task: TempScheduleTask): boolean {
  */
 function isPast(task: TempScheduleTask): boolean {
   const today = getTodayStr();
-  const scheduledDate = task.scheduledDate ?? today;
+  const scheduledDate = normalizeYmd(task.scheduledDate) ?? today;
   
   // 과거 날짜
   if (scheduledDate < today) return true;
@@ -138,7 +177,7 @@ function getDurationColorClass(startTime: number, endTime: number): string {
  */
 function isInProgress(task: TempScheduleTask, currentMinutes: number): boolean {
   const today = getTodayStr();
-  const scheduledDate = task.scheduledDate ?? today;
+  const scheduledDate = normalizeYmd(task.scheduledDate) ?? today;
   
   if (scheduledDate !== today) return false;
   
@@ -153,7 +192,7 @@ function getNextUpcomingTask(tasks: TempScheduleTask[], currentMinutes: number):
   
   const upcoming = tasks
     .filter(t => {
-      const date = t.scheduledDate ?? today;
+      const date = normalizeYmd(t.scheduledDate) ?? today;
       return date === today && t.startTime > currentMinutes;
     })
     .sort((a, b) => a.startTime - b.startTime);
@@ -166,7 +205,7 @@ function getNextUpcomingTask(tasks: TempScheduleTask[], currentMinutes: number):
  */
 function getImminentLabel(task: TempScheduleTask): string | null {
   const today = getTodayStr();
-  const scheduledDate = task.scheduledDate ?? today;
+  const scheduledDate = normalizeYmd(task.scheduledDate) ?? today;
   
   if (scheduledDate !== today) return null;
   
@@ -227,7 +266,7 @@ function groupTasksByDate(tasks: TempScheduleTask[]): DateGroup[] {
   const groups: Record<string, DateGroup> = {};
   
   for (const task of tasks) {
-    const date = task.scheduledDate ?? today;
+    const date = normalizeYmd(task.scheduledDate) ?? today;
     const diff = getDaysDiff(date);
     
     let groupKey: string;
@@ -275,8 +314,8 @@ function groupTasksByDate(tasks: TempScheduleTask[]): DateGroup[] {
       ...group,
       tasks: group.tasks.sort((a, b) => {
         // 먼저 날짜순, 같은 날이면 시간순
-        const dateA = a.scheduledDate ?? today;
-        const dateB = b.scheduledDate ?? today;
+        const dateA = normalizeYmd(a.scheduledDate) ?? today;
+        const dateB = normalizeYmd(b.scheduledDate) ?? today;
         if (dateA !== dateB) return dateA.localeCompare(dateB);
         return a.startTime - b.startTime;
       }),

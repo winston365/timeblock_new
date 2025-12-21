@@ -300,7 +300,7 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
         break;
     }
 
-    set({ selectedDate: current.toISOString().split('T')[0] });
+    set({ selectedDate: getLocalDate(current) });
   },
 
   goToNext: () => {
@@ -319,7 +319,7 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
         break;
     }
 
-    set({ selectedDate: current.toISOString().split('T')[0] });
+    set({ selectedDate: getLocalDate(current) });
   },
 
   goToToday: () => {

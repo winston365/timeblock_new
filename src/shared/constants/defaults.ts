@@ -20,6 +20,7 @@
  */
 
 import { TEN_MINUTES_MS } from '@/shared/lib/constants';
+import { getLocalDate } from '@/shared/lib/utils';
 
 // ============================================================================
 // 비활동 감지 시스템 기본값
@@ -122,7 +123,7 @@ export const TASK_DEFAULTS = {
   /** 기본 난이도 */
   resistance: 'low' as const,
   /** 데드라인 - 오늘 날짜 반환 함수 */
-  getDefaultDeadline: () => new Date().toISOString().split('T')[0],
+  getDefaultDeadline: () => getLocalDate(),
 } as const;
 
 // ============================================================================
