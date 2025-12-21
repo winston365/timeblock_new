@@ -11,7 +11,6 @@ describe('tempSchedule date parsing (local-safe)', () => {
         if (args.length === 1 && typeof args[0] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(args[0])) {
           throw new Error("Disallowed Date('YYYY-MM-DD') constructor usage");
         }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         super(...(args as never[]));
       }
 

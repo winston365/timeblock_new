@@ -16,6 +16,7 @@ import type { Task } from '@/shared/types/domain';
 import { getLocalDate } from '@/shared/lib/utils';
 import {
     getValidAccessToken,
+    getGoogleCalendarSettings,
     refreshGoogleAccessTokenForRetry,
     createCalendarEvent,
     updateCalendarEvent,
@@ -74,6 +75,26 @@ async function callTasksApi<T>(
     const doRequest = async (): Promise<Response> => {
         const accessToken = await getValidAccessToken();
         if (!accessToken) {
+            const settings = await getGoogleCalendarSettings();
+
+            if (!settings?.enabled) {
+                throw new Error('Google Calendar 연동이 꺼져 있습니다. 설정에서 연동을 켜주세요.');
+            }
+
+            if (settings.refreshToken && !window.electronAPI?.googleOAuthRefresh) {
+                throw new Error(
+                    '자동 토큰 갱신은 Electron 앱에서만 가능합니다. 데스크톱 앱으로 실행하거나 다시 로그인해주세요.'
+                );
+            }
+
+            if (!settings.refreshToken) {
+                throw new Error('리프레시 토큰이 없습니다. Google 계정에 다시 로그인해주세요.');
+            }
+
+            if (!settings.clientId || !settings.clientSecret) {
+                throw new Error('OAuth 클라이언트 설정이 누락되었습니다. 설정에서 다시 연동해주세요.');
+            }
+
             throw new Error('인증이 필요합니다. Google 계정에 다시 로그인해주세요.');
         }
 
@@ -93,9 +114,11 @@ async function callTasksApi<T>(
     if (!response.ok && response.status === 401 && !attemptedRefresh) {
         attemptedRefresh = true;
         const refreshed = await refreshGoogleAccessTokenForRetry();
-        if (refreshed) {
-            response = await doRequest();
+        if (!refreshed) {
+            throw new Error('Google 인증이 만료되었습니다. 설정에서 다시 로그인해주세요.');
         }
+
+        response = await doRequest();
     }
 
     if (!response.ok) {
@@ -147,6 +170,10 @@ export async function updateGoogleTask(task: TaskWithDate): Promise<GoogleCalend
  * - 신규 정책: Task는 Calendar Event로 저장되므로 Google Tasks 항목은 삭제만 수행 (레거시 청소)
  */
 export async function deleteGoogleTask(taskId: string): Promise<void> {
+    // NOTE: deleteCalendarEvent() may remove the mapping record, so capture it first
+    // for legacy Google Tasks cleanup.
+    const mapping = await getTaskGoogleTaskMapping(taskId);
+
     // Calendar Event도 함께 삭제하여 타임블록 점유 해제
     try {
         await deleteCalendarEvent(taskId);
@@ -157,7 +184,6 @@ export async function deleteGoogleTask(taskId: string): Promise<void> {
         }
     }
 
-    const mapping = await getTaskGoogleTaskMapping(taskId);
     if (!mapping) return;
 
     try {

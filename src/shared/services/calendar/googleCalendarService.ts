@@ -37,6 +37,8 @@ import {
 
 const TOKEN_REFRESH_BUFFER = 5 * 60 * 1000; // 5분 전에 토큰 갱신
 
+let refreshInFlight: Promise<boolean> | null = null;
+
 // ============================================================================
 // Settings 관리
 // ============================================================================
@@ -122,9 +124,16 @@ export async function loginWithGoogle(clientId: string, clientSecret: string): P
  */
 export async function isTokenValid(): Promise<boolean> {
   const settings = await getGoogleCalendarSettings();
-  if (!settings?.enabled || !settings.accessToken || !settings.tokenExpiresAt) {
+  if (!settings?.enabled || !settings.accessToken) {
     return false;
   }
+
+  // tokenExpiresAt이 없으면 "알 수 없음" 상태로 간주하고,
+  // 401 발생 시 refresh+retry로 복구한다. (즉시 재인증 강제 금지)
+  if (!settings.tokenExpiresAt) {
+    return true;
+  }
+
   return settings.tokenExpiresAt > Date.now() + TOKEN_REFRESH_BUFFER;
 }
 
@@ -132,44 +141,54 @@ export async function isTokenValid(): Promise<boolean> {
  * Access Token 자동 갱신
  */
 async function refreshAccessToken(): Promise<boolean> {
-  const settings = await getGoogleCalendarSettings();
-  if (!settings?.refreshToken || !settings.clientId || !settings.clientSecret) {
-    console.warn('[GoogleCalendar] Cannot refresh: missing refresh token or credentials');
-    return false;
+  if (refreshInFlight) {
+    return await refreshInFlight;
   }
 
-  // Electron 환경 확인
-  if (!window.electronAPI?.googleOAuthRefresh) {
-    console.warn('[GoogleCalendar] Cannot refresh: not in Electron environment');
-    return false;
-  }
-
-  try {
-    const result = await window.electronAPI.googleOAuthRefresh(
-      settings.clientId,
-      settings.clientSecret,
-      settings.refreshToken
-    );
-
-    if (!result.success) {
-      console.error('[GoogleCalendar] Token refresh failed:', result.error);
+  refreshInFlight = (async () => {
+    const settings = await getGoogleCalendarSettings();
+    if (!settings?.refreshToken || !settings.clientId || !settings.clientSecret) {
+      console.warn('[GoogleCalendar] Cannot refresh: missing refresh token or credentials');
       return false;
     }
 
-    // 새 토큰 저장
-    await saveGoogleCalendarSettings({
-      ...settings,
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken || settings.refreshToken, // 회전된 refresh_token 보존
-      tokenExpiresAt: Date.now() + (result.expiresIn || 3600) * 1000,
-    });
+    // Electron 환경 확인
+    if (!window.electronAPI?.googleOAuthRefresh) {
+      console.warn('[GoogleCalendar] Cannot refresh: not in Electron environment');
+      return false;
+    }
 
-    console.log('[GoogleCalendar] Token refreshed successfully');
-    return true;
-  } catch (error) {
-    console.error('[GoogleCalendar] Token refresh error:', error);
-    return false;
-  }
+    try {
+      const result = await window.electronAPI.googleOAuthRefresh(
+        settings.clientId,
+        settings.clientSecret,
+        settings.refreshToken
+      );
+
+      if (!result.success) {
+        console.error('[GoogleCalendar] Token refresh failed:', result.error);
+        return false;
+      }
+
+      // 새 토큰 저장
+      await saveGoogleCalendarSettings({
+        ...settings,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken || settings.refreshToken, // 회전된 refresh_token 보존
+        tokenExpiresAt: Date.now() + (result.expiresIn || 3600) * 1000,
+      });
+
+      console.log('[GoogleCalendar] Token refreshed successfully');
+      return true;
+    } catch (error) {
+      console.error('[GoogleCalendar] Token refresh error:', error);
+      return false;
+    }
+  })().finally(() => {
+    refreshInFlight = null;
+  });
+
+  return await refreshInFlight;
 }
 
 // 외부 모듈(예: Google Tasks)에서 401 발생 시 재사용할 수 있도록 export
@@ -182,13 +201,29 @@ export async function refreshGoogleAccessTokenForRetry(): Promise<boolean> {
  */
 export async function getValidAccessToken(): Promise<string | null> {
   const settings = await getGoogleCalendarSettings();
-  if (!settings?.enabled || !settings.accessToken) {
+  if (!settings?.enabled) {
     return null;
+  }
+
+  // accessToken이 없더라도 refreshToken이 있으면 갱신 시도
+  if (!settings.accessToken) {
+    if (!settings.refreshToken) {
+      return null;
+    }
+    console.log('[GoogleCalendar] Access token missing, attempting refresh...');
+    const refreshed = await refreshAccessToken();
+    if (!refreshed) {
+      return null;
+    }
+    const newSettings = await getGoogleCalendarSettings();
+    return newSettings?.accessToken || null;
   }
 
   // 토큰이 곧 만료되면 갱신
   const expiresAt = settings.tokenExpiresAt;
-  if (!expiresAt || expiresAt < Date.now() + TOKEN_REFRESH_BUFFER) {
+  // tokenExpiresAt이 없으면 선제 refresh를 시도하지 않는다.
+  // (레거시 데이터/부분 저장에서 불필요한 재로그인 유도 방지)
+  if (expiresAt && expiresAt < Date.now() + TOKEN_REFRESH_BUFFER) {
     console.log('[GoogleCalendar] Token expiring soon, refreshing...');
     const refreshed = await refreshAccessToken();
     if (!refreshed) {
@@ -218,6 +253,24 @@ async function callCalendarApi<T>(
   const doRequest = async (): Promise<Response> => {
     const accessToken = await getValidAccessToken();
     if (!accessToken) {
+      // 왜 토큰을 못 얻었는지 사용자에게 더 명확히 안내
+      const settings = await getGoogleCalendarSettings();
+      if (!settings?.enabled) {
+        throw new Error('Google Calendar 연동이 꺼져 있습니다. 설정에서 연동을 켜주세요.');
+      }
+
+      if (settings.refreshToken && !window.electronAPI?.googleOAuthRefresh) {
+        throw new Error('자동 토큰 갱신은 Electron 앱에서만 가능합니다. 데스크톱 앱으로 실행하거나 다시 로그인해주세요.');
+      }
+
+      if (!settings.refreshToken) {
+        throw new Error('리프레시 토큰이 없습니다. Google 계정에 다시 로그인해주세요.');
+      }
+
+      if (!settings.clientId || !settings.clientSecret) {
+        throw new Error('OAuth 클라이언트 설정이 누락되었습니다. 설정에서 다시 연동해주세요.');
+      }
+
       throw new Error('인증이 필요합니다. Google 계정에 다시 로그인해주세요.');
     }
 
@@ -236,10 +289,12 @@ async function callCalendarApi<T>(
   // 401/invalid_grant 발생 시 한 번만 리프레시 후 재시도
   if (!response.ok && response.status === 401 && !attemptedRefresh) {
     attemptedRefresh = true;
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      response = await doRequest();
+    const refreshed = await refreshGoogleAccessTokenForRetry();
+    if (!refreshed) {
+      throw new Error('Google 인증이 만료되었습니다. 설정에서 다시 로그인해주세요.');
     }
+
+    response = await doRequest();
   }
 
   if (!response.ok) {
