@@ -40,7 +40,7 @@ import {
     BattleTab,
     GoogleCalendarTab,
 } from './components/tabs';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 import AsyncStatePanel from '@/shared/components/status/AsyncStatePanel';
 import StatusBanner from '@/shared/components/status/StatusBanner';
 
@@ -122,8 +122,6 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
         }
     }, [isOpen, settings]);
 
-    useModalEscapeClose(isOpen, onClose);
-
     // 로그 및 토큰 사용량 로드
     useEffect(() => {
         if (!isOpen || activeTab !== 'logs') return;
@@ -182,6 +180,15 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
             setSaving(false);
         }
     };
+
+    useModalHotkeys({
+        isOpen,
+        onEscapeClose: onClose,
+        primaryAction: {
+            enabled: !saving,
+            onPrimary: handleSave,
+        },
+    });
 
     const handleClearLogs = () => {
         if (confirm('모든 동기화 로그를 삭제하시겠습니까?')) {

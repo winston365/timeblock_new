@@ -212,14 +212,6 @@ export function useAppInitialization() {
                                     await Promise.all(tokenUsageUpdatePromises);
                                 }
 
-                                // 3.9 GlobalGoals 저장
-                                if (firebaseData.globalGoals && Array.isArray(firebaseData.globalGoals)) {
-                                    await db.globalGoals.clear();
-                                    if (firebaseData.globalGoals.length > 0) {
-                                        await db.globalGoals.bulkAdd(firebaseData.globalGoals);
-                                    }
-                                }
-
                                 // 3.10 Settings 저장 (병합 - 최신 updatedAt 우선)
                                 if (firebaseData.settings) {
                                     const currentSettings = await db.settings.get('current');

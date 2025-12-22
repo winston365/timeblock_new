@@ -39,11 +39,6 @@ vi.mock('@/data/repositories/waifuRepository', () => ({
   increaseAffectionFromTask: increaseAffectionFromTaskSpy,
 }));
 
-const recalculateGlobalGoalProgressSpy = vi.fn(async () => undefined);
-vi.mock('@/data/repositories', () => ({
-  recalculateGlobalGoalProgress: recalculateGlobalGoalProgressSpy,
-}));
-
 const addXPStoreSpy = vi.fn(async () => undefined);
 vi.mock('@/shared/stores/gameStateStore', () => ({
   useGameStateStore: {
@@ -107,13 +102,11 @@ describe('TaskCompletionService', () => {
   it('runs handlers in a stable order', async () => {
     vi.resetModules();
 
-    const handlers = await import('@/shared/services/gameplay/taskCompletion/handlers/goalProgressHandler');
     const xpHandler = await import('@/shared/services/gameplay/taskCompletion/handlers/xpRewardHandler');
     const questHandler = await import('@/shared/services/gameplay/taskCompletion/handlers/questProgressHandler');
     const waifuHandler = await import('@/shared/services/gameplay/taskCompletion/handlers/waifuAffectionHandler');
     const blockHandler = await import('@/shared/services/gameplay/taskCompletion/handlers/blockCompletionHandler');
 
-    const goalSpy = vi.spyOn(handlers.GoalProgressHandler.prototype, 'handle');
     const xpSpy = vi.spyOn(xpHandler.XPRewardHandler.prototype, 'handle');
     const questSpy = vi.spyOn(questHandler.QuestProgressHandler.prototype, 'handle');
     const waifuSpy = vi.spyOn(waifuHandler.WaifuAffectionHandler.prototype, 'handle');
@@ -127,7 +120,6 @@ describe('TaskCompletionService', () => {
     await service.handleTaskCompletion(makeContext());
 
     const order = [
-      goalSpy.mock.invocationCallOrder[0],
       xpSpy.mock.invocationCallOrder[0],
       questSpy.mock.invocationCallOrder[0],
       waifuSpy.mock.invocationCallOrder[0],
@@ -159,11 +151,11 @@ describe('TaskCompletionService', () => {
   it('returns success=false when a handler throws', async () => {
     vi.resetModules();
 
-    const { GoalProgressHandler } = await import(
-      '@/shared/services/gameplay/taskCompletion/handlers/goalProgressHandler'
+    const { XPRewardHandler } = await import(
+      '@/shared/services/gameplay/taskCompletion/handlers/xpRewardHandler'
     );
 
-    vi.spyOn(GoalProgressHandler.prototype, 'handle').mockRejectedValueOnce(new Error('boom'));
+    vi.spyOn(XPRewardHandler.prototype, 'handle').mockRejectedValueOnce(new Error('boom'));
 
     const { TaskCompletionService } = await import(
       '@/shared/services/gameplay/taskCompletion/taskCompletionService'

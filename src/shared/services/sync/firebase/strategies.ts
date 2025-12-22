@@ -15,7 +15,6 @@ import type { SyncStrategy } from './syncCore';
 import { mergeGameState, mergeTaskArray } from './conflictResolver';
 import type {
   DailyData,
-  DailyGoal,
   GameState,
   ChatHistory,
   DailyTokenUsage,
@@ -150,36 +149,6 @@ export const shopItemsStrategy: SyncStrategy<ShopItem[]> = {
   collection: 'shopItems',
   getSuccessMessage: (data) =>
     `ShopItems synced (${data.length} items, total quantity: ${data.reduce((sum, item) => sum + (item.quantity || 0), 0)})`,
-};
-
-// ============================================================================
-// DailyGoals 전략 (Last-Write-Wins) - DEPRECATED
-// ============================================================================
-
-/**
- * DailyGoals 동기화 전략 (Last-Write-Wins)
- * @deprecated globalGoalStrategy로 대체되었습니다.
- * @type {SyncStrategy<DailyGoal[]>}
- */
-export const dailyGoalStrategy: SyncStrategy<DailyGoal[]> = {
-  collection: 'dailyGoals',
-  getSuccessMessage: (data, key) =>
-    `DailyGoals synced: ${key} (${data.length} goals, ${data.reduce((sum, g) => sum + g.completedMinutes, 0)}m completed)`,
-};
-
-// ============================================================================
-// GlobalGoals 전략 (Last-Write-Wins)
-// ============================================================================
-
-/**
- * GlobalGoals 동기화 전략 (Last-Write-Wins)
- * 글로벌 목표(총 진행 시간 추적)를 Firebase와 동기화합니다.
- * @type {SyncStrategy<DailyGoal[]>}
- */
-export const globalGoalStrategy: SyncStrategy<DailyGoal[]> = {
-  collection: 'globalGoals',
-  getSuccessMessage: (data) =>
-    `GlobalGoals synced (${data.length} goals, ${data.reduce((sum, g) => sum + g.completedMinutes, 0)}m completed)`,
 };
 
 // ============================================================================

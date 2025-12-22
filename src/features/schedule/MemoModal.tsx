@@ -6,9 +6,9 @@
  * @dependencies react-dom/createPortal
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 
 interface MemoModalProps {
   memo: string;
@@ -27,7 +27,20 @@ interface MemoModalProps {
 export function MemoModal({ memo, onSave, onClose }: MemoModalProps) {
   const [editedMemo, setEditedMemo] = useState(memo);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  useModalEscapeClose(true, onClose);
+
+  const handleSave = useCallback(() => {
+    onSave(editedMemo);
+    onClose();
+  }, [editedMemo, onSave, onClose]);
+
+  // ESC + Ctrl/Cmd+Enter 통합 핫키 처리
+  useModalHotkeys({
+    isOpen: true,
+    onEscapeClose: onClose,
+    primaryAction: {
+      onPrimary: handleSave,
+    },
+  });
 
   useEffect(() => {
     textareaRef.current?.focus();
@@ -35,23 +48,6 @@ export function MemoModal({ memo, onSave, onClose }: MemoModalProps) {
     textareaRef.current?.setSelectionRange(length, length);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    const handleKeyboard = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && e.ctrlKey) {
-        e.preventDefault();
-        handleSave();
-      }
-    };
-    window.addEventListener('keydown', handleKeyboard);
-    return () => window.removeEventListener('keydown', handleKeyboard);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onClose, editedMemo]);
-
-  const handleSave = () => {
-    onSave(editedMemo);
-    onClose();
-  };
 
   const handleCancel = () => {
     onClose();

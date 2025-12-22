@@ -14,7 +14,6 @@ interface TimelineTaskBlockProps {
   task: Task;
   top: number;
   height: number;
-  goalColor?: string | null;
   onTaskClick?: (task: Task) => void;
   onDragStart?: (task: Task, e: React.DragEvent) => void;
   onContextMenu?: (task: Task, e: React.MouseEvent) => void;
@@ -57,7 +56,6 @@ function TimelineTaskBlockComponent({
   task, 
   top, 
   height, 
-  goalColor,
   onTaskClick, 
   onDragStart,
   onContextMenu,
@@ -103,15 +101,7 @@ function TimelineTaskBlockComponent({
       }}
       title={`${task.text} (${duration}분) - ${bucketLabel}`}
     >
-      {/* 목표 연결 스트라이프 */}
-      {goalColor && (
-        <div 
-          className="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg"
-          style={{ backgroundColor: goalColor }}
-        />
-      )}
-      
-      <div className={`h-full px-2 py-1 ${colors.text} ${goalColor ? 'pl-3' : ''}`}>
+      <div className={`h-full px-2 py-1 ${colors.text}`}>
         <div className="flex items-start gap-1.5">
           {task.completed && <span className="text-xs">✓</span>}
           {task.emoji && <span className="text-xs">{task.emoji}</span>}
@@ -124,7 +114,6 @@ function TimelineTaskBlockComponent({
         {height >= 35 && (
           <div className="mt-1 text-[10px] opacity-60 flex items-center gap-1.5">
             <span className="bg-white/10 px-1 rounded">{duration}분</span>
-            {task.goalId && <span>🎯</span>}
           </div>
         )}
       </div>

@@ -14,12 +14,12 @@
  *   - TIME_BLOCKS: 시간대 상수
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Template, Resistance, TimeBlockId, RecurrenceType } from '@/shared/types/domain';
 import { createTemplate, updateTemplate } from '@/data/repositories';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import { getTemplateCategories, addTemplateCategory } from '@/data/repositories/settingsRepository';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 
 interface TemplateModalProps {
   template: Template | null; // null이면 신규 생성
@@ -56,7 +56,27 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  useModalEscapeClose(true, () => onClose(false));
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const handleEscapeClose = useCallback(() => {
+    if (isSaving) return;
+    onClose(false);
+  }, [isSaving, onClose]);
+
+  const handlePrimaryAction = useCallback(() => {
+    if (isSaving) return;
+    if (currentPage !== 3) return;
+    formRef.current?.requestSubmit();
+  }, [currentPage, isSaving]);
+
+  useModalHotkeys({
+    isOpen: true,
+    onEscapeClose: handleEscapeClose,
+    primaryAction: {
+      enabled: !isSaving && currentPage === 3,
+      onPrimary: handlePrimaryAction,
+    },
+  });
 
   // 카테고리 목록 로드
   useEffect(() => {
@@ -187,7 +207,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col">
+        <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col">
           <div className="h-[400px] overflow-y-auto p-5">
 
             {/* Page 1: Basic Info */}

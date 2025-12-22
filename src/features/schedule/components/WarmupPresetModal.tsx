@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import type { WarmupPresetItem } from '@/shared/types/domain';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
 import { SYSTEM_STATE_DEFAULTS } from '@/shared/constants/defaults';
 
@@ -24,7 +24,6 @@ export function WarmupPresetModal({ preset, onSave, onApply, onClose, onAutoGene
   const [autoGenerateEnabled, setAutoGenerateEnabled] = useState<boolean>(
     SYSTEM_STATE_DEFAULTS.warmupAutoGenerateEnabled
   );
-  useModalEscapeClose(true, onClose);
 
   // Dexie systemState에서 자동생성 설정 로드
   useEffect(() => {
@@ -80,6 +79,14 @@ export function WarmupPresetModal({ preset, onSave, onApply, onClose, onAutoGene
 
   const handleSave = () => onSave(draft.filter(item => item.text.trim()));
   const handleApply = () => onApply(draft.filter(item => item.text.trim()));
+
+  useModalHotkeys({
+    isOpen: true,
+    onEscapeClose: onClose,
+    primaryAction: {
+      onPrimary: handleApply,
+    },
+  });
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 px-4 py-8">

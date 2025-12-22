@@ -168,18 +168,6 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
                 });
             }
 
-            // Goal 진행률 이벤트 (Goal Subscriber가 처리)
-            // 인박스 작업은 목표 진행도에 포함하지 않는다 (타임블록 계획 기준)
-            if (updatedTask.goalId && updatedTask.timeBlock !== null) {
-                eventBus.emit('goal:progressChanged', {
-                    goalId: updatedTask.goalId,
-                    taskId: updatedTask.id,
-                    action: 'completed',
-                }, {
-                    source: 'inboxStore.toggleTaskCompletion',
-                });
-            }
-
             await get().loadData();
         }, { errorPrefix: 'InboxStore: toggleTaskCompletion' });
     },

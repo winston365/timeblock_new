@@ -15,12 +15,12 @@
  * - FocusTimer: 타이머 시각화 컴포넌트
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { useMemoMissionStore } from '@/shared/stores/memoMissionStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { FocusTimer } from '@/features/schedule/components/FocusTimer';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 
 /**
  * 메모 미션 모달 컴포넌트
@@ -47,11 +47,54 @@ export function MemoMissionModal() {
     
     const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
 
-    const handleClose = () => {
+    const handleClose = useCallback(() => {
         closeMission();
-    };
+    }, [closeMission]);
 
-    useModalEscapeClose(isOpen, handleClose);
+    // Computed values (hoisted above hook for TDZ safety)
+    const memoMissionCharCount = memoMissionText.length;
+    const memoMissionAddedCount = Math.max(0, memoMissionCharCount - initialMemoLength);
+    const memoMissionTimeMet = memoMissionElapsed >= 60;
+    const memoMissionTextMet = memoMissionAddedCount >= 30;
+    const memoMissionReward = memoMissionAddedCount >= 200 ? 40 : 20;
+    const memoMissionEligible = memoMissionTimeMet && memoMissionTextMet;
+    const memoMissionProgress = Math.min((memoMissionElapsed / 60) * 100, 100);
+
+    // Define handleComplete before hook call (TDZ safety)
+    const handleComplete = useCallback(async () => {
+        if (!memoMissionEligible) return;
+        const reward = memoMissionReward;
+        
+        try {
+            await onUpdateTask?.({ memo: memoMissionText });
+        } catch (error) {
+            console.error('[MemoMissionModal] 메모 저장에 실패했습니다:', error);
+        }
+        
+        try {
+            if (onAwardXP) {
+                await onAwardXP(reward, 'memo_mission');
+            } else {
+                await useGameStateStore.getState().addXP(reward, task?.timeBlock || undefined);
+            }
+            toast.success(`+${reward} XP 획득!`, { icon: '🎉' });
+        } catch (error) {
+            console.error('[MemoMissionModal] XP 지급 실패:', error);
+            toast.error('XP 지급에 실패했어요. 다시 시도해주세요.');
+        } finally {
+            handleClose();
+        }
+    }, [memoMissionEligible, memoMissionReward, onUpdateTask, memoMissionText, onAwardXP, task?.timeBlock, handleClose]);
+
+    useModalHotkeys({
+        isOpen,
+        onEscapeClose: handleClose,
+        primaryAction: {
+            onPrimary: handleComplete,
+            enabled: memoMissionEligible,
+            allowInTextarea: true, // explicit for clarity since textarea exists
+        },
+    });
     
     // Timer interval
     useEffect(() => {
@@ -72,44 +115,10 @@ export function MemoMissionModal() {
     
     if (!isOpen || !task) return null;
     
-    // Computed values
-    const memoMissionCharCount = memoMissionText.length;
-    const memoMissionAddedCount = Math.max(0, memoMissionCharCount - initialMemoLength);
-    const memoMissionTimeMet = memoMissionElapsed >= 60;
-    const memoMissionTextMet = memoMissionAddedCount >= 30;
-    const memoMissionReward = memoMissionAddedCount >= 200 ? 40 : 20;
-    const memoMissionEligible = memoMissionTimeMet && memoMissionTextMet;
-    const memoMissionProgress = Math.min((memoMissionElapsed / 60) * 100, 100);
-    
     const formatElapsedTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
-    
-    const handleComplete = async () => {
-        if (!memoMissionEligible) return;
-        const reward = memoMissionReward;
-        
-        try {
-            await onUpdateTask?.({ memo: memoMissionText });
-        } catch (error) {
-            console.error('[MemoMissionModal] 메모 저장에 실패했습니다:', error);
-        }
-        
-        try {
-            if (onAwardXP) {
-                await onAwardXP(reward, 'memo_mission');
-            } else {
-                await useGameStateStore.getState().addXP(reward, task.timeBlock || undefined);
-            }
-            toast.success(`+${reward} XP 획득!`, { icon: '🎉' });
-        } catch (error) {
-            console.error('[MemoMissionModal] XP 지급 실패:', error);
-            toast.error('XP 지급에 실패했어요. 다시 시도해주세요.');
-        } finally {
-            handleClose();
-        }
     };
     
     return (

@@ -241,11 +241,6 @@ export async function initializeNewDay(): Promise<GameState> {
     // 자동 생성 템플릿에서 작업 생성
     await generateTasksFromAutoTemplates();
 
-    // 전역 목표 진행도 초기화
-    const { resetDailyGoalProgress } = await import('../globalGoalRepository');
-    await resetDailyGoalProgress();
-    console.log('✅ Global goal progress reset for new day');
-
     await saveGameState(updatedState);
     return updatedState;
   } catch (error) {

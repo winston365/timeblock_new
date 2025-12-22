@@ -1,6 +1,6 @@
 # System Architecture — TimeBlock Planner (Renderer 중심)
 
-> Last updated: 2025-12-18
+> Last updated: 2025-12-22
 
 ## Changelog
 | Date | Change | Rationale | Plan/Ref |
@@ -9,6 +9,8 @@
 | 2025-12-17 | Phased rollout 설계: UI 5개 변경(탭/목표/TempSchedule/XP바) | 회귀 위험이 높은 UI 삭제를 “엔트리 제거→정리”로 단계화하여 롤백/검증을 단순화 | 002-ui-five-changes-phased-rollout-architecture-findings.md |
 | 2025-12-17 | 구조 개선 대안(A/B) 및 추천안 정리(프론트/UI 중심) | 레이어는 존재하지만 DB 접근/이벤트 발행이 경계 밖으로 새어 결합도가 증가 → “경계 재정착”을 최우선으로 제안 | 003-frontend-structural-improvements-architecture-findings.md |
 | 2025-12-18 | Firebase RTDB 다운로드 스파이크 완화(Phase 0~3) 설계 추가 | 백엔드 변경 없이도 리스너/초기 fetch 폭주를 즉시 차단하고, 계측→정합성→가드레일 순으로 리스크를 낮춤 | 004-firebase-rtdb-mitigation-phased-architecture-findings.md |
+| 2025-12-21 | 장기목표(WeeklyGoal) 프론트/UI 개선 아키텍처 옵션(A/B/C) 및 권고안 추가 | weekly/global 목표 의미론 분리로 인한 경계 혼선을 낮추고, 모달 UX/검증/구조 부채를 “UI-only” 범위에서 우선 해결 | 005-long-term-goals-frontend-architecture-findings.md |
+| 2025-12-22 | 전 모달 공통 UX: ESC 닫기 + Ctrl/Cmd+Enter primary 표준화 권고안 추가 | 기존 `useModalEscapeClose`(스택 기반) 패턴을 확장해 스택 정합성과 IME(조합) 리스크를 동시에 해결 | 006-modal-hotkeys-standardization-architecture-findings.md |
 
 ## Purpose
 - Renderer(Electron + React) 중심의 시스템 경계/데이터 흐름/결정(ADR)을 기록하는 단일 출처.
@@ -36,6 +38,15 @@
 - 모달: `src/features/schedule/components/WarmupPresetModal.tsx`
 - 프리셋 데이터: Firebase sync(기존 warmupPresetStrategy)로 로드/저장.
 - 자동 삽입: `src/features/schedule/ScheduleView.tsx` 내부 `useEffect`에서 시간 기반으로 수행(현재는 항상 on).
+
+### Goals (Weekly vs Global)
+- Weekly goals(장기목표/주간): `src/features/goals/*` + `useWeeklyGoalStore` → `weeklyGoalRepository` → Dexie(`weeklyGoals`) → Firebase(LWW)
+	- 주 경계(월요일) 리셋은 repository load 시점에 수행(히스토리 append + progress reset + bulk sync)
+- Global goals(작업 기반/오늘 정합): `useGoalStore` → `globalGoalRepository` → Dexie(`globalGoals`, `dailyData`, `globalInbox`) → Firebase(LWW)
+	- 진행률 재계산은 “오늘 + scheduled task(timeBlock != null)” 기준으로만 수행
+- Event/Side-effect 연동
+	- task completion pipeline의 `GoalProgressHandler` 및 `goalSubscriber`는 **global goal만** 업데이트
+	- weekly goal은 현재 task completion/eventBus와 직접 연동하지 않음
 
 ## Data Boundaries / Invariants
 - localStorage 사용 금지(예외: theme)
@@ -140,3 +151,22 @@
 **Consequences**
 - Phase 0에서 동기화가 일부/전체 중단될 수 있으나, Local-first(Dexie)로 앱 기능은 유지되어야 한다.
 - Phase 2에서 `pre-get` 생략/부분 업로드는 충돌 정책(단일-writer 가정 등)을 문서화한 뒤에만 허용.
+
+### ADR-007: 장기목표(WeeklyGoal) 개선은 “UI 하드닝 + 경계 명확화”를 우선한다
+**Context**
+- WeeklyGoal(수동 카운터)과 GlobalGoal(작업 기반)이 공존하며, 이벤트/파이프라인도 global에만 붙어 있다.
+- UI-only 제약에서 의미론 통합(=스키마/마이그레이션/핸들러 확장)을 바로 수행하면 회귀 범위가 급증한다.
+
+**Choice**
+- 1차 개선은 Option A(하드닝 + feature-first 분리)를 정본으로 한다.
+	- `confirm/alert` 제거 및 모달 UX 규칙 통일
+	- 입력/정규화 경계를 문서화(향후 zod 도입 시 대체 가능)
+	- weekly/global 의미론 통합은 별도 Epic(Option C)으로 분리
+
+**Alternatives**
+- 즉시 zod 도입(Option B): 데이터 정합성 이점은 크나 신규 deps/정책 결정 비용이 든다.
+- 즉시 의미론 통합(Option C): 장기적으로 깔끔하나, UI-only 범위를 넘어서는 마이그레이션/정책 결정이 필요하다.
+
+**Consequences**
+- weekly goal은 당분간 수동 카운터로 남아 task 기반 정합성은 보장하지 않는다.
+- 대신 모달/구조/검증의 부채를 먼저 줄여, 이후 Option B/C의 착수 비용을 낮춘다.

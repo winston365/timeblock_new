@@ -15,7 +15,7 @@ import { memo, useState, useCallback, useEffect } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { RecurrenceRule, TempScheduleRecurrenceType } from '@/shared/types/tempSchedule';
 import { TEMP_SCHEDULE_COLOR_PALETTE, TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 import { minutesToTimeStr, timeStrToMinutes } from '@/shared/lib/utils';
 
 // ============================================================================
@@ -57,8 +57,6 @@ function AddTempScheduleTaskModalComponent() {
   } = useTempScheduleStore();
 
   const taskCount = tasks.length;
-
-  useModalEscapeClose(isTaskModalOpen, closeTaskModal);
 
   // Form 상태
   const [name, setName] = useState('');
@@ -156,6 +154,14 @@ function AddTempScheduleTaskModalComponent() {
       alert('저장에 실패했습니다.');
     }
   }, [name, startTime, endTime, scheduledDate, color, memo, recurrenceType, weeklyDays, intervalDays, endDate, editingTask, taskCount, addTask, updateTask, closeTaskModal, isFavorite]);
+
+  useModalHotkeys({
+    isOpen: isTaskModalOpen,
+    onEscapeClose: closeTaskModal,
+    primaryAction: {
+      onPrimary: handleSave,
+    },
+  });
 
   const handleDelete = useCallback(async () => {
     if (!editingTask) return;

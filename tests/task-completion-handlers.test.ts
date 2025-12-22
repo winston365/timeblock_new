@@ -36,11 +36,6 @@ vi.mock('@/data/repositories/waifuRepository', () => ({
   increaseAffectionFromTask: increaseAffectionFromTaskSpy,
 }));
 
-const recalculateGlobalGoalProgressSpy = vi.fn(async () => undefined);
-vi.mock('@/data/repositories', () => ({
-  recalculateGlobalGoalProgress: recalculateGlobalGoalProgressSpy,
-}));
-
 const makeTask = (overrides: Partial<Record<keyof Task, unknown>> = {}): Task =>
   ({
     id: 't1',
@@ -133,28 +128,6 @@ describe('taskCompletion handlers', () => {
     const r2 = await handler.handle(makeContext());
     expect(r2).toEqual([]);
     expect(increaseAffectionFromTaskSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('GoalProgressHandler returns [] for ineligible contexts and swallows repo errors', async () => {
-    const { GoalProgressHandler } = await import(
-      '@/shared/services/gameplay/taskCompletion/handlers/goalProgressHandler'
-    );
-
-    const handler = new GoalProgressHandler();
-
-    const r1 = await handler.handle(makeContext({ task: makeTask({ goalId: undefined }) }));
-    expect(r1).toEqual([]);
-
-    const r2 = await handler.handle(makeContext({ task: makeTask({ goalId: 'g1', timeBlock: null }) }));
-    expect(r2).toEqual([]);
-
-    const r3 = await handler.handle(makeContext({ task: makeTask({ goalId: 'g1' }), date: '2025-01-09' }));
-    expect(r3).toEqual([]);
-
-    recalculateGlobalGoalProgressSpy.mockRejectedValueOnce(new Error('boom'));
-    const r4 = await handler.handle(makeContext({ task: makeTask({ goalId: 'g1' }) }));
-    expect(r4).toEqual([]);
-    expect(recalculateGlobalGoalProgressSpy).toHaveBeenCalledTimes(1);
   });
 
   it('BlockCompletionHandler covers non-perfect branches and perfect branch', async () => {

@@ -25,8 +25,7 @@ import {
 } from './useTimelineData';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { useDragDropManager } from '@/features/schedule/hooks/useDragDropManager';
-import { loadGlobalGoals } from '@/data/repositories';
-import { TIME_BLOCKS, type Task, type TimeBlockId, type DailyGoal } from '@/shared/types/domain';
+import { TIME_BLOCKS, type Task, type TimeBlockId } from '@/shared/types/domain';
 import { generateId, getLocalDate } from '@/shared/lib/utils';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
 import TimelineTaskBlock from './TimelineTaskBlock';
@@ -71,7 +70,6 @@ function TimelineViewComponent() {
   const { setDragData, getDragData } = useDragDropManager();
 
   const [currentTimePosition, setCurrentTimePosition] = useState<number | null>(null);
-  const [goals, setGoals] = useState<DailyGoal[]>([]);
 
   // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -132,30 +130,6 @@ function TimelineViewComponent() {
     });
     return overtime;
   }, [bucketGroups]);
-
-  // 목표 목록 로드
-  useEffect(() => {
-    const fetchGoals = async () => {
-      try {
-        const loadedGoals = await loadGlobalGoals();
-        setGoals(loadedGoals);
-      } catch (error) {
-        console.error('Failed to load goals:', error);
-      }
-    };
-    fetchGoals();
-  }, []);
-
-  // 목표 ID → 색상 맵
-  const goalColorMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    goals.forEach(goal => {
-      if (goal.color) {
-        map[goal.id] = goal.color;
-      }
-    });
-    return map;
-  }, [goals]);
 
   // 컨텍스트 메뉴 외부 클릭 감지
   useEffect(() => {
@@ -264,7 +238,7 @@ function TimelineViewComponent() {
           actualDuration: 0,
           createdAt: new Date().toISOString(),
           completedAt: null,
-          goalId: taskData.goalId,
+          goalId: null,
           preparation1: taskData.preparation1,
           preparation2: taskData.preparation2,
           preparation3: taskData.preparation3,
@@ -547,7 +521,6 @@ function TimelineViewComponent() {
                   task={item.task}
                   top={item.top}
                   height={item.height}
-                  goalColor={item.task.goalId ? goalColorMap[item.task.goalId] : null}
                   onTaskClick={handleTaskClick}
                   onDragStart={handleDragStart}
                   onContextMenu={handleContextMenu}

@@ -11,7 +11,9 @@
  *   - 이벤트 타입 매핑 (EventTypeMap)으로 타입 안전성 보장
  *   - EventHandler, Middleware 등 공통 타입 정의
  * @naming_convention [domain]:[action]:[detail?]
- * @dependencies 없음 (타입 정의 파일)
+ */
+
+import type { TempScheduleTask } from '@/shared/types/tempSchedule';
 
 /**
  * 이벤트 메타데이터
@@ -61,6 +63,12 @@ export interface TaskCompletedEvent {
     adjustedDuration: number;
 }
 
+export interface TaskUncompletedEvent {
+    taskId: string;
+    xpDeducted: number;
+    blockId?: string | null;
+}
+
 /**
  * TimeBlock 도메인 이벤트
  */
@@ -108,15 +116,6 @@ export interface QuestCompletedEvent {
 }
 
 /**
- * Goal 도메인 이벤트
- */
-export interface GoalProgressChangedEvent {
-    goalId: string;
-    taskId: string;
-    action: 'added' | 'updated' | 'deleted' | 'completed';
-}
-
-/**
  * Waifu 도메인 이벤트
  */
 export interface WaifuMessageEvent {
@@ -137,10 +136,46 @@ export interface RealityCheckRequestEvent {
     estimatedDuration: number;
 }
 
-/**
+export interface GameStateRefreshRequestEvent {
+    reason: string;
+}
 
-    // Goal events
-    'goal:progressChanged': GoalProgressChangedEvent;
+export interface TempScheduleCreatedEvent {
+    task: TempScheduleTask;
+}
+
+export interface TempScheduleUpdatedEvent {
+    task: TempScheduleTask;
+    oldTask: TempScheduleTask;
+}
+
+export interface TempScheduleDeletedEvent {
+    task: TempScheduleTask;
+}
+
+/**
+ * 이벤트 타입 매핑
+ */
+export interface EventTypeMap {
+    // Task events
+    'task:created': TaskCreatedEvent;
+    'task:updated': TaskUpdatedEvent;
+    'task:deleted': TaskDeletedEvent;
+    'task:completed': TaskCompletedEvent;
+    'task:uncompleted': TaskUncompletedEvent;
+
+    // Block events
+    'block:locked': BlockLockedEvent;
+    'block:unlocked': BlockUnlockedEvent;
+    'block:perfect': BlockPerfectEvent;
+
+    // XP events
+    'xp:earned': XpEarnedEvent;
+    'xp:spent': XpSpentEvent;
+
+    // Quest events
+    'quest:progress': QuestProgressEvent;
+    'quest:completed': QuestCompletedEvent;
 
     // Waifu events
     'waifu:message': WaifuMessageEvent;
@@ -150,8 +185,12 @@ export interface RealityCheckRequestEvent {
 
     // GameState events
     'gameState:refreshRequest': GameStateRefreshRequestEvent;
-}
 
+    // Temp Schedule events
+    'tempSchedule:created': TempScheduleCreatedEvent;
+    'tempSchedule:updated': TempScheduleUpdatedEvent;
+    'tempSchedule:deleted': TempScheduleDeletedEvent;
+}
 /**
  * 이벤트 타입 (도메인:액션)
  */

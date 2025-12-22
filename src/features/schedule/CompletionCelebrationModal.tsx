@@ -8,7 +8,7 @@
 
 import { createPortal } from 'react-dom';
 import type { Task } from '@/shared/types/domain';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 
 interface CompletionCelebrationModalProps {
   task: Task;
@@ -32,7 +32,11 @@ export function CompletionCelebrationModal({
   timerBonus,
   onClose,
 }: CompletionCelebrationModalProps) {
-  useModalEscapeClose(true, onClose);
+  useModalHotkeys({
+    isOpen: true,
+    onEscapeClose: onClose,
+    primaryAction: { onPrimary: onClose },
+  });
 
   const modalContent = (
     <div

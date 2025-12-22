@@ -6,11 +6,14 @@
  *   - 뒤처진 장기목표들을 심각도별로 표시
  *   - 앱 시작 시 자동으로 표시 (뒤처진 목표가 있을 때만)
  *   - ADHD 친화적: 간결하고 행동 지향적 메시지
+ * @hotkeys
+ *   - ESC: 모달 닫기
+ *   - Ctrl/Cmd+Enter: 모달 닫기 (단일 액션 버튼)
  */
 
 import type { WeeklyGoal } from '@/shared/types/domain';
 import type { CatchUpInfo } from './utils/catchUpUtils';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 
 interface CatchUpAlertModalProps {
   isOpen: boolean;
@@ -29,7 +32,13 @@ export default function CatchUpAlertModal({
   onClose,
   behindGoals,
 }: CatchUpAlertModalProps) {
-  useModalEscapeClose(isOpen, onClose);
+  useModalHotkeys({
+    isOpen,
+    onEscapeClose: onClose,
+    primaryAction: {
+      onPrimary: onClose,
+    },
+  });
 
   // 뒤처진 목표가 없으면 렌더링하지 않음
   if (!isOpen || behindGoals.length === 0) {

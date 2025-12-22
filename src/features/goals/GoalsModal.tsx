@@ -12,11 +12,10 @@
  * - WeeklyGoalModal: 장기목표 추가/수정 모달
  */
 
-import { useEffect, useState } from 'react';
-// GoalPanel import 제거됨 (Phase 5 - 오늘 목표 UI 제거, 컴포넌트 파일은 유지)
-// GoalModal import 제거됨 (Phase 5 - 오늘 목표 UI 제거, 컴포넌트 파일은 유지)
+import { useState } from 'react';
 import WeeklyGoalPanel from './WeeklyGoalPanel';
 import WeeklyGoalModal from './WeeklyGoalModal';
+import { useModalHotkeys } from '@/shared/hooks';
 import type { WeeklyGoal } from '@/shared/types/domain';
 
 interface GoalsModalProps {
@@ -52,27 +51,12 @@ export function GoalsModal({ open, onClose }: GoalsModalProps) {
     setEditingWeeklyGoal(undefined);
   };
 
-  // ESC 키로 모달 닫기
-  useEffect(() => {
-    if (!open) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        // 모달 스택: 자식 모달이 열려있으면 자식부터 닫기
-        if (isWeeklyGoalModalOpen) {
-          setIsWeeklyGoalModalOpen(false);
-          setEditingWeeklyGoal(undefined);
-          return;
-        }
-
-        onClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose, isWeeklyGoalModalOpen]);
+  // ESC 키로 모달 닫기 (공용 훅 사용)
+  // 자식 모달이 열려있을 때는 이 모달이 스택의 top이 아니므로 자동으로 무시됨
+  useModalHotkeys({
+    isOpen: open && !isWeeklyGoalModalOpen,
+    onEscapeClose: onClose,
+  });
 
   if (!open) return null;
 

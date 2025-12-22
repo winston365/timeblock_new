@@ -8,7 +8,7 @@
 import { memo, useState, useCallback } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { TempScheduleTemplate } from '@/shared/types/tempSchedule';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 
 // ============================================================================
 // Sub Components
@@ -88,8 +88,6 @@ function TemplateModalComponent() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useModalEscapeClose(isTemplateModalOpen, closeTemplateModal);
-
   const tasksForDate = getTasksForDate(selectedDate);
   const canSave = tasksForDate.length > 0 && newTemplateName.trim().length > 0;
 
@@ -108,6 +106,16 @@ function TemplateModalComponent() {
       setIsSaving(false);
     }
   }, [canSave, newTemplateName, saveAsTemplate]);
+
+  useModalHotkeys({
+    isOpen: isTemplateModalOpen,
+    onEscapeClose: closeTemplateModal,
+    primaryAction: {
+      enabled: canSave && !isSaving,
+      onPrimary: handleSave,
+      allowInInput: true,
+    },
+  });
 
   const handleApply = useCallback(async (template: TempScheduleTemplate) => {
     try {

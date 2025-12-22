@@ -12,18 +12,17 @@
  *   - MemoModal (전체화면 메모 편집)
  */
 
-import { useState, useEffect, useRef } from 'react';
-import type { Task, Resistance, TimeBlockId, DailyGoal } from '@/shared/types/domain';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import type { Task, Resistance, TimeBlockId } from '@/shared/types/domain';
 import { calculateAdjustedDuration } from '@/shared/lib/utils';
 import { suggestTaskEmoji } from '@/shared/services/ai/geminiApi';
 import { scheduleEmojiSuggestion } from '@/shared/services/ai/emojiSuggester';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
-import { loadGlobalGoals } from '@/data/repositories';
 import { MemoModal } from './MemoModal';
 import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
 import { useTaskContextSuggestion } from './hooks/useTaskContextSuggestion';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 
 interface TaskModalProps {
   task: Task | null;
@@ -61,9 +60,7 @@ export default function TaskModal({
   const [preparation1, setPreparation1] = useState('');
   const [preparation2, setPreparation2] = useState('');
   const [preparation3, setPreparation3] = useState('');
-  const [goalId, setGoalId] = useState<string | null>(null);
   const [deadline, setDeadline] = useState<string>(TASK_DEFAULTS.getDefaultDeadline());
-  const [goals, setGoals] = useState<DailyGoal[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [memoRows, setMemoRows] = useState(2);
   const [showMemoModal, setShowMemoModal] = useState(false);
@@ -72,7 +69,19 @@ export default function TaskModal({
 
   const { settings } = useSettingsStore();
   const { triggerBreakdown } = useTaskBreakdownStore();
-  useModalEscapeClose(isOpen && !showMemoModal, onClose);
+
+  // ESC + Ctrl/Cmd+Enter 통합 핫키 처리
+  const handlePrimaryAction = useCallback(() => {
+    formRef.current?.requestSubmit();
+  }, []);
+
+  useModalHotkeys({
+    isOpen: isOpen && !showMemoModal,
+    onEscapeClose: onClose,
+    primaryAction: {
+      onPrimary: handlePrimaryAction,
+    },
+  });
 
   // 맥락 추천 훅 사용
   const {
@@ -86,19 +95,6 @@ export default function TaskModal({
     applyAll: applyAllContext,
   } = useTaskContextSuggestion(text);
 
-  // 목표 목록 로드
-  useEffect(() => {
-    const fetchGoals = async () => {
-      try {
-        const loadedGoals = await loadGlobalGoals();
-        setGoals(loadedGoals.sort((firstGoal, secondGoal) => firstGoal.order - secondGoal.order));
-      } catch (goalLoadError) {
-        console.error('[TaskModal] Failed to load goals:', goalLoadError);
-      }
-    };
-    fetchGoals();
-  }, []);
-
   // 기존 작업 데이터로 초기화
   useEffect(() => {
     if (task) {
@@ -109,7 +105,6 @@ export default function TaskModal({
       setPreparation1(task.preparation1 || '');
       setPreparation2(task.preparation2 || '');
       setPreparation3(task.preparation3 || '');
-      setGoalId(task.goalId || null);
       setDeadline(task.deadline || TASK_DEFAULTS.getDefaultDeadline());
 
       const lineCount = task.memo.split('\n').length;
@@ -176,20 +171,6 @@ export default function TaskModal({
     const lineCount = newMemo.split('\n').length;
     setMemoRows(Math.min(Math.max(lineCount, 2), 6));
   };
-
-  // 키보드 단축키
-  useEffect(() => {
-    if (!isOpen || showMemoModal) return;
-
-    const handleKeyboard = (keyboardEvent: KeyboardEvent) => {
-      if (keyboardEvent.key === 'Enter' && keyboardEvent.ctrlKey) {
-        keyboardEvent.preventDefault();
-        formRef.current?.requestSubmit();
-      }
-    };
-    window.addEventListener('keydown', handleKeyboard);
-    return () => window.removeEventListener('keydown', handleKeyboard);
-  }, [isOpen, onClose, showMemoModal]);
 
   // 수동 AI 세분화 버튼 핸들러 (이제 글로벌 스토어 사용)
   const handleAIBreakdown = async () => {
@@ -266,7 +247,7 @@ export default function TaskModal({
       preparation1: preparation1.trim(),
       preparation2: preparation2.trim(),
       preparation3: preparation3.trim(),
-      goalId: goalId || null,
+      goalId: null,
       deadline,
     };
 
@@ -394,7 +375,7 @@ export default function TaskModal({
                 </div>
 
                 {/* Resistance & Deadline & Goal */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label htmlFor="task-resistance" className="text-sm font-semibold text-[var(--color-text)]">
                       난이도
@@ -421,24 +402,6 @@ export default function TaskModal({
                       onChange={(e) => setDeadline(e.target.value)}
                       className={baseFieldClasses}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="task-goal" className="text-sm font-semibold text-[var(--color-text)]">
-                      연결된 목표
-                    </label>
-                    <select
-                      id="task-goal"
-                      value={goalId || ''}
-                      onChange={goalChangeEvent => setGoalId(goalChangeEvent.target.value || null)}
-                      className={selectFieldClasses}
-                    >
-                      <option value="">목표 없음</option>
-                      {goals.map(goal => (
-                        <option key={goal.id} value={goal.id}>
-                          {goal.icon} {goal.title}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                 </div>
 

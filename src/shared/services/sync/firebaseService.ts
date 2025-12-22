@@ -26,7 +26,7 @@ export { debugFirebaseData } from './firebase/firebaseDebug';
 
 export type { SyncData } from './firebase/conflictResolver';
 
-import type { DailyData, Task, DailyGoal, Settings, DailyTokenUsage, GameState, ShopItem, WaifuState, Template } from '@/shared/types/domain';
+import type { DailyData, Task, Settings, DailyTokenUsage, GameState, ShopItem, WaifuState, Template } from '@/shared/types/domain';
 import { addSyncLog } from './syncLogger';
 import { getFirebaseDatabase } from './firebase/firebaseClient';
 import { ref, onValue } from 'firebase/database';
@@ -52,7 +52,6 @@ export async function fetchDataFromFirebase(): Promise<{
   waifuState: WaifuState | null;
   templates: Template[] | null;
   tokenUsage: Record<string, DailyTokenUsage>;
-  globalGoals: DailyGoal[] | null;
   settings: Settings | null;
 }> {
   try {
@@ -72,7 +71,6 @@ export async function fetchDataFromFirebase(): Promise<{
       waifuStateSnapshot,
       templatesSnapshot,
       tokenUsageSnapshot,
-      globalGoalsSnapshot,
       settingsSnapshot,
     ] = await Promise.all([
       get(ref(db, `users/${userId}/dailyData`)),
@@ -83,7 +81,6 @@ export async function fetchDataFromFirebase(): Promise<{
       get(ref(db, `users/${userId}/waifuState`)),
       get(ref(db, `users/${userId}/templates`)),
       get(ref(db, `users/${userId}/tokenUsage`)),
-      get(ref(db, `users/${userId}/globalGoals`)),
       get(ref(db, `users/${userId}/settings`)),
     ]);
 
@@ -144,9 +141,6 @@ export async function fetchDataFromFirebase(): Promise<{
       }
     }
 
-    const globalGoalsValue = globalGoalsSnapshot.val();
-    const globalGoals = globalGoalsValue?.data || null;
-
     const settingsValue = settingsSnapshot.val();
     const settings = settingsValue?.data || null;
 
@@ -157,11 +151,10 @@ export async function fetchDataFromFirebase(): Promise<{
       shopItems: shopItems?.length || 0,
       templates: templates?.length || 0,
       tokenUsage: Object.keys(tokenUsage).length,
-      globalGoals: globalGoals?.length || 0,
       settings: !!settings,
     });
 
-    return { dailyData, gameState, globalInbox, completedInbox, shopItems, waifuState, templates, tokenUsage, globalGoals, settings };
+    return { dailyData, gameState, globalInbox, completedInbox, shopItems, waifuState, templates, tokenUsage, settings };
   } catch (error) {
     console.error('Failed to fetch data from Firebase:', error);
     addSyncLog('firebase', 'error', 'Failed to fetch initial data from Firebase', undefined, error as Error);

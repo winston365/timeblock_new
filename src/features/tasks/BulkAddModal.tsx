@@ -14,11 +14,11 @@
  * - createTaskFromPartial: 부분 데이터로 Task 객체 생성
  */
 
-import { useState, useRef, useEffect, useId } from 'react';
+import { useState, useRef, useEffect, useId, useCallback } from 'react';
 import type { Task, TimeBlockId, Resistance } from '@/shared/types/domain';
 import { TIME_BLOCKS } from '@/shared/types/domain';
 import { createTaskFromPartial } from '@/shared/utils/taskFactory';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 
 interface BulkAddModalProps {
     isOpen: boolean;
@@ -83,7 +83,60 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
     const titleId = useId();
     const descriptionId = useId();
 
-    useModalEscapeClose(isOpen, onClose);
+    /**
+     * 작업 추가 핸들러 (Ctrl/Cmd+Enter primary action용)
+     */
+    const handleSubmit = useCallback(async () => {
+        if (previewTasks.length === 0) {
+            alert('추가할 작업이 없습니다.');
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            // ParsedTask를 Task로 변환
+            const tasks: Task[] = previewTasks.map((parsed) => {
+                const resistance = parsed.resistance || defaultResistance;
+                const baseDuration = parsed.baseDuration || defaultDuration;
+
+                return createTaskFromPartial({
+                    text: parsed.text,
+                    memo: parsed.memo || '',
+                    baseDuration,
+                    resistance,
+                    timeBlock: parsed.timeBlock || defaultTimeBlock,
+                }, {
+                    baseDuration: defaultDuration,
+                    resistance: defaultResistance,
+                    timeBlock: defaultTimeBlock,
+                });
+            });
+
+            await onAddTasks(tasks);
+
+            // 초기화
+            setInput('');
+            setPreviewTasks([]);
+            onClose();
+
+            alert(`${tasks.length}개의 작업이 추가되었습니다!`);
+        } catch (error) {
+            console.error('Failed to add tasks:', error);
+            alert('작업 추가에 실패했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    }, [previewTasks, defaultResistance, defaultDuration, defaultTimeBlock, onAddTasks, onClose]);
+
+    useModalHotkeys({
+        isOpen,
+        onEscapeClose: onClose,
+        primaryAction: {
+            onPrimary: handleSubmit,
+            enabled: previewTasks.length > 0 && !loading,
+        },
+    });
 
     // 모달 열릴 때 textarea에 포커스
     useEffect(() => {
@@ -175,59 +228,7 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
         return tasks;
     }
 
-    /**
-     * 작업 추가
-     */
-    const handleSubmit = async () => {
-        if (previewTasks.length === 0) {
-            alert('추가할 작업이 없습니다.');
-            return;
-        }
 
-        setLoading(true);
-
-        try {
-            // ParsedTask를 Task로 변환
-            const tasks: Task[] = previewTasks.map((parsed) => {
-                const resistance = parsed.resistance || defaultResistance;
-                const baseDuration = parsed.baseDuration || defaultDuration;
-
-                return createTaskFromPartial({
-                    text: parsed.text,
-                    memo: parsed.memo || '',
-                    baseDuration,
-                    resistance,
-                    timeBlock: parsed.timeBlock || defaultTimeBlock,
-                }, {
-                    baseDuration: defaultDuration,
-                    resistance: defaultResistance,
-                    timeBlock: defaultTimeBlock,
-                });
-            });
-
-            await onAddTasks(tasks);
-
-            // 초기화
-            setInput('');
-            setPreviewTasks([]);
-            onClose();
-
-            alert(`${tasks.length}개의 작업이 추가되었습니다!`);
-        } catch (error) {
-            console.error('Failed to add tasks:', error);
-            alert('작업 추가에 실패했습니다.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        // Ctrl/Cmd + Enter로 제출
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            e.preventDefault();
-            handleSubmit();
-        }
-    };
 
 
 
@@ -366,8 +367,6 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
                                             value={input}
 
                                             onChange={(e) => setInput(e.target.value)}
-
-                                            onKeyDown={handleKeyDown}
 
                                             rows={12}
 

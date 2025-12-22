@@ -29,6 +29,7 @@ export type {
     TaskUpdatedEvent,
     TaskDeletedEvent,
     TaskCompletedEvent,
+    TaskUncompletedEvent,
     BlockLockedEvent,
     BlockUnlockedEvent,
     BlockPerfectEvent,
@@ -36,10 +37,12 @@ export type {
     XpSpentEvent,
     QuestProgressEvent,
     QuestCompletedEvent,
-    GoalProgressChangedEvent,
     WaifuMessageEvent,
     RealityCheckRequestEvent,
     GameStateRefreshRequestEvent,
+    TempScheduleCreatedEvent,
+    TempScheduleUpdatedEvent,
+    TempScheduleDeletedEvent,
 } from './types';
 
 export {

@@ -12,21 +12,18 @@
  * 
  * @dependencies
  * - xpSubscriber: XP 이벤트 처리
- * - goalSubscriber: 목표 진행률 이벤트 처리
  * - waifuSubscriber: Waifu 메시지 이벤트 처리
  * - gameStateSubscriber: GameState 갱신 이벤트 처리
  * - googleCalendarSubscriber: Google Calendar 동기화 이벤트 처리
  */
 
 import { initXpSubscriber } from './xpSubscriber';
-import { initGoalSubscriber } from './goalSubscriber';
 import { initWaifuSubscriber } from './waifuSubscriber';
 import { initGameStateSubscriber } from './gameStateSubscriber';
 import { initGoogleSyncSubscriber } from './googleSyncSubscriber';
 
 export {
     initXpSubscriber,
-    initGoalSubscriber,
     initWaifuSubscriber,
     initGameStateSubscriber,
     initGoogleSyncSubscriber,
@@ -42,7 +39,6 @@ export {
  */
 export function initAllSubscribers(): void {
     initXpSubscriber();
-    initGoalSubscriber();
     initWaifuSubscriber();
     initGameStateSubscriber();
     initGoogleSyncSubscriber();

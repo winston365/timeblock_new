@@ -8,7 +8,6 @@
 
 export * from './baseRepository';
 export * from './dailyDataRepository';
-export * from './dailyGoalRepository';
 export * from './gameStateRepository';
 export * from './settingsRepository';
 export * from './waifuRepository';
@@ -16,7 +15,6 @@ export * from './templateRepository';
 export * from './shopRepository';
 export * from './chatHistoryRepository';
 export * from './inboxRepository';
-export * from './globalGoalRepository';
 export * from './systemRepository';
 export * from './tempScheduleRepository';
 

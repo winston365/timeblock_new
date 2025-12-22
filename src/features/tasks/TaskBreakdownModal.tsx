@@ -16,7 +16,7 @@
  * - useWaifu: 와이푸 호감도(affection)
  */
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type React from 'react';
 import type { Resistance, Task, TimeBlockId } from '@/shared/types/domain';
 import { RESISTANCE_MULTIPLIERS, TIME_BLOCKS } from '@/shared/types/domain';
@@ -24,7 +24,7 @@ import { generateId } from '@/shared/lib/utils';
 import { useTaskBreakdownStore } from './stores/breakdownStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 
 interface TaskBreakdownModalProps {
   isOpen: boolean;
@@ -113,7 +113,61 @@ export default function TaskBreakdownModal({
   const [previewTasks, setPreviewTasks] = useState<ParsedTask[]>([]);
   const [regenerating, setRegenerating] = useState(false);
 
-  useModalEscapeClose(isOpen, onClose);
+  /**
+   * 작업 적용 핸들러 (Ctrl/Cmd+Enter primary action용)
+   */
+  const handleSubmit = useCallback(async () => {
+    const checkedTasks = previewTasks.filter(task => task.checked);
+
+    if (checkedTasks.length === 0) {
+      alert('최소 1개 이상의 작업을 선택해야 해.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const tasks: Task[] = checkedTasks.map(parsed => {
+        const resistance = parsed.resistance || defaultResistance;
+        const baseDuration = parsed.baseDuration || defaultDuration;
+        const multiplier = RESISTANCE_MULTIPLIERS[resistance];
+        const adjustedDuration = Math.round(baseDuration * multiplier);
+
+        return {
+          id: generateId('task'),
+          text: parsed.text,
+          memo: parsed.memo || '',
+          baseDuration,
+          resistance,
+          adjustedDuration,
+          timeBlock: parsed.timeBlock || defaultTimeBlock,
+          completed: false,
+          actualDuration: 0,
+          createdAt: new Date().toISOString(),
+          completedAt: null,
+        };
+      });
+
+      await onConfirm(tasks);
+      onClose();
+    } catch (error) {
+      console.error('Failed to add tasks:', error);
+      alert('작업 추가에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, [previewTasks, defaultResistance, defaultDuration, defaultTimeBlock, onConfirm, onClose]);
+
+  const checkedCount = previewTasks.filter(task => task.checked).length;
+
+  useModalHotkeys({
+    isOpen,
+    onEscapeClose: onClose,
+    primaryAction: {
+      onPrimary: handleSubmit,
+      enabled: checkedCount > 0 && !loading,
+    },
+  });
 
   // 초기 텍스트와 기본값 설정
   useEffect(() => {
@@ -244,58 +298,8 @@ export default function TaskBreakdownModal({
     }
   };
 
-  const handleSubmit = async () => {
-    const checkedTasks = previewTasks.filter(task => task.checked);
-
-    if (checkedTasks.length === 0) {
-      alert('최소 1개 이상의 작업을 선택해야 해.');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const tasks: Task[] = checkedTasks.map(parsed => {
-        const resistance = parsed.resistance || defaultResistance;
-        const baseDuration = parsed.baseDuration || defaultDuration;
-        const multiplier = RESISTANCE_MULTIPLIERS[resistance];
-        const adjustedDuration = Math.round(baseDuration * multiplier);
-
-        return {
-          id: generateId('task'),
-          text: parsed.text,
-          memo: parsed.memo || '',
-          baseDuration,
-          resistance,
-          adjustedDuration,
-          timeBlock: parsed.timeBlock || defaultTimeBlock,
-          completed: false,
-          actualDuration: 0,
-          createdAt: new Date().toISOString(),
-          completedAt: null,
-        };
-      });
-
-      await onConfirm(tasks);
-      onClose();
-    } catch (error) {
-      console.error('Failed to add tasks:', error);
-      alert('작업 추가에 실패했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
   if (!isOpen) return null;
 
-  const checkedCount = previewTasks.filter(task => task.checked).length;
   const allChecked = previewTasks.length > 0 && previewTasks.every(task => task.checked);
 
   return (
@@ -424,7 +428,6 @@ export default function TaskBreakdownModal({
                       className={textareaClass}
                       value={input}
                       onChange={e => setInput(e.target.value)}
-                      onKeyDown={handleKeyDown}
                       rows={12}
                     />
                   </div>

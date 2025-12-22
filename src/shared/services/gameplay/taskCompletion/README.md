@@ -10,7 +10,6 @@ taskCompletion/
 ├── taskCompletionService.ts    # 핵심 서비스 (오케스트레이터)
 ├── types.ts                    # TypeScript 타입 정의
 └── handlers/                   # 개별 핸들러들
-    ├── goalProgressHandler.ts  # 목표 진행률 업데이트
     ├── xpRewardHandler.ts      # XP 보상 지급
     ├── questProgressHandler.ts # 퀘스트 진행 처리
     ├── waifuAffectionHandler.ts # 와이푸 호감도 변경
@@ -22,7 +21,6 @@ taskCompletion/
 ### 단일 책임 원칙 (SRP)
 각 핸들러는 **하나의 책임**만 담당합니다:
 - `XPRewardHandler` → XP 계산 및 지급만
-- `GoalProgressHandler` → 목표 진행률 업데이트만
 - `WaifuAffectionHandler` → 와이푸 호감도 변경만
 
 ### 개방-폐쇄 원칙 (OCP)
@@ -82,7 +80,6 @@ export class NewFeatureHandler implements TaskCompletionHandler {
 
 // taskCompletionService.ts에 등록
 this.handlers = [
-  new GoalProgressHandler(),
   new XPRewardHandler(),
   new QuestProgressHandler(),
   new WaifuAffectionHandler(),
@@ -100,9 +97,6 @@ taskCompletionService.handleTaskCompletion(context)
     │
     ├─▶ BlockCompletionHandler  (블록 상태 확인)
     │       └─▶ 퍼펙트 블록 달성 여부 판정
-    │
-    ├─▶ GoalProgressHandler     (목표 진행률)
-    │       └─▶ 관련 목표 자동 업데이트
     │
     ├─▶ XPRewardHandler         (XP 보상)
     │       └─▶ gameStateStore.addXP()

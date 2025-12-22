@@ -8,11 +8,11 @@
  *   - createShopItem, updateShopItem: 상점 아이템 Repository
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ShopItem } from '@/shared/types/domain';
 import { createShopItem, updateShopItem } from '@/data/repositories';
 import { toast } from 'react-hot-toast';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 
 interface ShopModalProps {
     item: ShopItem | null; // null이면 신규 생성
@@ -34,6 +34,7 @@ export function ShopModal({ item, onClose }: ShopModalProps) {
     const [price, setPrice] = useState(50);
     const [image, setImage] = useState<string | undefined>(undefined);
     const [isSaving, setIsSaving] = useState(false);
+    const formRef = useRef<HTMLFormElement>(null);
     const isOpen = !!item;
 
     // 편집 모드일 경우 초기값 설정
@@ -45,25 +46,18 @@ export function ShopModal({ item, onClose }: ShopModalProps) {
         }
     }, [item]);
 
-    useModalEscapeClose(isOpen, () => onClose(false));
+    // ESC + Ctrl/Cmd+Enter 통합 핫키 처리
+    const handlePrimaryAction = useCallback(() => {
+        formRef.current?.requestSubmit();
+    }, []);
 
-    // Ctrl+Enter로 저장
-    useEffect(() => {
-        if (!isOpen) return;
-
-        const handleKeyboard = (e: KeyboardEvent) => {
-            if (e.key === 'Enter' && e.ctrlKey) {
-                e.preventDefault();
-                // 폼 제출 트리거
-                const form = document.querySelector('.modal-body') as HTMLFormElement;
-                if (form) {
-                    form.requestSubmit();
-                }
-            }
-        };
-        window.addEventListener('keydown', handleKeyboard);
-        return () => window.removeEventListener('keydown', handleKeyboard);
-    }, [isOpen, onClose]);
+    useModalHotkeys({
+        isOpen,
+        onEscapeClose: () => onClose(false),
+        primaryAction: {
+            onPrimary: handlePrimaryAction,
+        },
+    });
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -155,7 +149,7 @@ export function ShopModal({ item, onClose }: ShopModalProps) {
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="modal-body flex flex-col gap-5 overflow-y-auto px-6 py-6">
+                <form ref={formRef} onSubmit={handleSubmit} className="modal-body flex flex-col gap-5 overflow-y-auto px-6 py-6">
                     {/* 상품 이름 */}
                     <div className="form-group flex flex-col gap-2 text-sm text-[var(--color-text)]">
                         <label htmlFor="shop-name">

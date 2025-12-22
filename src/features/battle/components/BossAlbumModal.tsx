@@ -14,11 +14,12 @@
  *   - useBattleStore: 배틀 상태 스토어
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { BOSSES, getBossById } from '../data/bossData';
 import { useBattleStore } from '../stores/battleStore';
 import { getBossImageSrc } from '../utils/assets';
 import { getRecentBattleStats } from '@/data/repositories/battleRepository';
+import { useModalHotkeys } from '@/shared/hooks';
 import type { Boss, BossDifficulty, DailyBattleStats } from '@/shared/types/domain';
 
 interface BossAlbumModalProps {
@@ -511,20 +512,20 @@ export default function BossAlbumModal({ isOpen, onClose }: BossAlbumModalProps)
     return BOSSES.filter(boss => todayDefeatedIds.includes(boss.id));
   }, [todayDefeatedIds]);
 
-  // ESC 키로 모달 닫기
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (selectedBoss) {
-          setSelectedBoss(null);
-        } else if (isOpen) {
-          onClose();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose, selectedBoss]);
+  // ESC 키로 모달 닫기 (공용 훅 사용)
+  // selectedBoss가 있으면 먼저 선택 해제, 없으면 모달 닫기
+  const handleEscapeClose = useCallback(() => {
+    if (selectedBoss) {
+      setSelectedBoss(null);
+    } else {
+      onClose();
+    }
+  }, [selectedBoss, onClose]);
+
+  useModalHotkeys({
+    isOpen,
+    onEscapeClose: handleEscapeClose,
+  });
 
   // 통계 계산
   const stats = useMemo(() => {

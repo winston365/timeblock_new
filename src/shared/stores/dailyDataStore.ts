@@ -28,7 +28,6 @@ import {
   toggleTaskCompletion as toggleTaskInRepo,
   updateBlockState as updateBlockStateInRepo,
 } from '@/data/repositories';
-import { useGoalStore } from '@/shared/stores/goalStore';
 import { getLocalDate, calculateTaskXP } from '../lib/utils';
 import {
   sanitizeTaskUpdates,
@@ -180,9 +179,8 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
    * Task 추가
    */
   addTask: async (task: Task) => {
-    const { currentDate, dailyData, loadData } = get();
+    const { currentDate, dailyData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
-    const today = getLocalDate();
 
     // ✅ Optimistic Update
     const optimisticTasks = addTaskToArray(dailyData.tasks, task);
@@ -205,12 +203,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
           source: 'dailyDataStore.addTask',
         });
       }
-
-      // ✅ 목표 연결 시 진행률 재계산
-      if (task.goalId && task.timeBlock !== null && currentDate === today) {
-        await useGoalStore.getState().recalculateProgress(task.goalId, today);
-        await loadData(currentDate, true);
-      }
     } catch (err) {
       const standardError = toStandardError({
         code: 'DAILY_TASK_ADD_FAILED',
@@ -231,7 +223,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
     const { currentDate, dailyData, loadData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
     const { skipBehaviorTracking = false, skipEmoji = false, ignoreLock = false } = options || {};
-    const today = getLocalDate();
 
     // 🔧 Firebase undefined 처리 & hourSlot 자동 계산
     const sanitizedUpdates = sanitizeTaskUpdates(updates);
@@ -313,23 +304,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         source: 'dailyDataStore.updateTask',
       });
 
-      // ✅ 목표 연결 변경 시 진행률 재계산
-      const affectedGoalIds = new Set<string>();
-      if (originalTask?.goalId) affectedGoalIds.add(originalTask.goalId);
-      if (sanitizedUpdates.goalId) affectedGoalIds.add(sanitizedUpdates.goalId);
-
-      const affectsSchedule =
-        (originalTask?.timeBlock !== null) ||
-        (sanitizedUpdates.timeBlock !== undefined && sanitizedUpdates.timeBlock !== null) ||
-        isInboxToBlockMove;
-
-      if (affectedGoalIds.size > 0 && affectsSchedule && currentDate === today) {
-        for (const goalId of affectedGoalIds) {
-          await useGoalStore.getState().recalculateProgress(goalId, today);
-        }
-        await loadData(currentDate, true);
-      }
-
       if (shouldTrackBehavior) {
         await trackTaskTimeBlockChange({
           taskId,
@@ -350,9 +324,8 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
    * Task 삭제
    */
   deleteTask: async (taskId: string) => {
-    const { currentDate, dailyData, loadData } = get();
+    const { currentDate, dailyData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
-    const today = getLocalDate();
 
     // 원본 백업
     const originalTasks = dailyData.tasks;
@@ -382,12 +355,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
           source: 'dailyDataStore.deleteTask',
         });
       }
-
-      // ✅ 목표 연결 시 진행률 재계산
-      if (deletedTask?.goalId && deletedTask.timeBlock !== null && currentDate === today) {
-        await useGoalStore.getState().recalculateProgress(deletedTask.goalId, today);
-        await loadData(currentDate, true);
-      }
     } catch (err) {
       console.error('[DailyDataStore] Failed to delete task, rolling back:', err);
       // ❌ Rollback
@@ -402,7 +369,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
   toggleTaskCompletion: async (taskId: string) => {
     const { currentDate, dailyData } = get();
     assertDailyDataExists(dailyData, '[DailyDataStore] No dailyData available');
-    const today = getLocalDate();
 
     const originalTasks = dailyData.tasks;
     const originalBlockStates = dailyData.timeBlockStates;
@@ -514,17 +480,6 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
           taskId: updatedTask.id,
           xpDeducted: xpToDeduct,
           blockId: updatedTask.timeBlock || undefined,
-        }, {
-          source: 'dailyDataStore.toggleTaskCompletion',
-        });
-      }
-
-      // Goal 진행률 이벤트 (Goal Subscriber가 처리)
-      if (updatedTask.goalId && updatedTask.timeBlock !== null && currentDate === today) {
-        eventBus.emit('goal:progressChanged', {
-          goalId: updatedTask.goalId,
-          taskId: updatedTask.id,
-          action: 'completed',
         }, {
           source: 'dailyDataStore.toggleTaskCompletion',
         });

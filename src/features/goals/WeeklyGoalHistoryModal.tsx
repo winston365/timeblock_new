@@ -11,7 +11,7 @@
  */
 
 import type { WeeklyGoal } from '@/shared/types/domain';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 
 interface WeeklyGoalHistoryModalProps {
   isOpen: boolean;
@@ -37,7 +37,11 @@ function formatWeekLabel(weekStartDate: string): string {
  * 장기목표 히스토리 모달
  */
 export default function WeeklyGoalHistoryModal({ isOpen, onClose, goal }: WeeklyGoalHistoryModalProps) {
-  useModalEscapeClose(isOpen, onClose);
+  useModalHotkeys({
+    isOpen,
+    onEscapeClose: onClose,
+    primaryAction: { onPrimary: onClose },
+  });
 
   if (!isOpen) return null;
 

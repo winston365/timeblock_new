@@ -24,7 +24,7 @@ db/
 | `dailyTokenUsage` | `date` | 일별 토큰 사용량 |
 | `globalInbox` | `id` | 글로벌 인박스 (미완료) |
 | `completedInbox` | `id` | 완료된 인박스 작업 |
-| `globalGoals` | `id` | 장기 목표 |
+| `globalGoals` | `id` | (레거시/미사용) 글로벌 목표 (Release B에서 제거 예정) |
 | `systemState` | `key` | 시스템 상태 (마지막 초기화 등) |
 | `images` | `id` | 이미지 저장소 |
 | `weather` | `id` | 날씨 캐시 |

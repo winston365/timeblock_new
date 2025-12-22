@@ -16,7 +16,7 @@
 import { useState, useEffect } from 'react';
 import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
 import type { WeeklyGoal } from '@/shared/types/domain';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 
 interface WeeklyGoalModalProps {
   isOpen: boolean;
@@ -48,8 +48,6 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
     if (saving) return;
     onClose();
   };
-
-  useModalEscapeClose(isOpen, handleEscapeClose);
 
   useEffect(() => {
     if (goal) {
@@ -105,6 +103,15 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
       setSaving(false);
     }
   };
+
+  useModalHotkeys({
+    isOpen,
+    onEscapeClose: handleEscapeClose,
+    primaryAction: {
+      enabled: !saving,
+      onPrimary: handleSave,
+    },
+  });
 
   if (!isOpen) return null;
 

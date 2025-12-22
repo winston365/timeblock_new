@@ -1,5 +1,5 @@
 %% System Architecture Diagram — TimeBlock Planner
-%% Updated: 2025-12-17
+%% Updated: 2025-12-22
 
 flowchart LR
   subgraph Renderer[Electron Renderer (React + TS)]
@@ -7,6 +7,9 @@ flowchart LR
     ScheduleView[ScheduleView (List TimeBlocks)]
     TimelineView[TimelineView (Timeline Panel)]
     WarmupModal[WarmupPresetModal]
+
+    GoalsUI[Goals UI
+(WeeklyGoalPanel/Card/Modal)]
 
     ScheduleStore[useScheduleViewStore
 (Zustand/UI state)]
@@ -16,10 +19,20 @@ flowchart LR
 (transform + UI state)]
   end
 
+  subgraph ModalUX[Modal UX (Cross-cutting)]
+    EscapeHook[useModalEscapeClose
+(modalStack top-of-stack)]
+    HotkeysHook[useModalHotkeys (proposed)
+(ESC + Ctrl/Cmd+Enter + IME guard)]
+  end
+
   subgraph Stores[Zustand Stores]
     DailyStore[dailyDataStore]
     SettingsStore[settingsStore]
     InboxStore[inboxStore]
+
+    WeeklyGoalStore[weeklyGoalStore]
+    GlobalGoalStore[goalStore]
   end
 
   subgraph CrossCutting[Cross-cutting]
@@ -43,6 +56,12 @@ flowchart LR
 
   AppShell --> ScheduleView
   AppShell --> TimelineView
+  AppShell --> GoalsUI
+
+  ScheduleView -. uses .-> EscapeHook
+  ScheduleView -. uses .-> HotkeysHook
+  GoalsUI -. uses .-> EscapeHook
+  GoalsUI -. uses .-> HotkeysHook
   ScheduleView --> ScheduleStore
   ScheduleView --> DailyHook
   TimelineView --> TimelineHook
@@ -54,6 +73,10 @@ flowchart LR
   EventBus --> Subscribers
   Subscribers --> Repo
 
+  GoalsUI --> WeeklyGoalStore
+  WeeklyGoalStore --> Repo
+  GlobalGoalStore --> Repo
+
   DailyHook --> Repo --> Dexie
   ScheduleStore --> SystemState
   TimelineHook --> SystemState
@@ -62,5 +85,7 @@ flowchart LR
   SettingsStore --> Repo
   ScheduleView --> SyncCore --> Firebase
   SyncCore --> Repo
+
+  Repo --> SyncCore
 
   Dexie --- SystemState

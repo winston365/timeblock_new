@@ -1,14 +1,18 @@
 import { useEffect, useRef } from 'react';
-
-/**
- * 전역 모달 스택 (중첩 모달 관리용)
- * 가장 최근에 열린 모달만 ESC에 반응하도록 함
- */
-const modalStack: Set<symbol> = new Set();
+import { modalStackRegistry } from './modalStackRegistry';
 
 /**
  * Close modal when Escape is pressed while open.
  * 중첩 모달 지원: 가장 위에 있는 모달만 ESC에 반응
+ *
+ * @note
+ *   - IME 조합 중(isComposing)에는 ESC가 동작하지 않습니다.
+ *   - useModalHotkeys와 동일한 스택 레지스트리를 공유합니다.
+ *
+ * @example
+ * ```tsx
+ * useModalEscapeClose(isOpen, handleClose);
+ * ```
  */
 export function useModalEscapeClose(isOpen: boolean, onClose: () => void) {
   const modalIdRef = useRef<symbol | null>(null);
@@ -17,7 +21,7 @@ export function useModalEscapeClose(isOpen: boolean, onClose: () => void) {
     if (!isOpen) {
       // 모달이 닫히면 스택에서 제거
       if (modalIdRef.current) {
-        modalStack.delete(modalIdRef.current);
+        modalStackRegistry.remove(modalIdRef.current);
         modalIdRef.current = null;
       }
       return;
@@ -26,26 +30,30 @@ export function useModalEscapeClose(isOpen: boolean, onClose: () => void) {
     // 모달이 열리면 고유 ID 생성 후 스택에 추가
     const modalId = Symbol('modal');
     modalIdRef.current = modalId;
-    modalStack.add(modalId);
+    modalStackRegistry.add(modalId);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
 
-      // 스택의 마지막 요소(가장 위 모달)만 반응
-      const stackArray = Array.from(modalStack);
-      const topModal = stackArray[stackArray.length - 1];
-      
-      if (topModal === modalId) {
-        e.preventDefault();
-        e.stopPropagation();
-        onClose();
+      // IME 조합 중 무시
+      if (e.isComposing || e.key === 'Process') {
+        return;
       }
+
+      // 스택의 최상위 모달만 반응
+      if (!modalStackRegistry.isTop(modalId)) {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      modalStack.delete(modalId);
+      modalStackRegistry.remove(modalId);
       modalIdRef.current = null;
     };
   }, [isOpen, onClose]);

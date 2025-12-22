@@ -6,8 +6,9 @@
  * @dependencies react-dom/createPortal
  */
 
+import { useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 
 interface TimerConfirmModalProps {
   taskName: string;
@@ -20,9 +21,22 @@ interface TimerConfirmModalProps {
  * @param props.taskName - 완료한 작업의 이름
  * @param props.onConfirm - 타이머 사용 여부를 전달하는 콜백 함수
  * @returns 타이머 사용 확인 모달 UI
+ * 
+ * @hotkeys
+ *   - ESC: "아니요" (타이머 미사용)
+ *   - Ctrl/Cmd+Enter: "네, 사용했어요!" (타이머 사용, +20 XP)
  */
 export function TimerConfirmModal({ taskName, onConfirm }: TimerConfirmModalProps) {
-  useModalEscapeClose(true, () => onConfirm(false));
+  const handleNo = useCallback(() => onConfirm(false), [onConfirm]);
+  const handleYes = useCallback(() => onConfirm(true), [onConfirm]);
+
+  useModalHotkeys({
+    isOpen: true,
+    onEscapeClose: handleNo,
+    primaryAction: {
+      onPrimary: handleYes,
+    },
+  });
 
   const modalContent = (
     <div

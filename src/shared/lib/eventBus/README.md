@@ -96,8 +96,6 @@ eventBus.off('task:completed');
 - `quest:completed` - 퀘스트 완료
 
 ### Goal 도메인
-- `goal:progressChanged` - 목표 진행률 변경
-
 ### Waifu 도메인
 - `waifu:message` - Waifu 메시지 표시
 
@@ -121,7 +119,7 @@ window.__performanceMonitor.printReport();
 📊 [Performance] Event Statistics
   task:completed: 15 calls, avg 3.2ms, max 8.5ms
   xp:earned: 15 calls, avg 1.1ms, max 2.3ms
-  goal:progressChanged: 5 calls, avg 45.2ms, max 89.1ms ⚠️ 2 slow
+  block:perfect: 5 calls, avg 4.8ms, max 9.1ms
 ```
 
 ## 커스텀 미들웨어
@@ -197,7 +195,7 @@ EventBus는 강력한 도구이지만 오용하면 디버깅이 어려운 코드
 | 패턴 | 설명 | 예시 |
 |------|------|------|
 | **Store → Subscriber** | Store에서 emit, Subscriber 모듈에서 구독 | `dailyDataStore` → `xpSubscriber` |
-| **Cross-cutting Concerns** | 여러 도메인에 영향을 주는 작업 | Task 완료 → XP, Waifu, Goal, Quest 업데이트 |
+| **Cross-cutting Concerns** | 여러 도메인에 영향을 주는 작업 | Task 완료 → XP, Waifu, Quest 업데이트 |
 | **구독은 `subscribers/` 폴더에** | 중앙 집중화된 구독 관리 | `src/shared/subscribers/*.ts` |
 | **명확한 이벤트 명명** | `[domain]:[action]` 형식 | `task:completed`, `block:locked` |
 | **CorrelationId 사용** | 관련 이벤트 체인 추적 | 디버깅, 로깅, 성능 분석 |
@@ -293,9 +291,8 @@ async function completeTask() {
 구독처 (subscribers/):
 ├─ xpSubscriber.ts       → XP 추가 로직
 ├─ waifuSubscriber.ts    → Waifu 반응 로직
-├─ goalSubscriber.ts     → 목표 진행률 업데이트
 ├─ gameStateSubscriber.ts → 게임 상태 업데이트
-└─ realityCheckSubscriber.ts → 현실 점검 로직
+└─ googleSyncSubscriber.ts → Google Calendar 동기화
 ```
 
 > **핵심 원칙**: EventBus는 "누군가 이걸 했다"를 알리는 용도입니다.  
