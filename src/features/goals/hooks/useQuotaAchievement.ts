@@ -82,7 +82,8 @@ export function useQuotaAchievement() {
     };
 
     void initState();
-  }, []); // 초기화는 한 번만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 초기화는 한 번만 - goals는 의도적으로 제외 (초기 스냅샷만 필요)
 
   // 달성 상태 저장
   const saveAchievedState = useCallback(async (goalId: string) => {

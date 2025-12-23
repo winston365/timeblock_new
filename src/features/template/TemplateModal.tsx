@@ -1,6 +1,6 @@
 ﻿/**
  * @file TemplateModal.tsx
- * @description 템플릿 추가/편집 3페이지 모달 컴포넌트
+ * @description 템플릿 추가/편집 3페이지 모달 컴포넌트 (UX v1 개선)
  *
  * @role 반복 작업 템플릿의 생성 및 수정을 위한 다단계 입력 폼 제공
  * @responsibilities
@@ -8,18 +8,25 @@
  *   - 방해물 대처 전략 설정 (preparation 필드)
  *   - 반복 주기 설정 (daily, weekly, interval)
  *   - 템플릿 저장 및 업데이트 처리
+ *   - Zod 기반 폼 유효성 검증 + 즉시 에러 피드백
+ *   - 빠른 생성 (1단계 즉시 저장)
  * @dependencies
  *   - createTemplate, updateTemplate: 템플릿 Repository
  *   - getTemplateCategories, addTemplateCategory: 설정 Repository
- *   - TIME_BLOCKS: 시간대 상수
+ *   - templateSchemas: Zod 스키마
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { Template, Resistance, TimeBlockId, RecurrenceType } from '@/shared/types/domain';
+import { TIME_BLOCKS, type Template, type Resistance, type TimeBlockId, type RecurrenceType } from '@/shared/types/domain';
 import { createTemplate, updateTemplate } from '@/data/repositories';
-import { TIME_BLOCKS } from '@/shared/types/domain';
 import { getTemplateCategories, addTemplateCategory } from '@/data/repositories/settingsRepository';
 import { useModalHotkeys } from '@/shared/hooks';
+import {
+  validateBasicStep,
+  validatePreparationStep,
+  validateRecurrenceStep,
+} from '@/shared/schemas/templateSchemas';
+import { toast } from 'react-hot-toast';
 
 interface TemplateModalProps {
   template: Template | null; // null이면 신규 생성
@@ -28,11 +35,6 @@ interface TemplateModalProps {
 
 /**
  * 템플릿 추가/편집 모달 컴포넌트 (3페이지 구조)
- *
- * @param props - 컴포넌트 속성
- * @param props.template - 편집할 템플릿 (null이면 신규 생성)
- * @param props.onClose - 모달 닫기 콜백 (saved: boolean)
- * @returns 3페이지 구조의 템플릿 입력 폼 모달 UI
  */
 export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,6 +57,9 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   const [newCategory, setNewCategory] = useState('');
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // 에러 상태
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -109,11 +114,100 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
     }
   }, [template]);
 
+  /**
+   * 단계별 유효성 검사
+   */
+  const validateCurrentStep = useCallback((): boolean => {
+    let result;
+    switch (currentPage) {
+      case 1:
+        result = validateBasicStep({
+          text: text.trim(),
+          memo: memo.trim(),
+          baseDuration,
+          resistance,
+          timeBlock,
+          category: category.trim(),
+          imageUrl: imageUrl.trim(),
+          isFavorite,
+        });
+        break;
+      case 2:
+        result = validatePreparationStep({
+          preparation1: preparation1.trim(),
+          preparation2: preparation2.trim(),
+          preparation3: preparation3.trim(),
+        });
+        break;
+      case 3:
+        result = validateRecurrenceStep({
+          autoGenerate,
+          recurrenceType,
+          weeklyDays,
+          intervalDays,
+        });
+        break;
+      default:
+        return true;
+    }
+
+    if (result.success) {
+      setErrors({});
+      return true;
+    } else {
+      setErrors(result.errors ?? {});
+      return false;
+    }
+  }, [currentPage, text, memo, baseDuration, resistance, timeBlock, category, imageUrl, isFavorite, preparation1, preparation2, preparation3, autoGenerate, recurrenceType, weeklyDays, intervalDays]);
+
+  /**
+   * 다음 단계로 이동 (유효성 검사 후)
+   */
+  const handleNextPage = useCallback(() => {
+    if (validateCurrentStep()) {
+      setCurrentPage(currentPage + 1);
+    }
+  }, [currentPage, validateCurrentStep]);
+
+  /**
+   * 빠른 저장 (1단계에서 즉시 저장)
+   */
+  const handleQuickSave = async () => {
+    if (!validateCurrentStep()) return;
+
+    setIsSaving(true);
+    try {
+      await createTemplate(
+        text.trim(),
+        text.trim(),
+        memo.trim(),
+        baseDuration,
+        resistance,
+        timeBlock,
+        false, // autoGenerate
+        '', '', '', // preparations
+        'none', // recurrenceType
+        [], // weeklyDays
+        1, // intervalDays
+        category.trim(),
+        isFavorite,
+        imageUrl.trim()
+      );
+      toast.success('템플릿이 빠르게 저장되었습니다! 상세 설정은 나중에 편집하세요.');
+      onClose(true);
+    } catch (error) {
+      console.error('Failed to quick save template:', error);
+      toast.error('템플릿 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (currentPage !== 3) return;
-    if (!text.trim()) {
-      alert('할 일을 입력해주세요.');
+    
+    if (!validateCurrentStep()) {
       return;
     }
 
@@ -164,7 +258,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
       onClose(true);
     } catch (error) {
       console.error('Failed to save template:', error);
-      alert('템플릿 저장에 실패했습니다.');
+      toast.error('템플릿 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -184,7 +278,14 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   };
 
   const inputClass = "w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]";
+  const inputErrorClass = "w-full rounded-lg border border-[var(--color-danger)] bg-[var(--color-bg-base)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-danger)] focus:ring-1 focus:ring-[var(--color-danger)]";
   const labelClass = "text-xs font-bold text-[var(--color-text-secondary)] mb-1 block";
+  const errorClass = "text-xs text-[var(--color-danger)] mt-1";
+
+  /**
+   * 에러 있는 필드의 input 클래스 반환
+   */
+  const getInputClass = (field: string) => errors[field] ? inputErrorClass : inputClass;
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -214,16 +315,16 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
             {currentPage === 1 && (
               <div className="flex flex-col gap-4">
                 <div>
-                  <label className={labelClass}>할 일 이름</label>
+                  <label className={labelClass}>할 일 이름 <span className="text-[var(--color-danger)]">*</span></label>
                   <input
                     type="text"
                     value={text}
                     onChange={e => setText(e.target.value)}
                     placeholder="예: 아침 운동, 독서"
-                    className={inputClass}
+                    className={getInputClass('text')}
                     autoFocus
-                    required
                   />
+                  {errors.text && <p className={errorClass}>{errors.text}</p>}
                 </div>
 
                 <div>
@@ -232,20 +333,23 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                     value={memo}
                     onChange={e => setMemo(e.target.value)}
                     placeholder="상세 내용을 입력하세요..."
-                    className={`${inputClass} min-h-[80px] resize-none`}
+                    className={`${getInputClass('memo')} min-h-[80px] resize-none`}
                   />
+                  {errors.memo && <p className={errorClass}>{errors.memo}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className={labelClass}>소요 시간 (분)</label>
+                    <label className={labelClass}>소요 시간 (분) <span className="text-[var(--color-danger)]">*</span></label>
                     <input
                       type="number"
                       value={baseDuration}
                       onChange={e => setBaseDuration(Number(e.target.value))}
-                      className={inputClass}
+                      className={getInputClass('baseDuration')}
                       min={1}
+                      max={480}
                     />
+                    {errors.baseDuration && <p className={errorClass}>{errors.baseDuration}</p>}
                   </div>
                   <div>
                     <label className={labelClass}>저항감 (난이도)</label>
@@ -311,8 +415,9 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                     value={imageUrl}
                     onChange={e => setImageUrl(e.target.value)}
                     placeholder="https://..."
-                    className={inputClass}
+                    className={getInputClass('imageUrl')}
                   />
+                  {errors.imageUrl && <p className={errorClass}>{errors.imageUrl}</p>}
                 </div>
               </div>
             )}
@@ -332,8 +437,9 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                     value={preparation1}
                     onChange={e => setPreparation1(e.target.value)}
                     placeholder="예: 스마트폰 알림"
-                    className={inputClass}
+                    className={getInputClass('preparation1')}
                   />
+                  {errors.preparation1 && <p className={errorClass}>{errors.preparation1}</p>}
                 </div>
                 <div>
                   <label className={labelClass}>⚠️ 예상 방해물 2</label>
@@ -342,8 +448,9 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                     value={preparation2}
                     onChange={e => setPreparation2(e.target.value)}
                     placeholder="예: 배고픔"
-                    className={inputClass}
+                    className={getInputClass('preparation2')}
                   />
+                  {errors.preparation2 && <p className={errorClass}>{errors.preparation2}</p>}
                 </div>
                 <div>
                   <label className={labelClass}>✅ 대처 전략</label>
@@ -352,8 +459,9 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                     value={preparation3}
                     onChange={e => setPreparation3(e.target.value)}
                     placeholder="예: 폰을 다른 방에 두기"
-                    className={inputClass}
+                    className={getInputClass('preparation3')}
                   />
+                  {errors.preparation3 && <p className={errorClass}>{errors.preparation3}</p>}
                 </div>
               </div>
             )}
@@ -361,6 +469,16 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
             {/* Page 3: Recurrence */}
             {currentPage === 3 && (
               <div className="flex flex-col gap-4">
+                {/* 전역 에러 메시지 */}
+                {Object.keys(errors).length > 0 && (
+                  <div className="rounded-lg bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/30 p-3">
+                    <p className="text-xs font-bold text-[var(--color-danger)]">⚠️ 설정을 확인해주세요</p>
+                    {Object.values(errors).map((err, idx) => (
+                      <p key={idx} className="text-xs text-[var(--color-danger)] mt-1">• {err}</p>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3 rounded-xl border border-[var(--color-border)] p-4">
                   <input
                     type="checkbox"
@@ -369,6 +487,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                       setAutoGenerate(e.target.checked);
                       if (e.target.checked) setRecurrenceType('daily');
                       else setRecurrenceType('none');
+                      setErrors({}); // 에러 초기화
                     }}
                     className="h-5 w-5 accent-[var(--color-primary)]"
                   />
@@ -381,10 +500,13 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                 {autoGenerate && (
                   <div className="flex flex-col gap-4 rounded-xl bg-[var(--color-bg-elevated)] p-4">
                     <div>
-                      <label className={labelClass}>반복 주기</label>
+                      <label className={labelClass}>반복 주기 <span className="text-[var(--color-danger)]">*</span></label>
                       <select
                         value={recurrenceType}
-                        onChange={e => setRecurrenceType(e.target.value as RecurrenceType)}
+                        onChange={e => {
+                          setRecurrenceType(e.target.value as RecurrenceType);
+                          setErrors({});
+                        }}
                         className={inputClass}
                       >
                         <option value="daily">매일</option>
@@ -394,23 +516,30 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                     </div>
 
                     {recurrenceType === 'weekly' && (
-                      <div className="flex justify-between gap-1">
-                        {['일', '월', '화', '수', '목', '금', '토'].map((day, idx) => (
-                          <button
-                            key={day}
-                            type="button"
-                            onClick={() => {
-                              if (weeklyDays.includes(idx)) setWeeklyDays(weeklyDays.filter(d => d !== idx));
-                              else setWeeklyDays([...weeklyDays, idx]);
-                            }}
-                            className={`h-8 w-8 rounded-full text-xs font-bold transition-colors ${weeklyDays.includes(idx)
-                              ? 'bg-[var(--color-primary)] text-white'
-                              : 'bg-[var(--color-bg-base)] text-[var(--color-text-secondary)] border border-[var(--color-border)]'
-                              }`}
-                          >
-                            {day}
-                          </button>
-                        ))}
+                      <div>
+                        <label className={labelClass}>요일 선택 <span className="text-[var(--color-danger)]">*</span></label>
+                        <div className="flex justify-between gap-1 mt-2">
+                          {['일', '월', '화', '수', '목', '금', '토'].map((day, idx) => (
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => {
+                                if (weeklyDays.includes(idx)) setWeeklyDays(weeklyDays.filter(d => d !== idx));
+                                else setWeeklyDays([...weeklyDays, idx]);
+                                setErrors({});
+                              }}
+                              className={`h-8 w-8 rounded-full text-xs font-bold transition-colors ${weeklyDays.includes(idx)
+                                ? 'bg-[var(--color-primary)] text-white'
+                                : 'bg-[var(--color-bg-base)] text-[var(--color-text-secondary)] border border-[var(--color-border)]'
+                                }`}
+                            >
+                              {day}
+                            </button>
+                          ))}
+                        </div>
+                        {weeklyDays.length === 0 && (
+                          <p className="text-xs text-[var(--color-text-tertiary)] mt-2">최소 1개 요일을 선택해주세요</p>
+                        )}
                       </div>
                     )}
 
@@ -422,6 +551,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                           value={intervalDays}
                           onChange={e => setIntervalDays(Number(e.target.value))}
                           min={1}
+                          max={365}
                           className={inputClass}
                         />
                       </div>
@@ -442,23 +572,38 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
               {currentPage === 1 ? '취소' : '이전'}
             </button>
 
-            {currentPage < 3 ? (
-              <button
-                type="button"
-                onClick={() => setCurrentPage(currentPage + 1)}
-                className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--color-primary-dark)]"
-              >
-                다음
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--color-primary-dark)] disabled:opacity-50"
-              >
-                {isSaving ? '저장 중...' : '완료'}
-              </button>
-            )}
+            <div className="flex gap-2">
+              {/* 빠른 저장 버튼 (1단계에서만, 신규 생성 시에만) */}
+              {currentPage === 1 && !template && (
+                <button
+                  type="button"
+                  onClick={handleQuickSave}
+                  disabled={isSaving || !text.trim()}
+                  className="rounded-lg border border-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 disabled:opacity-50"
+                  title="기본 설정으로 빠르게 저장하고 나중에 상세 설정"
+                >
+                  ⚡ 빠른 저장
+                </button>
+              )}
+
+              {currentPage < 3 ? (
+                <button
+                  type="button"
+                  onClick={handleNextPage}
+                  className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--color-primary-dark)]"
+                >
+                  다음
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--color-primary-dark)] disabled:opacity-50"
+                >
+                  {isSaving ? '저장 중...' : '완료'}
+                </button>
+              )}
+            </div>
           </div>
         </form>
       </div>

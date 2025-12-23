@@ -15,8 +15,7 @@
  */
 
 import { useState, useRef, useEffect, useId, useCallback } from 'react';
-import type { Task, TimeBlockId, Resistance } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
+import { TIME_BLOCKS, type Task, type TimeBlockId, type Resistance } from '@/shared/types/domain';
 import { createTaskFromPartial } from '@/shared/utils/taskFactory';
 import { useModalHotkeys } from '@/shared/hooks';
 

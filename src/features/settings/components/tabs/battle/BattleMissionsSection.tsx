@@ -9,8 +9,7 @@
  *   - 시간대 설정 (최대 3개)
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { DragEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useBattleStore } from '@/features/battle/stores/battleStore';
 import type { BattleMission } from '@/shared/types/domain';
 import {

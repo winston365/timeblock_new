@@ -40,6 +40,14 @@ export const SYSTEM_KEYS = {
     GOOGLE_CALENDAR_SETTINGS: 'googleCalendarSettings',
     /** 일일 요약 보고서 캐시 접두사 */
     DAILY_SUMMARY_REPORT_PREFIX: 'daily_summary_report',
+    /** 템플릿 UX v1 기능 플래그 */
+    TEMPLATE_UX_V1_ENABLED: 'template:uxV1Enabled',
+    /** 템플릿 UI 환경설정 (정렬, 필터 등) */
+    TEMPLATE_UI_PREFS: 'template:uiPrefs',
+    /** 템플릿 자동생성 상태 */
+    TEMPLATE_AUTO_GENERATE_STATE: 'template:autoGenerateState',
+    /** 템플릿 실행 로그 (최대 50개) */
+    TEMPLATE_EXECUTION_LOG: 'template:executionLog',
 } as const;
 
 /**

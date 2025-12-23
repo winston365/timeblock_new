@@ -11,8 +11,7 @@
  */
 
 import { db } from '../db/dexieClient';
-import type { Template, Task, TimeBlockId, Resistance, RecurrenceType } from '@/shared/types/domain';
-import { RESISTANCE_MULTIPLIERS } from '@/shared/types/domain';
+import { RESISTANCE_MULTIPLIERS, type Template, type Task, type TimeBlockId, type Resistance, type RecurrenceType } from '@/shared/types/domain';
 import { getBlockById } from '@/shared/utils/timeBlockUtils';
 import { generateId, getLocalDate } from '@/shared/lib/utils';
 import { withFirebaseFetch } from '@/shared/utils/firebaseGuard';

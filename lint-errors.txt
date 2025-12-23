@@ -1,0 +1,107 @@
+
+> timeblockplanner@1.0.166 lint
+> eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0
+
+
+E:\git\timeblock_new\src\app\components\TopToolbar.tsx
+  26:1  error  '@/shared/types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\data\repositories\dailyData\coreOperations.ts
+  18:1  error  '@/shared/types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\data\repositories\tempScheduleRepository.ts
+  19:1  error  '@/shared/services/sync/firebase/syncCore' import is duplicated  no-duplicate-imports
+  21:1  error  '@/shared/types/tempSchedule' import is duplicated               no-duplicate-imports
+
+E:\git\timeblock_new\src\data\repositories\templateRepository.ts
+  15:1  error  '@/shared/types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\battle\components\modal\BattleMissionCard.tsx
+  14:1  error  'react' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\goals\WeeklyGoalCard.tsx
+  22:1  error  'react' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\goals\components\GoalStatusTooltip.tsx
+  15:1  error  'react' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\goals\components\QuickLogSessionPopover.tsx
+  17:1  error  'react' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\goals\hooks\useCatchUpAlert.ts
+  21:1  error  '@/features/goals/utils/catchUpUtils' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\goals\hooks\useCatchUpAlertBanner.ts
+  17:1  error  '@/features/goals/utils/catchUpUtils' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\goals\hooks\useQuotaAchievement.ts
+  85:6  warning  React Hook useEffect has a missing dependency: 'goals'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+E:\git\timeblock_new\src\features\schedule\ScheduleView.tsx
+  18:1  error  '@/shared/types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\schedule\TimelineView\useTimelineData.ts
+  15:1  error  '@/shared/types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\settings\SettingsModal.tsx
+  28:1  error  '@/shared/types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\settings\components\tabs\BattleTab.tsx
+  16:1  error  'react' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\settings\components\tabs\battle\BattleMissionsSection.tsx
+  13:1  error  'react' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\tasks\BulkAddModal.tsx
+  19:1  error  '@/shared/types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\tasks\InboxTab.tsx
+  23:1  error  '@/shared/types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\tasks\TaskBreakdownModal.tsx
+  20:1  error  'react' import is duplicated                  no-duplicate-imports
+  22:1  error  '@/shared/types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\tempSchedule\components\AddTempScheduleTaskModal.tsx
+  17:1  error  '@/shared/types/tempSchedule' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\tempSchedule\components\TempScheduleContextMenu.tsx
+  5:1  error  '@/shared/types/tempSchedule' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\tempSchedule\stores\tempScheduleStore.ts
+  23:1  error  '@/shared/types/tempSchedule' import is duplicated  no-duplicate-imports
+  35:1  error  '@/shared/types/tempSchedule' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\template\TemplateModal.tsx
+  22:1  error  '@/shared/types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\template\TemplatePanel.tsx
+  21:1  error  '@/shared/types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\features\template\TemplatesModal.tsx
+  25:1  error  '@/shared/types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\shared\lib\personaUtils.ts
+  23:1  error  '@/shared/types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\shared\lib\utils.ts
+  11:1  error  '../types/domain' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\shared\services\gameplay\gameState\gameStateEventHandler.ts
+  16:1  error  './types' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\shared\services\sync\firebase\rtdbListenerRegistry.ts
+  9:1  error  'firebase/database' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\src\shared\services\sync\firebase\syncCore.ts
+  19:1  error  './conflictResolver' import is duplicated  no-duplicate-imports
+
+E:\git\timeblock_new\tests\modal-hotkeys.test.ts
+  12:44  warning  'vi' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\git\timeblock_new\tests\template-system.test.ts
+  16:3  warning  'templateFormSchema' is defined but never used  @typescript-eslint/no-unused-vars
+  18:3  warning  'validateFullForm' is defined but never used    @typescript-eslint/no-unused-vars
+
+✖ 36 problems (32 errors, 4 warnings)
+

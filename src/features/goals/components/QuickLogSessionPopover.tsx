@@ -13,8 +13,7 @@
  *   - ADHD 친화적: 빠른 입력과 시각적 피드백
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import type { RefObject, KeyboardEvent } from 'react';
+import { useState, useCallback, useRef, useEffect, type RefObject, type KeyboardEvent } from 'react';
 import { modalStackRegistry } from '@/shared/hooks/modalStackRegistry';
 
 interface QuickLogSessionPopoverProps {

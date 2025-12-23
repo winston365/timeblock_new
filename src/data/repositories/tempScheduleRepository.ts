@@ -15,10 +15,8 @@
 import { db } from '@/data/db/dexieClient';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
-import { fetchFromFirebase, syncToFirebase } from '@/shared/services/sync/firebase/syncCore';
-import type { SyncStrategy } from '@/shared/services/sync/firebase/syncCore';
-import type { TempScheduleTask, RecurrenceRule, TempScheduleTemplate } from '@/shared/types/tempSchedule';
-import { TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
+import { fetchFromFirebase, syncToFirebase, type SyncStrategy } from '@/shared/services/sync/firebase/syncCore';
+import { TEMP_SCHEDULE_DEFAULTS, type TempScheduleTask, type RecurrenceRule, type TempScheduleTemplate } from '@/shared/types/tempSchedule';
 import { generateId, getLocalDate, timeStrToMinutes } from '@/shared/lib/utils';
 import { withFirebaseSync } from '@/shared/utils/firebaseGuard';
 import { eventBus } from '@/shared/lib/eventBus';

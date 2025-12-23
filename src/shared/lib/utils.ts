@@ -7,8 +7,7 @@
  * @dependencies domain 타입, constants
  */
 
-import type { Resistance, Task, TimeBlockId } from '../types/domain';
-import { RESISTANCE_MULTIPLIERS } from '../types/domain';
+import { RESISTANCE_MULTIPLIERS, type Resistance, type Task, type TimeBlockId } from '../types/domain';
 import { XP_PER_MINUTE } from './constants';
 import { getBlockById, getBlockIdFromHour as getBlockIdFromHourCore, getCurrentBlockId } from '@/shared/utils/timeBlockUtils';
 

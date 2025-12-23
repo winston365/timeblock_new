@@ -11,8 +11,7 @@
  *   - Key Dependencies: CatchUpInfo 타입
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import type { ReactNode, KeyboardEvent } from 'react';
+import { useState, useCallback, useRef, useEffect, type ReactNode, type KeyboardEvent } from 'react';
 import type { WeeklyGoal } from '@/shared/types/domain';
 import type { CatchUpInfo } from '../utils/catchUpUtils';
 import { CATCH_UP_THRESHOLDS } from '../constants/goalConstants';

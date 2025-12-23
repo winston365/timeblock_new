@@ -10,7 +10,6 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import type { Boss, BossDifficulty } from '@/shared/types/domain';
 import { pickRandomQuote } from '../utils/quotes';
 import { useModalHotkeys } from '@/shared/hooks';
-import { useModalHotkeys } from '@/shared/hooks';
 
 interface BossDefeatOverlayProps {
   boss: Boss;
@@ -68,11 +67,6 @@ export function BossDefeatOverlay({
 
   // 순차 진행 중 다음 단계 정보
   const nextPhaseInfo = PHASE_LABELS[nextSequentialPhase];
-
-  useModalHotkeys({
-    isOpen: true,
-    onEscapeClose: onClose,
-  });
 
   useEffect(() => {
     const timers: NodeJS.Timeout[] = [];

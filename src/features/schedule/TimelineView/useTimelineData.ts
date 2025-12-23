@@ -11,8 +11,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
-import type { Task } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
+import { TIME_BLOCKS, type Task } from '@/shared/types/domain';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
 import { getBucketStartHour } from '../utils/timeBlockBucket';
 import { getBlockById, getEffectiveTimeBlockIdForTask } from '@/shared/utils/timeBlockUtils';

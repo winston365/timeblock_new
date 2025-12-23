@@ -12,9 +12,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
-import { calculateBehindGoalsSummary } from '@/features/goals/utils/catchUpUtils';
+import { calculateBehindGoalsSummary, type CatchUpInfo } from '@/features/goals/utils/catchUpUtils';
 import type { WeeklyGoal } from '@/shared/types/domain';
-import type { CatchUpInfo } from '@/features/goals/utils/catchUpUtils';
 import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
 import { CATCH_UP_DEFAULTS, type CatchUpSnoozeState } from '@/shared/constants/defaults';
 

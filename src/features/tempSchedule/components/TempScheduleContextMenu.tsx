@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
-import type { TempScheduleTask } from '@/shared/types/tempSchedule';
-import { TEMP_SCHEDULE_COLORS } from '@/shared/types/tempSchedule';
+import { TEMP_SCHEDULE_COLORS, type TempScheduleTask } from '@/shared/types/tempSchedule';
 
 interface TempScheduleContextMenuProps {
     task: TempScheduleTask;

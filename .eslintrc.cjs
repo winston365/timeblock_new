@@ -59,6 +59,8 @@ module.exports = {
     // 기존 프로젝트 규칙
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/no-explicit-any': 'warn',
+    // ⚠️ 중복 import 금지
+    'no-duplicate-imports': 'error',
   },
   // theme 관련 파일에서만 localStorage 허용
   overrides: [

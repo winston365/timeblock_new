@@ -13,8 +13,7 @@
 
 import { memo, useState, useCallback, useEffect } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
-import type { RecurrenceRule, TempScheduleRecurrenceType } from '@/shared/types/tempSchedule';
-import { TEMP_SCHEDULE_COLOR_PALETTE, TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
+import { TEMP_SCHEDULE_COLOR_PALETTE, TEMP_SCHEDULE_DEFAULTS, type RecurrenceRule, type TempScheduleRecurrenceType } from '@/shared/types/tempSchedule';
 import { useModalHotkeys } from '@/shared/hooks';
 import { minutesToTimeStr, timeStrToMinutes } from '@/shared/lib/utils';
 

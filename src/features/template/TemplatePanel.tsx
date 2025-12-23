@@ -15,10 +15,9 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import type { Template } from '@/shared/types/domain';
+import { RESISTANCE_LABELS, TIME_BLOCKS, type Template } from '@/shared/types/domain';
 import { loadTemplates, deleteTemplate as deleteTemplateRepo } from '@/data/repositories';
 import { TemplateModal } from './TemplateModal';
-import { RESISTANCE_LABELS, TIME_BLOCKS } from '@/shared/types/domain';
 import { calculateTaskXP } from '@/shared/lib/utils';
 
 interface TemplatePanelProps {

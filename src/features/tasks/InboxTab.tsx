@@ -19,8 +19,7 @@
 import { useState, useEffect } from 'react';
 import { useGameState } from '@/shared/hooks/useGameState';
 import { useDailyData } from '@/shared/hooks/useDailyData';
-import type { Task, TimeBlockId } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
+import { TIME_BLOCKS, type Task, type TimeBlockId } from '@/shared/types/domain';
 import { createInboxTask, createTaskFromPartial, isTaskPrepared, isNewlyPrepared } from '@/shared/utils/taskFactory';
 import TaskCard from '@/features/schedule/TaskCard';
 import TaskModal from '@/features/schedule/TaskModal';

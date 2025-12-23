@@ -12,8 +12,7 @@
  *   - 이벤트 기반 확장 가능
  */
 
-import type { GameStateEvent, XPGainedEvent, QuestCompletedEvent } from './types';
-import { XP_REASON_MESSAGES } from './types';
+import { XP_REASON_MESSAGES, type GameStateEvent, type XPGainedEvent, type QuestCompletedEvent } from './types';
 
 /**
  * 게임 상태 이벤트 핸들러

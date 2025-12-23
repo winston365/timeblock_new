@@ -15,8 +15,7 @@
  */
 
 import { ref, set, get, onValue } from 'firebase/database';
-import type { SyncData } from './conflictResolver';
-import { resolveConflictLWW } from './conflictResolver';
+import { resolveConflictLWW, type SyncData } from './conflictResolver';
 import { getDataHash, getServerTimestamp, getDeviceId, getFirebasePath } from './syncUtils';
 import { getFirebaseDatabase, isFirebaseInitialized } from './firebaseClient';
 import { addSyncLog } from '../syncLogger';

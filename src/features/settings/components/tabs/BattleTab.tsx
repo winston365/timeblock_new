@@ -12,8 +12,7 @@
  *   - bossData: 보스 메타데이터
  */
 
-import { useEffect } from 'react';
-import type { ChangeEvent } from 'react';
+import { useEffect, type ChangeEvent } from 'react';
 import type { BossDifficulty } from '@/shared/types/domain';
 import { useBattleStore } from '@/features/battle/stores/battleStore';
 import {

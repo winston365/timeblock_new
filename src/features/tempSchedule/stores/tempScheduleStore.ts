@@ -14,13 +14,14 @@
  */
 
 import { create } from 'zustand';
-import type {
-  TempScheduleTask,
-  TempScheduleViewMode,
-  GridSnapInterval,
-  TempScheduleDragState,
+import {
+  TEMP_SCHEDULE_DEFAULTS,
+  type TempScheduleTask,
+  type TempScheduleViewMode,
+  type GridSnapInterval,
+  type TempScheduleDragState,
+  type TempScheduleTemplate,
 } from '@/shared/types/tempSchedule';
-import { TEMP_SCHEDULE_DEFAULTS } from '@/shared/types/tempSchedule';
 import {
   loadTempScheduleTasks,
   addTempScheduleTask,
@@ -32,7 +33,6 @@ import {
   deleteTemplate,
   applyTemplate,
 } from '@/data/repositories/tempScheduleRepository';
-import type { TempScheduleTemplate } from '@/shared/types/tempSchedule';
 import { getLocalDate } from '@/shared/lib/utils';
 
 // ============================================================================

@@ -19,8 +19,7 @@
  */
 import { loadInboxTasks, loadCompletedInboxTasks } from '@/data/repositories/inboxRepository';
 import type { PersonaContext } from '@/shared/services/ai/geminiApi';
-import type { DailyData, GameState, Task, TimeBlockState, WaifuState } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
+import { TIME_BLOCKS, type DailyData, type GameState, type Task, type TimeBlockState, type WaifuState } from '@/shared/types/domain';
 import { getRecentDailyData } from '@/data/repositories/dailyDataRepository';
 
 /**

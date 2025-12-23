@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useRef, useMemo, useState } from 'react';
-import type { GameState } from '@/shared/types/domain';
+import { TIME_BLOCKS, type GameState } from '@/shared/types/domain';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { getAffectionColor } from '@/features/waifu/waifuImageUtils';
 import { useWaifuCompanionStore } from '@/shared/stores/waifuCompanionStore';
@@ -23,7 +23,6 @@ import { InboxModal } from '@/features/tasks/InboxModal';
 import { GoalsModal } from '@/features/goals/GoalsModal';
 import { useFocusModeStore } from '@/features/schedule/stores/focusModeStore';
 import { useScheduleViewStore } from '@/features/schedule/stores/scheduleViewStore';
-import { TIME_BLOCKS } from '@/shared/types/domain';
 import BossAlbumModal from '@/features/battle/components/BossAlbumModal';
 import { useBattleStore } from '@/features/battle/stores/battleStore';
 import { TempScheduleModal } from '@/features/tempSchedule';

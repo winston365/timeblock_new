@@ -18,8 +18,7 @@
  *     - catchUpUtils: 만회 심각도 계산
  */
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import type { KeyboardEvent } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, type KeyboardEvent } from 'react';
 import type { WeeklyGoal } from '@/shared/types/domain';
 import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
 import { useToastStore } from '@/shared/stores/toastStore';

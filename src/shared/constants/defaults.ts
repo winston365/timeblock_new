@@ -186,6 +186,81 @@ export const SYSTEM_STATE_DEFAULTS = {
 } as const;
 
 // ============================================================================
+// Template UX 기본값
+// ============================================================================
+
+/**
+ * 템플릿 UX v1 기능 플래그 및 설정 기본값
+ */
+export const TEMPLATE_DEFAULTS = {
+  /** UX v1 기능 활성화 여부 */
+  uxV1Enabled: true,
+
+  /** 실행 로그 최대 보관 개수 */
+  executionLogMaxItems: 50,
+
+  /** 기본 정렬 방식 */
+  defaultSortBy: 'nextOccurrence' as const,
+
+  /** 기본 정렬 방향 */
+  defaultSortOrder: 'asc' as const,
+} as const;
+
+/**
+ * 템플릿 UI 환경설정 타입
+ */
+export interface TemplateUiPrefs {
+  /** 정렬 기준: nextOccurrence | name | baseDuration | createdAt */
+  sortBy: 'nextOccurrence' | 'name' | 'baseDuration' | 'createdAt';
+  /** 정렬 순서: asc | desc */
+  sortOrder: 'asc' | 'desc';
+  /** 마지막 선택된 카테고리 */
+  lastCategory?: string;
+  /** 즐겨찾기만 보기 */
+  showFavoritesOnly?: boolean;
+}
+
+/**
+ * 자동생성 상태 타입
+ */
+export interface TemplateAutoGenerateState {
+  /** 마지막 자동생성 실행 날짜 (YYYY-MM-DD) */
+  lastRunDate: string | null;
+  /** 마지막 실행 시각 (ISO 8601) */
+  lastRunAt: string | null;
+  /** 마지막 생성된 작업 수 */
+  lastGeneratedCount: number;
+  /** 마지막 실행 성공 여부 */
+  lastRunSuccess: boolean;
+}
+
+/**
+ * 실행 로그 항목 타입
+ */
+export interface TemplateExecutionLogEntry {
+  /** 실행 시각 (ISO 8601) */
+  executedAt: string;
+  /** 템플릿 ID */
+  templateId: string;
+  /** 템플릿 이름 */
+  templateName: string;
+  /** 예상 소요시간 (분) */
+  estimatedDuration: number;
+  /** 실제 소요시간 (분, 완료 시) */
+  actualDuration?: number;
+  /** 생성 방식: auto | manual */
+  source: 'auto' | 'manual';
+}
+
+/**
+ * 실행 로그 상태 타입
+ */
+export interface TemplateExecutionLog {
+  /** 로그 항목 목록 (최신순, 최대 50개) */
+  entries: TemplateExecutionLogEntry[];
+}
+
+// ============================================================================
 // 타입 유틸리티
 // ============================================================================
 

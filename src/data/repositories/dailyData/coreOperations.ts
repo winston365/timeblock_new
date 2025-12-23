@@ -14,8 +14,7 @@
  */
 
 import { db } from '../../db/dexieClient';
-import type { DailyData, Task, TimeBlockStates } from '@/shared/types/domain';
-import { TIME_BLOCKS } from '@/shared/types/domain';
+import { TIME_BLOCKS, type DailyData, type Task, type TimeBlockStates } from '@/shared/types/domain';
 import { getLocalDate } from '@/shared/lib/utils';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { getBlockById } from '@/shared/utils/timeBlockUtils';

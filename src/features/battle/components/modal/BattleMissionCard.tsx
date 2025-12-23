@@ -10,8 +10,7 @@
  *   - 공격/스케줄 추가 액션
  */
 
-import type React from 'react';
-import { useState } from 'react';
+import { useState, type React } from 'react';
 import type { BattleMission } from '@/shared/types/domain';
 import { useTimeout } from '@/shared/hooks';
 import {

@@ -5,8 +5,7 @@
  *       동일 경로에 여러 consumer가 구독하더라도 실제 Firebase 리스너는 1개만 유지합니다.
  */
 
-import type { Database, DataSnapshot } from 'firebase/database';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, type Database, type DataSnapshot } from 'firebase/database';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import {
   recordRtdbAttach,

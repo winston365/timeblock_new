@@ -15,7 +15,7 @@
 
 import { useState, useEffect } from 'react';
 import { initializeFirebase } from '@/shared/services/sync/firebaseService';
-import type { Settings } from '@/shared/types/domain';
+import type { Settings, DailyTokenUsage } from '@/shared/types/domain';
 import {
     getSyncLogs,
     clearSyncLogs,
@@ -25,7 +25,6 @@ import {
     type SyncAction,
 } from '@/shared/services/sync/syncLogger';
 import { loadAllTokenUsage } from '@/data/repositories/chatHistoryRepository';
-import type { DailyTokenUsage } from '@/shared/types/domain';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { toast } from 'react-hot-toast';
 import {
