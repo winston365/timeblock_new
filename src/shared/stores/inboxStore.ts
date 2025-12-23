@@ -91,20 +91,32 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
 
     /**
      * 인박스 작업 업데이트
+     * timeBlock이 설정되면 dailyDataStore를 통해 처리 (optimistic update 포함)
      */
     updateTask: async (taskId: string, updates: Partial<Task>) => {
         return withAsyncAction(set, async () => {
-            // timeBlock이 설정되면 dailyData로 이동해야 함
+            // timeBlock이 설정되면 dailyDataStore를 통해 처리 (optimistic update 활용)
             if (updates.timeBlock !== undefined && updates.timeBlock !== null) {
-                const { updateTask: updateTaskInDaily } = await import('@/data/repositories/dailyDataRepository');
-                await updateTaskInDaily(taskId, updates);
+                // Optimistic: 즉시 inbox에서 제거
+                const { inboxTasks } = get();
+                set({ inboxTasks: inboxTasks.filter(t => t.id !== taskId) });
+
+                try {
+                    // dailyDataStore를 통해 처리 (순환 의존성 방지를 위해 동적 import)
+                    const { useDailyDataStore } = await import('@/shared/stores/dailyDataStore');
+                    await useDailyDataStore.getState().updateTask(taskId, updates);
+                } catch (error) {
+                    // 실패 시 롤백: inbox 목록 다시 로드
+                    await get().loadData();
+                    throw error;
+                }
             } else {
                 await updateInboxTask(taskId, updates);
+                if (updates.text) {
+                    scheduleEmojiSuggestion(taskId, updates.text);
+                }
+                await get().loadData();
             }
-            if (updates.text) {
-                scheduleEmojiSuggestion(taskId, updates.text);
-            }
-            await get().loadData();
         }, { errorPrefix: 'InboxStore: updateTask' });
     },
 

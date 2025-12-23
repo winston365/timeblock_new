@@ -15,6 +15,9 @@ import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
 import WeeklyGoalCard from './WeeklyGoalCard';
 import WeeklyGoalModal from './WeeklyGoalModal';
 import WeeklyGoalHistoryModal from './WeeklyGoalHistoryModal';
+import CatchUpAlertBanner from './components/CatchUpAlertBanner';
+import { useCatchUpAlertBanner } from './hooks/useCatchUpAlertBanner';
+import { useQuotaAchievement } from './hooks/useQuotaAchievement';
 import type { WeeklyGoal } from '@/shared/types/domain';
 
 interface WeeklyGoalPanelProps {
@@ -30,6 +33,17 @@ export default function WeeklyGoalPanel({ onOpenModal }: WeeklyGoalPanelProps) {
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<WeeklyGoal | undefined>(undefined);
   const [historyGoal, setHistoryGoal] = useState<WeeklyGoal | null>(null);
+
+  // Catch-up 배너 관리
+  const {
+    isVisible: isBannerVisible,
+    behindGoals,
+    dismissBanner,
+    snoozeBanner,
+  } = useCatchUpAlertBanner();
+
+  // Quota 달성 축하 토스트 (목표 진행도 변화 감지)
+  useQuotaAchievement();
 
   const dayIndex = getDayOfWeekIndex();
   const dayLabels = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
@@ -68,6 +82,14 @@ export default function WeeklyGoalPanel({ onOpenModal }: WeeklyGoalPanelProps) {
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-hidden">
+      {/* Catch-up 알림 배너 */}
+      <CatchUpAlertBanner
+        isVisible={isBannerVisible}
+        behindGoals={behindGoals}
+        onDismiss={dismissBanner}
+        onSnooze={snoozeBanner}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

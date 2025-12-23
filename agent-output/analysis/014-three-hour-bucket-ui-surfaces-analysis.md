@@ -1,3 +1,9 @@
+## Meta
+- Date: 2025-12-23
+- Status: Planned
+- Changelog:
+	- 2025-12-23: Schedule task limit 제거 + Inbox→TimeBlock 즉시 반영(PR 계획) 범위에서 이 분석을 참조하도록 상태 업데이트.
+
 # Value Statement and Business Objective
 - Align Focus, Timeline, and Battle mission flows to the 3-hour bucket model so task surfacing, creation, and drag/drop stay consistent across the app, reducing user confusion and over-allocation within a bucket.
 

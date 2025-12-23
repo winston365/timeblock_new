@@ -15,7 +15,6 @@
  */
 
 import { memo, useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { toast } from 'react-hot-toast';
 import {
   useTimelineData,
   TIMELINE_END_HOUR,
@@ -37,8 +36,6 @@ import {
   formatBucketRangeLabel,
   getBucketStartHour,
   getSuggestedHourSlotForBlock,
-  isBucketAtCapacity,
-  MAX_TASKS_PER_BLOCK,
   normalizeDropTargetHourSlot,
 } from '../utils/timeBlockBucket';
 
@@ -66,7 +63,6 @@ interface ContextMenuState {
 function TimelineViewComponent() {
   const { timelineItems, bucketGroups, totalHeight, visibleStartHour, showPastBlocks, toggleShowPastBlocks } = useTimelineData();
   const { updateTask, addTask, deleteTask } = useDailyDataStore();
-  const dailyTasks = useDailyDataStore((state) => state.dailyData?.tasks ?? []);
   const { setDragData, getDragData } = useDragDropManager();
 
   const [currentTimePosition, setCurrentTimePosition] = useState<number | null>(null);
@@ -207,13 +203,6 @@ function TimelineViewComponent() {
         const normalizedHourSlot = normalizeDropTargetHourSlot(selectedHourSlot);
 
         const blockStartHour = selectedBlockId ? (getBlockById(selectedBlockId)?.start ?? undefined) : undefined;
-        if (blockStartHour !== undefined && selectedBlockId) {
-          const tasksInBlock = dailyTasks.filter((t) => t.timeBlock === selectedBlockId);
-          if (isBucketAtCapacity(tasksInBlock.length)) {
-            toast.error(`${formatBucketRangeLabel(blockStartHour)}에는 최대 ${MAX_TASKS_PER_BLOCK}개의 작업만 추가할 수 있습니다.`);
-            return;
-          }
-        }
 
         const baseDuration = taskData.baseDuration ?? TASK_DEFAULTS.baseDuration;
         const resistance = taskData.resistance ?? TASK_DEFAULTS.resistance;
@@ -250,7 +239,7 @@ function TimelineViewComponent() {
     } catch (error) {
       console.error('Failed to save task:', error);
     }
-  }, [editingTask, selectedBlockId, selectedHourSlot, updateTask, addTask, handleCloseModal, dailyTasks]);
+  }, [editingTask, selectedBlockId, selectedHourSlot, updateTask, addTask, handleCloseModal]);
 
   // 드래그 시작 핸들러
   const handleDragStart = useCallback((task: Task, e: React.DragEvent) => {
@@ -306,15 +295,6 @@ function TimelineViewComponent() {
       return;
     }
 
-    // TIME_BLOCK(=버킷)당 최대 작업 수 제한
-    const tasksInTargetBlock = (dailyTasks ?? [])
-      .filter((t) => t.timeBlock === targetBlockId)
-      .filter((t) => t.id !== dragData.taskId);
-    if (isBucketAtCapacity(tasksInTargetBlock.length)) {
-      toast.error(`${formatBucketRangeLabel(targetBucketStartHour)}에는 최대 ${MAX_TASKS_PER_BLOCK}개의 작업만 배치할 수 있습니다.`);
-      return;
-    }
-
     try {
       await updateTask(dragData.taskId, {
         timeBlock: targetBlockId,
@@ -323,7 +303,7 @@ function TimelineViewComponent() {
     } catch (error) {
       console.error('Failed to move task:', error);
     }
-  }, [getDragData, updateTask, dailyTasks]);
+  }, [getDragData, updateTask]);
 
 
   // 컨텍스트 메뉴 열기

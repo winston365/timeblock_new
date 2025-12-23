@@ -42,12 +42,16 @@ describe('timeBlockBucket utils (TIME_BLOCKS 기반)', () => {
     expect(normalizeDropTargetHourSlot(Number.NaN)).toBeUndefined();
   });
 
-  it('isBucketAtCapacity: applies MAX_TASKS_PER_BLOCK by default', () => {
-    expect(MAX_TASKS_PER_BLOCK).toBe(3);
+  it('isBucketAtCapacity: 제한 제거 후 항상 false 반환 (무제한)', () => {
+    // 제한이 제거되어 MAX_TASKS_PER_BLOCK은 Infinity
+    expect(MAX_TASKS_PER_BLOCK).toBe(Infinity);
+    // isBucketAtCapacity는 항상 false 반환 (무제한 배치 허용)
     expect(isBucketAtCapacity(0)).toBe(false);
     expect(isBucketAtCapacity(2)).toBe(false);
-    expect(isBucketAtCapacity(3)).toBe(true);
-    expect(isBucketAtCapacity(4)).toBe(true);
+    expect(isBucketAtCapacity(3)).toBe(false);
+    expect(isBucketAtCapacity(4)).toBe(false);
+    expect(isBucketAtCapacity(100)).toBe(false);
+    expect(isBucketAtCapacity(1000)).toBe(false);
   });
 
   it('clampHourSlotToBlock: 블록 밖 hourSlot을 블록 내부로 클램프한다', () => {

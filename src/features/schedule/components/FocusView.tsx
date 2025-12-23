@@ -26,7 +26,6 @@ import { BreakView } from './BreakView';
 import { FocusMusicPlayer } from './FocusMusicPlayer';
 import { useFocusMusicStore } from '../stores/focusMusicStore';
 import { getBlockById, getBlockDurationMinutes, getBlockLabel } from '@/shared/utils/timeBlockUtils';
-import { isBucketAtCapacity, MAX_TASKS_PER_BLOCK } from '../utils/timeBlockBucket';
 
 interface FocusViewProps {
     currentBlockId: TimeBlockId | null;
@@ -166,12 +165,6 @@ export function FocusView({
         if (e.key === 'Enter' && inlineInputValue.trim()) {
             e.preventDefault();
             const trimmedText = inlineInputValue.trim();
-
-            // 현재 타임블럭 작업 3개 제한
-            if (isBucketAtCapacity(currentBlockTasks.length)) {
-                toast.error(`이 시간대에는 최대 ${MAX_TASKS_PER_BLOCK}개의 작업만 추가할 수 있습니다.`);
-                return;
-            }
 
             try {
                 if (!currentBlockId || !currentBlock) {
@@ -506,11 +499,11 @@ export function FocusView({
             )}
 
             {/* 인라인 작업 추가 */}
-            {!isLocked && !isBucketAtCapacity(currentBlockTasks.length) && (
+            {!isLocked && (
                 <div className="rounded-2xl bg-[var(--color-bg-surface)] p-4">
                     <div className="flex items-center gap-2 mb-2">
                         <span className="text-sm font-medium text-[var(--color-text-secondary)]">현재 타임블록에 작업 추가</span>
-                        <span className="text-xs text-[var(--color-text-tertiary)]">({currentBlockTasks.length}/{MAX_TASKS_PER_BLOCK})</span>
+                        <span className="text-xs text-[var(--color-text-tertiary)]">{currentBlockTasks.length}개</span>
                     </div>
                     <input
                         ref={inlineInputRef}

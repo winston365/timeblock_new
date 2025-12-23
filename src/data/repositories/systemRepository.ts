@@ -16,6 +16,10 @@ export const SYSTEM_KEYS = {
     PROCRASTINATION_MONITOR: 'procrastinationMonitorState',
     QUICK_WINS_COMPLETED: 'quickWinsCompletedState',
     CATCH_UP_ALERT_SHOWN_DATE: 'catchUpAlertShownDate',
+    /** 오늘 할당량 달성한 목표 ID 목록 */
+    QUOTA_ACHIEVED_GOALS: 'quotaAchievedGoals',
+    /** Catch-up 알림 스누즈 상태 */
+    CATCH_UP_SNOOZE_STATE: 'catchUpSnoozeState',
     /** 워밍업 자동생성 활성화 여부 (기본: true) */
     WARMUP_AUTO_GENERATE_ENABLED: 'schedule:warmupAutoGenerateEnabled',
     /** 타임라인 지난 블록 표시 여부 */

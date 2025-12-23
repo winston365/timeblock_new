@@ -1,12 +1,21 @@
 import type { TimeBlockId } from '@/shared/types/domain';
 import { getBlockById, getBlockIdFromHour, getBlockIdFromHourSlot } from '@/shared/utils/timeBlockUtils';
 
-export const MAX_TASKS_PER_BLOCK = 3;
+/**
+ * 타임블록당 최대 작업 수 제한
+ * @deprecated 제한 제거됨. 무제한 배치 허용. 하위 호환용으로만 유지.
+ */
+export const MAX_TASKS_PER_BLOCK = Infinity;
 // Backward compatibility (기존 import 정리 전까지 유지)
 export const MAX_TASKS_PER_BUCKET = MAX_TASKS_PER_BLOCK;
 
-export function isBucketAtCapacity(taskCount: number, maxPerBucket: number = MAX_TASKS_PER_BLOCK): boolean {
-  return taskCount >= maxPerBucket;
+/**
+ * 버킷(타임블록)이 최대 용량에 도달했는지 확인
+ * @deprecated 제한 제거됨. 항상 false 반환. 하위 호환용으로만 유지.
+ */
+export function isBucketAtCapacity(_taskCount: number, _maxPerBucket: number = MAX_TASKS_PER_BLOCK): boolean {
+  // 무제한 배치 허용 - 항상 false 반환
+  return false;
 }
 
 function isValidHour(hour: number): boolean {

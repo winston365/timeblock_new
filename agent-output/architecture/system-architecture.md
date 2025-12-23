@@ -11,6 +11,7 @@
 | 2025-12-18 | Firebase RTDB 다운로드 스파이크 완화(Phase 0~3) 설계 추가 | 백엔드 변경 없이도 리스너/초기 fetch 폭주를 즉시 차단하고, 계측→정합성→가드레일 순으로 리스크를 낮춤 | 004-firebase-rtdb-mitigation-phased-architecture-findings.md |
 | 2025-12-21 | 장기목표(WeeklyGoal) 프론트/UI 개선 아키텍처 옵션(A/B/C) 및 권고안 추가 | weekly/global 목표 의미론 분리로 인한 경계 혼선을 낮추고, 모달 UX/검증/구조 부채를 “UI-only” 범위에서 우선 해결 | 005-long-term-goals-frontend-architecture-findings.md |
 | 2025-12-22 | 전 모달 공통 UX: ESC 닫기 + Ctrl/Cmd+Enter primary 표준화 권고안 추가 | 기존 `useModalEscapeClose`(스택 기반) 패턴을 확장해 스택 정합성과 IME(조합) 리스크를 동시에 해결 | 006-modal-hotkeys-standardization-architecture-findings.md |
+| 2025-12-23 | Schedule 무제한 + Inbox→Block 즉시 반영(Optimistic) 설계 추가 | MAX=3 제한이 UI/유틸에 중복 전파되어 회귀 위험이 큼. 또한 Inbox→Schedule 이동이 repository 직접 호출로 dailyDataStore 상태가 갱신되지 않아 리프레시가 필요함 → 단일 경로 + optimistic update로 수렴 | 007-schedule-unlimited-optimistic-update-architecture-findings.md |
 
 ## Purpose
 - Renderer(Electron + React) 중심의 시스템 경계/데이터 흐름/결정(ADR)을 기록하는 단일 출처.
@@ -55,6 +56,23 @@
 - 모달 UX 표준: 배경 클릭으로 닫지 않음 + ESC로 닫힘
 
 ## Decisions (ADRs)
+### ADR-008: Task 위치 변경은 Store 단일 경로로 수렴한다
+**Context**
+- Task는 `dailyData.tasks`(scheduled)와 `globalInbox`(inbox)로 분리 저장된다.
+- Inbox 표면에서 repository를 직접 호출하면, schedule UI가 구독하는 dailyDataStore in-memory 상태가 갱신되지 않아 “리프레시 필요” 문제가 반복된다.
+
+**Choice**
+- `timeBlock/hourSlot`을 변경하는 모든 UI 동작(드래그드롭, 인라인 추가, 키보드/편집 이동)은 `useDailyDataStore.updateTask()`(또는 이를 래핑한 단일 usecase)로 수렴한다.
+- inbox↔block 이동은 optimistic update를 적용하고, 강제 `loadData(..., true)`는 “성공 후 동기 의존”이 아니라 “필요 시 revalidate”로만 사용한다.
+
+**Alternatives**
+- Repository 직접 호출을 허용: 단기 구현은 빠르지만 store 분기/동기화 부채가 누적된다.
+- EventBus로만 store 간 동기화: 결합도는 낮지만 이벤트 설계/테스트 비용이 증가하고, UI 렌더 트리거로 오해될 위험이 있다.
+
+**Consequences**
+- Store가 교차 store 업데이트를 수행해야 할 수 있어(동적 import 등), 결합도를 통제하는 규칙이 필요하다.
+- 단일 경로가 확립되면, drag/drop·키보드·인라인 추가의 일관성이 높아지고 회귀 범위가 줄어든다.
+
 ### ADR-001: “현재 3h 블록만 표시”는 표시 정책(렌더링 레벨)로 시작한다
 **Context**
 - 요구사항: 지난 + 미래 타임블록을 가려 현재 진행중인 3h 타임블록만 보이게.

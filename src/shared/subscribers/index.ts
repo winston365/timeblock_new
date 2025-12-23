@@ -15,18 +15,21 @@
  * - waifuSubscriber: Waifu 메시지 이벤트 처리
  * - gameStateSubscriber: GameState 갱신 이벤트 처리
  * - googleCalendarSubscriber: Google Calendar 동기화 이벤트 처리
+ * - inboxSubscriber: Inbox 상태 동기화 이벤트 처리
  */
 
 import { initXpSubscriber } from './xpSubscriber';
 import { initWaifuSubscriber } from './waifuSubscriber';
 import { initGameStateSubscriber } from './gameStateSubscriber';
 import { initGoogleSyncSubscriber } from './googleSyncSubscriber';
+import { initInboxSubscriber } from './inboxSubscriber';
 
 export {
     initXpSubscriber,
     initWaifuSubscriber,
     initGameStateSubscriber,
     initGoogleSyncSubscriber,
+    initInboxSubscriber,
 };
 
 /**
@@ -42,4 +45,5 @@ export function initAllSubscribers(): void {
     initWaifuSubscriber();
     initGameStateSubscriber();
     initGoogleSyncSubscriber();
+    initInboxSubscriber();
 }

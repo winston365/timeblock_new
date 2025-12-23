@@ -2,6 +2,12 @@
  * useCatchUpAlert.ts
  *
  * @file 앱 시작 시 만회 알림 관리 훅
+ * 
+ * @deprecated 이 훅은 CatchUpAlertModal과 함께 사용되었으나,
+ *             useCatchUpAlertBanner.ts + CatchUpAlertBanner.tsx로 대체되었습니다.
+ *             모달 대신 배너를 사용하여 ADHD 친화적 UX를 제공합니다.
+ *             이 파일은 향후 제거될 수 있습니다.
+ * 
  * @description
  *   - 앱 시작 시 뒤처진 장기목표 확인
  *   - 하루에 한 번만 알림 표시 (같은 날 재시작 시 표시 안 함)

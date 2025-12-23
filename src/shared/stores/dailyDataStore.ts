@@ -265,8 +265,23 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
       isBlockToInboxMove = true;
     }
 
-    // ✅ Optimistic Update (inbox ↔ block 이동은 제외)
-    if (!isInboxToBlockMove && !isBlockToInboxMove) {
+    // ✅ Optimistic Update (inbox → block 이동도 포함)
+    if (isInboxToBlockMove && inboxTask) {
+      // Inbox → Block: 즉시 dailyData.tasks에 추가
+      const movedTask: Task = {
+        ...inboxTask,
+        ...sanitizedUpdates,
+      };
+      const optimisticTasks = addTaskToArray(dailyData.tasks, movedTask);
+      set(createOptimisticTaskUpdate(dailyData, optimisticTasks));
+
+      // Inbox 상태도 즉시 업데이트 (이벤트 발행으로 처리)
+      eventBus.emit('inbox:taskRemoved', { taskId }, { source: 'dailyDataStore.updateTask' });
+    } else if (isBlockToInboxMove) {
+      // Block → Inbox: dailyData.tasks에서 즉시 제거
+      const optimisticTasks = removeTaskFromArray(dailyData.tasks, taskId);
+      set(createOptimisticTaskUpdate(dailyData, optimisticTasks));
+    } else if (!isInboxToBlockMove && !isBlockToInboxMove) {
       const optimisticTasks = updateTaskInArray(dailyData.tasks, taskId, sanitizedUpdates);
       set(createOptimisticTaskUpdate(dailyData, optimisticTasks));
     }
@@ -289,9 +304,12 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         }
       }
 
-      // 🔹 inbox ↔ timeBlock 이동 시 강제 새로고침
+      // 🔹 inbox ↔ timeBlock 이동 시 background revalidate (UI는 이미 optimistic 반영됨)
       if (isInboxToBlockMove || isBlockToInboxMove) {
-        await loadData(currentDate, true);
+        // Non-blocking background refresh for data consistency
+        loadData(currentDate, true).catch(err => {
+          console.warn('[DailyDataStore] Background revalidate failed:', err);
+        });
       }
 
       // 🗓️ Event Bus: task:updated 이벤트 발행 (Google Calendar 동기화용)

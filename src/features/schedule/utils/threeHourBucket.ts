@@ -5,7 +5,11 @@ export const THREE_HOUR_BUCKET_SIZE = 3;
 
 export const BUCKET_TOTAL_MINUTES = THREE_HOUR_BUCKET_SIZE * 60;
 
-export const MAX_TASKS_PER_BUCKET = 3;
+/**
+ * 버킷당 최대 작업 수 제한
+ * @deprecated 제한 제거됨. 무제한 배치 허용. 하위 호환용으로만 유지.
+ */
+export const MAX_TASKS_PER_BUCKET = Infinity;
 
 function isValidHour(hour: number): boolean {
   return Number.isFinite(hour) && Number.isInteger(hour) && hour >= 0 && hour <= 23;
@@ -51,8 +55,13 @@ export function normalizeDropTargetHourSlot(hourSlot?: number | null): number | 
   return block ? normalized : undefined;
 }
 
-export function isBucketAtCapacity(taskCount: number, maxPerBucket: number = MAX_TASKS_PER_BUCKET): boolean {
-  return taskCount >= maxPerBucket;
+/**
+ * 버킷이 최대 용량에 도달했는지 확인
+ * @deprecated 제한 제거됨. 항상 false 반환. 하위 호환용으로만 유지.
+ */
+export function isBucketAtCapacity(_taskCount: number, _maxPerBucket: number = MAX_TASKS_PER_BUCKET): boolean {
+  // 무제한 배치 허용 - 항상 false 반환
+  return false;
 }
 
 export interface HasHourSlot {

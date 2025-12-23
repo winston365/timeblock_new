@@ -2,6 +2,12 @@
  * CatchUpAlertModal.tsx
  *
  * @file 앱 시작 시 만회 알림 모달
+ * 
+ * @deprecated 이 모달은 CatchUpAlertBanner로 대체되었습니다.
+ *             모달이 갑자기 뜨는 것은 ADHD 사용자에게 방해가 될 수 있어,
+ *             상단 배너 형태로 변경되었습니다.
+ *             이 파일은 향후 제거될 수 있습니다.
+ * 
  * @description
  *   - 뒤처진 장기목표들을 심각도별로 표시
  *   - 앱 시작 시 자동으로 표시 (뒤처진 목표가 있을 때만)

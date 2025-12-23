@@ -11,9 +11,6 @@ import type { Task, TimeBlockId, TimeSlotTagTemplate } from '@/shared/types/doma
 import { useToastStore } from '@/shared/stores/toastStore';
 import TaskCard from './TaskCard';
 import { useDragDropManager } from './hooks/useDragDropManager';
-import { MAX_TASKS_PER_BLOCK } from './utils/timeBlockBucket';
-
-const MAX_TASKS_PER_HOUR = MAX_TASKS_PER_BLOCK;
 
 interface HourBarProps {
   hour: number;
@@ -201,12 +198,6 @@ export default function HourBar({
       e.preventDefault();
       const trimmedText = inlineInputValue.trim();
 
-      // 최대 개수 제한 검증
-      if (tasks.length >= MAX_TASKS_PER_HOUR) {
-        addToast(`이 시간대에는 최대 ${MAX_TASKS_PER_HOUR}개의 작업만 추가할 수 있습니다.`, 'warning', 3000);
-        return;
-      }
-
       try {
         await onCreateTask(trimmedText, hour);
         setInlineInputValue('');
@@ -233,15 +224,6 @@ export default function HourBar({
     const dragData = getDragData(e);
     if (!dragData) return;
 
-    // 같은 위치에서 드롭하는 경우는 허용 (재정렬)
-    const isDifferentLocation = !isSameLocation(dragData, blockId, hour);
-
-    // 다른 위치에서 옮겨오는 경우 제한 체크
-    if (isDifferentLocation && tasks.length >= MAX_TASKS_PER_HOUR) {
-      addToast(`이 시간대에는 최대 ${MAX_TASKS_PER_HOUR}개의 작업만 추가할 수 있습니다.`, 'warning', 3000);
-      return;
-    }
-
     const last = sortedTasks[sortedTasks.length - 1];
     const lastOrder = last ? last.order ?? sortedTasks.length : undefined;
     await onUpdateTask(dragData.taskId, { timeBlock: blockId, hourSlot: hour, order: (lastOrder ?? 0) + 1 });
@@ -255,13 +237,6 @@ export default function HourBar({
     const targetTask = sortedTasks[targetIndex];
     if (!targetTask) return;
     if (dragData.taskId === targetTask.id && isSameLocation(dragData, blockId, hour)) return;
-
-    // 다른 위치에서 옮겨오는 경우 제한 체크
-    const isDifferentLocation = !isSameLocation(dragData, blockId, hour);
-    if (isDifferentLocation && tasks.length >= MAX_TASKS_PER_HOUR) {
-      addToast(`이 시간대에는 최대 ${MAX_TASKS_PER_HOUR}개의 작업만 추가할 수 있습니다.`, 'warning', 3000);
-      return;
-    }
 
     const prevTask = sortedTasks[targetIndex - 1];
     const prevOrder = prevTask?.order ?? (targetIndex - 1);
@@ -493,21 +468,15 @@ export default function HourBar({
 
             {!isLocked && !isPastHour && (
               <div className="w-full">
-                {tasks.length >= MAX_TASKS_PER_HOUR ? (
-                  <div className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-2 py-1 text-xs text-[var(--color-text-tertiary)] text-center">
-                    ⚠️ 이 시간대에는 최대 {MAX_TASKS_PER_HOUR}개까지만 추가할 수 있습니다
-                  </div>
-                ) : (
-                  <input
+                <input
                     ref={inlineInputRef}
                     type="text"
                     value={inlineInputValue}
                     onChange={e => setInlineInputValue(e.target.value)}
                     onKeyDown={handleInlineInputKeyDown}
-                    placeholder={`작업을 입력하고 Enter로 추가하세요 (${tasks.length}/${MAX_TASKS_PER_HOUR})`}
+                    placeholder={`작업을 입력하고 Enter로 추가하세요 (${tasks.length}개)`}
                     className="w-full rounded-md border border-dashed border-[var(--color-border)] bg-transparent px-2 py-1 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
                   />
-                )}
               </div>
             )}
           </div>

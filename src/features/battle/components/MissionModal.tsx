@@ -25,10 +25,6 @@ import { createNewTask } from '@/shared/utils/taskFactory';
 import { getBlockById, getBlockIdFromHour, getBlockLabel } from '@/shared/utils/timeBlockUtils';
 import { computeCurrentVisibleMissionTier } from '../utils/missionTier';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
-import {
-  isBucketAtCapacity,
-  MAX_TASKS_PER_BLOCK,
-} from '@/features/schedule/utils/timeBlockBucket';
 
 // 분리된 컴포넌트 import
 import { BossPanel, MissionCardGrid } from './modal';
@@ -222,12 +218,6 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
 
       if (!blockId || !block) {
         toast.error('현재 시간대에 배치할 타임블록이 없어요.');
-        return;
-      }
-
-      const tasksInBlock = (dailyData?.tasks ?? []).filter((t) => t.timeBlock === blockId);
-      if (isBucketAtCapacity(tasksInBlock.length)) {
-        toast.error(`${getBlockLabel(blockId)}에는 최대 ${MAX_TASKS_PER_BLOCK}개의 작업만 추가할 수 있습니다.`);
         return;
       }
 

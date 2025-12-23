@@ -20,8 +20,7 @@ import BulkAddModal from '@/features/tasks/BulkAddModal';
 import SettingsModal from '@/features/settings/SettingsModal';
 import TemplatesModal from '@/features/template/TemplatesModal';
 import { MemoMissionModal } from '@/shared/components/MemoMissionModal';
-import CatchUpAlertModal from '@/features/goals/CatchUpAlertModal';
-import { useCatchUpAlert } from '@/features/goals/hooks/useCatchUpAlert';
+// CatchUpAlertModal 제거됨 - CatchUpAlertBanner로 대체 (WeeklyGoalPanel에서 렌더링)
 
 /**
  * 전역 모달 컴포넌트
@@ -31,7 +30,7 @@ import { useCatchUpAlert } from '@/features/goals/hooks/useCatchUpAlert';
 export default function GlobalModals() {
     const { modals, closeModal, openModal } = useUIStore();
     const { updateQuestProgress } = useGameState();
-    const { isOpen: catchUpAlertOpen, behindGoals, closeAlert: closeCatchUpAlert } = useCatchUpAlert();
+    // CatchUpAlertModal 제거됨 - CatchUpAlertBanner로 대체 (WeeklyGoalPanel에서 렌더링)
 
     // F1 단축키: 대량 할 일 추가 모달 열기
     useEffect(() => {
@@ -99,11 +98,7 @@ export default function GlobalModals() {
                 onTaskCreate={handleTaskCreateFromTemplate}
             />
             <MemoMissionModal />
-            <CatchUpAlertModal
-                isOpen={catchUpAlertOpen}
-                onClose={closeCatchUpAlert}
-                behindGoals={behindGoals}
-            />
+            {/* CatchUpAlertModal 제거됨 - CatchUpAlertBanner로 대체 (WeeklyGoalPanel에서 렌더링) */}
         </>
     );
 }

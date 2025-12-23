@@ -70,6 +70,13 @@ export interface TaskUncompletedEvent {
 }
 
 /**
+ * Inbox 도메인 이벤트
+ */
+export interface InboxTaskRemovedEvent {
+    taskId: string;
+}
+
+/**
  * TimeBlock 도메인 이벤트
  */
 export interface BlockLockedEvent {
@@ -163,6 +170,9 @@ export interface EventTypeMap {
     'task:deleted': TaskDeletedEvent;
     'task:completed': TaskCompletedEvent;
     'task:uncompleted': TaskUncompletedEvent;
+
+    // Inbox events
+    'inbox:taskRemoved': InboxTaskRemovedEvent;
 
     // Block events
     'block:locked': BlockLockedEvent;

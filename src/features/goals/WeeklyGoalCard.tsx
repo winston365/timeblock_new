@@ -24,6 +24,7 @@ import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
 import WeeklyProgressBar from './WeeklyProgressBar';
 import { QUICK_UPDATE_BUTTONS } from './constants/goalConstants';
 import { calculateCatchUpInfo } from './utils/catchUpUtils';
+import GoalStatusTooltip from './components/GoalStatusTooltip';
 
 interface WeeklyGoalCardProps {
   goal: WeeklyGoal;
@@ -73,6 +74,11 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
 
   const { isCompleted, isBehind, catchUpNeeded, config: severityConfig, severity } = catchUpInfo;
   const progressPercent = goal.target > 0 ? Math.round((goal.currentProgress / goal.target) * 100) : 0;
+
+  // 오늘 할당량 달성 여부 (전체 목표 미달성 상태에서)
+  const isQuotaAchieved = useMemo(() => {
+    return goal.currentProgress >= todayTarget && goal.currentProgress < goal.target;
+  }, [goal.currentProgress, todayTarget, goal.target]);
 
   // 애니메이션 트리거
   const triggerAnimation = useCallback((delta: number) => {
@@ -176,15 +182,27 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
           </div>
         </div>
 
-        {/* 진행률 배지 (애니메이션 포함) */}
-        <div className={`rounded-full font-bold shrink-0 transition-all duration-200 ${
-          isCompleted
-            ? 'bg-emerald-500/20 text-emerald-300'
-            : isBehind
-            ? 'bg-orange-500/20 text-orange-300'
-            : 'bg-blue-500/20 text-blue-300'
-        } ${animating ? 'scale-125 ring-2 ring-white/30' : ''} ${compact ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs'}`}>
-          {progressPercent}%
+        {/* 진행률 배지 (애니메이션 포함) + Quota 달성 배지 */}
+        <div className="flex items-center gap-1.5">
+          {/* Quota 달성 배지 */}
+          {isQuotaAchieved && (
+            <div
+              className={`rounded-full bg-emerald-500/20 text-emerald-300 font-medium ${compact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]'}`}
+              title="오늘 목표량 달성!"
+              aria-label="오늘 목표량 달성"
+            >
+              ✅ 오늘 OK
+            </div>
+          )}
+          <div className={`rounded-full font-bold shrink-0 transition-all duration-200 ${
+            isCompleted
+              ? 'bg-emerald-500/20 text-emerald-300'
+              : isBehind
+              ? 'bg-orange-500/20 text-orange-300'
+              : 'bg-blue-500/20 text-blue-300'
+          } ${animating ? 'scale-125 ring-2 ring-white/30' : ''} ${compact ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs'}`}>
+            {progressPercent}%
+          </div>
         </div>
 
         {/* Actions (Hover) */}
@@ -234,11 +252,20 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
 
       {/* 오늘의 목표량 & 만회 정보 (심각도 레벨 표시) */}
       <div className={`flex flex-wrap justify-between gap-1 ${compact ? 'text-[10px]' : 'text-xs'}`}>
-        <div className={`rounded-lg bg-white/5 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
-          <span className="text-white/50">오늘: </span>
-          <span className="font-bold text-white">{dailyTargetForToday.toLocaleString()}</span>
-          <span className="text-white/40 ml-1">({remainingDays}일)</span>
-        </div>
+        <GoalStatusTooltip
+          goal={goal}
+          todayTarget={todayTarget}
+          dailyTargetForToday={dailyTargetForToday}
+          remainingDays={remainingDays}
+          catchUpInfo={catchUpInfo}
+        >
+          <div className={`rounded-lg bg-white/5 cursor-help ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
+            <span className="text-white/50">오늘: </span>
+            <span className="font-bold text-white">{dailyTargetForToday.toLocaleString()}</span>
+            <span className="text-white/40 ml-1">({remainingDays}일)</span>
+            <span className="ml-1 text-white/30">ⓘ</span>
+          </div>
+        </GoalStatusTooltip>
 
         {/* 상태 표시: 순항 / 뒤처짐 / 달성 */}
         {isCompleted ? (
@@ -246,18 +273,25 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
             ✨ 달성!
           </div>
         ) : isBehind ? (
-          <div
-            className={`rounded-lg ${severityConfig.bgClass} ${severityConfig.textClass} ${compact ? 'px-2 py-1' : 'px-3 py-1.5'} cursor-help`}
-            title={severityConfig.description}
+          <GoalStatusTooltip
+            goal={goal}
+            todayTarget={todayTarget}
+            dailyTargetForToday={dailyTargetForToday}
+            remainingDays={remainingDays}
+            catchUpInfo={catchUpInfo}
           >
-            {severityConfig.icon}{' '}
-            <span className="font-bold">{catchUpNeeded.toLocaleString()}</span>
-            {!compact && (
-              <span className="ml-1 opacity-70">
-                {severity === 'danger' ? '만회 필요!' : '부족'}
-              </span>
-            )}
-          </div>
+            <div
+              className={`rounded-lg ${severityConfig.bgClass} ${severityConfig.textClass} ${compact ? 'px-2 py-1' : 'px-3 py-1.5'} cursor-help`}
+            >
+              {severityConfig.icon}{' '}
+              <span className="font-bold">{catchUpNeeded.toLocaleString()}</span>
+              {!compact && (
+                <span className="ml-1 opacity-70">
+                  {severity === 'danger' ? '만회 필요!' : '부족'}
+                </span>
+              )}
+            </div>
+          </GoalStatusTooltip>
         ) : (
           <div className={`rounded-lg bg-emerald-500/10 text-emerald-300 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
             🟢 순조로워요!
