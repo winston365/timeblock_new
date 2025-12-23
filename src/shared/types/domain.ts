@@ -94,6 +94,15 @@ export interface Task {
   timerUsed?: boolean; // 타이머 사용 여부 (몰입 작업)
   goalId?: string | null; // 연결된 목표 ID
   deadline?: string; // 데드라인 날짜 (YYYY-MM-DD, 기본: 오늘)
+
+  // ========================================================================
+  // Inbox Triage UI 상태 (optional: 기존 데이터 호환)
+  // ========================================================================
+
+  /** 인박스에서 고정(상단 고정) 여부 */
+  isPinned?: boolean;
+  /** 보류(숨김) 만료일 (YYYY-MM-DD). null/undefined면 보류 아님 */
+  deferredUntil?: string | null;
 }
 
 /**

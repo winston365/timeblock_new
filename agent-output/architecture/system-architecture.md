@@ -11,6 +11,7 @@
 | 2025-12-18 | Firebase RTDB 다운로드 스파이크 완화(Phase 0~3) 설계 추가 | 백엔드 변경 없이도 리스너/초기 fetch 폭주를 즉시 차단하고, 계측→정합성→가드레일 순으로 리스크를 낮춤 | 004-firebase-rtdb-mitigation-phased-architecture-findings.md |
 | 2025-12-21 | 장기목표(WeeklyGoal) 프론트/UI 개선 아키텍처 옵션(A/B/C) 및 권고안 추가 | weekly/global 목표 의미론 분리로 인한 경계 혼선을 낮추고, 모달 UX/검증/구조 부채를 “UI-only” 범위에서 우선 해결 | 005-long-term-goals-frontend-architecture-findings.md |
 | 2025-12-22 | 전 모달 공통 UX: ESC 닫기 + Ctrl/Cmd+Enter primary 표준화 권고안 추가 | 기존 `useModalEscapeClose`(스택 기반) 패턴을 확장해 스택 정합성과 IME(조합) 리스크를 동시에 해결 | 006-modal-hotkeys-standardization-architecture-findings.md |
+| 2025-12-23 | 구조 개선 대안 A/B 보강(Repo-tailored) | direct Dexie 접근/emit 규칙 드리프트를 UI-only 범위에서 단계적으로 수렴(A 우선, B는 선택적/점진 적용) | 034-structural-improvement-alternatives-A-B-architecture-findings.md |
 | 2025-12-23 | Schedule 무제한 + Inbox→Block 즉시 반영(Optimistic) 설계 추가 | MAX=3 제한이 UI/유틸에 중복 전파되어 회귀 위험이 큼. 또한 Inbox→Schedule 이동이 repository 직접 호출로 dailyDataStore 상태가 갱신되지 않아 리프레시가 필요함 → 단일 경로 + optimistic update로 수렴 | 007-schedule-unlimited-optimistic-update-architecture-findings.md |
 
 ## Purpose

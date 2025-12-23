@@ -171,6 +171,30 @@ export interface CatchUpSnoozeState {
 // ============================================================================
 
 /**
+ * 인박스 빠른 배치에서 마지막 사용한 슬롯 정보
+ */
+export interface InboxLastUsedSlot {
+  /** 배치 모드 */
+  readonly mode: 'today' | 'tomorrow' | 'next';
+  /** 날짜 (YYYY-MM-DD) */
+  readonly date: string;
+  /** 블록 ID */
+  readonly blockId: string;
+  /** 시간 슬롯 (시작 시간) */
+  readonly hourSlot: number;
+}
+
+/**
+ * 인박스 필터 상태
+ */
+export interface InboxFilterState {
+  /** 상태 필터 ('all' | 'new' | 'triaged' | 'pinned') */
+  readonly status: 'all' | 'new' | 'triaged' | 'pinned';
+  /** 핀된 항목 숨기기 여부 */
+  readonly hidePinned: boolean;
+}
+
+/**
  * Dexie systemState에 저장되는 키별 기본값
  * UI 토글/레이아웃 등 로컬 지속 상태에 사용
  * 
@@ -183,6 +207,34 @@ export interface CatchUpSnoozeState {
 export const SYSTEM_STATE_DEFAULTS = {
   /** 워밍업 작업 자동생성 활성화 여부 */
   warmupAutoGenerateEnabled: false,
+
+  // ========================================================================
+  // 인박스 관련 기본값
+  // ========================================================================
+
+  /** Triage 모드 활성화 여부 (마지막 상태 기억) */
+  inboxTriageEnabled: false,
+
+  /** 오늘 정리 목표 개수 (ADHD 친화: 과도한 목표 방지) */
+  inboxTriageDailyGoalCount: 5,
+
+  /** 미니 HUD 접힘/펼침 상태 */
+  inboxHudCollapsed: false,
+
+  /** 오늘 정리한(처리한) 인박스 작업 수 */
+  inboxTodayProcessedCount: 0,
+
+  /** 오늘 정리 완료 날짜 (YYYY-MM-DD, 날짜 변경 시 리셋용) */
+  inboxTodayProcessedDate: null as string | null,
+
+  /** 마지막 사용한 빠른 배치 슬롯 */
+  inboxLastUsedSlot: null as InboxLastUsedSlot | null,
+
+  /** 인박스 필터 상태 */
+  inboxFilters: {
+    status: 'all',
+    hidePinned: false,
+  } as InboxFilterState,
 } as const;
 
 // ============================================================================

@@ -48,6 +48,25 @@ export const SYSTEM_KEYS = {
     TEMPLATE_AUTO_GENERATE_STATE: 'template:autoGenerateState',
     /** 템플릿 실행 로그 (최대 50개) */
     TEMPLATE_EXECUTION_LOG: 'template:executionLog',
+
+    // ========================================================================
+    // 인박스 관련 키
+    // ========================================================================
+    
+    /** 인박스 Triage 모드 활성화 여부 */
+    INBOX_TRIAGE_ENABLED: 'inbox:triageEnabled',
+    /** 인박스 오늘 정리 목표 개수 */
+    INBOX_TRIAGE_DAILY_GOAL_COUNT: 'inbox:triageDailyGoalCount',
+    /** 인박스 미니 HUD 접힘 상태 */
+    INBOX_HUD_COLLAPSED: 'inbox:hudCollapsed',
+    /** 인박스 오늘 처리한 작업 수 */
+    INBOX_TODAY_PROCESSED_COUNT: 'inbox:todayProcessedCount',
+    /** 인박스 오늘 처리 날짜 (리셋용) */
+    INBOX_TODAY_PROCESSED_DATE: 'inbox:todayProcessedDate',
+    /** 인박스 마지막 사용 빠른 배치 슬롯 */
+    INBOX_LAST_USED_SLOT: 'inbox:quickPlacement:lastUsed',
+    /** 인박스 필터 상태 */
+    INBOX_FILTERS: 'inbox:filters',
 } as const;
 
 /**

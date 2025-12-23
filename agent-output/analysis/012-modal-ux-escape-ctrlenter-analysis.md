@@ -1,8 +1,9 @@
 # 012-modal-ux-escape-ctrlenter-analysis
-Status: Active
+Status: Planned
 
 ## Changelog
 - 2025-12-22: Initial inventory of modal ESC and Ctrl+Enter behaviors across frontend.
+- 2025-12-23: Incorporated into PR-sized breakdown plan (top10 improvements).
 
 ## Value Statement and Business Objective
 Consistent keyboard affordances (ESC close, Ctrl+Enter primary action) reduce friction for power users and prevent modal stacking/escape bugs that block flows. Fixing gaps improves reliability metrics for modal interactions and aligns with the project-wide UX policy.
