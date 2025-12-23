@@ -101,7 +101,11 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
       setBaseDuration(template.baseDuration);
       setResistance(template.resistance);
       setTimeBlock(template.timeBlock);
-      setAutoGenerate(template.autoGenerate);
+      
+      // Legacy fallback: recurrenceType이 'none'이 아니면 autoGenerate를 true로 설정
+      const hasRecurrence = template.recurrenceType && template.recurrenceType !== 'none';
+      setAutoGenerate(template.autoGenerate ?? hasRecurrence ?? false);
+      
       setRecurrenceType(template.recurrenceType || 'none');
       setWeeklyDays(template.weeklyDays || []);
       setIntervalDays(template.intervalDays || 1);
@@ -344,7 +348,10 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                     <input
                       type="number"
                       value={baseDuration}
-                      onChange={e => setBaseDuration(Number(e.target.value))}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        setBaseDuration(Number.isNaN(val) ? 1 : val);
+                      }}
                       className={getInputClass('baseDuration')}
                       min={1}
                       max={480}
@@ -549,7 +556,10 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                         <input
                           type="number"
                           value={intervalDays}
-                          onChange={e => setIntervalDays(Number(e.target.value))}
+                          onChange={e => {
+                            const val = Number(e.target.value);
+                            setIntervalDays(Number.isNaN(val) ? 1 : val);
+                          }}
                           min={1}
                           max={365}
                           className={inputClass}

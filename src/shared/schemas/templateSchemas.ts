@@ -59,6 +59,7 @@ export const templatePreparationSchema = z.object({
 
 /**
  * 반복 설정 스키마 (3단계)
+ * superRefine을 사용하여 특정 필드에 에러를 연결
  */
 export const templateRecurrenceSchema = z
   .object({
@@ -67,26 +68,24 @@ export const templateRecurrenceSchema = z
     weeklyDays: z.array(z.number().min(0).max(6)).default([]),
     intervalDays: z.number().min(1).max(365).default(1),
   })
-  .refine(
-    (data) => {
-      // autoGenerate가 true이면 recurrenceType이 'none'이 아니어야 함
-      if (data.autoGenerate && data.recurrenceType === 'none') {
-        return false;
-      }
-      return true;
-    },
-    { message: '자동 생성을 켜면 반복 주기를 선택해야 합니다.' }
-  )
-  .refine(
-    (data) => {
-      // weekly 선택 시 최소 1개 요일 필요
-      if (data.recurrenceType === 'weekly' && data.weeklyDays.length === 0) {
-        return false;
-      }
-      return true;
-    },
-    { message: '매주 반복 시 최소 1개 요일을 선택해야 합니다.' }
-  );
+  .superRefine((data, ctx) => {
+    // autoGenerate가 true이면 recurrenceType이 'none'이 아니어야 함
+    if (data.autoGenerate && data.recurrenceType === 'none') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '자동 생성을 켜면 반복 주기를 선택해야 합니다.',
+        path: ['recurrenceType'],
+      });
+    }
+    // weekly 선택 시 최소 1개 요일 필요
+    if (data.recurrenceType === 'weekly' && data.weeklyDays.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '매주 반복 시 최소 1개 요일을 선택해야 합니다.',
+        path: ['weeklyDays'],
+      });
+    }
+  });
 
 /**
  * 전체 템플릿 폼 스키마
