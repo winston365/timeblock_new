@@ -1,10 +1,11 @@
 # Value Statement and Business Objective
 Top10 개선안과 문제 분류(Problem Taxonomy)로 제시된 이슈들이 현재 레포 상태에서 해소됐는지 확인하여, Planner/Implementer가 중복 작업을 피하고 남은 리스크를 빠르게 좁힐 수 있게 한다.
 
-Status: Active
+Status: Planned
 
 ## Changelog
 - 2025-12-23: 초기 작성. lint/coverage/테스트 설정 및 주요 위반 신호 재검증.
+- 2025-12-23: P1/P2(핫키/ESC, 커버리지) 잔여 작업을 PR 단위로 재정리하는 플랜(037)에서 본 분석을 근거로 사용 → Status를 Planned로 전환.
 
 ## Objective
 - Top10 개선안(린트 게이트, 커버리지, ESC 스택, 버킷 상수 통합 등)이 실제로 해결됐는지 여부를 현재 레포 산출물 기준으로 판별한다.

@@ -12,21 +12,6 @@ import type { Task, TimeBlockStates } from '@/shared/types/domain';
 // Test Helpers
 // ============================================================================
 
-const createTask = (id: string, timeBlock: string | null, hourSlot?: number): Task => ({
-  id,
-  text: `Task ${id}`,
-  memo: '',
-  baseDuration: 30,
-  resistance: 'low',
-  adjustedDuration: 30,
-  timeBlock: timeBlock as Task['timeBlock'],
-  hourSlot,
-  completed: false,
-  actualDuration: 0,
-  createdAt: new Date().toISOString(),
-  completedAt: null,
-});
-
 const createInput = (
   hour: number,
   mode: 'today' | 'tomorrow' | 'next',

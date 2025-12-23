@@ -1,6 +1,7 @@
-Status: Completed
+Status: Planned
 Changelog:
 - 2025-12-23: 초기 작성, ESLint/린트 구성 현황 및 중복 import 방지 옵션 조사.
+- 2025-12-23: 036 PR-split 구현 계획에 근거 자료로 사용 (린트 정책/경계 규칙 확인).
 
 Value Statement and Business Objective:
 - 린트 체계를 명확히 파악해 최소 변경으로 중복 import를 방지해, 팀의 코드 일관성과 회귀 리스크를 줄인다.

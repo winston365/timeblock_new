@@ -16,7 +16,7 @@
  *   - templateSchemas: Zod 스키마
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { TIME_BLOCKS, type Template, type Resistance, type TimeBlockId, type RecurrenceType } from '@/shared/types/domain';
 import { createTemplate, updateTemplate } from '@/data/repositories';
 import { getTemplateCategories, addTemplateCategory } from '@/data/repositories/settingsRepository';
@@ -74,8 +74,12 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
     formRef.current?.requestSubmit();
   }, [currentPage, isSaving]);
 
+  // TemplateModal은 렌더링되면 항상 열려있음 (부모가 조건부 렌더링)
+  // isOpen을 useMemo로 관리하여 불필요한 재등록 방지
+  const isModalOpen = useMemo(() => true, []);
+
   useModalHotkeys({
-    isOpen: true,
+    isOpen: isModalOpen,
     onEscapeClose: handleEscapeClose,
     primaryAction: {
       enabled: !isSaving && currentPage === 3,

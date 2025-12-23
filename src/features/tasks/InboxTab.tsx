@@ -49,7 +49,7 @@ import { eventBus } from '@/shared/lib/eventBus';
 export default function InboxTab() {
   const { updateQuestProgress } = useGameState();
   const { updateTask: updateDailyTask, dailyData } = useDailyData();
-  const todayTasks = dailyData?.tasks ?? [];
+  const todayTasks = useMemo(() => dailyData?.tasks ?? [], [dailyData?.tasks]);
   const timeBlockStates = dailyData?.timeBlockStates;
   const { getDragData } = useDragDropManager();
 
@@ -75,7 +75,6 @@ export default function InboxTab() {
     // 빠른 배치
     placeTaskToSlot,
     setLastUsedSlot,
-    incrementProcessedCount,
   } = useInboxStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);

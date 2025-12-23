@@ -9,8 +9,9 @@
  *   - electronAPI: 윈도우 닫기, 알림 표시
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
+import { useModalHotkeys } from '@/shared/hooks';
 import { calculateAdjustedDuration, generateId } from '@/shared/lib/utils';
 import { useInboxStore } from '@/shared/stores/inboxStore';
 import { initializeDatabase } from '@/data/db';
@@ -137,23 +138,39 @@ export default function QuickAddTask() {
     };
   }, []);
 
-  // Ctrl+Enter로 저장, ESC로 닫기
-  useEffect(() => {
-    const handleKeyboard = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleClose();
-      }
-      if (e.key === 'Enter' && e.ctrlKey) {
-        e.preventDefault();
-        const form = document.querySelector('.quickadd-form') as HTMLFormElement;
-        if (form) {
-          form.requestSubmit();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyboard);
-    return () => window.removeEventListener('keydown', handleKeyboard);
+  // 폼 레퍼런스 (Ctrl+Enter submit용)
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // 윈도우 닫기 핸들러
+  const handleClose = useCallback(() => {
+    if (window.electronAPI) {
+      window.electronAPI.closeQuickAddWindow();
+    }
   }, []);
+
+  // ESC로 닫기 핸들러
+  const handleEscapeClose = useCallback(() => {
+    if (saving) return;
+    handleClose();
+  }, [saving, handleClose]);
+
+  // Ctrl+Enter로 저장 핸들러
+  const handlePrimaryAction = useCallback(() => {
+    if (saving) return;
+    formRef.current?.requestSubmit();
+  }, [saving]);
+
+  // useModalHotkeys 훅으로 ESC/Ctrl+Enter 처리 (IME 가드 + 스택 관리 포함)
+  useModalHotkeys({
+    isOpen: dbInitialized, // DB 초기화 후에만 핫키 활성화
+    onEscapeClose: handleEscapeClose,
+    primaryAction: {
+      enabled: !saving,
+      onPrimary: handlePrimaryAction,
+      allowInTextarea: true,
+      allowInInput: true,
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,12 +242,6 @@ export default function QuickAddTask() {
     }
   };
 
-  const handleClose = () => {
-    if (window.electronAPI) {
-      window.electronAPI.closeQuickAddWindow();
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur">
       <div className="flex h-[min(95vh,760px)] w-full max-w-[960px] flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-[0_35px_80px_rgba(0,0,0,0.45)]">
@@ -246,6 +257,7 @@ export default function QuickAddTask() {
         </div>
 
         <form
+          ref={formRef}
           className="grid flex-1 gap-6 overflow-hidden px-6 py-5 lg:grid-cols-[1fr_1fr]"
           onSubmit={handleSubmit}
         >

@@ -26,7 +26,7 @@
  * - useInboxStore: 인박스 상태/액션
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { modalStackRegistry } from '@/shared/hooks/modalStackRegistry';
 import { useInboxStore } from '@/shared/stores/inboxStore';
 import { findSuggestedSlot, type SlotFindMode } from '@/shared/services/schedule/slotFinder';
@@ -99,7 +99,7 @@ export const useInboxHotkeys = (
 
   // Daily data for slot finding
   const { dailyData } = useDailyData();
-  const todayTasks = dailyData?.tasks ?? [];
+  const todayTasks = useMemo(() => dailyData?.tasks ?? [], [dailyData?.tasks]);
   const timeBlockStates = dailyData?.timeBlockStates;
 
   // Refs for stable callbacks
