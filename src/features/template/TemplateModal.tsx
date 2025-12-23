@@ -104,9 +104,14 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
       
       // Legacy fallback: recurrenceType이 'none'이 아니면 autoGenerate를 true로 설정
       const hasRecurrence = template.recurrenceType && template.recurrenceType !== 'none';
-      setAutoGenerate(template.autoGenerate ?? hasRecurrence ?? false);
+      const shouldAutoGenerate = template.autoGenerate ?? hasRecurrence ?? false;
+      setAutoGenerate(shouldAutoGenerate);
       
-      setRecurrenceType(template.recurrenceType || 'none');
+      // autoGenerate가 true인데 recurrenceType이 'none'이면 'daily'로 기본값 설정
+      const effectiveRecurrenceType = shouldAutoGenerate && (!template.recurrenceType || template.recurrenceType === 'none')
+        ? 'daily'
+        : (template.recurrenceType || 'none');
+      setRecurrenceType(effectiveRecurrenceType);
       setWeeklyDays(template.weeklyDays || []);
       setIntervalDays(template.intervalDays || 1);
       setPreparation1(template.preparation1 || '');

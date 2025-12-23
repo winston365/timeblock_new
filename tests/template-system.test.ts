@@ -222,6 +222,152 @@ describe('Recurrence Step Validation', () => {
 });
 
 // ============================================================================
+// Test 1.6: Template Legacy Normalization (초기화 로직 검증)
+// ============================================================================
+describe('Template Legacy Normalization', () => {
+  /**
+   * TemplateModal에서 템플릿 초기화 로직을 시뮬레이션하는 순수 함수
+   * 실제 컴포넌트 로직과 동일하게 구현
+   */
+  function normalizeTemplateRecurrence(template: {
+    autoGenerate?: boolean;
+    recurrenceType?: string | null;
+    weeklyDays?: number[];
+    intervalDays?: number;
+  }): {
+    autoGenerate: boolean;
+    recurrenceType: string;
+    weeklyDays: number[];
+    intervalDays: number;
+  } {
+    const hasRecurrence = template.recurrenceType && template.recurrenceType !== 'none';
+    const shouldAutoGenerate = template.autoGenerate ?? hasRecurrence ?? false;
+    
+    // autoGenerate가 true인데 recurrenceType이 'none'이면 'daily'로 기본값 설정
+    const effectiveRecurrenceType = shouldAutoGenerate && (!template.recurrenceType || template.recurrenceType === 'none')
+      ? 'daily'
+      : (template.recurrenceType || 'none');
+    
+    return {
+      autoGenerate: shouldAutoGenerate,
+      recurrenceType: effectiveRecurrenceType,
+      weeklyDays: template.weeklyDays || [],
+      intervalDays: template.intervalDays || 1,
+    };
+  }
+
+  it('should set autoGenerate=true when legacy template has recurrenceType but no autoGenerate', () => {
+    // 레거시 케이스: recurrenceType='weekly'이지만 autoGenerate가 undefined
+    const legacyTemplate = {
+      recurrenceType: 'weekly',
+      weeklyDays: [1, 3, 5],
+      intervalDays: 1,
+    };
+
+    const normalized = normalizeTemplateRecurrence(legacyTemplate);
+    
+    expect(normalized.autoGenerate).toBe(true);
+    expect(normalized.recurrenceType).toBe('weekly');
+    expect(normalized.weeklyDays).toEqual([1, 3, 5]);
+  });
+
+  it('should default recurrenceType to daily when autoGenerate=true but recurrenceType is none', () => {
+    // 버그 케이스: autoGenerate=true인데 recurrenceType='none'
+    // 이 경우 validation 실패 방지를 위해 'daily'로 기본값 설정
+    const buggyTemplate = {
+      autoGenerate: true,
+      recurrenceType: 'none',
+      weeklyDays: [],
+      intervalDays: 1,
+    };
+
+    const normalized = normalizeTemplateRecurrence(buggyTemplate);
+    
+    expect(normalized.autoGenerate).toBe(true);
+    expect(normalized.recurrenceType).toBe('daily'); // 'none'이 아닌 'daily'로 수정됨
+  });
+
+  it('should default recurrenceType to daily when autoGenerate=true but recurrenceType is missing', () => {
+    // 버그 케이스: autoGenerate=true인데 recurrenceType이 없음
+    const templateWithMissingType = {
+      autoGenerate: true,
+    };
+
+    const normalized = normalizeTemplateRecurrence(templateWithMissingType);
+    
+    expect(normalized.autoGenerate).toBe(true);
+    expect(normalized.recurrenceType).toBe('daily');
+  });
+
+  it('should preserve existing valid recurrence settings', () => {
+    // 정상 케이스: 모든 값이 올바르게 설정됨
+    const validTemplate = {
+      autoGenerate: true,
+      recurrenceType: 'interval',
+      weeklyDays: [],
+      intervalDays: 7,
+    };
+
+    const normalized = normalizeTemplateRecurrence(validTemplate);
+    
+    expect(normalized.autoGenerate).toBe(true);
+    expect(normalized.recurrenceType).toBe('interval');
+    expect(normalized.intervalDays).toBe(7);
+  });
+
+  it('should keep autoGenerate=false when recurrenceType is none', () => {
+    // 정상 케이스: 자동생성 비활성화
+    const noAutoTemplate = {
+      autoGenerate: false,
+      recurrenceType: 'none',
+    };
+
+    const normalized = normalizeTemplateRecurrence(noAutoTemplate);
+    
+    expect(normalized.autoGenerate).toBe(false);
+    expect(normalized.recurrenceType).toBe('none');
+  });
+
+  it('should handle completely empty template (new template)', () => {
+    // 신규 템플릿: 모든 필드가 undefined
+    const emptyTemplate = {};
+
+    const normalized = normalizeTemplateRecurrence(emptyTemplate);
+    
+    expect(normalized.autoGenerate).toBe(false);
+    expect(normalized.recurrenceType).toBe('none');
+    expect(normalized.weeklyDays).toEqual([]);
+    expect(normalized.intervalDays).toBe(1);
+  });
+
+  it('should pass validation after normalization for legacy template', () => {
+    // E2E 스타일: 레거시 템플릿 정규화 → validation 통과 확인
+    const legacyTemplate = {
+      recurrenceType: 'daily', // autoGenerate 없음
+    };
+
+    const normalized = normalizeTemplateRecurrence(legacyTemplate);
+    const validationResult = validateRecurrenceStep(normalized);
+    
+    expect(validationResult.success).toBe(true);
+  });
+
+  it('should pass validation after normalization for buggy autoGenerate-without-type template', () => {
+    // E2E 스타일: autoGenerate=true, recurrenceType='none' → 'daily'로 수정 → validation 통과
+    const buggyTemplate = {
+      autoGenerate: true,
+      recurrenceType: 'none',
+    };
+
+    const normalized = normalizeTemplateRecurrence(buggyTemplate);
+    const validationResult = validateRecurrenceStep(normalized);
+    
+    expect(validationResult.success).toBe(true);
+    expect(normalized.recurrenceType).toBe('daily');
+  });
+});
+
+// ============================================================================
 // Test 2: Auto-generate Once-per-Day Logic
 // ============================================================================
 describe('Auto-generate Once-per-Day Logic', () => {

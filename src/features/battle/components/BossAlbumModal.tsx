@@ -14,7 +14,7 @@
  *   - useBattleStore: 배틀 상태 스토어
  */
 
-import { useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { BOSSES, getBossById } from '../data/bossData';
 import { useBattleStore } from '../stores/battleStore';
 import { getBossImageSrc } from '../utils/assets';
