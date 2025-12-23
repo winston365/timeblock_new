@@ -702,3 +702,241 @@ describe('Template UI Preferences Persistence', () => {
     );
   });
 });
+// ============================================================================
+// Test 4: NaN Prevention & Edge Cases (3단계 버그 수정 관련)
+// ============================================================================
+describe('Template Form NaN Prevention', () => {
+  it('should handle NaN baseDuration in validation', () => {
+    // NaN baseDuration이 들어왔을 때 validation이 올바르게 실패해야 함
+    const dataWithNaN = {
+      text: '테스트',
+      memo: '',
+      baseDuration: NaN,
+      resistance: 'low' as const,
+      timeBlock: null,
+      category: '',
+      imageUrl: '',
+      isFavorite: false,
+    };
+
+    const result = validateBasicStep(dataWithNaN);
+    
+    // NaN은 Zod의 number 스키마에서 실패해야 함
+    expect(result.success).toBe(false);
+    expect(result.errors?.baseDuration).toBeDefined();
+  });
+
+  it('should handle NaN intervalDays in recurrence validation', () => {
+    // NaN intervalDays가 들어왔을 때 validation이 올바르게 실패해야 함
+    const dataWithNaN = {
+      autoGenerate: true,
+      recurrenceType: 'interval' as const,
+      weeklyDays: [],
+      intervalDays: NaN,
+    };
+
+    const result = validateRecurrenceStep(dataWithNaN);
+    
+    // NaN은 Zod의 number 스키마에서 실패해야 함
+    expect(result.success).toBe(false);
+    expect(result.errors?.intervalDays).toBeDefined();
+  });
+
+  it('should pass validation with valid numeric values', () => {
+    // 정상적인 숫자 값으로 validation 통과 확인
+    const validData = {
+      autoGenerate: true,
+      recurrenceType: 'interval' as const,
+      weeklyDays: [],
+      intervalDays: 7,
+    };
+
+    const result = validateRecurrenceStep(validData);
+    expect(result.success).toBe(true);
+  });
+
+  it('should handle edge case: intervalDays at boundary (1)', () => {
+    const boundaryData = {
+      autoGenerate: true,
+      recurrenceType: 'interval' as const,
+      weeklyDays: [],
+      intervalDays: 1,
+    };
+
+    const result = validateRecurrenceStep(boundaryData);
+    expect(result.success).toBe(true);
+  });
+
+  it('should handle edge case: intervalDays at boundary (365)', () => {
+    const boundaryData = {
+      autoGenerate: true,
+      recurrenceType: 'interval' as const,
+      weeklyDays: [],
+      intervalDays: 365,
+    };
+
+    const result = validateRecurrenceStep(boundaryData);
+    expect(result.success).toBe(true);
+  });
+
+  it('should fail validation when intervalDays exceeds max (366)', () => {
+    const invalidData = {
+      autoGenerate: true,
+      recurrenceType: 'interval' as const,
+      weeklyDays: [],
+      intervalDays: 366,
+    };
+
+    const result = validateRecurrenceStep(invalidData);
+    expect(result.success).toBe(false);
+    expect(result.errors?.intervalDays).toBeDefined();
+  });
+
+  it('should fail validation when intervalDays is below min (0)', () => {
+    const invalidData = {
+      autoGenerate: true,
+      recurrenceType: 'interval' as const,
+      weeklyDays: [],
+      intervalDays: 0,
+    };
+
+    const result = validateRecurrenceStep(invalidData);
+    expect(result.success).toBe(false);
+    expect(result.errors?.intervalDays).toBeDefined();
+  });
+});
+
+// ============================================================================
+// Test 5: Step Navigation Logic (3단계 네비게이션 버그 수정 관련)
+// ============================================================================
+describe('Template Modal Step Navigation Logic', () => {
+  /**
+   * 실제 TemplateModal의 validateCurrentStep 로직을 시뮬레이션
+   * UI 컴포넌트 없이 순수 로직만 테스트
+   */
+  function simulateValidateCurrentStep(
+    currentPage: number,
+    formData: {
+      text?: string;
+      baseDuration?: number;
+      autoGenerate?: boolean;
+      recurrenceType?: string;
+      weeklyDays?: number[];
+      intervalDays?: number;
+    }
+  ): { success: boolean; errors?: Record<string, string> } {
+    // NaN 방지 로직 (실제 컴포넌트와 동일)
+    const safeDuration = Number.isNaN(formData.baseDuration ?? 30) ? 1 : (formData.baseDuration ?? 30);
+    const safeIntervalDays = Number.isNaN(formData.intervalDays ?? 1) ? 1 : (formData.intervalDays ?? 1);
+
+    switch (currentPage) {
+      case 1:
+        return validateBasicStep({
+          text: formData.text?.trim() ?? '',
+          memo: '',
+          baseDuration: safeDuration,
+          resistance: 'low',
+          timeBlock: null,
+          category: '',
+          imageUrl: '',
+          isFavorite: false,
+        });
+      case 3:
+        return validateRecurrenceStep({
+          autoGenerate: formData.autoGenerate ?? false,
+          recurrenceType: (formData.recurrenceType as 'none' | 'daily' | 'weekly' | 'interval') ?? 'none',
+          weeklyDays: formData.weeklyDays ?? [],
+          intervalDays: safeIntervalDays,
+        });
+      default:
+        return { success: true };
+    }
+  }
+
+  it('should allow navigation from step 1 to step 2 with valid data', () => {
+    const result = simulateValidateCurrentStep(1, {
+      text: '테스트 작업',
+      baseDuration: 30,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should block navigation from step 1 when text is empty', () => {
+    const result = simulateValidateCurrentStep(1, {
+      text: '',
+      baseDuration: 30,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.errors?.text).toBeDefined();
+  });
+
+  it('should allow navigation to step 3 and pass validation with autoGenerate=false', () => {
+    const result = simulateValidateCurrentStep(3, {
+      autoGenerate: false,
+      recurrenceType: 'none',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should allow step 3 validation with autoGenerate=true and valid recurrence', () => {
+    const result = simulateValidateCurrentStep(3, {
+      autoGenerate: true,
+      recurrenceType: 'daily',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should block step 3 validation when autoGenerate=true but recurrenceType=none', () => {
+    const result = simulateValidateCurrentStep(3, {
+      autoGenerate: true,
+      recurrenceType: 'none',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.errors?.recurrenceType).toBeDefined();
+  });
+
+  it('should handle NaN baseDuration gracefully in step 1', () => {
+    const result = simulateValidateCurrentStep(1, {
+      text: '테스트 작업',
+      baseDuration: NaN, // NaN이 들어와도 1로 대체되어 통과해야 함
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should handle NaN intervalDays gracefully in step 3', () => {
+    const result = simulateValidateCurrentStep(3, {
+      autoGenerate: true,
+      recurrenceType: 'interval',
+      intervalDays: NaN, // NaN이 들어와도 1로 대체되어 통과해야 함
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should block step 3 when weekly is selected but no days chosen', () => {
+    const result = simulateValidateCurrentStep(3, {
+      autoGenerate: true,
+      recurrenceType: 'weekly',
+      weeklyDays: [],
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.errors?.weeklyDays).toBeDefined();
+  });
+
+  it('should pass step 3 when weekly is selected with at least one day', () => {
+    const result = simulateValidateCurrentStep(3, {
+      autoGenerate: true,
+      recurrenceType: 'weekly',
+      weeklyDays: [1, 3, 5], // 월, 수, 금
+    });
+
+    expect(result.success).toBe(true);
+  });
+});

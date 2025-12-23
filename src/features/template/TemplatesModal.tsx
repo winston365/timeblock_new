@@ -23,7 +23,7 @@ import { RESISTANCE_LABELS, TIME_BLOCKS, type Template } from '@/shared/types/do
 import { useTemplateStore } from '@/shared/stores/templateStore';
 import { TemplateModal } from './TemplateModal';
 import { calculateTaskXP, getLocalDate } from '@/shared/lib/utils';
-import { useModalEscapeClose } from '@/shared/hooks';
+import { useModalHotkeys } from '@/shared/hooks';
 import {
   createTodayTaskFromTemplate,
   loadTemplateUiPrefs,
@@ -73,7 +73,11 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
   // 오늘 날짜
   const today = getLocalDate();
 
-  useModalEscapeClose(isOpen && !isTemplateModalOpen, onClose);
+  // ESC 핫키: 자식 모달이 열려있을 때는 비활성화
+  useModalHotkeys({
+    isOpen: isOpen && !isTemplateModalOpen,
+    onEscapeClose: onClose,
+  });
 
   // UI 환경설정 로드
   useEffect(() => {

@@ -60,10 +60,13 @@ Focus on user-facing workflows:
   - Legacy fallback for `autoGenerate` based on `recurrenceType`.
   - NaN guards for numeric inputs (`baseDuration`, `intervalDays`).
   - Modal overlay behavior remains: no backdrop-click close; ESC closes via hotkeys.
-- src/shared/schemas/templateSchemas.ts
-  - Switched recurrence schema validation to `superRefine` and mapped issues to field paths.
 - tests/template-system.test.ts
   - Added recurrence-step validation tests including error path assertions.
+ - agent-output/analysis/041-template-modal-step-issues-analysis.md
+   - Root-cause hypotheses + verification plan for reported step issues.
+
+Notes
+- 현재 워크스페이스의 `git diff` 기준으로는 `src/shared/schemas/templateSchemas.ts`는 변경되지 않았습니다(플랜 문서의 “Files Touched”와 불일치). 다만 `tests/template-system.test.ts`는 이미 `validateRecurrenceStep`의 에러 경로 매핑을 전제로 테스트를 하고 있어, 스키마 쪽 변경은 과거 커밋/이전 작업에서 반영되었을 가능성이 큽니다.
 
 ## Test Coverage Analysis
 
@@ -80,12 +83,12 @@ Focus on user-facing workflows:
 ### Unit Tests (Targeted)
 - **Command**: `npm test -- tests/template-system.test.ts`
 - **Status**: PASS
-- **Summary**: 1 file, 33 tests passed
+- **Summary**: 1 file, 49 tests passed
 
 ### Full Suite
 - **Command**: `npm test`
 - **Status**: PASS
-- **Summary**: 29 files, 183 tests passed
+- **Summary**: 30 files, 219 tests passed
 
 ## Handoff
 Handing off to uat agent for value delivery validation.

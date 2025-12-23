@@ -107,8 +107,9 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
       setTimeBlock(template.timeBlock);
       
       // Legacy fallback: recurrenceType이 'none'이 아니면 autoGenerate를 true로 설정
-      const hasRecurrence = template.recurrenceType && template.recurrenceType !== 'none';
-      const shouldAutoGenerate = template.autoGenerate ?? hasRecurrence ?? false;
+      const hasRecurrence = !!(template.recurrenceType && template.recurrenceType !== 'none');
+      // 레거시/불일치 데이터(예: autoGenerate=false인데 recurrenceType이 weekly 등)를 안전하게 보정
+      const shouldAutoGenerate = hasRecurrence ? true : (template.autoGenerate ?? false);
       setAutoGenerate(shouldAutoGenerate);
       
       // autoGenerate가 true인데 recurrenceType이 'none'이면 'daily'로 기본값 설정
@@ -129,15 +130,20 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
 
   /**
    * 단계별 유효성 검사
+   * @returns true if valid, false if invalid
    */
   const validateCurrentStep = useCallback((): boolean => {
+    // NaN 방지: 숫자 필드가 NaN이면 기본값으로 대체
+    const safeDuration = Number.isNaN(baseDuration) ? 1 : baseDuration;
+    const safeIntervalDays = Number.isNaN(intervalDays) ? 1 : intervalDays;
+
     let result;
     switch (currentPage) {
       case 1:
         result = validateBasicStep({
           text: text.trim(),
           memo: memo.trim(),
-          baseDuration,
+          baseDuration: safeDuration,
           resistance,
           timeBlock,
           category: category.trim(),
@@ -157,11 +163,20 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           autoGenerate,
           recurrenceType,
           weeklyDays,
-          intervalDays,
+          intervalDays: safeIntervalDays,
         });
         break;
       default:
+        // 알 수 없는 페이지 - 안전하게 통과
+        setErrors({});
         return true;
+    }
+
+    // result가 undefined일 경우 안전하게 처리 (방어적 코딩)
+    if (!result) {
+      console.warn('[TemplateModal] validateCurrentStep: result is undefined for page', currentPage);
+      setErrors({ _form: '유효성 검사 중 오류가 발생했습니다.' });
+      return false;
     }
 
     if (result.success) {
@@ -169,6 +184,11 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
       return true;
     } else {
       setErrors(result.errors ?? {});
+      // 에러가 있으면 토스트로 알림 (무반응 방지)
+      if (result.errors && Object.keys(result.errors).length > 0) {
+        const firstError = Object.values(result.errors)[0];
+        toast.error(firstError ?? '입력값을 확인해주세요.');
+      }
       return false;
     }
   }, [currentPage, text, memo, baseDuration, resistance, timeBlock, category, imageUrl, isFavorite, preparation1, preparation2, preparation3, autoGenerate, recurrenceType, weeklyDays, intervalDays]);
@@ -177,10 +197,16 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
    * 다음 단계로 이동 (유효성 검사 후)
    */
   const handleNextPage = useCallback(() => {
+    // 저장 중일 때는 페이지 이동 방지
+    if (isSaving) return;
+    
     if (validateCurrentStep()) {
-      setCurrentPage(currentPage + 1);
+      // 최대 페이지(3) 초과 방지
+      if (currentPage < 3) {
+        setCurrentPage(currentPage + 1);
+      }
     }
-  }, [currentPage, validateCurrentStep]);
+  }, [currentPage, isSaving, validateCurrentStep]);
 
   /**
    * 빠른 저장 (1단계에서 즉시 저장)
@@ -358,8 +384,9 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                       type="number"
                       value={baseDuration}
                       onChange={e => {
-                        const val = Number(e.target.value);
-                        setBaseDuration(Number.isNaN(val) ? 1 : val);
+                        const val = parseInt(e.target.value, 10);
+                        // 빈 입력이나 NaN일 때 최소값 1 유지
+                        setBaseDuration(Number.isNaN(val) || val < 1 ? 1 : Math.min(val, 480));
                       }}
                       className={getInputClass('baseDuration')}
                       min={1}
@@ -561,18 +588,20 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
 
                     {recurrenceType === 'interval' && (
                       <div>
-                        <label className={labelClass}>간격 (일)</label>
+                        <label className={labelClass}>간격 (일) <span className="text-[var(--color-danger)]">*</span></label>
                         <input
                           type="number"
                           value={intervalDays}
                           onChange={e => {
-                            const val = Number(e.target.value);
-                            setIntervalDays(Number.isNaN(val) ? 1 : val);
+                            const val = parseInt(e.target.value, 10);
+                            // 빈 입력이나 NaN일 때 최소값 1 유지
+                            setIntervalDays(Number.isNaN(val) || val < 1 ? 1 : Math.min(val, 365));
                           }}
                           min={1}
                           max={365}
-                          className={inputClass}
+                          className={getInputClass('intervalDays')}
                         />
+                        {errors.intervalDays && <p className={errorClass}>{errors.intervalDays}</p>}
                       </div>
                     )}
                   </div>
@@ -609,7 +638,8 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                 <button
                   type="button"
                   onClick={handleNextPage}
-                  className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--color-primary-dark)]"
+                  disabled={isSaving}
+                  className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--color-primary-dark)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   다음
                 </button>
