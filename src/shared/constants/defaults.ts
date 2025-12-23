@@ -141,6 +141,32 @@ export const GAME_STATE_DEFAULTS = {
 } as const;
 
 // ============================================================================
+// Catch-up 알림 관련 기본값
+// ============================================================================
+
+/**
+ * Catch-up 스누즈 관련 기본값
+ * 뒤처진 목표 알림 스누즈 시간 등
+ */
+export const CATCH_UP_DEFAULTS = {
+  /** 기본 스누즈 시간 (분) - 2시간 */
+  DEFAULT_SNOOZE_MINUTES: 120,
+  /** 스누즈 옵션 목록 (분 단위) */
+  SNOOZE_OPTIONS: [30, 60, 120, 180] as const,
+} as const;
+
+/**
+ * Catch-up 스누즈 상태 저장 구조
+ * Dexie systemState에 저장됨
+ */
+export interface CatchUpSnoozeState {
+  /** 스누즈 만료 시각 (ISO 8601) */
+  readonly snoozeUntil: string | null;
+  /** 오늘 닫기 처리 날짜 (YYYY-MM-DD) */
+  readonly dismissedDate: string | null;
+}
+
+// ============================================================================
 // SystemState 기본값 (Dexie systemState 키별 기본값)
 // ============================================================================
 

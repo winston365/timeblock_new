@@ -20,6 +20,15 @@
 import type { WeeklyGoal } from '@/shared/types/domain';
 import type { CatchUpInfo } from './utils/catchUpUtils';
 import { useModalHotkeys } from '@/shared/hooks';
+import { useToastStore } from '@/shared/stores/toastStore';
+import { getSystemState, setSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
+import { CATCH_UP_DEFAULTS, type CatchUpSnoozeState } from '@/shared/constants/defaults';
+
+/** 오늘 날짜 문자열 반환 (YYYY-MM-DD) */
+const getTodayString = (): string => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
 
 interface CatchUpAlertModalProps {
   isOpen: boolean;
@@ -38,6 +47,8 @@ export default function CatchUpAlertModal({
   onClose,
   behindGoals,
 }: CatchUpAlertModalProps) {
+  const addToast = useToastStore((s) => s.addToast);
+
   useModalHotkeys({
     isOpen,
     onEscapeClose: onClose,
@@ -45,6 +56,38 @@ export default function CatchUpAlertModal({
       onPrimary: onClose,
     },
   });
+
+  const handleView = (): void => {
+    addToast('목표 목록으로 이동합니다.', 'info', 2000);
+    onClose();
+  };
+
+  const handleSnooze = async (): Promise<void> => {
+    const snoozeEndTime = new Date(
+      Date.now() + CATCH_UP_DEFAULTS.DEFAULT_SNOOZE_MINUTES * 60 * 1000
+    ).toISOString();
+
+    await setSystemState(SYSTEM_KEYS.CATCH_UP_SNOOZE_STATE, {
+      snoozeUntil: snoozeEndTime,
+      dismissedDate: null,
+    } satisfies CatchUpSnoozeState);
+
+    addToast(`⏰ ${CATCH_UP_DEFAULTS.DEFAULT_SNOOZE_MINUTES}분 후에 다시 알려드릴게요!`, 'info', 2500);
+    onClose();
+  };
+
+  const handleDismissToday = async (): Promise<void> => {
+    const existing = await getSystemState<CatchUpSnoozeState>(SYSTEM_KEYS.CATCH_UP_SNOOZE_STATE);
+
+    await setSystemState(SYSTEM_KEYS.CATCH_UP_SNOOZE_STATE, {
+      ...existing,
+      snoozeUntil: null,
+      dismissedDate: getTodayString(),
+    } satisfies CatchUpSnoozeState);
+
+    addToast('오늘 하루 동안 표시하지 않을게요.', 'info', 2500);
+    onClose();
+  };
 
   // 뒤처진 목표가 없으면 렌더링하지 않음
   if (!isOpen || behindGoals.length === 0) {
@@ -131,12 +174,28 @@ export default function CatchUpAlertModal({
           <p className="mb-3 text-center text-xs text-white/40">
             작은 것부터 시작해봐요. 오늘 하나만 집중해도 괜찮아요! 💪
           </p>
-          <button
-            onClick={onClose}
-            className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 py-3 font-bold text-white transition-all hover:from-indigo-600 hover:to-purple-600 active:scale-[0.98]"
-          >
-            알겠어요, 시작할게요!
-          </button>
+          <div className="grid grid-cols-1 gap-2">
+            <button
+              onClick={handleView}
+              className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 py-3 font-bold text-white transition-all hover:from-indigo-600 hover:to-purple-600 active:scale-[0.98]"
+            >
+              👀 목표 보기
+            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => void handleSnooze()}
+                className="rounded-xl bg-white/10 py-2.5 text-xs font-semibold text-white transition-all hover:bg-white/15 active:scale-[0.98]"
+              >
+                ⏰ 2시간 스누즈
+              </button>
+              <button
+                onClick={() => void handleDismissToday()}
+                className="rounded-xl bg-white/10 py-2.5 text-xs font-semibold text-white transition-all hover:bg-white/15 active:scale-[0.98]"
+              >
+                오늘은 닫기
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

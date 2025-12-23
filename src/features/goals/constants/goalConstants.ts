@@ -30,12 +30,18 @@ export const CATCH_UP_THRESHOLDS = {
 
 /**
  * 심각도별 UI 설정
+ * - 색상 의존 제거: 텍스트 배지로 심각도 표시 (accessibleLabel)
+ * - aria-label 포함
  */
 export const CATCH_UP_SEVERITY_CONFIG: Record<
   CatchUpSeverity,
   {
     icon: string;
     label: string;
+    /** 접근성을 위한 텍스트 배지 (색 의존 제거) */
+    accessibleLabel: string;
+    /** aria-label용 전체 설명 */
+    ariaLabel: string;
     bgClass: string;
     textClass: string;
     borderClass: string;
@@ -45,6 +51,8 @@ export const CATCH_UP_SEVERITY_CONFIG: Record<
   safe: {
     icon: '🟢',
     label: '순항 중',
+    accessibleLabel: 'OK',
+    ariaLabel: '순조롭게 진행 중, 목표 달성 순항 중',
     bgClass: 'bg-emerald-500/10',
     textClass: 'text-emerald-300',
     borderClass: 'border-emerald-400/30',
@@ -53,6 +61,8 @@ export const CATCH_UP_SEVERITY_CONFIG: Record<
   warning: {
     icon: '🟡',
     label: '약간 뒤처짐',
+    accessibleLabel: '주의',
+    ariaLabel: '약간 뒤처짐, 오늘 조금만 더 하면 만회 가능',
     bgClass: 'bg-amber-500/10',
     textClass: 'text-amber-300',
     borderClass: 'border-amber-400/30',
@@ -61,6 +71,8 @@ export const CATCH_UP_SEVERITY_CONFIG: Record<
   danger: {
     icon: '🔴',
     label: '심각하게 뒤처짐',
+    accessibleLabel: '위험',
+    ariaLabel: '심각하게 뒤처짐, 집중적인 만회가 필요',
     bgClass: 'bg-red-500/10',
     textClass: 'text-red-300',
     borderClass: 'border-red-400/30',

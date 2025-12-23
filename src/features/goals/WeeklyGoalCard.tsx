@@ -8,8 +8,9 @@
  *     - 7분할 진행도바 표시
  *     - +/-1, +/-5, +/-10 버튼으로 진행도 조절
  *     - 직접 값 입력으로 진행도 설정
- *     - 오늘의 목표량 자동 계산 표시
- *     - 만회 경고 표시 (심각도 레벨: 🟢🟡🔴)
+ *     - 오늘의 목표량 자동 계산 표시 (Today target 상시 표기)
+ *     - 만회 경고 표시 (심각도 레벨 + 텍스트 배지)
+ *     - Quick Log Session 팝오버
  *     - 클릭 시 히스토리 모달 열기
  *   - Key Dependencies:
  *     - WeeklyProgressBar: 진행도바 컴포넌트
@@ -21,10 +22,12 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { KeyboardEvent } from 'react';
 import type { WeeklyGoal } from '@/shared/types/domain';
 import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
+import { useToastStore } from '@/shared/stores/toastStore';
 import WeeklyProgressBar from './WeeklyProgressBar';
 import { QUICK_UPDATE_BUTTONS } from './constants/goalConstants';
 import { calculateCatchUpInfo } from './utils/catchUpUtils';
 import GoalStatusTooltip from './components/GoalStatusTooltip';
+import QuickLogSessionPopover from './components/QuickLogSessionPopover';
 
 interface WeeklyGoalCardProps {
   goal: WeeklyGoal;
@@ -45,12 +48,16 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
   const getTodayTarget = useWeeklyGoalStore((s) => s.getTodayTarget);
   const getRemainingDays = useWeeklyGoalStore((s) => s.getRemainingDays);
   const getDailyTargetForToday = useWeeklyGoalStore((s) => s.getDailyTargetForToday);
+  const addToast = useToastStore((s) => s.addToast);
+  
   const [directInput, setDirectInput] = useState('');
   const [showDirectInput, setShowDirectInput] = useState(false);
+  const [showQuickLog, setShowQuickLog] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [lastDelta, setLastDelta] = useState<number>(0);
   const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quickLogButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     return () => {
@@ -79,6 +86,20 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
   const isQuotaAchieved = useMemo(() => {
     return goal.currentProgress >= todayTarget && goal.currentProgress < goal.target;
   }, [goal.currentProgress, todayTarget, goal.target]);
+
+  // Today target 문구 생성 (완료/0일 때도 명확)
+  const todayTargetLabel = useMemo(() => {
+    if (isCompleted) {
+      return { text: '완료!', subtext: '목표 달성' };
+    }
+    if (dailyTargetForToday === 0) {
+      return { text: '0', subtext: isQuotaAchieved ? '할당량 달성' : '목표 없음' };
+    }
+    return { 
+      text: dailyTargetForToday.toLocaleString(), 
+      subtext: `${remainingDays}일 남음` 
+    };
+  }, [isCompleted, dailyTargetForToday, remainingDays, isQuotaAchieved]);
 
   // 애니메이션 트리거
   const triggerAnimation = useCallback((delta: number) => {
@@ -133,6 +154,27 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
     }
   };
 
+  // Quick Log Session 제출 핸들러
+  const handleQuickLogSubmit = useCallback(async (value: number) => {
+    if (value === 0) {
+      // 0은 no-op (아무 작업 안 함)
+      return;
+    }
+    if (updating) return;
+    setUpdating(true);
+    try {
+      await updateProgress(goal.id, value);
+      triggerAnimation(value);
+      addToast(`${goal.title}: +${value} ${goal.unit} 기록됨`, 'success', 2000);
+      setShowQuickLog(false);
+    } catch (error) {
+      console.error('Failed to log session:', error);
+      addToast('기록 실패', 'error', 2000);
+    } finally {
+      setUpdating(false);
+    }
+  }, [goal.id, goal.title, goal.unit, updating, updateProgress, triggerAnimation, addToast]);
+
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleDirectInputSubmit();
@@ -182,7 +224,7 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
           </div>
         </div>
 
-        {/* 진행률 배지 (애니메이션 포함) + Quota 달성 배지 */}
+        {/* 진행률 배지 (애니메이션 포함) + Quota 달성 배지 + Severity 배지 */}
         <div className="flex items-center gap-1.5">
           {/* Quota 달성 배지 */}
           {isQuotaAchieved && (
@@ -194,6 +236,18 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
               ✅ 오늘 OK
             </div>
           )}
+          {/* 텍스트 Severity 배지 (색 의존 제거) */}
+          {isBehind && !isCompleted && (
+            <div
+              className={`rounded-full font-medium ${severityConfig.bgClass} ${severityConfig.textClass} ${compact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]'}`}
+              title={severityConfig.description}
+              aria-label={severityConfig.ariaLabel}
+            >
+              <span aria-hidden="true">{severityConfig.icon}</span>
+              <span className="ml-0.5">{severityConfig.accessibleLabel}</span>
+            </div>
+          )}
+          {/* 진행률 배지 */}
           <div className={`rounded-full font-bold shrink-0 transition-all duration-200 ${
             isCompleted
               ? 'bg-emerald-500/20 text-emerald-300'
@@ -250,8 +304,9 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
         </div>
       )}
 
-      {/* 오늘의 목표량 & 만회 정보 (심각도 레벨 표시) */}
+      {/* 오늘의 목표량 & 만회 정보 (심각도 레벨 표시) - Today target 상시 표기 */}
       <div className={`flex flex-wrap justify-between gap-1 ${compact ? 'text-[10px]' : 'text-xs'}`}>
+        {/* Today target 상시 표기 */}
         <GoalStatusTooltip
           goal={goal}
           todayTarget={todayTarget}
@@ -259,17 +314,25 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
           remainingDays={remainingDays}
           catchUpInfo={catchUpInfo}
         >
-          <div className={`rounded-lg bg-white/5 cursor-help ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
+          <div 
+            className={`rounded-lg bg-white/5 cursor-help ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}
+            aria-label={`오늘 목표: ${todayTargetLabel.text} ${goal.unit}, ${todayTargetLabel.subtext}`}
+          >
             <span className="text-white/50">오늘: </span>
-            <span className="font-bold text-white">{dailyTargetForToday.toLocaleString()}</span>
-            <span className="text-white/40 ml-1">({remainingDays}일)</span>
+            <span className="font-bold text-white">{todayTargetLabel.text}</span>
+            <span className="text-white/40 ml-1">
+              ({todayTargetLabel.subtext})
+            </span>
             <span className="ml-1 text-white/30">ⓘ</span>
           </div>
         </GoalStatusTooltip>
 
         {/* 상태 표시: 순항 / 뒤처짐 / 달성 */}
         {isCompleted ? (
-          <div className={`rounded-lg bg-emerald-500/10 text-emerald-300 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
+          <div 
+            className={`rounded-lg bg-emerald-500/10 text-emerald-300 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}
+            aria-label="주간 목표 달성 완료"
+          >
             ✨ 달성!
           </div>
         ) : isBehind ? (
@@ -282,6 +345,7 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
           >
             <div
               className={`rounded-lg ${severityConfig.bgClass} ${severityConfig.textClass} ${compact ? 'px-2 py-1' : 'px-3 py-1.5'} cursor-help`}
+              aria-label={`${catchUpNeeded} ${goal.unit} 부족, ${severityConfig.ariaLabel}`}
             >
               {severityConfig.icon}{' '}
               <span className="font-bold">{catchUpNeeded.toLocaleString()}</span>
@@ -293,13 +357,16 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
             </div>
           </GoalStatusTooltip>
         ) : (
-          <div className={`rounded-lg bg-emerald-500/10 text-emerald-300 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
+          <div 
+            className={`rounded-lg bg-emerald-500/10 text-emerald-300 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}
+            aria-label="목표 순조롭게 진행 중"
+          >
             🟢 순조로워요!
           </div>
         )}
       </div>
 
-      {/* Quick Update Buttons */}
+      {/* Quick Update Buttons + Quick Log Session */}
       <div className={`flex flex-wrap items-center justify-center ${compact ? 'gap-1' : 'gap-2'}`}>
         {quickButtons.map(({ label, delta }) => (
           <button
@@ -315,6 +382,33 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
             {label}
           </button>
         ))}
+
+        {/* Quick Log Session 버튼 */}
+        <div className="relative">
+          <button
+            ref={quickLogButtonRef}
+            onClick={() => setShowQuickLog(true)}
+            className={`rounded-lg bg-indigo-500/10 font-bold text-indigo-300 hover:bg-indigo-500/20 ${compact ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
+            aria-label="빠른 세션 기록"
+            aria-haspopup="true"
+            aria-expanded={showQuickLog}
+          >
+            📝 기록
+          </button>
+
+          {/* Quick Log Session 팝오버 */}
+          {showQuickLog && (
+            <QuickLogSessionPopover
+              unit={goal.unit}
+              onSubmit={handleQuickLogSubmit}
+              onClose={() => {
+                setShowQuickLog(false);
+                quickLogButtonRef.current?.focus();
+              }}
+              triggerRef={quickLogButtonRef}
+            />
+          )}
+        </div>
 
         {/* Direct Input Toggle */}
         {!showDirectInput ? (
