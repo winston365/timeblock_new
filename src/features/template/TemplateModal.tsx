@@ -170,53 +170,60 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   }, [currentPage, text, memo, baseDuration, resistance, timeBlock, category, imageUrl, isFavorite, preparation1, preparation2, preparation3, autoGenerate, recurrenceType, weeklyDays, intervalDays]);
 
   /**
-   * 다음 단계로 이동 (유효성 검사 후)
+   * 전체 폼 유효성 검사 (완료 버튼 클릭 시)
    */
-  const handleNextPage = useCallback(() => {
-    if (validateCurrentStep()) {
-      setCurrentPage(currentPage + 1);
+  const validateAllSteps = useCallback((): boolean => {
+    // Step 1: Basic
+    const basicResult = validateBasicStep({
+      text: text.trim(),
+      memo: memo.trim(),
+      baseDuration,
+      resistance,
+      timeBlock,
+      category: category.trim(),
+      imageUrl: imageUrl.trim(),
+      isFavorite,
+    });
+    if (!basicResult.success) {
+      setCurrentPage(1);
+      setErrors(basicResult.errors ?? {});
+      return false;
     }
-  }, [currentPage, validateCurrentStep]);
 
-  /**
-   * 빠른 저장 (1단계에서 즉시 저장)
-   */
-  const handleQuickSave = async () => {
-    if (!validateCurrentStep()) return;
-
-    setIsSaving(true);
-    try {
-      await createTemplate(
-        text.trim(),
-        text.trim(),
-        memo.trim(),
-        baseDuration,
-        resistance,
-        timeBlock,
-        false, // autoGenerate
-        '', '', '', // preparations
-        'none', // recurrenceType
-        [], // weeklyDays
-        1, // intervalDays
-        category.trim(),
-        isFavorite,
-        imageUrl.trim()
-      );
-      toast.success('템플릿이 빠르게 저장되었습니다! 상세 설정은 나중에 편집하세요.');
-      onClose(true);
-    } catch (error) {
-      console.error('Failed to quick save template:', error);
-      toast.error('템플릿 저장에 실패했습니다.');
-    } finally {
-      setIsSaving(false);
+    // Step 2: Preparation (선택사항이므로 항상 통과)
+    const prepResult = validatePreparationStep({
+      preparation1: preparation1.trim(),
+      preparation2: preparation2.trim(),
+      preparation3: preparation3.trim(),
+    });
+    if (!prepResult.success) {
+      setCurrentPage(2);
+      setErrors(prepResult.errors ?? {});
+      return false;
     }
-  };
+
+    // Step 3: Recurrence
+    const recurrenceResult = validateRecurrenceStep({
+      autoGenerate,
+      recurrenceType,
+      weeklyDays,
+      intervalDays,
+    });
+    if (!recurrenceResult.success) {
+      setCurrentPage(3);
+      setErrors(recurrenceResult.errors ?? {});
+      return false;
+    }
+
+    setErrors({});
+    return true;
+  }, [text, memo, baseDuration, resistance, timeBlock, category, imageUrl, isFavorite, preparation1, preparation2, preparation3, autoGenerate, recurrenceType, weeklyDays, intervalDays]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentPage !== 3) return;
     
-    if (!validateCurrentStep()) {
+    // 전체 폼 검증
+    if (!validateAllSteps()) {
       return;
     }
 
@@ -244,6 +251,7 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
 
       if (template) {
         await updateTemplate(template.id, templateData);
+        toast.success('템플릿이 수정되었습니다.');
       } else {
         await createTemplate(
           templateData.text,
@@ -263,10 +271,60 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           templateData.isFavorite,
           templateData.imageUrl
         );
+        toast.success('템플릿이 저장되었습니다.');
       }
       onClose(true);
     } catch (error) {
       console.error('Failed to save template:', error);
+      toast.error('템플릿 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  /**
+   * 빠른 저장 (1단계에서 즉시 저장 - 기본값으로)
+   */
+  const handleQuickSave = async () => {
+    // 1단계 validation만 수행
+    const basicResult = validateBasicStep({
+      text: text.trim(),
+      memo: memo.trim(),
+      baseDuration,
+      resistance,
+      timeBlock,
+      category: category.trim(),
+      imageUrl: imageUrl.trim(),
+      isFavorite,
+    });
+    if (!basicResult.success) {
+      setErrors(basicResult.errors ?? {});
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      await createTemplate(
+        text.trim(),
+        text.trim(),
+        memo.trim(),
+        baseDuration,
+        resistance,
+        timeBlock,
+        false, // autoGenerate - 빠른 저장은 자동 생성 비활성화
+        '', '', '', // preparations - 빠른 저장은 비움
+        'none', // recurrenceType
+        [], // weeklyDays
+        1, // intervalDays
+        category.trim(),
+        isFavorite,
+        imageUrl.trim()
+      );
+      toast.success('템플릿이 빠르게 저장되었습니다! 상세 설정은 나중에 편집하세요.');
+      onClose(true);
+    } catch (error) {
+      console.error('Failed to quick save template:', error);
       toast.error('템플릿 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
@@ -306,14 +364,26 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           <button onClick={() => onClose(false)} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]">✕</button>
         </div>
 
-        {/* Steps */}
-        <div className="flex justify-center gap-2 border-b border-[var(--color-border)] py-3">
-          {[1, 2, 3].map(step => (
-            <div
+        {/* Tabs - 클릭으로 직접 이동 가능 */}
+        <div className="flex border-b border-[var(--color-border)]">
+          {[
+            { step: 1, label: '기본 정보', icon: '📝' },
+            { step: 2, label: '준비하기', icon: '💡' },
+            { step: 3, label: '자동 생성', icon: '🔄' },
+          ].map(({ step, label, icon }) => (
+            <button
               key={step}
-              className={`h-2 w-8 rounded-full transition-colors ${currentPage >= step ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-bg-tertiary)]'
-                }`}
-            />
+              type="button"
+              onClick={() => setCurrentPage(step)}
+              className={`flex-1 py-3 text-xs font-medium transition-colors border-b-2 ${
+                currentPage === step
+                  ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                  : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-elevated)]'
+              }`}
+            >
+              <span className="mr-1">{icon}</span>
+              {label}
+            </button>
           ))}
         </div>
 
@@ -577,14 +647,14 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
             )}
           </div>
 
-          {/* Footer Actions */}
+          {/* Footer Actions - 탭 기반이므로 '다음' 버튼 제거, 3단계에서만 '완료' */}
           <div className="flex justify-between border-t border-[var(--color-border)] bg-[var(--color-bg-base)] px-5 py-4">
             <button
               type="button"
-              onClick={() => currentPage > 1 ? setCurrentPage(currentPage - 1) : onClose(false)}
+              onClick={() => onClose(false)}
               className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)]"
             >
-              {currentPage === 1 ? '취소' : '이전'}
+              취소
             </button>
 
             <div className="flex gap-2">
@@ -601,15 +671,8 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                 </button>
               )}
 
-              {currentPage < 3 ? (
-                <button
-                  type="button"
-                  onClick={handleNextPage}
-                  className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--color-primary-dark)]"
-                >
-                  다음
-                </button>
-              ) : (
+              {/* 완료 버튼은 3단계에서만 표시 */}
+              {currentPage === 3 && (
                 <button
                   type="submit"
                   disabled={isSaving}
