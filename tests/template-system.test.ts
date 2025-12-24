@@ -807,15 +807,15 @@ describe('Template Form NaN Prevention', () => {
 });
 
 // ============================================================================
-// Test 5: Step Navigation Logic (3단계 네비게이션 버그 수정 관련)
+// Test 5: Step Navigation Logic (탭 기반 네비게이션)
 // ============================================================================
 describe('Template Modal Step Navigation Logic', () => {
   /**
-   * 실제 TemplateModal의 validateCurrentStep 로직을 시뮬레이션
+   * 실제 TemplateModal의 validateStep 로직을 시뮬레이션
    * UI 컴포넌트 없이 순수 로직만 테스트
    */
-  function simulateValidateCurrentStep(
-    currentPage: number,
+  function simulateValidateStep(
+    page: number,
     formData: {
       text?: string;
       baseDuration?: number;
@@ -829,7 +829,7 @@ describe('Template Modal Step Navigation Logic', () => {
     const safeDuration = Number.isNaN(formData.baseDuration ?? 30) ? 1 : (formData.baseDuration ?? 30);
     const safeIntervalDays = Number.isNaN(formData.intervalDays ?? 1) ? 1 : (formData.intervalDays ?? 1);
 
-    switch (currentPage) {
+    switch (page) {
       case 1:
         return validateBasicStep({
           text: formData.text?.trim() ?? '',
@@ -853,90 +853,151 @@ describe('Template Modal Step Navigation Logic', () => {
     }
   }
 
-  it('should allow navigation from step 1 to step 2 with valid data', () => {
-    const result = simulateValidateCurrentStep(1, {
-      text: '테스트 작업',
-      baseDuration: 30,
+  /**
+   * 탭 클릭 핸들러 로직 시뮬레이션
+   * 실제 handleTabClick 함수의 guard 조건을 테스트
+   */
+  function simulateTabClick(
+    currentPage: number,
+    targetPage: number,
+    isSaving: boolean
+  ): { allowed: boolean; reason?: string } {
+    if (isSaving) {
+      return { allowed: false, reason: 'saving' };
+    }
+    if (targetPage === currentPage) {
+      return { allowed: false, reason: 'same-page' };
+    }
+    if (targetPage < 1 || targetPage > 3) {
+      return { allowed: false, reason: 'out-of-range' };
+    }
+    return { allowed: true };
+  }
+
+  // 탭 네비게이션 테스트
+  describe('Tab Navigation', () => {
+    it('should allow tab navigation from any page to any other page', () => {
+      expect(simulateTabClick(1, 2, false).allowed).toBe(true);
+      expect(simulateTabClick(1, 3, false).allowed).toBe(true);
+      expect(simulateTabClick(2, 1, false).allowed).toBe(true);
+      expect(simulateTabClick(2, 3, false).allowed).toBe(true);
+      expect(simulateTabClick(3, 1, false).allowed).toBe(true);
+      expect(simulateTabClick(3, 2, false).allowed).toBe(true);
     });
 
-    expect(result.success).toBe(true);
+    it('should block tab navigation when saving', () => {
+      const result = simulateTabClick(1, 2, true);
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toBe('saving');
+    });
+
+    it('should ignore click on current tab', () => {
+      const result = simulateTabClick(2, 2, false);
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toBe('same-page');
+    });
+
+    it('should block navigation to invalid page numbers', () => {
+      expect(simulateTabClick(1, 0, false).reason).toBe('out-of-range');
+      expect(simulateTabClick(1, 4, false).reason).toBe('out-of-range');
+      expect(simulateTabClick(1, -1, false).reason).toBe('out-of-range');
+    });
+
+    it('should allow jumping directly to step 3 without sequential validation', () => {
+      // 탭 네비게이션은 순차 검증 없이 바로 이동 가능
+      // (유효성 검사는 완료 버튼 클릭 시에만)
+      const result = simulateTabClick(1, 3, false);
+      expect(result.allowed).toBe(true);
+    });
   });
 
-  it('should block navigation from step 1 when text is empty', () => {
-    const result = simulateValidateCurrentStep(1, {
-      text: '',
-      baseDuration: 30,
+  // 기존 유효성 검사 테스트 (리팩토링: simulateValidateStep 사용)
+  describe('Validation Logic', () => {
+    it('should allow navigation from step 1 to step 2 with valid data', () => {
+      const result = simulateValidateStep(1, {
+        text: '테스트 작업',
+        baseDuration: 30,
+      });
+
+      expect(result.success).toBe(true);
     });
 
-    expect(result.success).toBe(false);
-    expect(result.errors?.text).toBeDefined();
-  });
+    it('should block submission when step 1 text is empty', () => {
+      const result = simulateValidateStep(1, {
+        text: '',
+        baseDuration: 30,
+      });
 
-  it('should allow navigation to step 3 and pass validation with autoGenerate=false', () => {
-    const result = simulateValidateCurrentStep(3, {
-      autoGenerate: false,
-      recurrenceType: 'none',
+      expect(result.success).toBe(false);
+      expect(result.errors?.text).toBeDefined();
     });
 
-    expect(result.success).toBe(true);
-  });
+    it('should pass step 3 validation with autoGenerate=false', () => {
+      const result = simulateValidateStep(3, {
+        autoGenerate: false,
+        recurrenceType: 'none',
+      });
 
-  it('should allow step 3 validation with autoGenerate=true and valid recurrence', () => {
-    const result = simulateValidateCurrentStep(3, {
-      autoGenerate: true,
-      recurrenceType: 'daily',
+      expect(result.success).toBe(true);
     });
 
-    expect(result.success).toBe(true);
-  });
+    it('should pass step 3 validation with autoGenerate=true and valid recurrence', () => {
+      const result = simulateValidateStep(3, {
+        autoGenerate: true,
+        recurrenceType: 'daily',
+      });
 
-  it('should block step 3 validation when autoGenerate=true but recurrenceType=none', () => {
-    const result = simulateValidateCurrentStep(3, {
-      autoGenerate: true,
-      recurrenceType: 'none',
+      expect(result.success).toBe(true);
     });
 
-    expect(result.success).toBe(false);
-    expect(result.errors?.recurrenceType).toBeDefined();
-  });
+    it('should fail step 3 validation when autoGenerate=true but recurrenceType=none', () => {
+      const result = simulateValidateStep(3, {
+        autoGenerate: true,
+        recurrenceType: 'none',
+      });
 
-  it('should handle NaN baseDuration gracefully in step 1', () => {
-    const result = simulateValidateCurrentStep(1, {
-      text: '테스트 작업',
-      baseDuration: NaN, // NaN이 들어와도 1로 대체되어 통과해야 함
+      expect(result.success).toBe(false);
+      expect(result.errors?.recurrenceType).toBeDefined();
     });
 
-    expect(result.success).toBe(true);
-  });
+    it('should handle NaN baseDuration gracefully in step 1', () => {
+      const result = simulateValidateStep(1, {
+        text: '테스트 작업',
+        baseDuration: NaN, // NaN이 들어와도 1로 대체되어 통과해야 함
+      });
 
-  it('should handle NaN intervalDays gracefully in step 3', () => {
-    const result = simulateValidateCurrentStep(3, {
-      autoGenerate: true,
-      recurrenceType: 'interval',
-      intervalDays: NaN, // NaN이 들어와도 1로 대체되어 통과해야 함
+      expect(result.success).toBe(true);
     });
 
-    expect(result.success).toBe(true);
-  });
+    it('should handle NaN intervalDays gracefully in step 3', () => {
+      const result = simulateValidateStep(3, {
+        autoGenerate: true,
+        recurrenceType: 'interval',
+        intervalDays: NaN, // NaN이 들어와도 1로 대체되어 통과해야 함
+      });
 
-  it('should block step 3 when weekly is selected but no days chosen', () => {
-    const result = simulateValidateCurrentStep(3, {
-      autoGenerate: true,
-      recurrenceType: 'weekly',
-      weeklyDays: [],
+      expect(result.success).toBe(true);
     });
 
-    expect(result.success).toBe(false);
-    expect(result.errors?.weeklyDays).toBeDefined();
-  });
+    it('should fail step 3 when weekly is selected but no days chosen', () => {
+      const result = simulateValidateStep(3, {
+        autoGenerate: true,
+        recurrenceType: 'weekly',
+        weeklyDays: [],
+      });
 
-  it('should pass step 3 when weekly is selected with at least one day', () => {
-    const result = simulateValidateCurrentStep(3, {
-      autoGenerate: true,
-      recurrenceType: 'weekly',
-      weeklyDays: [1, 3, 5], // 월, 수, 금
+      expect(result.success).toBe(false);
+      expect(result.errors?.weeklyDays).toBeDefined();
     });
 
-    expect(result.success).toBe(true);
+    it('should pass step 3 when weekly is selected with at least one day', () => {
+      const result = simulateValidateStep(3, {
+        autoGenerate: true,
+        recurrenceType: 'weekly',
+        weeklyDays: [1, 3, 5], // 월, 수, 금
+      });
+
+      expect(result.success).toBe(true);
+    });
   });
 });

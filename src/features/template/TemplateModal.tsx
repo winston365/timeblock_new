@@ -129,16 +129,18 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
   }, [template]);
 
   /**
-   * 단계별 유효성 검사
+   * 특정 단계 유효성 검사
+   * @param page 검사할 페이지 번호
+   * @param showToast 에러 시 토스트 표시 여부 (기본값: true)
    * @returns true if valid, false if invalid
    */
-  const validateCurrentStep = useCallback((): boolean => {
+  const validateStep = useCallback((page: number, showToast = true): boolean => {
     // NaN 방지: 숫자 필드가 NaN이면 기본값으로 대체
     const safeDuration = Number.isNaN(baseDuration) ? 1 : baseDuration;
     const safeIntervalDays = Number.isNaN(intervalDays) ? 1 : intervalDays;
 
     let result;
-    switch (currentPage) {
+    switch (page) {
       case 1:
         result = validateBasicStep({
           text: text.trim(),
@@ -174,8 +176,10 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
 
     // result가 undefined일 경우 안전하게 처리 (방어적 코딩)
     if (!result) {
-      console.warn('[TemplateModal] validateCurrentStep: result is undefined for page', currentPage);
-      setErrors({ _form: '유효성 검사 중 오류가 발생했습니다.' });
+      console.warn('[TemplateModal] validateStep: result is undefined for page', page);
+      if (showToast) {
+        setErrors({ _form: '유효성 검사 중 오류가 발생했습니다.' });
+      }
       return false;
     }
 
@@ -183,30 +187,43 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
       setErrors({});
       return true;
     } else {
-      setErrors(result.errors ?? {});
-      // 에러가 있으면 토스트로 알림 (무반응 방지)
-      if (result.errors && Object.keys(result.errors).length > 0) {
-        const firstError = Object.values(result.errors)[0];
-        toast.error(firstError ?? '입력값을 확인해주세요.');
+      if (showToast) {
+        setErrors(result.errors ?? {});
+        // 에러가 있으면 토스트로 알림 (무반응 방지)
+        if (result.errors && Object.keys(result.errors).length > 0) {
+          const firstError = Object.values(result.errors)[0];
+          const message = firstError && firstError !== 'Invalid input'
+            ? firstError
+            : '입력값을 확인해주세요.';
+          toast.error(message);
+        }
       }
       return false;
     }
-  }, [currentPage, text, memo, baseDuration, resistance, timeBlock, category, imageUrl, isFavorite, preparation1, preparation2, preparation3, autoGenerate, recurrenceType, weeklyDays, intervalDays]);
+  }, [text, memo, baseDuration, resistance, timeBlock, category, imageUrl, isFavorite, preparation1, preparation2, preparation3, autoGenerate, recurrenceType, weeklyDays, intervalDays]);
 
   /**
-   * 다음 단계로 이동 (유효성 검사 후)
+   * 현재 단계 유효성 검사 (하위 호환용)
    */
-  const handleNextPage = useCallback(() => {
+  const validateCurrentStep = useCallback((showToast = true): boolean => {
+    return validateStep(currentPage, showToast);
+  }, [currentPage, validateStep]);
+
+  /**
+   * 탭 클릭으로 페이지 이동 (토스트 없이)
+   */
+  const handleTabClick = useCallback((targetPage: number) => {
     // 저장 중일 때는 페이지 이동 방지
     if (isSaving) return;
+    // 같은 페이지면 무시
+    if (targetPage === currentPage) return;
+    // 유효 범위 체크
+    if (targetPage < 1 || targetPage > 3) return;
     
-    if (validateCurrentStep()) {
-      // 최대 페이지(3) 초과 방지
-      if (currentPage < 3) {
-        setCurrentPage(currentPage + 1);
-      }
-    }
-  }, [currentPage, isSaving, validateCurrentStep]);
+    // 탭 이동 시에는 토스트를 띄우지 않음 (showToast=false)
+    // 사용자가 자유롭게 탭을 이동할 수 있도록 허용
+    setCurrentPage(targetPage);
+  }, [currentPage, isSaving]);
 
   /**
    * 빠른 저장 (1단계에서 즉시 저장)
@@ -336,14 +353,35 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
           <button onClick={() => onClose(false)} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]">✕</button>
         </div>
 
-        {/* Steps */}
-        <div className="flex justify-center gap-2 border-b border-[var(--color-border)] py-3">
-          {[1, 2, 3].map(step => (
-            <div
+        {/* Steps - 클릭 가능한 탭 */}
+        <div className="flex justify-center gap-1 border-b border-[var(--color-border)] py-3">
+          {[
+            { step: 1, label: '기본' },
+            { step: 2, label: '준비' },
+            { step: 3, label: '주기' },
+          ].map(({ step, label }) => (
+            <button
               key={step}
-              className={`h-2 w-8 rounded-full transition-colors ${currentPage >= step ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-bg-tertiary)]'
-                }`}
-            />
+              type="button"
+              onClick={() => handleTabClick(step)}
+              disabled={isSaving}
+              className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold transition-all ${
+                currentPage === step
+                  ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                  : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
+              } ${isSaving ? 'cursor-not-allowed opacity-50' : ''}`}
+            >
+              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                currentPage === step
+                  ? 'bg-white/20 text-white'
+                  : currentPage > step
+                    ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+                    : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]'
+              }`}>
+                {currentPage > step ? '✓' : step}
+              </span>
+              {label}
+            </button>
           ))}
         </div>
 
@@ -512,6 +550,12 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
             {/* Page 3: Recurrence */}
             {currentPage === 3 && (
               <div className="flex flex-col gap-4">
+                {/* 3단계 안내 헤더 */}
+                <div className="rounded-xl bg-[var(--color-bg-elevated)] p-4 text-center">
+                  <h3 className="text-sm font-bold text-[var(--color-text)]">🔄 반복 주기 설정</h3>
+                  <p className="text-xs text-[var(--color-text-secondary)]">자동 생성은 선택 사항입니다. 설정하지 않아도 완료할 수 있어요.</p>
+                </div>
+
                 {/* 전역 에러 메시지 */}
                 {Object.keys(errors).length > 0 && (
                   <div className="rounded-lg bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/30 p-3">
@@ -612,13 +656,26 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
 
           {/* Footer Actions */}
           <div className="flex justify-between border-t border-[var(--color-border)] bg-[var(--color-bg-base)] px-5 py-4">
-            <button
-              type="button"
-              onClick={() => currentPage > 1 ? setCurrentPage(currentPage - 1) : onClose(false)}
-              className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)]"
-            >
-              {currentPage === 1 ? '취소' : '이전'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => onClose(false)}
+                disabled={isSaving}
+                className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] disabled:opacity-50"
+              >
+                취소
+              </button>
+              {currentPage > 1 && (
+                <button
+                  type="button"
+                  onClick={() => handleTabClick(currentPage - 1)}
+                  disabled={isSaving}
+                  className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] disabled:opacity-50"
+                >
+                  이전
+                </button>
+              )}
+            </div>
 
             <div className="flex gap-2">
               {/* 빠른 저장 버튼 (1단계에서만, 신규 생성 시에만) */}
@@ -634,16 +691,8 @@ export function TemplateModal({ template, onClose }: TemplateModalProps) {
                 </button>
               )}
 
-              {currentPage < 3 ? (
-                <button
-                  type="button"
-                  onClick={handleNextPage}
-                  disabled={isSaving}
-                  className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--color-primary-dark)] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  다음
-                </button>
-              ) : (
+              {/* 완료 버튼은 3단계에서만 표시 */}
+              {currentPage === 3 && (
                 <button
                   type="submit"
                   disabled={isSaving}
