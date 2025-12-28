@@ -92,7 +92,8 @@ export async function updateTask(taskId: string, updates: Partial<Task>, date: s
 
     if (inboxTask) {
       // inbox → timeBlock 이동 (인박스에서 타임블록으로)
-      if (updates.timeBlock !== null) {
+      // 중요: updates.timeBlock이 undefined(미지정)인 경우는 '이동'이 아니라 단순 inbox 업데이트로 처리해야 함
+      if (updates.timeBlock !== undefined && updates.timeBlock !== null) {
         addSyncLog('dexie', 'save', `Moving task ${taskId} from inbox to timeblock`);
 
         // globalInbox에서 제거
@@ -102,7 +103,7 @@ export async function updateTask(taskId: string, updates: Partial<Task>, date: s
         const movedTask: Task = { ...inboxTask, ...updates };
 
         // ✅ hourSlot이 없으면 블록의 첫 시간대로 설정 (UI 표시 보장)
-        if (!movedTask.hourSlot && movedTask.timeBlock) {
+        if (movedTask.hourSlot == null && movedTask.timeBlock) {
           movedTask.hourSlot = getBlockById(movedTask.timeBlock)?.start;
         }
 

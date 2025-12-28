@@ -331,8 +331,22 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         });
       }
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const isTaskNotFound = errorMessage.includes('Task not found') || errorMessage.includes('not found');
+
+      // "Task not found" 에러는 조용히 처리 (이미 삭제/이동된 작업일 수 있음)
+      if (isTaskNotFound) {
+        console.warn('[DailyDataStore] Task not found during update, skipping rollback:', taskId);
+        // Optimistic update를 유지하고 에러를 다시 throw하지 않음
+        // 대신 background refresh로 상태 정합성 확보
+        loadData(currentDate, true).catch(refreshErr => {
+          console.warn('[DailyDataStore] Background refresh after task-not-found failed:', refreshErr);
+        });
+        return; // 에러를 throw하지 않음
+      }
+
       console.error('[DailyDataStore] Failed to update task, rolling back:', err);
-      // ❌ Rollback
+      // ❌ Rollback (Task not found가 아닌 다른 에러만)
       set(createRollbackState(dailyData, originalTasks, err as Error));
       throw err;
     }

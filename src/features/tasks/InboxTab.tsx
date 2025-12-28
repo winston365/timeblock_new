@@ -25,7 +25,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useGameState } from '@/shared/hooks/useGameState';
 import { useDailyData } from '@/shared/hooks/useDailyData';
-import { TIME_BLOCKS, type Task, type TimeBlockId } from '@/shared/types/domain';
+import { type Task, type TimeBlockId } from '@/shared/types/domain';
 import { createInboxTask, createTaskFromPartial, isTaskPrepared, isNewlyPrepared } from '@/shared/utils/taskFactory';
 import TaskCard from '@/features/schedule/TaskCard';
 import TaskModal from '@/features/schedule/TaskModal';
@@ -35,8 +35,9 @@ import { useInboxHotkeys } from '@/features/tasks/hooks/useInboxHotkeys';
 import { findSuggestedSlot, type SlotFindMode } from '@/shared/services/schedule/slotFinder';
 import { notify } from '@/shared/lib/notify';
 import { getLocalDate } from '@/shared/lib/utils';
-import { TASK_DEFAULTS } from '@/shared/constants/defaults';
+import { TASK_DEFAULTS, SYSTEM_STATE_DEFAULTS } from '@/shared/constants/defaults';
 import { eventBus } from '@/shared/lib/eventBus';
+import { updateTask as updateTaskWithDate } from '@/data/repositories/dailyDataRepository';
 
 /**
  * 인박스 탭 컴포넌트
@@ -62,20 +63,77 @@ export default function InboxTab() {
     updateTask,
     deleteTask,
     toggleTaskCompletion,
-    // Triage 상태
-    triageEnabled,
-    setTriageEnabled,
-    setTriageFocusedTaskId,
-    // HUD 상태
-    hudCollapsed,
-    dailyGoalCount,
-    todayProcessedCount,
-    setHudCollapsed,
-    setDailyGoalCount,
-    // 빠른 배치
-    placeTaskToSlot,
-    setLastUsedSlot,
   } = useInboxStore();
+
+  // Triage 관련 상태는 로컬로 관리 (store에 미정의)
+  const [triageEnabled, setTriageEnabled] = useState(false);
+  const [triageFocusedTaskId, setTriageFocusedTaskId] = useState<string | null>(null);
+
+  /**
+   * Triage 모드 토글 핸들러
+   * 
+   * ON 시: 현재 포커스된 입력 필드를 blur하여 즉시 키보드 탐색 가능하게 함
+   * OFF 시: 단순히 모드 비활성화
+   */
+  const handleToggleTriage = useCallback(() => {
+    const nextEnabled = !triageEnabled;
+    
+    if (nextEnabled) {
+      // Triage ON: blur any focused input so arrow keys work immediately
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    }
+    
+    setTriageEnabled(nextEnabled);
+  }, [triageEnabled]);
+
+  // HUD 상태도 로컬로 관리 (store에 미정의)
+  const [hudCollapsed, setHudCollapsed] = useState(SYSTEM_STATE_DEFAULTS.inboxHudCollapsed);
+  const [dailyGoalCount, setDailyGoalCount] = useState(SYSTEM_STATE_DEFAULTS.inboxTriageDailyGoalCount);
+  const [todayProcessedCount, setTodayProcessedCount] = useState(SYSTEM_STATE_DEFAULTS.inboxTodayProcessedCount);
+
+  /**
+   * 빠른 배치 함수 (store에 미정의 → 로컬 구현)
+   * Inbox 작업을 특정 시간 블록에 배치
+   * 
+   * @param taskId - 배치할 작업 ID
+   * @param date - 배치 대상 날짜 (YYYY-MM-DD)
+   * @param blockId - 타임 블록 ID
+   * @param hourSlot - 시간 슬롯
+   */
+  const placeTaskToSlot = useCallback(
+    async (taskId: string, date: string, blockId: TimeBlockId, hourSlot: number) => {
+      const today = getLocalDate();
+      
+      if (date === today) {
+        // 오늘 배치: useDailyData의 updateTask 사용 (optimistic UI 지원)
+        await updateDailyTask(taskId, {
+          timeBlock: blockId,
+          hourSlot,
+        });
+      } else {
+        // 다른 날짜 배치: repository 직접 호출 (date 파라미터 전달)
+        await updateTaskWithDate(taskId, {
+          timeBlock: blockId,
+          hourSlot,
+        }, date);
+        // 인박스 목록 갱신 (작업이 인박스에서 제거됨)
+        await loadData();
+      }
+    },
+    [updateDailyTask, loadData],
+  );
+
+  /**
+   * 마지막 사용 슬롯 저장 (no-op placeholder - 기능은 향후 구현)
+   */
+  const setLastUsedSlot = useCallback(
+    async (_slot: { mode: SlotFindMode; date: string; blockId: string; hourSlot: number }) => {
+      // Placeholder: 마지막 슬롯 저장 기능은 향후 구현
+    },
+    [],
+  );
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -99,8 +157,14 @@ export default function InboxTab() {
   }, [inboxTasks]);
 
   // Triage 모드 핫키 훅
+  // Triage 모드가 활성화되면 isInputFocused를 무시하여 input 포커스 상태에서도 핫키가 동작하도록 함
+  // (Triage 모드에서는 capture phase로 키를 잡고, TRIAGE_KEYS 외의 키는 통과시킴)
   const { focusedTaskId } = useInboxHotkeys({
     triageEnabled,
+    triageFocusedTaskId,
+    setTriageFocusedTaskId,
+    placeTaskToSlot,
+    setLastUsedSlot,
     onEditTask: (taskId) => {
       const task = inboxTasks.find((t) => t.id === taskId);
       if (task) {
@@ -123,7 +187,8 @@ export default function InboxTab() {
         },
       });
     },
-    disabled: isInputFocused || isModalOpen,
+    // Triage 모드가 활성화되면 isInputFocused를 무시 (핫키가 input 위에서도 동작해야 함)
+    disabled: isModalOpen || (!triageEnabled && isInputFocused),
   });
 
   // 초기 데이터 로드
@@ -540,7 +605,7 @@ export default function InboxTab() {
               Triage 모드 <span className="text-[var(--color-text-quaternary)]">(키보드 루프)</span>
             </span>
             <button
-              onClick={() => setTriageEnabled(!triageEnabled)}
+              onClick={handleToggleTriage}
               className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
                 triageEnabled
                   ? 'bg-emerald-500 text-white'
@@ -556,44 +621,41 @@ export default function InboxTab() {
   );
 
   // ========================================================================
-  // Today/Tomorrow/NextSlot 버튼 렌더링
+  // Merged Action Buttons (Today/Tomorrow/Next + 고정/보류)
   // ========================================================================
-  const renderQuickPlaceButtons = (taskId: string) => (
-    <div className="flex items-center gap-1 px-1">
-      <span className="text-[10px] text-[var(--color-text-tertiary)] mr-1">⚡</span>
-      <button
-        onClick={() => handleQuickPlace(taskId, 'today')}
-        className="rounded px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-text-secondary)] bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-600 transition-colors"
-        title="오늘 배치 (T)"
-      >
-        Today
-      </button>
-      <button
-        onClick={() => handleQuickPlace(taskId, 'tomorrow')}
-        className="rounded px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-text-secondary)] bg-purple-500/10 hover:bg-purple-500/20 hover:text-purple-600 transition-colors"
-        title="내일 배치 (O)"
-      >
-        Tomorrow
-      </button>
-      <button
-        onClick={() => handleQuickPlace(taskId, 'next')}
-        className="rounded px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-text-secondary)] bg-emerald-500/10 hover:bg-emerald-500/20 hover:text-emerald-600 transition-colors"
-        title="다음 슬롯 배치 (N)"
-      >
-        Next
-      </button>
-    </div>
-  );
-
-  // ========================================================================
-  // Pin / 보류 버튼 렌더링
-  // ========================================================================
-  const renderTriageButtons = (task: Task) => {
+  const renderActionButtons = (task: Task) => {
     const isDeferred = (task.deferredUntil ?? null) !== null && (task.deferredUntil ?? '') > stats.todayISO;
 
     return (
-      <div className="flex items-center gap-1 px-1">
-        <span className="text-[10px] text-[var(--color-text-tertiary)] mr-1">🏷️</span>
+      <div className="flex flex-wrap items-center gap-1 px-1">
+        {/* Quick Place Buttons */}
+        <span className="text-[10px] text-[var(--color-text-tertiary)] mr-1">⚡</span>
+        <button
+          onClick={() => handleQuickPlace(task.id, 'today')}
+          className="rounded px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-text-secondary)] bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-600 transition-colors min-h-[24px]"
+          title="오늘 배치 (T)"
+        >
+          Today
+        </button>
+        <button
+          onClick={() => handleQuickPlace(task.id, 'tomorrow')}
+          className="rounded px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-text-secondary)] bg-purple-500/10 hover:bg-purple-500/20 hover:text-purple-600 transition-colors min-h-[24px]"
+          title="내일 배치 (O)"
+        >
+          Tomorrow
+        </button>
+        <button
+          onClick={() => handleQuickPlace(task.id, 'next')}
+          className="rounded px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-text-secondary)] bg-emerald-500/10 hover:bg-emerald-500/20 hover:text-emerald-600 transition-colors min-h-[24px]"
+          title="다음 슬롯 배치 (N)"
+        >
+          Next
+        </button>
+
+        {/* Separator */}
+        <span className="mx-1 text-[var(--color-border)]">│</span>
+
+        {/* Pin / Defer Buttons */}
         <button
           onClick={async () => {
             try {
@@ -604,7 +666,7 @@ export default function InboxTab() {
               notify.error('고정 변경에 실패했습니다');
             }
           }}
-          className={`rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
+          className={`rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors min-h-[24px] ${
             task.isPinned
               ? 'bg-amber-500/20 text-amber-600'
               : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-amber-500/10 hover:text-amber-600'
@@ -631,7 +693,7 @@ export default function InboxTab() {
               notify.error('보류 변경에 실패했습니다');
             }
           }}
-          className={`rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
+          className={`rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors min-h-[24px] ${
             isDeferred
               ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-quaternary)]'
               : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)]'
@@ -737,32 +799,8 @@ export default function InboxTab() {
                     }}
                     compact
                   />
-                  {/* Today/Tomorrow/Next 빠른 배치 버튼 */}
-                  {renderQuickPlaceButtons(task.id)}
-                  {/* 고정/보류 상태 버튼 */}
-                  {renderTriageButtons(task)}
-                  {/* 기존 시간대 빠른 배치 버튼 */}
-                  <div className="flex items-center gap-1 px-1">
-                    <span className="text-[10px] text-[var(--color-text-tertiary)] mr-1">⏰</span>
-                    {TIME_BLOCKS.map(block => (
-                      <button
-                        key={block.id}
-                        onClick={async () => {
-                          try {
-                            await placeTaskToSlot(task.id, getLocalDate(), block.id as TimeBlockId, block.start);
-                            notify.placement(`${block.label}에 배치됨`);
-                          } catch (err) {
-                            console.error('Failed to assign to block:', err);
-                            notify.error('시간대 배치 실패');
-                          }
-                        }}
-                        className="rounded px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-primary)]/20 hover:text-[var(--color-primary)] transition-colors"
-                        title={`${block.label}에 배치`}
-                      >
-                        {block.start}-{block.end}
-                      </button>
-                    ))}
-                  </div>
+                  {/* 빠른 배치 + 고정/보류 (merged row) */}
+                  {renderActionButtons(task)}
                 </div>
               );
             })}
