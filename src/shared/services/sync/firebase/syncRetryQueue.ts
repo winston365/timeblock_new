@@ -239,3 +239,39 @@ export function clearRetryQueue() {
   retryQueue.clear();
   addSyncLog('firebase', 'info', 'Retry queue cleared');
 }
+
+/**
+ * 재시도 큐의 모든 항목을 순차적으로 재시도합니다 (Drain).
+ * 네트워크 재연결 시 호출하여 대기 중인 모든 동기화 작업을 처리합니다.
+ *
+ * @returns {Promise<{ success: number; failed: number }>} 성공/실패 수
+ */
+export async function drainRetryQueue(): Promise<{ success: number; failed: number }> {
+  const ids = Array.from(retryQueue.keys());
+  let success = 0;
+  let failed = 0;
+
+  addSyncLog('firebase', 'info', `Draining retry queue: ${ids.length} items`);
+
+  for (const id of ids) {
+    const ok = await retryNow(id);
+    if (ok) {
+      success++;
+    } else {
+      failed++;
+    }
+  }
+
+  addSyncLog('firebase', 'info', `Retry queue drained: ${success} succeeded, ${failed} failed`);
+
+  return { success, failed };
+}
+
+/**
+ * 재시도 큐 크기 반환
+ *
+ * @returns {number} 현재 큐에 있는 항목 수
+ */
+export function getRetryQueueSize(): number {
+  return retryQueue.size;
+}

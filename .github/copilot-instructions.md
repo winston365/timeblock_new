@@ -1,32 +1,44 @@
 
 # TimeBlock Planner – AI Agent Guide
 
-## Architecture
-- **Electron + React + TS**: Entry `src/main.tsx` → `src/App.tsx`. Features in `src/features/*`, shared code in `src/shared/**`.
-- **State flow**: Zustand (`src/shared/stores/*`) → Repositories (`src/data/repositories/*`) → Dexie (`src/data/db/dexieClient.ts`) → Firebase sync.
+## 🏗 Architecture & Data Flow
+- **Electron + React + TS**: Entry `src/main.tsx` → `src/app/AppShell.tsx`. Features in `src/features/*`, shared code in `src/shared/**`.
+- **3-Tier Persistence**: Dexie (IndexedDB) is **Primary**. Firebase Realtime DB is for **Sync/Backup**.
+- **State Flow**: Zustand Store (`src/shared/stores/*`) → Repository (`src/data/repositories/*`) → Dexie → Firebase Sync.
 
-## Critical Policies
-- **⛔ No localStorage** – Use `db.systemState` via Dexie. Only exception: `theme` key.
-- **⛔ No hardcoded defaults** – Import from `src/shared/constants/defaults.ts`.
-- **⛔ Always use optional chaining** – Nested objects may be undefined even when parent exists.
-- **⛔ Modal UX** – No background-click close; ESC must always close. See `useModalEscapeClose` hook.
+## ⛔ Critical Policies (MUST FOLLOW)
+- **No localStorage**: Use `db.systemState` via Dexie. Exception: `theme` key only.
+- **No Hardcoded Defaults**: Import from `src/shared/constants/defaults.ts` (e.g., `SETTING_DEFAULTS.focusTimerMinutes`).
+- **Optional Chaining**: Always use `?.` for nested objects (e.g., `dailyData?.tasks`).
+- **Modal UX**: ESC must close; no background-click close. Use `useModalEscapeClose` hook.
+- **No Direct Firebase**: Never call Firebase APIs from UI/Stores. Use Repositories.
 
-## Key Patterns
-- **Repository Pattern**: All CRUD via `src/data/repositories/*`. No direct Dexie/Firebase calls.
-- **Task dual-storage**: Scheduled tasks in `dailyData.tasks`, inbox tasks in `globalInbox`. Use `src/shared/services/task/unifiedTaskService` when location unknown.
-- **Task Completion Pipeline**: Handlers in `src/shared/services/gameplay/taskCompletion/handlers/` run on task complete (XP, goals, quests, etc.).
-- **EventBus**: Emit from stores only, subscribe in `src/shared/subscribers/*`. See `src/shared/lib/eventBus/`.
-- **Firebase Sync**: Strategies in `src/shared/services/sync/firebase/`. See README there for patterns.
+## 🧩 Core Patterns
+- **Repository Pattern**: All CRUD via `src/data/repositories/`. Large repos are modularized (e.g., `dailyData/taskOperations.ts`).
+- **Handler Pattern**: Task completion triggers a pipeline in `src/shared/services/gameplay/taskCompletion/handlers/` (XP, Goals, Quests, Waifu).
+- **Event Bus**: Emit from stores (`eventBus.emit('task:completed', ...)`), subscribe in `src/shared/subscribers/*`.
+- **Firebase Sync**: Strategy-based sync in `src/shared/services/sync/firebase/`. Update `strategies.ts` when schema changes.
+- **Hybrid RAG**: Context-aware AI via `src/shared/services/rag/`. Uses DirectQuery (Dexie) for accuracy and VectorStore (Orama) for semantics.
 
-## Development
-- `npm run electron:dev` – Full Electron app (recommended)
-- `npm run test` – Vitest. Tests in `tests/`
-- `npm run test:coverage` – Coverage report
+## 🧠 ADHD-Friendly UX Guidelines
+- **Visual Cues**: Use clear status indicators (colors, icons) for task states.
+- **Micro-steps**: Support breaking tasks down (e.g., "Ignition" 3-min micro-steps).
+- **Focus**: Minimize distractions; use `focusStore` for timer-related UI.
+- **Triage**: Support "Inbox Triage" to prevent overwhelm (see `SYSTEM_STATE_DEFAULTS.inboxTriageDailyGoalCount`).
 
-## Conventions
-- Imports: `@/` alias (e.g., `@/shared/stores`)
-- Naming: Components=PascalCase, hooks/services=camelCase
-- Large modules: Split into subfolders (e.g., `dailyData/` → `coreOperations`, `taskOperations`)
+## 🛠 Development & Testing
+- **Commands**: `npm run electron:dev` (Dev), `npm run test` (Vitest), `npm run test:coverage`.
+- **Testing**: Logic tests in `tests/`. Use `fake-indexeddb` for DB tests.
+- **Coverage**: Maintain >80% coverage for services/utils. See `vitest.config.ts` for included paths.
 
-## Documentation
-See READMEs in: `src/shared/services/sync/firebase/`, `src/shared/lib/eventBus/`, `src/shared/services/task/`, `src/shared/services/gameplay/taskCompletion/`, `src/data/db/`.
+## 🎨 Conventions
+- **Imports**: Use `@/` alias (e.g., `@/shared/stores`).
+- **Naming**: Components=PascalCase, Hooks/Services=camelCase, Files=kebab-case.
+- **Feature-First**: Group by feature in `src/features/` (components, hooks, stores, types).
+- **Zustand**: Use `persist` middleware with `createJSONStorage(() => ({ ... }))` for local persistence via Dexie.
+
+## 🔗 Key Files
+- **DB Schema**: `src/data/db/dexieClient.ts` (v11)
+- **Defaults**: `src/shared/constants/defaults.ts`
+- **Event Types**: `src/shared/lib/eventBus/types.ts`
+- **Sync Strategies**: `src/shared/services/sync/firebase/strategies.ts`

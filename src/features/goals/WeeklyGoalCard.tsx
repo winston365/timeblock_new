@@ -12,6 +12,9 @@
  *     - 만회 경고 표시 (심각도 레벨 + 텍스트 배지)
  *     - Quick Log Session 팝오버
  *     - 클릭 시 히스토리 모달 열기
+ *     - 키보드 포커스 상태 표시
+ *     - 정보 밀도 가드레일 (기본 3요소 + 점진 노출)
+ *     - 히스토리 미리보기 칩 (hover-only 금지, Enter/Click/Touch)
  *   - Key Dependencies:
  *     - WeeklyProgressBar: 진행도바 컴포넌트
  *     - useWeeklyGoalStore: 상태 관리
@@ -35,12 +38,30 @@ interface WeeklyGoalCardProps {
   onShowHistory: () => void;
   /** 압축 모드 (그리드 레이아웃용) */
   compact?: boolean;
+  /** 키보드 포커스 상태 */
+  isFocused?: boolean;
+  /** 포커스 콜백 (마우스 클릭 시) */
+  onFocus?: () => void;
+  /** Quick Log 강제 열기 (키보드에서) */
+  forceQuickLogOpen?: boolean;
+  /** Quick Log 닫기 콜백 */
+  onQuickLogClose?: () => void;
 }
 
 /**
  * 장기목표 카드 컴포넌트
  */
-export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, compact = false }: WeeklyGoalCardProps) {
+export default function WeeklyGoalCard({
+  goal,
+  onEdit,
+  onDelete,
+  onShowHistory,
+  compact = false,
+  isFocused = false,
+  onFocus,
+  forceQuickLogOpen = false,
+  onQuickLogClose,
+}: WeeklyGoalCardProps) {
   const updateProgress = useWeeklyGoalStore((s) => s.updateProgress);
   const setProgress = useWeeklyGoalStore((s) => s.setProgress);
   const getDayOfWeekIndex = useWeeklyGoalStore((s) => s.getDayOfWeekIndex);
@@ -55,8 +76,35 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
   const [updating, setUpdating] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [lastDelta, setLastDelta] = useState<number>(0);
+  // 정보 밀도 가드레일: 기본 접힘 (헤더+프로그레스바+오늘상태+히스토리칩)
+  const [isExpanded, setIsExpanded] = useState(false);
+  // 히스토리 미리보기 상태
+  const [showHistoryPreview, setShowHistoryPreview] = useState(false);
   const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quickLogButtonRef = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // 외부에서 Quick Log 열기 요청 처리
+  useEffect(() => {
+    if (forceQuickLogOpen && !showQuickLog) {
+      setShowQuickLog(true);
+    }
+  }, [forceQuickLogOpen, showQuickLog]);
+
+  // Quick Log 닫힐 때 외부에 알림
+  const handleQuickLogClose = useCallback(() => {
+    setShowQuickLog(false);
+    onQuickLogClose?.();
+    quickLogButtonRef.current?.focus();
+  }, [onQuickLogClose]);
+
+  // 포커스 시 스크롤
+  useEffect(() => {
+    if (isFocused && cardRef.current) {
+      cardRef.current.focus({ preventScroll: true });
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [isFocused]);
 
   useEffect(() => {
     return () => {
@@ -165,14 +213,14 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
       await updateProgress(goal.id, value);
       triggerAnimation(value);
       addToast(`${goal.title}: +${value} ${goal.unit} 기록됨`, 'success', 2000);
-      setShowQuickLog(false);
+      handleQuickLogClose();
     } catch (error) {
       console.error('Failed to log session:', error);
       addToast('기록 실패', 'error', 2000);
     } finally {
       setUpdating(false);
     }
-  }, [goal.id, goal.title, goal.unit, updating, updateProgress, triggerAnimation, addToast]);
+  }, [goal.id, goal.title, goal.unit, updating, updateProgress, triggerAnimation, addToast, handleQuickLogClose]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -193,11 +241,53 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
   const accent = goal.color || '#6366f1';
   const quickButtons = compact ? QUICK_UPDATE_BUTTONS.COMPACT : QUICK_UPDATE_BUTTONS.NORMAL;
 
+  // 히스토리 미리보기 데이터 (최근 기록 1개)
+  const historyPreviewData = useMemo(() => {
+    const histories = goal.history;
+    if (!histories || histories.length === 0) {
+      return {
+        label: '히스토리 없음',
+        detail: '최근 기록이 없습니다',
+        weekStartDate: null as string | null,
+      };
+    }
+
+    const latest = histories.reduce((acc, cur) => (cur.weekStartDate > acc.weekStartDate ? cur : acc), histories[0]);
+    const percent = latest.target > 0 ? Math.round((latest.finalProgress / latest.target) * 100) : latest.completed ? 100 : 0;
+
+    return {
+      label: `최근 ${percent}%`,
+      detail: `${latest.finalProgress.toLocaleString()}/${latest.target.toLocaleString()} ${goal.unit}`,
+      weekStartDate: latest.weekStartDate,
+    };
+  }, [goal.history, goal.unit]);
+
+  // 히스토리 미리보기 토글 (hover-only 금지, Enter/Click/Touch)
+  const handleHistoryPreviewToggle = useCallback(() => {
+    setShowHistoryPreview((prev) => !prev);
+  }, []);
+
+  const handleHistoryPreviewKeyDown = useCallback((e: KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleHistoryPreviewToggle();
+    }
+  }, [handleHistoryPreviewToggle]);
+
   return (
     <div
-      className={`group relative flex flex-col rounded-2xl border border-white/5 bg-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] transition-all hover:border-white/10 hover:bg-white/10 ${
+      ref={cardRef}
+      onClick={onFocus}
+      className={`group relative flex flex-col rounded-2xl border transition-all ${
+        isFocused
+          ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/30 bg-white/10'
+          : 'border-white/5 hover:border-white/10 bg-white/5 hover:bg-white/10'
+      } shadow-[0_20px_50px_rgba(0,0,0,0.35)] ${
         isCompleted ? 'ring-1 ring-emerald-400/30' : ''
       } ${compact ? 'gap-2 p-3' : 'gap-3 p-4'}`}
+      role="article"
+      aria-label={`${goal.title} 목표 카드${isFocused ? ' (포커스됨)' : ''}`}
+      tabIndex={0}
     >
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -259,7 +349,7 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
         </div>
 
         {/* Actions (Hover) */}
-        <div className={`absolute flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 ${compact ? 'right-1 top-1' : 'right-2 top-2'}`}>
+        <div className={`absolute flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 ${compact ? 'right-1 top-1' : 'right-2 top-2'}`}>
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
             className={`rounded text-white/50 hover:bg-white/10 hover:text-white ${compact ? 'p-1 text-xs' : 'p-1.5'}`}
@@ -326,6 +416,19 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
           </div>
         </GoalStatusTooltip>
 
+        {/* 히스토리 미리보기 칩 (hover-only 금지) */}
+        <button
+          type="button"
+          onClick={handleHistoryPreviewToggle}
+          onKeyDown={handleHistoryPreviewKeyDown}
+          className={`rounded-lg bg-indigo-500/10 text-indigo-300 transition-colors hover:bg-indigo-500/20 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}
+          aria-expanded={showHistoryPreview}
+          aria-label="히스토리 미리보기"
+          title={historyPreviewData.weekStartDate ? `주 시작: ${historyPreviewData.weekStartDate} (클릭/Enter로 펼치기)` : '클릭/Enter로 펼치기'}
+        >
+          📊 {historyPreviewData.label}
+        </button>
+
         {/* 상태 표시: 순항 / 뒤처짐 / 달성 */}
         {isCompleted ? (
           <div 
@@ -365,85 +468,122 @@ export default function WeeklyGoalCard({ goal, onEdit, onDelete, onShowHistory, 
         )}
       </div>
 
-      {/* Quick Update Buttons + Quick Log Session */}
-      <div className={`flex flex-wrap items-center justify-center ${compact ? 'gap-1' : 'gap-2'}`}>
-        {quickButtons.map(({ label, delta }) => (
-          <button
-            key={label}
-            onClick={() => handleQuickUpdate(delta)}
-            disabled={updating || (delta < 0 && goal.currentProgress + delta < 0)}
-            className={`rounded-lg font-bold transition-all ${
-              delta < 0
-                ? 'bg-red-500/10 text-red-300 hover:bg-red-500/20 disabled:opacity-30'
-                : 'bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
-            } disabled:cursor-not-allowed ${compact ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
-          >
-            {label}
-          </button>
-        ))}
-
-        {/* Quick Log Session 버튼 */}
-        <div className="relative">
-          <button
-            ref={quickLogButtonRef}
-            onClick={() => setShowQuickLog(true)}
-            className={`rounded-lg bg-indigo-500/10 font-bold text-indigo-300 hover:bg-indigo-500/20 ${compact ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
-            aria-label="빠른 세션 기록"
-            aria-haspopup="true"
-            aria-expanded={showQuickLog}
-          >
-            📝 기록
-          </button>
-
-          {/* Quick Log Session 팝오버 */}
-          {showQuickLog && (
-            <QuickLogSessionPopover
-              unit={goal.unit}
-              onSubmit={handleQuickLogSubmit}
-              onClose={() => {
-                setShowQuickLog(false);
-                quickLogButtonRef.current?.focus();
-              }}
-              triggerRef={quickLogButtonRef}
-            />
-          )}
-        </div>
-
-        {/* Direct Input Toggle */}
-        {!showDirectInput ? (
-          <button
-            onClick={() => setShowDirectInput(true)}
-            className={`rounded-lg bg-white/5 font-bold text-white/60 hover:bg-white/10 hover:text-white ${compact ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
-          >
-            직접
-          </button>
-        ) : (
-          <div className="flex items-center gap-1">
-            <input
-              type="text"
-              value={directInput}
-              onChange={(e) => setDirectInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="+/-값"
-              className={`rounded-lg border border-white/10 bg-white/5 text-white outline-none focus:border-white/30 ${compact ? 'w-16 px-1.5 py-1 text-[10px]' : 'w-24 px-2 py-1.5 text-xs'}`}
-              autoFocus
-            />
+      {/* 히스토리 미리보기 펼침 (Enter/Click/Touch) */}
+      {showHistoryPreview && (
+        <div className={`rounded-lg bg-indigo-500/5 border border-indigo-500/20 ${compact ? 'p-2 text-[10px]' : 'p-3 text-xs'}`}>
+          <div className="flex items-center justify-between">
+            <span className="text-indigo-300">📊 {historyPreviewData.detail}</span>
             <button
-              onClick={handleDirectInputSubmit}
-              disabled={updating || !directInput}
-              className={`rounded-lg bg-[var(--color-primary)] font-bold text-white disabled:opacity-50 ${compact ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
+              type="button"
+              onClick={onShowHistory}
+              className="text-indigo-400 hover:text-indigo-300 underline"
             >
-              ✓
-            </button>
-            <button
-              onClick={() => { setShowDirectInput(false); setDirectInput(''); }}
-              className={`rounded-lg bg-white/5 text-white/50 hover:text-white ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2 py-1.5 text-xs'}`}
-            >
-              ✕
+              전체 히스토리 보기
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* 정보 밀도 가드레일: 점진 노출 토글 */}
+      {compact && !isExpanded && (
+        <button
+          type="button"
+          onClick={() => setIsExpanded(true)}
+          className="w-full rounded-lg bg-white/5 py-1.5 text-[10px] text-white/50 hover:bg-white/10 hover:text-white/70 transition"
+        >
+          ⚡ 빠른 조절 펼치기
+        </button>
+      )}
+
+      {/* Quick Update Buttons + Quick Log Session (정보 밀도 가드레일: compact일 때 접힘) */}
+      {(!compact || isExpanded) && (
+        <div className={`flex flex-wrap items-center justify-center ${compact ? 'gap-1' : 'gap-2'}`}>
+          {quickButtons.map(({ label, delta }) => (
+            <button
+              key={label}
+              onClick={() => handleQuickUpdate(delta)}
+              disabled={updating || (delta < 0 && goal.currentProgress + delta < 0)}
+              className={`rounded-lg font-bold transition-all ${
+                delta < 0
+                  ? 'bg-red-500/10 text-red-300 hover:bg-red-500/20 disabled:opacity-30'
+                  : 'bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+              } disabled:cursor-not-allowed ${compact ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
+            >
+              {label}
+            </button>
+          ))}
+
+          {/* Quick Log Session 버튼 */}
+          <div className="relative">
+            <button
+              ref={quickLogButtonRef}
+              onClick={() => setShowQuickLog(true)}
+              className={`rounded-lg bg-indigo-500/10 font-bold text-indigo-300 hover:bg-indigo-500/20 ${compact ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
+              aria-label="빠른 세션 기록 (L 키)"
+              aria-haspopup="true"
+              aria-expanded={showQuickLog}
+            >
+              📝 기록
+            </button>
+
+            {/* Quick Log Session 팝오버 */}
+            {showQuickLog && (
+              <QuickLogSessionPopover
+                unit={goal.unit}
+                onSubmit={handleQuickLogSubmit}
+                onClose={handleQuickLogClose}
+                triggerRef={quickLogButtonRef}
+              />
+            )}
+          </div>
+
+          {/* Direct Input Toggle */}
+          {!showDirectInput ? (
+            <button
+              onClick={() => setShowDirectInput(true)}
+              className={`rounded-lg bg-white/5 font-bold text-white/60 hover:bg-white/10 hover:text-white ${compact ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
+            >
+              직접
+            </button>
+          ) : (
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={directInput}
+                onChange={(e) => setDirectInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="+/-값"
+                className={`rounded-lg border border-white/10 bg-white/5 text-white outline-none focus:border-white/30 ${compact ? 'w-16 px-1.5 py-1 text-[10px]' : 'w-24 px-2 py-1.5 text-xs'}`}
+                autoFocus
+              />
+              <button
+                onClick={handleDirectInputSubmit}
+                disabled={updating || !directInput}
+                className={`rounded-lg bg-[var(--color-primary)] font-bold text-white disabled:opacity-50 ${compact ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
+              >
+                ✓
+              </button>
+              <button
+                onClick={() => { setShowDirectInput(false); setDirectInput(''); }}
+                className={`rounded-lg bg-white/5 text-white/50 hover:text-white ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2 py-1.5 text-xs'}`}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* compact 모드에서 접기 버튼 */}
+          {compact && isExpanded && (
+            <button
+              onClick={() => setIsExpanded(false)}
+              className="rounded-lg bg-white/5 px-2 py-1 text-[10px] text-white/50 hover:bg-white/10 hover:text-white/70"
+              title="접기"
+            >
+              ▲
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 직접 입력 안내 - compact 모드에서는 숨김 */}
       {showDirectInput && !compact && (

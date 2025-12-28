@@ -13,6 +13,7 @@
 | 2025-12-22 | 전 모달 공통 UX: ESC 닫기 + Ctrl/Cmd+Enter primary 표준화 권고안 추가 | 기존 `useModalEscapeClose`(스택 기반) 패턴을 확장해 스택 정합성과 IME(조합) 리스크를 동시에 해결 | 006-modal-hotkeys-standardization-architecture-findings.md |
 | 2025-12-23 | 구조 개선 대안 A/B 보강(Repo-tailored) | direct Dexie 접근/emit 규칙 드리프트를 UI-only 범위에서 단계적으로 수렴(A 우선, B는 선택적/점진 적용) | 034-structural-improvement-alternatives-A-B-architecture-findings.md |
 | 2025-12-23 | Schedule 무제한 + Inbox→Block 즉시 반영(Optimistic) 설계 추가 | MAX=3 제한이 UI/유틸에 중복 전파되어 회귀 위험이 큼. 또한 Inbox→Schedule 이동이 repository 직접 호출로 dailyDataStore 상태가 갱신되지 않아 리프레시가 필요함 → 단일 경로 + optimistic update로 수렴 | 007-schedule-unlimited-optimistic-update-architecture-findings.md |
+| 2025-12-28 | Critic 우선순위 리스트 아키텍처 검토 및 Optimistic Update/Sync 테스트 기준 보강 | Optimistic Update를 local-first(Dexie write-through)로 정의하고, Sync 안정성 목표를 브랜치 커버리지→불변조건/시나리오로 보강 | 008-critic-priority-review-architecture-findings.md |
 
 ## Purpose
 - Renderer(Electron + React) 중심의 시스템 경계/데이터 흐름/결정(ADR)을 기록하는 단일 출처.
@@ -73,6 +74,24 @@
 **Consequences**
 - Store가 교차 store 업데이트를 수행해야 할 수 있어(동적 import 등), 결합도를 통제하는 규칙이 필요하다.
 - 단일 경로가 확립되면, drag/drop·키보드·인라인 추가의 일관성이 높아지고 회귀 범위가 줄어든다.
+
+### ADR-009: Optimistic Update는 “Dexie write-through + Orchestrator”로 구현한다
+**Context**
+- Local-first 구조에서 UI 즉시 반영(optimistic)은 중요하나, store 메모리만 업데이트하면 재시작/다른 표면/다른 store 구독과 쉽게 불일치가 생긴다.
+- 반대로 repository가 UI 상태/이벤트를 직접 다루면 계층 경계가 붕괴한다(테스트/변경 비용 증가).
+
+**Choice**
+- Optimistic Update의 의미(UX 즉시 반영)는 **store action 또는 usecase/orchestrator 서비스**가 책임진다(예: `unifiedTaskService`).
+- 실제 상태 변경은 **repository → Dexie**에 즉시 커밋(write-through)하고, UI는 store의 snapshot 갱신 또는 revalidate로 즉시 반영한다.
+- Sync 성공/실패/충돌의 결과는 Dexie에 반영되며, 필요 시 사용자에게 알림(토스트/배지)로 노출한다.
+
+**Alternatives**
+- Store-only(메모리) optimistic: 빠르지만 불일치/유령상태 리스크가 크다.
+- Repo-level optimistic(Repo가 store/event까지 관여): 경계 붕괴로 장기 유지보수 리스크가 크다.
+
+**Consequences**
+- 단일 코드 경로(usecase) 수립이 중요해진다(어느 UI 표면에서 실행해도 동일한 결과).
+- 실패/충돌 시 “롤백”은 메모리 되감기보다, Dexie 재조정(reconcile) + UI 재반영으로 정의해야 한다.
 
 ### ADR-001: “현재 3h 블록만 표시”는 표시 정책(렌더링 레벨)로 시작한다
 **Context**
@@ -189,3 +208,12 @@
 **Consequences**
 - weekly goal은 당분간 수동 카운터로 남아 task 기반 정합성은 보장하지 않는다.
 - 대신 모달/구조/검증의 부채를 먼저 줄여, 이후 Option B/C의 착수 비용을 낮춘다.
+
+## Problem Areas
+- **Optimistic Update 경계 드리프트 위험**: repository 직접 호출 또는 store 간 상태 불일치가 재발하기 쉬움 → usecase 단일 경로 강제 필요.
+- **Sync 안정성의 정의 부재**: 브랜치 커버리지에만 기대면 실패 모드/충돌 모드의 견고함을 과대평가할 수 있음 → 불변조건/시나리오 기반 계약 테스트 필요.
+- **AppShell 비대화 재발 가능성**: composition root에 신규 side-effect가 쌓이면 다시 God component가 될 수 있음 → hook/service로 캡슐화 규칙 필요.
+
+## Recommendations
+- CI unblock(lint) 및 모달 UX 정책 준수를 최우선으로 유지한다.
+- 핵심 로직 변경(Optimistic Update) 전에 unified task/usecase 테스트와 Sync 실패 모드 테스트 안전망을 확보한다.

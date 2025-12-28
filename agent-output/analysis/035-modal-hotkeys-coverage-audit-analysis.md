@@ -1,6 +1,8 @@
 Value Statement and Business Objective
-Status: Active
-Changelog: Initial analysis for modal hotkey consistency, repository boundary, and coverage gaps (unifiedTaskService, conflictResolver, syncCore).
+Status: Planned
+Changelog:
+- 2025-12-28: 로드맵/PR 분해 계획에 반영되어 Status를 Planned로 전환.
+- (undated): Initial analysis for modal hotkey consistency, repository boundary, and coverage gaps (unifiedTaskService, conflictResolver, syncCore).
 
 ## Objective
 Document current patterns and gaps for modal ESC/Ctrl+Enter behavior, Dexie repository boundary, and coverage shortfalls in unifiedTaskService, conflictResolver, and syncCore to guide implementation work without code changes.

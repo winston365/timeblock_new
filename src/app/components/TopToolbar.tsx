@@ -21,6 +21,7 @@ import { StatsModal } from '@/features/stats/StatsModal';
 import DailySummaryModal from '@/features/insight/DailySummaryModal';
 import { InboxModal } from '@/features/tasks/InboxModal';
 import { GoalsModal } from '@/features/goals/GoalsModal';
+import { useGoalsGlobalHotkey } from '@/features/goals/hooks/useGoalsHotkeys';
 import { useFocusModeStore } from '@/features/schedule/stores/focusModeStore';
 import { useScheduleViewStore } from '@/features/schedule/stores/scheduleViewStore';
 import BossAlbumModal from '@/features/battle/components/BossAlbumModal';
@@ -76,6 +77,13 @@ export default function TopToolbar({
   const [showBossAlbum, setShowBossAlbum] = useState(false);
   const [showTempSchedule, setShowTempSchedule] = useState(false);
 
+  // Goals 글로벌 단축키 (Ctrl/Cmd+Shift+G로 열기/닫기)
+  useGoalsGlobalHotkey({
+    isOpen: showGoals,
+    onOpen: () => setShowGoals(true),
+    onClose: () => setShowGoals(false),
+  });
+
   const toolbarHeightClass = 'h-10'; // CTA/우측 영역
   const leftHeightClass = 'h-8'; // 좌측 컴팩트 영역
   const statItemClass =
@@ -114,6 +122,8 @@ export default function TopToolbar({
       key={key}
       type="button"
       onClick={onClick}
+      title={key === 'goals' ? '목표 열기/닫기 (Ctrl/Cmd+Shift+G)' : undefined}
+      aria-keyshortcuts={key === 'goals' ? 'Control+Shift+G Meta+Shift+G' : undefined}
       className={`relative inline-flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-2 ${toolbarHeightClass} min-w-[72px] text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]`}
     >
       {label}

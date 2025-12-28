@@ -9,9 +9,11 @@
  *     - 목표 추가/수정/삭제 기능
  *     - 히스토리 모달 연결
  *     - Catch-up 배너 및 재오픈 버튼 제공
+ *     - 키보드 포커스 네비게이션 지원
+ *     - 정보 밀도 가드레일 (기본 compact + 점진 노출)
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
 import WeeklyGoalCard from './WeeklyGoalCard';
 import WeeklyGoalModal from './WeeklyGoalModal';
@@ -24,18 +26,56 @@ import type { WeeklyGoal } from '@/shared/types/domain';
 
 interface WeeklyGoalPanelProps {
   onOpenModal?: (goal?: WeeklyGoal) => void;
+  /** 키보드로 포커스된 목표 ID (외부에서 전달) */
+  focusedGoalId?: string | null;
+  /** 포커스 변경 콜백 */
+  onFocusGoal?: (goalId: string | null) => void;
+  /** 목표 ID 목록 변경 콜백 (키보드 네비게이션용) */
+  onGoalIdsChange?: (goalIds: string[]) => void;
+  /** Quick Log 열기 요청 (키보드에서) */
+  quickLogGoalId?: string | null;
+  /** Quick Log 닫기 콜백 */
+  onQuickLogClose?: () => void;
+  /** 히스토리 열기 요청 (키보드에서) */
+  historyGoalId?: string | null;
+  /** 히스토리 닫기 콜백 */
+  onHistoryClose?: () => void;
 }
 
 /**
  * 장기목표 패널 컴포넌트
  */
-export default function WeeklyGoalPanel({ onOpenModal }: WeeklyGoalPanelProps) {
+export default function WeeklyGoalPanel({
+  onOpenModal,
+  focusedGoalId,
+  onFocusGoal,
+  onGoalIdsChange,
+  quickLogGoalId,
+  onQuickLogClose,
+  historyGoalId,
+  onHistoryClose,
+}: WeeklyGoalPanelProps) {
   const { goals, loading, loadGoals, deleteGoal, getDayOfWeekIndex } = useWeeklyGoalStore();
   
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<WeeklyGoal | undefined>(undefined);
-  const [historyGoal, setHistoryGoal] = useState<WeeklyGoal | null>(null);
+  const [localHistoryGoal, setLocalHistoryGoal] = useState<WeeklyGoal | null>(null);
   const [isCatchUpModalOpen, setIsCatchUpModalOpen] = useState(false);
+
+  // 외부 히스토리 요청 처리
+  const effectiveHistoryGoal = useMemo(() => {
+    if (historyGoalId) {
+      return goals.find((g) => g.id === historyGoalId) ?? null;
+    }
+    return localHistoryGoal;
+  }, [historyGoalId, goals, localHistoryGoal]);
+
+  // 목표 ID 목록 변경 시 부모에게 알림
+  useEffect(() => {
+    if (onGoalIdsChange) {
+      onGoalIdsChange(goals.map((g) => g.id));
+    }
+  }, [goals, onGoalIdsChange]);
 
   // Catch-up 배너 관리
   const {
@@ -82,9 +122,16 @@ export default function WeeklyGoalPanel({ onOpenModal }: WeeklyGoalPanelProps) {
     }
   };
 
-  const handleShowHistory = (goal: WeeklyGoal) => {
-    setHistoryGoal(goal);
-  };
+  const handleShowHistory = useCallback((goal: WeeklyGoal) => {
+    setLocalHistoryGoal(goal);
+  }, []);
+
+  const handleCloseHistory = useCallback(() => {
+    setLocalHistoryGoal(null);
+    if (onHistoryClose) {
+      onHistoryClose();
+    }
+  }, [onHistoryClose]);
 
   // Catch-up 모달 열기 (배너에서 호출)
   const handleOpenCatchUpModal = useCallback(() => {
@@ -172,6 +219,10 @@ export default function WeeklyGoalPanel({ onOpenModal }: WeeklyGoalPanelProps) {
                 onDelete={() => handleDelete(goal.id)}
                 onShowHistory={() => handleShowHistory(goal)}
                 compact
+                isFocused={focusedGoalId === goal.id}
+                onFocus={() => onFocusGoal?.(goal.id)}
+                forceQuickLogOpen={quickLogGoalId === goal.id}
+                onQuickLogClose={onQuickLogClose}
               />
             ))}
           </div>
@@ -186,11 +237,11 @@ export default function WeeklyGoalPanel({ onOpenModal }: WeeklyGoalPanelProps) {
       />
 
       {/* 히스토리 모달 */}
-      {historyGoal && (
+      {effectiveHistoryGoal && (
         <WeeklyGoalHistoryModal
-          isOpen={!!historyGoal}
-          onClose={() => setHistoryGoal(null)}
-          goal={historyGoal}
+          isOpen={!!effectiveHistoryGoal}
+          onClose={handleCloseHistory}
+          goal={effectiveHistoryGoal}
         />
       )}
     </div>
