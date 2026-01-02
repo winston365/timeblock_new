@@ -20,8 +20,10 @@ import WeeklyGoalModal from './WeeklyGoalModal';
 import WeeklyGoalHistoryModal from './WeeklyGoalHistoryModal';
 import CatchUpAlertBanner, { CatchUpReopenButton } from './components/CatchUpAlertBanner';
 import CatchUpAlertModal from './CatchUpAlertModal';
+import ExpandHintBadge from './components/ExpandHintBadge';
 import { useCatchUpAlertBanner } from './hooks/useCatchUpAlertBanner';
 import { useQuotaAchievement } from './hooks/useQuotaAchievement';
+import { filterGoals } from './components/GoalsFilterBar';
 import type { WeeklyGoal } from '@/shared/types/domain';
 
 interface WeeklyGoalPanelProps {
@@ -32,6 +34,8 @@ interface WeeklyGoalPanelProps {
   onFocusGoal?: (goalId: string | null) => void;
   /** 목표 ID 목록 변경 콜백 (키보드 네비게이션용) */
   onGoalIdsChange?: (goalIds: string[]) => void;
+  /** 전체 목표 목록 변경 콜백 (필터링 전) */
+  onGoalsChange?: (goals: WeeklyGoal[]) => void;
   /** Quick Log 열기 요청 (키보드에서) */
   quickLogGoalId?: string | null;
   /** Quick Log 닫기 콜백 */
@@ -40,6 +44,10 @@ interface WeeklyGoalPanelProps {
   historyGoalId?: string | null;
   /** 히스토리 닫기 콜백 */
   onHistoryClose?: () => void;
+  /** T11: 오늘만 보기 필터 */
+  filterTodayOnly?: boolean;
+  /** T15: 축소 모드 */
+  compactMode?: boolean;
 }
 
 /**
@@ -50,10 +58,13 @@ export default function WeeklyGoalPanel({
   focusedGoalId,
   onFocusGoal,
   onGoalIdsChange,
+  onGoalsChange,
   quickLogGoalId,
   onQuickLogClose,
   historyGoalId,
   onHistoryClose,
+  filterTodayOnly = false,
+  compactMode = true,
 }: WeeklyGoalPanelProps) {
   const { goals, loading, loadGoals, deleteGoal, getDayOfWeekIndex } = useWeeklyGoalStore();
   
@@ -70,12 +81,24 @@ export default function WeeklyGoalPanel({
     return localHistoryGoal;
   }, [historyGoalId, goals, localHistoryGoal]);
 
-  // 목표 ID 목록 변경 시 부모에게 알림
+  // T11: 필터링된 목표 목록
+  const filteredGoals = useMemo(() => {
+    return filterGoals(goals, filterTodayOnly);
+  }, [goals, filterTodayOnly]);
+
+  // 목표 ID 목록 변경 시 부모에게 알림 (필터링된 목록 기준)
   useEffect(() => {
     if (onGoalIdsChange) {
-      onGoalIdsChange(goals.map((g) => g.id));
+      onGoalIdsChange(filteredGoals.map((g) => g.id));
     }
-  }, [goals, onGoalIdsChange]);
+  }, [filteredGoals, onGoalIdsChange]);
+
+  // 전체 목표 목록 변경 시 부모에게 알림
+  useEffect(() => {
+    if (onGoalsChange) {
+      onGoalsChange(goals);
+    }
+  }, [goals, onGoalsChange]);
 
   // Catch-up 배너 관리
   const {
@@ -208,17 +231,27 @@ export default function WeeklyGoalPanel({
             첫 목표 추가하기
           </button>
         </div>
+      ) : filteredGoals.length === 0 ? (
+        // 필터링 결과 없음
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 bg-white/5 px-6 py-10 text-center text-xs text-white/60">
+          <p className="text-4xl">✨</p>
+          <p className="font-medium text-white">오늘 할 일이 모두 완료됐어요!</p>
+          <p>필터를 해제하면 모든 목표를 볼 수 있어요.</p>
+        </div>
       ) : (
         <div className="flex-1 overflow-y-auto pr-1">
+          {/* T16: 첫 1회 더보기 힌트 */}
+          <ExpandHintBadge compactMode={compactMode} />
+          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {goals.map((goal) => (
+            {filteredGoals.map((goal) => (
               <WeeklyGoalCard
                 key={goal.id}
                 goal={goal}
                 onEdit={() => handleOpenModal(goal)}
                 onDelete={() => handleDelete(goal.id)}
                 onShowHistory={() => handleShowHistory(goal)}
-                compact
+                compact={compactMode}
                 isFocused={focusedGoalId === goal.id}
                 onFocus={() => onFocusGoal?.(goal.id)}
                 forceQuickLogOpen={quickLogGoalId === goal.id}

@@ -195,6 +195,21 @@ export interface InboxFilterState {
 }
 
 /**
+ * 진행도 변경 기록 (Undo용)
+ * 5초 내 Undo 가능
+ */
+export interface GoalsProgressChange {
+  /** 목표 ID */
+  readonly goalId: string;
+  /** 이전 진행도 */
+  readonly previousProgress: number;
+  /** 변경된 진행도 */
+  readonly newProgress: number;
+  /** 변경 시각 (ISO 8601) */
+  readonly changedAt: string;
+}
+
+/**
  * Dexie systemState에 저장되는 키별 기본값
  * UI 토글/레이아웃 등 로컬 지속 상태에 사용
  * 
@@ -235,6 +250,34 @@ export const SYSTEM_STATE_DEFAULTS = {
     status: 'all',
     hidePinned: false,
   } as InboxFilterState,
+
+  // ========================================================================
+  // 주간목표(Goals) 관련 기본값
+  // ========================================================================
+
+  /** 목표 필터: 오늘만 보기 (기본: false - 전체 표시) */
+  goalsFilterTodayOnly: false,
+
+  /** 목표 카드 축소 모드 (기본: true - compact 모드) */
+  goalsCompactMode: true,
+
+  /** 고급 입력 UI 활성화 (기본: false - 숨김) */
+  goalsAdvancedInputEnabled: false,
+
+  /** 주간 리셋 배너 마지막 본 주 (기본: null - 미확인) */
+  goalsResetBannerLastSeenWeek: null as string | null,
+
+  /** Catch-up 스누즈된 주 (기본: null - 스누즈 안 함) */
+  goalsCatchUpSnoozedWeek: null as string | null,
+
+  /** 더보기 힌트 최초 노출 여부 (기본: false - 미노출) */
+  goalsExpandHintShown: false,
+
+  /** 테마 기반 필터 (기본: null - 전체) */
+  goalsThemeFilter: null as string | null,
+
+  /** 마지막 진행도 변경 (Undo용) - 기본: null */
+  goalsLastProgressChange: null as GoalsProgressChange | null,
 } as const;
 
 // ============================================================================

@@ -18,6 +18,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { WeeklyGoal } from '@/shared/types/domain';
 import type { CatchUpInfo } from '../utils/catchUpUtils';
 import { CATCH_UP_DEFAULTS } from '@/shared/constants/defaults';
+import { RECOMMENDED_PACE } from '../constants/goalConstants';
 import { useToastStore } from '@/shared/stores/toastStore';
 import { modalStackRegistry } from '@/shared/hooks/modalStackRegistry';
 
@@ -37,6 +38,8 @@ interface CatchUpAlertBannerProps {
   snoozeUntil?: string | null;
   /** 상세 모달 열기 콜백 */
   onOpenModal?: () => void;
+  /** T14: 권장 페이스로 재시작 콜백 */
+  onRecommendedPaceRestart?: () => void;
 }
 
 /** 스누즈 옵션 레이블 생성 */
@@ -84,6 +87,7 @@ export default function CatchUpAlertBanner({
   onSnooze,
   snoozeUntil,
   onOpenModal,
+  onRecommendedPaceRestart,
 }: CatchUpAlertBannerProps) {
   const [showSnoozeMenu, setShowSnoozeMenu] = useState(false);
   const snoozeMenuRef = useRef<HTMLDivElement>(null);
@@ -141,6 +145,12 @@ export default function CatchUpAlertBanner({
   const handleViewDetails = useCallback(() => {
     onOpenModal?.();
   }, [onOpenModal]);
+
+  // T14: 권장 페이스로 재시작 핸들러
+  const handleRecommendedPaceRestart = useCallback(() => {
+    onRecommendedPaceRestart?.();
+    addToast(`🔄 ${RECOMMENDED_PACE.RESTART_MULTIPLIER}x 페이스로 목표를 재설정합니다.`, 'info', 3000);
+  }, [onRecommendedPaceRestart, addToast]);
 
   // ESC 키로 스누즈 메뉴 닫기 (ESC 스택 정리)
   useEffect(() => {
@@ -262,7 +272,7 @@ export default function CatchUpAlertBanner({
           </div>
         </button>
 
-        {/* 오른쪽: 3가지 액션 버튼들 */}
+        {/* 오른쪽: 3가지 액션 버튼들 (T13: 레이아웃) */}
         <div className="flex items-center gap-2">
           {/* View 버튼 (상세 보기) */}
           <button
@@ -272,6 +282,18 @@ export default function CatchUpAlertBanner({
           >
             👀 보기
           </button>
+
+          {/* T14: 권장 페이스로 재시작 버튼 (danger 목표가 있을 때만) */}
+          {stats.dangerCount > 0 && onRecommendedPaceRestart && (
+            <button
+              onClick={handleRecommendedPaceRestart}
+              className="rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-medium text-emerald-300 transition-colors hover:bg-emerald-500/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              aria-label="권장 페이스로 재시작"
+              title={`${RECOMMENDED_PACE.RESTART_MULTIPLIER}x 페이스로 재시작`}
+            >
+              🔄 재시작
+            </button>
+          )}
 
           {/* 스누즈 버튼 (기본 2시간) */}
           <div className="relative">

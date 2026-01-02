@@ -26,7 +26,7 @@ import type { WeeklyGoal } from '@/shared/types/domain';
 import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
 import { useToastStore } from '@/shared/stores/toastStore';
 import WeeklyProgressBar from './WeeklyProgressBar';
-import { QUICK_UPDATE_BUTTONS } from './constants/goalConstants';
+import { QUICK_UPDATE_BUTTONS, GOAL_THEME_PRESETS } from './constants/goalConstants';
 import { calculateCatchUpInfo } from './utils/catchUpUtils';
 import GoalStatusTooltip from './components/GoalStatusTooltip';
 import QuickLogSessionPopover from './components/QuickLogSessionPopover';
@@ -262,6 +262,13 @@ export default function WeeklyGoalCard({
     };
   }, [goal.history, goal.unit]);
 
+  // T18: 테마 라벨 계산
+  const themeLabel = useMemo(() => {
+    if (!goal.theme) return null;
+    const preset = GOAL_THEME_PRESETS.find(t => t.id === goal.theme);
+    return preset?.label || goal.theme;
+  }, [goal.theme]);
+
   // 히스토리 미리보기 토글 (hover-only 금지, Enter/Click/Touch)
   const handleHistoryPreviewToggle = useCallback(() => {
     setShowHistoryPreview((prev) => !prev);
@@ -306,7 +313,15 @@ export default function WeeklyGoalCard({
             {isCompleted ? '🎉' : goal.icon || '📚'}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className={`font-bold text-white truncate ${compact ? 'text-xs' : 'text-sm'}`}>{goal.title}</h3>
+            <div className="flex items-center gap-1.5">
+              <h3 className={`font-bold text-white truncate ${compact ? 'text-xs' : 'text-sm'}`}>{goal.title}</h3>
+              {/* T18: 테마 라벨 */}
+              {themeLabel && (
+                <span className={`shrink-0 rounded-full bg-white/10 text-white/60 ${compact ? 'px-1.5 py-0.5 text-[8px]' : 'px-2 py-0.5 text-[10px]'}`}>
+                  {themeLabel}
+                </span>
+              )}
+            </div>
             <p className={`text-white/60 ${compact ? 'text-[10px]' : 'text-xs'}`}>
               {goal.target.toLocaleString()} {goal.unit} / 주
             </p>

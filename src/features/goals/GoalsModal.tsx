@@ -8,6 +8,9 @@
  * - 오늘 목표 UI 제거됨 (Phase 5, Option A)
  * - 세션 포커스 배너 (React state만, 저장 안 함)
  * - 키보드 단축키 힌트 표시
+ * - T09: 주차 라벨 표시
+ * - T10: 주간 리셋 안내 카드
+ * - T11-T12: 필터 UI (오늘만 보기 토글)
  * 
  * Key Dependencies:
  * - WeeklyGoalPanel: 장기 목표 패널 UI 컴포넌트
@@ -15,11 +18,15 @@
  * - useGoalsHotkeys: 카드 네비게이션 단축키
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import WeeklyGoalPanel from './WeeklyGoalPanel';
 import WeeklyGoalModal from './WeeklyGoalModal';
+import WeeklyResetCard from './components/WeeklyResetCard';
+import GoalsFilterBar from './components/GoalsFilterBar';
 import { useModalHotkeys } from '@/shared/hooks';
 import { useGoalsHotkeys } from './hooks/useGoalsHotkeys';
+import { useGoalsSystemState } from './hooks/useGoalsSystemState';
+import { getWeekLabelKorean, getWeekDateRange } from './utils/weekUtils';
 import type { WeeklyGoal } from '@/shared/types/domain';
 
 interface GoalsModalProps {
@@ -64,12 +71,26 @@ export function GoalsModal({ open, onClose }: GoalsModalProps) {
 
   // 목표 ID 목록 (WeeklyGoalPanel에서 전달받음)
   const [goalIds, setGoalIds] = useState<string[]>([]);
+  // 전체 목표 목록 (필터링 전)
+  const [allGoals, setAllGoals] = useState<WeeklyGoal[]>([]);
 
   // Quick Log 열기 콜백 (카드에서 호출)
   const [quickLogGoalId, setQuickLogGoalId] = useState<string | null>(null);
 
   // 히스토리 모달 열기 콜백
   const [historyGoalId, setHistoryGoalId] = useState<string | null>(null);
+
+  // Goals SystemState (필터, 모드 등)
+  const {
+    filterTodayOnly,
+    setFilterTodayOnly,
+    compactMode,
+    setCompactMode,
+  } = useGoalsSystemState();
+
+  // T09: 주차 라벨 계산
+  const weekLabel = getWeekLabelKorean();
+  const weekDateRange = getWeekDateRange();
 
   // Goals 키보드 단축키
   const { focusedGoalId, setFocusedGoalId, showHints, toggleHints } = useGoalsHotkeys({
@@ -120,12 +141,20 @@ export function GoalsModal({ open, onClose }: GoalsModalProps) {
     <>
       <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 px-4 py-6">
         <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-[var(--color-bg-secondary)] text-[var(--color-text)] shadow-2xl">
-          {/* Header */}
+          {/* Header - T09: 주차 라벨 추가 */}
           <header className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
             <div className="flex-1">
-              <div className="text-xs uppercase tracking-[0.12em] text-[var(--color-text-tertiary)]">Goals</div>
+              <div className="flex items-center gap-2">
+                <div className="text-xs uppercase tracking-[0.12em] text-[var(--color-text-tertiary)]">Goals</div>
+                {/* T09: 주차 라벨 배지 */}
+                <span className="rounded-full bg-[var(--color-primary)]/20 px-2 py-0.5 text-[10px] font-medium text-[var(--color-primary)]">
+                  {weekLabel}
+                </span>
+              </div>
               <h2 className="text-xl font-bold">🎯 목표 관리</h2>
-              <p className="text-xs text-[var(--color-text-secondary)]">장기 목표를 관리하세요.</p>
+              <p className="text-xs text-[var(--color-text-secondary)]">
+                {weekDateRange} • 장기 목표를 관리하세요.
+              </p>
             </div>
 
             {/* 세션 포커스 배너 (저장 안 함, 세션 한정) */}
@@ -202,6 +231,18 @@ export function GoalsModal({ open, onClose }: GoalsModalProps) {
 
           {/* 탭 제거됨 (Phase 5) - 장기 목표만 표시 */}
 
+          {/* T10: 주간 리셋 안내 카드 */}
+          <WeeklyResetCard allGoals={allGoals} />
+
+          {/* T11-T12: 필터바 (오늘만 보기 토글, 숨김 카운트) */}
+          <GoalsFilterBar
+            filterTodayOnly={filterTodayOnly}
+            onFilterChange={setFilterTodayOnly}
+            compactMode={compactMode}
+            onCompactModeChange={setCompactMode}
+            allGoals={allGoals}
+          />
+
           {/* Content - 장기 목표만 표시 */}
           <div className="flex-1 overflow-hidden p-4">
             <WeeklyGoalPanel
@@ -209,10 +250,13 @@ export function GoalsModal({ open, onClose }: GoalsModalProps) {
               focusedGoalId={focusedGoalId}
               onFocusGoal={setFocusedGoalId}
               onGoalIdsChange={setGoalIds}
+              onGoalsChange={setAllGoals}
               quickLogGoalId={quickLogGoalId}
               onQuickLogClose={() => setQuickLogGoalId(null)}
               historyGoalId={historyGoalId}
               onHistoryClose={() => setHistoryGoalId(null)}
+              filterTodayOnly={filterTodayOnly}
+              compactMode={compactMode}
             />
           </div>
         </div>

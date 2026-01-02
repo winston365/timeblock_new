@@ -8,6 +8,12 @@
  *   - IndexedDB: weeklyGoals 테이블
  *   - Firebase: 실시간 동기화 (syncToFirebase)
  *   - @/shared/types/domain: WeeklyGoal 타입
+ *
+ * @note T08: Dexie/Sync 영향 분석
+ *   - theme 필드 추가: Dexie 스키마 변경 불필요 (schemaless 특성)
+ *   - Firebase 동기화: weeklyGoalStrategy가 전체 객체를 동기화하므로 자동 포함
+ *   - 기존 데이터: theme 필드가 undefined인 경우 정상 동작 (optional 필드)
+ *   - 마이그레이션: 필요 없음 (점진적 데이터 업데이트)
  */
 
 import { db } from '../db/dexieClient';

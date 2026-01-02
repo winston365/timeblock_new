@@ -545,6 +545,10 @@ export interface WeeklyGoal {
   color?: string; // 색상
   order: number; // 정렬 순서
 
+  // T07: 테마 필드 (카테고리화)
+  /** 테마/카테고리 (예: 'study', 'health', '커스텀 테마') */
+  theme?: string;
+
   // 주간 기준
   weekStartDate: string; // 현재 주 시작일 (월요일, YYYY-MM-DD)
 

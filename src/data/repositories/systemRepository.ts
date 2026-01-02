@@ -67,6 +67,27 @@ export const SYSTEM_KEYS = {
     INBOX_LAST_USED_SLOT: 'inbox:quickPlacement:lastUsed',
     /** 인박스 필터 상태 */
     INBOX_FILTERS: 'inbox:filters',
+
+    // ========================================================================
+    // 주간목표(Goals) 관련 키
+    // ========================================================================
+
+    /** 목표 필터: 오늘만 보기 (오늘 할당된 목표만 표시) */
+    GOALS_FILTER_TODAY_ONLY: 'goals:filterTodayOnly',
+    /** 목표 카드 축소 모드 활성화 */
+    GOALS_COMPACT_MODE: 'goals:compactMode',
+    /** 고급 입력 UI 활성화 (직접 입력 등) */
+    GOALS_ADVANCED_INPUT_ENABLED: 'goals:advancedInputEnabled',
+    /** 주간 리셋 배너 마지막 본 주 (YYYY-WW 형식) */
+    GOALS_RESET_BANNER_LAST_SEEN_WEEK: 'goals:resetBannerLastSeenWeek',
+    /** Catch-up 스누즈된 주 (YYYY-WW 형식) */
+    GOALS_CATCH_UP_SNOOZED_WEEK: 'goals:catchUpSnoozedWeek',
+    /** 더보기 힌트 최초 노출 여부 */
+    GOALS_EXPAND_HINT_SHOWN: 'goals:expandHintShown',
+    /** 테마 기반 필터/그룹 상태 */
+    GOALS_THEME_FILTER: 'goals:themeFilter',
+    /** 마지막 진행도 변경 (Undo용) */
+    GOALS_LAST_PROGRESS_CHANGE: 'goals:lastProgressChange',
 } as const;
 
 /**
