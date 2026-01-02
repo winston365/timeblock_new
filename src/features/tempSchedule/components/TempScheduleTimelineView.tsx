@@ -16,9 +16,13 @@ import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import { TEMP_SCHEDULE_DEFAULTS, type TempScheduleTask, type DragTooltipInfo } from '@/shared/types/tempSchedule';
 import { getLocalDate, minutesToTimeStr } from '@/shared/lib/utils';
 import { TempScheduleContextMenu } from './TempScheduleContextMenu';
-import { Repeat } from 'lucide-react';
+import { InlineEditPopover } from './InlineEditPopover';
+import { PromotePostActionPopup } from './PromotePostActionPopup';
+import { Trash2, ArrowUpRight, Archive } from 'lucide-react';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { TIME_BLOCKS, type Task } from '@/shared/types/domain';
+import { RecurringBadge, FavoriteBadge, ArchivedBadge } from './StatusBadges';
+import { notify } from '@/shared/lib/notify';
 
 // ============================================================================
 // Constants
@@ -148,20 +152,45 @@ function deriveMainSnapshotPosition(task: Task): MainSnapshotPosition | null {
 interface TimelineBlockProps {
   position: BlockPosition;
   onEdit: (task: TempScheduleTask) => void;
+  /** A3: 더블클릭 시 인라인 편집 팝오버 표시 */
+  onDoubleClick: (task: TempScheduleTask, position: { x: number; y: number }) => void;
   onDragStart: (task: TempScheduleTask, mode: 'move' | 'resize-top' | 'resize-bottom', e: React.MouseEvent) => void;
   onContextMenu: (task: TempScheduleTask, e: React.MouseEvent) => void;
+  onDelete: (task: TempScheduleTask) => void;
+  onPromote: (task: TempScheduleTask) => void;
+  onArchive: (task: TempScheduleTask) => void;
 }
 
-const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDragStart, onContextMenu }: TimelineBlockProps) {
+const TimelineBlock = memo(function TimelineBlock({ 
+  position, 
+  onEdit: _onEdit,
+  onDoubleClick,
+  onDragStart, 
+  onContextMenu,
+  onDelete,
+  onPromote,
+  onArchive,
+}: TimelineBlockProps) {
   const { task, column, totalColumns, top, height } = position;
   const widthPercent = 100 / totalColumns;
   const leftPercent = column * widthPercent;
   const isRecurring = task.recurrence.type !== 'none';
   const isFavorite = task.favorite;
+  const isArchived = task.isArchived;
+  const isCompact = height < 50; // 작은 블록일 때 컴팩트 모드
+
+  /** A3: 더블클릭 핸들러 - 인라인 편집 팝오버 */
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onDoubleClick(task, { x: e.clientX, y: e.clientY });
+  };
 
   return (
     <div
-      className="absolute rounded-lg shadow-sm cursor-move transition-shadow hover:shadow-md group border border-white/10"
+      className={`absolute rounded-lg shadow-sm cursor-move transition-shadow hover:shadow-md group border ${
+        isArchived ? 'border-white/30 opacity-60' : 'border-white/10'
+      }`}
       style={{
         top: `${top}px`,
         height: `${height}px`,
@@ -170,7 +199,7 @@ const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDragStar
         backgroundColor: task.color, // Solid color
         zIndex: 10,
       }}
-      onDoubleClick={() => onEdit(task)}
+      onDoubleClick={handleDoubleClick}
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -196,15 +225,62 @@ const TimelineBlock = memo(function TimelineBlock({ position, onEdit, onDragStar
       {/* 내용 */}
       <div className="px-2 py-1 overflow-hidden h-full flex flex-col text-white">
         <div className="flex items-center gap-1 min-w-0">
-          {isFavorite && <span className="text-amber-300 text-[11px] leading-none">★</span>}
-          {isRecurring && <Repeat size={10} className="flex-shrink-0 opacity-80" />}
+          {isFavorite && <FavoriteBadge compact />}
+          {isRecurring && <RecurringBadge compact />}
+          {isArchived && <ArchivedBadge compact />}
           <div className="text-xs font-bold truncate drop-shadow-md">
             {task.name}
           </div>
         </div>
-        <div className="text-[10px] opacity-90 font-medium">
-          {minutesToTimeStr(task.startTime)} - {minutesToTimeStr(task.endTime)}
-        </div>
+        {!isCompact && (
+          <div className="text-[10px] opacity-90 font-medium">
+            {minutesToTimeStr(task.startTime)} - {minutesToTimeStr(task.endTime)}
+          </div>
+        )}
+      </div>
+
+      {/* 호버 시 퀵 액션 버튼들 */}
+      <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        {!isArchived && (
+          <button
+            type="button"
+            className="p-1 rounded bg-white/20 hover:bg-white/40 text-white transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPromote(task);
+            }}
+            title="실제 일정으로 프로모션"
+            aria-label="실제 일정으로 프로모션"
+          >
+            <ArrowUpRight size={12} />
+          </button>
+        )}
+        {!isArchived && (
+          <button
+            type="button"
+            className="p-1 rounded bg-white/20 hover:bg-white/40 text-white transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onArchive(task);
+            }}
+            title="보관함으로 이동"
+            aria-label="보관함으로 이동"
+          >
+            <Archive size={12} />
+          </button>
+        )}
+        <button
+          type="button"
+          className="p-1 rounded bg-white/20 hover:bg-red-400/80 text-white transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(task);
+          }}
+          title="삭제"
+          aria-label="삭제"
+        >
+          <Trash2 size={12} />
+        </button>
       </div>
 
       {/* 하단 리사이즈 핸들 */}
@@ -239,6 +315,8 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
     endDrag,
     addTask,
     updateTask,
+    deleteTask,
+    archiveTask,
     openTaskModal,
   } = useTempScheduleStore();
 
@@ -265,6 +343,18 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
   const [createPreview, setCreatePreview] = useState<{ top: number; height: number; startTime: number; endTime: number } | null>(null);
   const [dragPreview, setDragPreview] = useState<{ top: number; height: number; color: string; name: string; startTime: number; endTime: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ task: TempScheduleTask; x: number; y: number } | null>(null);
+  
+  // A3: 인라인 편집 팝오버 상태
+  const [inlineEditState, setInlineEditState] = useState<{
+    task: TempScheduleTask;
+    position: { x: number; y: number };
+  } | null>(null);
+  
+  // A1: 프로모션 후 처리 팝업 상태
+  const [promotePopupState, setPromotePopupState] = useState<{
+    task: TempScheduleTask;
+    position: { x: number; y: number };
+  } | null>(null);
 
   const tasks = getTasksForDate(selectedDate);
   const blockPositions = useMemo(() => calculateBlockPositions(tasks), [tasks]);
@@ -479,6 +569,43 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
     });
   }, []);
 
+  // 삭제 핸들러
+  const handleDelete = useCallback(async (task: TempScheduleTask) => {
+    await deleteTask(task.id);
+    notify.success(`"${task.name}" 삭제됨`);
+  }, [deleteTask]);
+
+  // A1: 프로모션 핸들러 - 팝업 표시
+  const handlePromote = useCallback((task: TempScheduleTask) => {
+    // 톍 액션 버튼에서 호출될 때는 마우스 위치 그대로 팝업 표시
+    const rect = document.body.getBoundingClientRect();
+    setPromotePopupState({
+      task,
+      position: { x: rect.width / 2, y: rect.height / 3 },
+    });
+  }, []);
+
+  /** A1: 프로모션 팝업 닫기 */
+  const handlePromotePopupClose = useCallback(() => {
+    setPromotePopupState(null);
+  }, []);
+
+  // 보관함 이동 핸들러
+  const handleArchive = useCallback(async (task: TempScheduleTask) => {
+    await archiveTask(task.id);
+    notify.info(`"${task.name}" 보관함으로 이동됨`);
+  }, [archiveTask]);
+
+  /** A3: 더블클릭 시 인라인 편집 팝오버 표시 */
+  const handleDoubleClick = useCallback((task: TempScheduleTask, position: { x: number; y: number }) => {
+    setInlineEditState({ task, position });
+  }, []);
+
+  /** A3: 인라인 편집 팝오버 닫기 */
+  const handleInlineEditClose = useCallback(() => {
+    setInlineEditState(null);
+  }, []);
+
   // 시간 레이블 생성
   const hourLabels = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => timelineStartHour + i);
 
@@ -558,8 +685,12 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
                 key={pos.task.id}
                 position={pos}
                 onEdit={openTaskModal}
+                onDoubleClick={handleDoubleClick}
                 onDragStart={handleDragStart}
                 onContextMenu={handleContextMenu}
+                onDelete={handleDelete}
+                onPromote={handlePromote}
+                onArchive={handleArchive}
               />
             ))}
 
@@ -642,6 +773,26 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
           x={contextMenu.x}
           y={contextMenu.y}
           onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {/* A3: 인라인 편집 팝오버 */}
+      {inlineEditState && (
+        <InlineEditPopover
+          task={inlineEditState.task}
+          position={inlineEditState.position}
+          onClose={handleInlineEditClose}
+          onSaved={handleInlineEditClose}
+        />
+      )}
+
+      {/* A1: 프로모션 후 처리 팝업 */}
+      {promotePopupState && (
+        <PromotePostActionPopup
+          task={promotePopupState.task}
+          position={promotePopupState.position}
+          onClose={handlePromotePopupClose}
+          onComplete={handlePromotePopupClose}
         />
       )}
     </div>

@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import { TEMP_SCHEDULE_COLORS, type TempScheduleTask } from '@/shared/types/tempSchedule';
+import { PromotePostActionPopup } from './PromotePostActionPopup';
 
 interface TempScheduleContextMenuProps {
     task: TempScheduleTask;
@@ -12,7 +13,8 @@ interface TempScheduleContextMenuProps {
 
 export function TempScheduleContextMenu({ task, x, y, onClose }: TempScheduleContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null);
-    const { duplicateTask, promoteToRealTask, deleteTask, updateTask } = useTempScheduleStore();
+    const { duplicateTask, deleteTask, updateTask } = useTempScheduleStore();
+    const [promotePopupState, setPromotePopupState] = useState<{ visible: boolean; x: number; y: number } | null>(null);
 
     // 외부 클릭 시 닫기
     useEffect(() => {
@@ -42,11 +44,9 @@ export function TempScheduleContextMenu({ task, x, y, onClose }: TempScheduleCon
         onClose();
     };
 
-    const handlePromote = async () => {
-        if (confirm(`'${task.name}' 스케줄을 실제 작업(Inbox)으로 변환하시겠습니까?`)) {
-            await promoteToRealTask(task);
-            onClose();
-        }
+    const handlePromote = () => {
+        // A1 통합: 승격 후 처리 팝업 표시
+        setPromotePopupState({ visible: true, x, y });
     };
 
     const handleDelete = async () => {
@@ -60,6 +60,18 @@ export function TempScheduleContextMenu({ task, x, y, onClose }: TempScheduleCon
         await updateTask(task.id, { color });
         // 색상 변경 후 메뉴 닫지 않음 (연속 변경 가능)
     };
+
+    // A1: PromotePostActionPopup 렌더링
+    if (promotePopupState?.visible) {
+        return (
+            <PromotePostActionPopup
+                task={task}
+                position={{ x: promotePopupState.x, y: promotePopupState.y }}
+                onClose={onClose}
+                onComplete={onClose}
+            />
+        );
+    }
 
     return createPortal(
         <div

@@ -1,14 +1,15 @@
 /**
  * 템플릿 관리 모달
  *
- * @role 스케줄 템플릿 저장/불러오기/삭제
+ * @role 스케줄 템플릿 저장/불러오기/삭제/고정
  * @dependencies useTempScheduleStore
  */
 
-import { memo, useState, useCallback } from 'react';
+import { memo, useState, useCallback, useMemo } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { TempScheduleTemplate } from '@/shared/types/tempSchedule';
 import { useModalHotkeys } from '@/shared/hooks';
+import { Pin, PinOff } from 'lucide-react';
 
 // ============================================================================
 // Sub Components
@@ -16,25 +17,46 @@ import { useModalHotkeys } from '@/shared/hooks';
 
 interface TemplateItemProps {
   template: TempScheduleTemplate;
+  isPinned: boolean;
   onApply: (template: TempScheduleTemplate) => void;
   onDelete: (id: string) => void;
+  onTogglePin: (id: string) => void;
 }
 
-const TemplateItem = memo(function TemplateItem({ template, onApply, onDelete }: TemplateItemProps) {
+const TemplateItem = memo(function TemplateItem({ 
+  template, 
+  isPinned,
+  onApply, 
+  onDelete,
+  onTogglePin,
+}: TemplateItemProps) {
   const dateObj = new Date(template.createdAt);
   const formattedDate = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
 
   return (
-    <div className="group flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 hover:border-[var(--color-primary)]/50 transition-all">
+    <div className={`group flex items-center gap-3 rounded-xl border p-3 transition-all ${
+      isPinned 
+        ? 'border-amber-500/50 bg-amber-500/10' 
+        : 'border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-primary)]/50'
+    }`}>
       {/* 아이콘 */}
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-primary)]/20 text-[var(--color-primary)]">
-        📋
+      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+        isPinned ? 'bg-amber-500/20 text-amber-400' : 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+      }`}>
+        {isPinned ? '📌' : '📋'}
       </div>
 
       {/* 내용 */}
       <div className="flex-1 min-w-0">
-        <div className="font-semibold text-sm text-[var(--color-text)] truncate">
-          {template.name}
+        <div className="flex items-center gap-2">
+          {isPinned && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-semibold">
+              고정됨
+            </span>
+          )}
+          <span className="font-semibold text-sm text-[var(--color-text)] truncate">
+            {template.name}
+          </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-[var(--color-text-tertiary)]">
           <span>{template.tasks.length}개 스케줄</span>
@@ -44,7 +66,20 @@ const TemplateItem = memo(function TemplateItem({ template, onApply, onDelete }:
       </div>
 
       {/* 액션 버튼 */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
+        {/* 고정/해제 버튼 */}
+        <button
+          className={`p-1.5 rounded-lg transition-colors ${
+            isPinned 
+              ? 'text-amber-400 hover:bg-amber-500/20' 
+              : 'text-[var(--color-text-tertiary)] hover:text-amber-400 hover:bg-amber-500/10'
+          }`}
+          onClick={() => onTogglePin(template.id)}
+          title={isPinned ? '고정 해제' : '상단 고정'}
+        >
+          {isPinned ? <Pin size={16} className="fill-current" /> : <PinOff size={16} />}
+        </button>
+        
         <button
           className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-xs font-semibold hover:bg-[var(--color-primary-dark)] transition-colors"
           onClick={() => onApply(template)}
@@ -76,6 +111,8 @@ function TemplateModalComponent() {
     isTemplateModalOpen,
     closeTemplateModal,
     templates,
+    pinnedTemplateIds,
+    toggleTemplatePin,
     saveAsTemplate,
     removeTemplate,
     applyTemplateToDate,
@@ -90,6 +127,18 @@ function TemplateModalComponent() {
 
   const tasksForDate = getTasksForDate(selectedDate);
   const canSave = tasksForDate.length > 0 && newTemplateName.trim().length > 0;
+
+  // 템플릿을 핀된 것 먼저, 그 다음 최신순으로 정렬
+  const sortedTemplates = useMemo(() => {
+    return [...templates].sort((a, b) => {
+      const aPinned = pinnedTemplateIds.includes(a.id);
+      const bPinned = pinnedTemplateIds.includes(b.id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      // 같은 그룹 내에서는 최신순
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [templates, pinnedTemplateIds]);
 
   const handleSave = useCallback(async () => {
     if (!canSave) return;
@@ -223,12 +272,14 @@ function TemplateModalComponent() {
               </div>
             ) : (
               <div className="space-y-2">
-                {templates.map(template => (
+                {sortedTemplates.map(template => (
                   <TemplateItem
                     key={template.id}
                     template={template}
+                    isPinned={pinnedTemplateIds.includes(template.id)}
                     onApply={handleApply}
                     onDelete={handleDelete}
+                    onTogglePin={toggleTemplatePin}
                   />
                 ))}
               </div>

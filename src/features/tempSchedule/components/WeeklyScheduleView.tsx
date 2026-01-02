@@ -12,10 +12,16 @@
  */
 
 import { memo, useMemo, useCallback, useLayoutEffect, useRef, useState, useEffect } from 'react';
+import { Trash2, ArrowUpRight, Archive } from 'lucide-react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { TempScheduleTask } from '@/shared/types/tempSchedule';
 import { shouldShowOnDate } from '@/data/repositories/tempScheduleRepository';
 import { getLocalDate, minutesToTimeStr } from '@/shared/lib/utils';
+import { RecurringBadge, FavoriteBadge, ArchivedBadge } from './StatusBadges';
+import { InlineEditPopover } from './InlineEditPopover';
+import { WeekRecurrenceMoveDialog, type RecurrenceMoveScope } from './WeekRecurrenceMoveDialog';
+import { PromotePostActionPopup } from './PromotePostActionPopup';
+import { notify } from '@/shared/lib/notify';
 
 // ============================================================================
 // Helper: Calculate Week Dates
@@ -121,9 +127,17 @@ interface TaskBlockProps {
   hourHeight: number;
   onDragStart: (task: TempScheduleTask, e: React.DragEvent) => void;
   onTaskEdit: (task: TempScheduleTask) => void;
+  /** A3: 더블클릭 시 인라인 편집 팝오버 표시 */
+  onDoubleClick: (task: TempScheduleTask, position: { x: number; y: number }) => void;
+  /** B2: 퀵 액션 - 삭제 */
+  onDelete: (task: TempScheduleTask) => void;
+  /** B2: 퀵 액션 - 프로모션 */
+  onPromote: (task: TempScheduleTask, position: { x: number; y: number }) => void;
+  /** B2: 퀵 액션 - 보관 */
+  onArchive: (task: TempScheduleTask) => void;
 }
 
-const TaskBlock = memo(function TaskBlock({ task, hourHeight, onDragStart, onTaskEdit }: TaskBlockProps) {
+const TaskBlock = memo(function TaskBlock({ task, hourHeight, onDragStart, onTaskEdit, onDoubleClick, onDelete, onPromote, onArchive }: TaskBlockProps) {
   const [showPreview, setShowPreview] = useState(false);
   const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 });
   const blockRef = useRef<HTMLDivElement>(null);
@@ -133,6 +147,8 @@ const TaskBlock = memo(function TaskBlock({ task, hourHeight, onDragStart, onTas
   const top = Math.max(0, (startMinutes - START_HOUR * 60) / 60 * hourHeight);
   const height = Math.max(12, (endMinutes - startMinutes) / 60 * hourHeight);
   const duration = endMinutes - startMinutes;
+  const isArchived = task.isArchived;
+  const isRecurring = task.recurrence.type !== 'none';
 
   const handleMouseEnter = (e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -147,9 +163,36 @@ const TaskBlock = memo(function TaskBlock({ task, hourHeight, onDragStart, onTas
     setShowPreview(false);
   };
 
+  /** 싱글 클릭: 전체 편집 모달 */
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onTaskEdit(task);
+  };
+
+  /** A3: 더블 클릭: 빠른 인라인 편집 */
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onDoubleClick(task, { x: e.clientX, y: e.clientY });
+  };
+
+  /** B2: 퀵 액션 버튼 클릭 - 드래그 방지 */
+  const handlePromoteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onPromote(task, { x: e.clientX, y: e.clientY });
+  };
+
+  const handleArchiveClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onArchive(task);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onDelete(task);
   };
 
   return (
@@ -161,7 +204,10 @@ const TaskBlock = memo(function TaskBlock({ task, hourHeight, onDragStart, onTas
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
-        className="absolute left-0.5 right-0.5 rounded text-[8px] px-1 py-0.5 overflow-hidden truncate cursor-pointer hover:ring-2 hover:ring-white/50 hover:scale-[1.02] hover:z-10 transition-all"
+        onDoubleClick={handleDoubleClick}
+        className={`absolute left-0.5 right-0.5 rounded text-[8px] px-1 py-0.5 overflow-hidden cursor-pointer hover:ring-2 hover:ring-white/50 hover:scale-[1.02] hover:z-10 transition-all group ${
+          isArchived ? 'opacity-50' : ''
+        }`}
         style={{
           top: `${top}px`,
           height: `${height}px`,
@@ -169,10 +215,54 @@ const TaskBlock = memo(function TaskBlock({ task, hourHeight, onDragStart, onTas
           borderLeft: `2px solid ${task.color}`,
         }}
       >
-        <span style={{ color: task.color }} className="font-semibold flex items-center gap-1">
-          {task.favorite && <span className="text-amber-300">★</span>}
+        <span style={{ color: task.color }} className="font-semibold flex items-center gap-0.5">
+          {task.favorite && <FavoriteBadge compact />}
+          {isRecurring && <RecurringBadge compact />}
+          {isArchived && <ArchivedBadge compact />}
           <span className="truncate">{task.name}</span>
         </span>
+
+        {/* B2: 호버 시 퀵 액션 버튼들 */}
+        <div 
+          className="absolute top-0 right-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-20"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {!isArchived && (
+            <button
+              type="button"
+              className="p-0.5 rounded bg-white/20 hover:bg-white/40 text-white transition-colors"
+              onClick={handlePromoteClick}
+              onMouseDown={(e) => e.stopPropagation()}
+              title="실제 일정으로 프로모션"
+              aria-label="실제 일정으로 프로모션"
+            >
+              <ArrowUpRight size={10} />
+            </button>
+          )}
+          {!isArchived && (
+            <button
+              type="button"
+              className="p-0.5 rounded bg-white/20 hover:bg-white/40 text-white transition-colors"
+              onClick={handleArchiveClick}
+              onMouseDown={(e) => e.stopPropagation()}
+              title="보관함으로 이동"
+              aria-label="보관함으로 이동"
+            >
+              <Archive size={10} />
+            </button>
+          )}
+          <button
+            type="button"
+            className="p-0.5 rounded bg-white/20 hover:bg-red-400/80 text-white transition-colors"
+            onClick={handleDeleteClick}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="삭제"
+            aria-label="삭제"
+          >
+            <Trash2 size={10} />
+          </button>
+        </div>
       </div>
 
       {/* 호버 확대 미리보기 */}
@@ -190,7 +280,9 @@ const TaskBlock = memo(function TaskBlock({ task, hourHeight, onDragStart, onTas
             style={{ backgroundColor: task.color + '20' }}
           >
             <div className="flex items-center gap-2">
-              {task.favorite && <span className="text-amber-400">★</span>}
+              {task.favorite && <FavoriteBadge />}
+              {isRecurring && <RecurringBadge />}
+              {isArchived && <ArchivedBadge />}
               <span className="font-bold text-sm" style={{ color: task.color }}>
                 {task.name}
               </span>
@@ -252,6 +344,14 @@ interface DayColumnProps {
   onDrop: (date: string, e: React.DragEvent) => void;
   isDragOver: boolean;
   onTaskEdit: (task: TempScheduleTask) => void;
+  /** A3: 더블클릭 시 인라인 편집 팝오버 표시 */
+  onDoubleClick: (task: TempScheduleTask, position: { x: number; y: number }) => void;
+  /** B2: 퀵 액션 - 삭제 */
+  onDelete: (task: TempScheduleTask) => void;
+  /** B2: 퀵 액션 - 프로모션 */
+  onPromote: (task: TempScheduleTask, position: { x: number; y: number }) => void;
+  /** B2: 퀵 액션 - 보관 */
+  onArchive: (task: TempScheduleTask) => void;
 }
 
 const DayColumn = memo(function DayColumn({
@@ -265,6 +365,10 @@ const DayColumn = memo(function DayColumn({
   onDrop,
   isDragOver,
   onTaskEdit,
+  onDoubleClick,
+  onDelete,
+  onPromote,
+  onArchive,
 }: DayColumnProps) {
   const { day, month, isToday, isWeekend } = formatDate(date);
 
@@ -337,6 +441,10 @@ const DayColumn = memo(function DayColumn({
             hourHeight={hourHeight}
             onDragStart={onDragStart}
             onTaskEdit={onTaskEdit}
+            onDoubleClick={onDoubleClick}
+            onDelete={onDelete}
+            onPromote={onPromote}
+            onArchive={onArchive}
           />
         ))}
       </div>
@@ -354,11 +462,31 @@ function WeeklyScheduleViewComponent() {
   const setSelectedDate = useTempScheduleStore(state => state.setSelectedDate);
   const setViewMode = useTempScheduleStore(state => state.setViewMode);
   const updateTask = useTempScheduleStore(state => state.updateTask);
+  const deleteTask = useTempScheduleStore(state => state.deleteTask);
+  const archiveTask = useTempScheduleStore(state => state.archiveTask);
   const openTaskModal = useTempScheduleStore(state => state.openTaskModal);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hourHeight, setHourHeight] = useState(DEFAULT_HOUR_HEIGHT);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+  
+  // A3: 인라인 편집 팝오버 상태
+  const [inlineEditState, setInlineEditState] = useState<{
+    task: TempScheduleTask;
+    position: { x: number; y: number };
+  } | null>(null);
+  
+  // A6: 반복 일정 이동 대화상자 상태
+  const [recurrenceMoveState, setRecurrenceMoveState] = useState<{
+    task: TempScheduleTask;
+    targetDate: string;
+  } | null>(null);
+  
+  // B2: 프로모션 후 처리 팝업 상태
+  const [promotePopupState, setPromotePopupState] = useState<{
+    task: TempScheduleTask;
+    position: { x: number; y: number };
+  } | null>(null);
   
   // 현재 시간 상태 (분 단위, 자동 갱신)
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState(() => {
@@ -407,6 +535,38 @@ function WeeklyScheduleViewComponent() {
     openTaskModal(task);
   }, [openTaskModal]);
 
+  /** A3: 더블클릭 시 인라인 편집 팝오버 표시 */
+  const handleDoubleClick = useCallback((task: TempScheduleTask, position: { x: number; y: number }) => {
+    setInlineEditState({ task, position });
+  }, []);
+
+  /** A3: 인라인 편집 팝오버 닫기 */
+  const handleInlineEditClose = useCallback(() => {
+    setInlineEditState(null);
+  }, []);
+
+  /** B2: 퀵 액션 - 삭제 핸들러 */
+  const handleDelete = useCallback(async (task: TempScheduleTask) => {
+    await deleteTask(task.id);
+    notify.success(`"${task.name}" 삭제됨`);
+  }, [deleteTask]);
+
+  /** B2: 퀵 액션 - 프로모션 핸들러 (팝업 표시) */
+  const handlePromote = useCallback((task: TempScheduleTask, position: { x: number; y: number }) => {
+    setPromotePopupState({ task, position });
+  }, []);
+
+  /** B2: 프로모션 팝업 닫기 */
+  const handlePromotePopupClose = useCallback(() => {
+    setPromotePopupState(null);
+  }, []);
+
+  /** B2: 퀵 액션 - 보관 핸들러 */
+  const handleArchive = useCallback(async (task: TempScheduleTask) => {
+    await archiveTask(task.id);
+    notify.info(`"${task.name}" 보관함으로 이동됨`);
+  }, [archiveTask]);
+
   // 드래그 시작
   const handleDragStart = useCallback((task: TempScheduleTask, e: React.DragEvent) => {
     e.stopPropagation();
@@ -452,19 +612,63 @@ function WeeklyScheduleViewComponent() {
       return;
     }
 
+    // A6: 반복 일정인지 확인
+    const draggedTask = tasks.find(t => t.id === dragState.taskId);
+    if (draggedTask && draggedTask.recurrence?.type !== 'none') {
+      // 반복 일정이면 대화상자 표시
+      setRecurrenceMoveState({ task: draggedTask, targetDate });
+      setDragState(null);
+      setDragOverDate(null);
+      return;
+    }
+
+    // 일반 일정: 직접 이동
     try {
       await updateTask(dragState.taskId, {
         scheduledDate: targetDate,
-        // 반복 일정을 이동하면 일회성으로 변경
-        recurrence: { type: 'none', weeklyDays: [], intervalDays: 1, endDate: null },
       });
+      notify.success(`"${dragState.taskName}" 이동 완료`);
     } catch (error) {
       console.error('Failed to move task:', error);
+      notify.error('작업 이동 실패');
     }
 
     setDragState(null);
     setDragOverDate(null);
-  }, [dragState, updateTask]);
+  }, [dragState, tasks, updateTask]);
+
+  /** A6: 반복 일정 이동 대화상자 핸들러 */
+  const handleRecurrenceMoveSelect = useCallback(async (scope: RecurrenceMoveScope) => {
+    if (!recurrenceMoveState) return;
+
+    const { task, targetDate } = recurrenceMoveState;
+
+    try {
+      if (scope === 'this') {
+        // 이 항목만: 반복 해제하고 해당 날짜로 이동
+        await updateTask(task.id, {
+          scheduledDate: targetDate,
+          recurrence: { type: 'none', weeklyDays: [], intervalDays: 1, endDate: null },
+        });
+      } else {
+        // 이후 모든 항목: 반복 유지하며 이동 (기준 날짜 변경)
+        await updateTask(task.id, {
+          scheduledDate: targetDate,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to move recurring task:', error);
+      notify.error('반복 일정 이동 실패');
+    }
+
+    setRecurrenceMoveState(null);
+  }, [recurrenceMoveState, updateTask]);
+
+  /** A6: 반복 일정 이동 취소 */
+  const handleRecurrenceMoveCancel = useCallback(() => {
+    setRecurrenceMoveState(null);
+    notify.info('이동이 취소되었습니다');
+  }, []);
 
   // 드래그 엔터/리브
   const handleDragEnter = useCallback((date: string) => {
@@ -590,11 +794,45 @@ function WeeklyScheduleViewComponent() {
                 onDrop={handleDrop}
                 isDragOver={dragOverDate === date && dragState?.sourceDate !== date}
                 onTaskEdit={handleTaskEdit}
+                onDoubleClick={handleDoubleClick}
+                onDelete={handleDelete}
+                onPromote={handlePromote}
+                onArchive={handleArchive}
               />
             </div>
           ))}
         </div>
       </div>
+
+      {/* A3: 인라인 편집 팝오버 */}
+      {inlineEditState && (
+        <InlineEditPopover
+          task={inlineEditState.task}
+          position={inlineEditState.position}
+          onClose={handleInlineEditClose}
+          onSaved={handleInlineEditClose}
+        />
+      )}
+
+      {/* A6: 반복 일정 이동 대화상자 */}
+      {recurrenceMoveState && (
+        <WeekRecurrenceMoveDialog
+          taskName={recurrenceMoveState.task.name}
+          targetDate={recurrenceMoveState.targetDate}
+          onSelect={handleRecurrenceMoveSelect}
+          onCancel={handleRecurrenceMoveCancel}
+        />
+      )}
+
+      {/* B2: 프로모션 후 처리 팝업 */}
+      {promotePopupState && (
+        <PromotePostActionPopup
+          task={promotePopupState.task}
+          position={promotePopupState.position}
+          onClose={handlePromotePopupClose}
+          onComplete={handlePromotePopupClose}
+        />
+      )}
     </div>
   );
 }

@@ -6,10 +6,11 @@
  *   - 왼쪽: 타임라인/주간/월간 뷰
  *   - 오른쪽: 스케줄 작업 목록
  *   - 상단: 뷰 모드 전환, 날짜 네비게이션, 그리드 스냅 설정
- * @dependencies useTempScheduleStore
+ *   - Ctrl/Cmd+K: 커맨드 팔레트 열기
+ * @dependencies useTempScheduleStore, CommandPalette
  */
 
-import { memo, useEffect, useCallback } from 'react';
+import { memo, useEffect, useCallback, useState } from 'react';
 import { useTempScheduleStore } from './stores/tempScheduleStore';
 import type { GridSnapInterval } from '@/shared/types/tempSchedule';
 import { TempScheduleTimelineView } from './components/TempScheduleTimelineView';
@@ -18,6 +19,7 @@ import { AddTempScheduleTaskModal } from './components/AddTempScheduleTaskModal'
 import { WeeklyScheduleView } from './components/WeeklyScheduleView';
 import { MonthlyScheduleView } from './components/MonthlyScheduleView';
 import { TemplateModal } from './components/TemplateModal';
+import { CommandPalette } from './components/CommandPalette';
 import { useModalEscapeClose } from '@/shared/hooks';
 import AsyncStatePanel from '@/shared/components/status/AsyncStatePanel';
 
@@ -32,6 +34,7 @@ const KEYBOARD_SHORTCUTS = [
   { key: 'M', action: '월간 뷰' },
   { key: 'T', action: '오늘로 이동' },
   { key: '←/→', action: '이전/다음' },
+  { key: '⌘K', action: '커맨드 팔레트' },
 ];
 
 // ============================================================================
@@ -110,6 +113,9 @@ function TempScheduleModalComponent({ isOpen, onClose }: TempScheduleModalProps)
     openTemplateModal,
   } = useTempScheduleStore();
 
+  // Command Palette 상태
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
   useModalEscapeClose(isOpen, onClose);
 
   // 데이터 로드
@@ -126,6 +132,17 @@ function TempScheduleModalComponent({ isOpen, onClose }: TempScheduleModalProps)
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
       return;
     }
+
+    // Ctrl/Cmd+K: 커맨드 팔레트 열기 (모달 상태와 무관하게 동작)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsCommandPaletteOpen(true);
+      return;
+    }
+
+    // 커맨드 팔레트가 열려있으면 다른 단축키 비활성화
+    if (isCommandPaletteOpen) return;
 
     // 작업 모달 또는 템플릿 모달이 열려있으면 단축키 비활성화
     if (isTaskModalOpen || isTemplateModalOpen) return;
@@ -160,7 +177,7 @@ function TempScheduleModalComponent({ isOpen, onClose }: TempScheduleModalProps)
         goToNext();
         break;
     }
-  }, [isTaskModalOpen, isTemplateModalOpen, openTaskModal, setViewMode, goToToday, goToPrevious, goToNext]);
+  }, [isCommandPaletteOpen, isTaskModalOpen, isTemplateModalOpen, openTaskModal, setViewMode, goToToday, goToPrevious, goToNext]);
 
   // 키보드 이벤트 등록
   useEffect(() => {
@@ -337,6 +354,14 @@ function TempScheduleModalComponent({ isOpen, onClose }: TempScheduleModalProps)
 
       {/* 템플릿 모달 */}
       <TemplateModal />
+
+      {/* 커맨드 팔레트 */}
+      {isCommandPaletteOpen && (
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+        />
+      )}
     </div>
   );
 }

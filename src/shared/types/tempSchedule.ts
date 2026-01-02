@@ -65,6 +65,63 @@ export interface TempScheduleTask {
   updatedAt: string;
   /** 즐겨찾기 여부 */
   favorite?: boolean;
+  /** 아카이브(보관함) 여부 - 승격 후 처리에 사용 */
+  isArchived?: boolean;
+}
+
+// ============================================================================
+// 승격 후 처리 옵션 (A1)
+// ============================================================================
+
+/**
+ * 승격 후 처리 옵션 타입
+ * @description Promote 후 원본 temp task 처리 방식
+ */
+export type PromotePostAction = 'delete' | 'archive' | 'keep';
+
+/**
+ * 승격 결과
+ * @description promoteToRealTask 함수의 반환 타입
+ */
+export interface PromoteResult {
+  /** 성공 여부 */
+  success: boolean;
+  /** 원본 temp task ID */
+  tempTaskId: string;
+  /** 생성된 실제 task ID (성공 시) */
+  realTaskId?: string;
+  /** 에러 메시지 (실패 시) */
+  error?: string;
+}
+
+// ============================================================================
+// 상태/의미 배지 (C4)
+// ============================================================================
+
+/**
+ * 작업 상태 배지 타입
+ * @description 색상 외 추가 시각적 표시 정보
+ */
+export type TempScheduleBadgeType = 
+  | 'recurring'    // 반복 일정
+  | 'favorite'     // 즐겨찾기
+  | 'archived'     // 아카이브됨
+  | 'duration'     // 소요 시간
+  | 'imminent'     // 임박
+  | 'inProgress';  // 진행 중
+
+/**
+ * 배지 정보
+ */
+export interface TempScheduleBadge {
+  /** 배지 타입 */
+  type: TempScheduleBadgeType;
+  /** 표시 텍스트 */
+  label: string;
+  /** 아이콘 (이모지 또는 lucide 아이콘명) */
+  icon: string;
+  /** 색상 클래스 (Tailwind) */
+  colorClass: string;
 }
 
 // ============================================================================
@@ -220,4 +277,143 @@ export interface TempScheduleTemplate {
   createdAt: string;
   /** 수정 시각 */
   updatedAt: string;
+  /** 고정(핀) 여부 - 상단에 우선 표시 */
+  isPinned?: boolean;
 }
+
+// ============================================================================
+// 배지 유틸리티 상수 (C4)
+// ============================================================================
+
+/**
+ * 소요 시간 구간 임계값 (분)
+ */
+export const DURATION_THRESHOLDS = {
+  /** 짧음 (30분 이하) */
+  SHORT: 30,
+  /** 중간 (90분 이하) */
+  MEDIUM: 90,
+  /** 김 (180분 이하) */
+  LONG: 180,
+  // 그 이상은 '매우 김'
+} as const;
+
+/**
+ * 소요 시간에 따른 배지 정보 반환
+ * @param durationMinutes - 소요 시간 (분)
+ * @returns 배지 정보
+ */
+export const getDurationBadge = (durationMinutes: number): TempScheduleBadge => {
+  if (durationMinutes <= DURATION_THRESHOLDS.SHORT) {
+    return {
+      type: 'duration',
+      label: `${durationMinutes}분`,
+      icon: '⚡',
+      colorClass: 'bg-emerald-500/20 text-emerald-400',
+    };
+  }
+  if (durationMinutes <= DURATION_THRESHOLDS.MEDIUM) {
+    const hours = Math.floor(durationMinutes / 60);
+    const mins = durationMinutes % 60;
+    return {
+      type: 'duration',
+      label: mins > 0 ? `${hours}시간 ${mins}분` : `${hours}시간`,
+      icon: '⏱️',
+      colorClass: 'bg-blue-500/20 text-blue-400',
+    };
+  }
+  if (durationMinutes <= DURATION_THRESHOLDS.LONG) {
+    const hours = Math.floor(durationMinutes / 60);
+    const mins = durationMinutes % 60;
+    return {
+      type: 'duration',
+      label: mins > 0 ? `${hours}시간 ${mins}분` : `${hours}시간`,
+      icon: '📊',
+      colorClass: 'bg-amber-500/20 text-amber-400',
+    };
+  }
+  // 매우 김
+  const hours = Math.floor(durationMinutes / 60);
+  const mins = durationMinutes % 60;
+  return {
+    type: 'duration',
+    label: mins > 0 ? `${hours}시간 ${mins}분` : `${hours}시간`,
+    icon: '🔥',
+    colorClass: 'bg-rose-500/20 text-rose-400',
+  };
+};
+
+/**
+ * 작업의 모든 배지 정보 수집
+ * @param task - 임시 스케줄 작업
+ * @param options - 추가 옵션 (현재 시간 등)
+ * @returns 배지 배열
+ */
+export const getTaskBadges = (
+  task: TempScheduleTask,
+  options?: {
+    currentMinutes?: number;
+    isImminent?: boolean;
+    isInProgress?: boolean;
+  }
+): TempScheduleBadge[] => {
+  const badges: TempScheduleBadge[] = [];
+
+  // 진행 중
+  if (options?.isInProgress) {
+    badges.push({
+      type: 'inProgress',
+      label: '진행 중',
+      icon: '▶️',
+      colorClass: 'bg-green-500/30 text-green-400',
+    });
+  }
+
+  // 임박
+  if (options?.isImminent && !options?.isInProgress) {
+    badges.push({
+      type: 'imminent',
+      label: '곧 시작',
+      icon: '🔥',
+      colorClass: 'bg-orange-500/30 text-orange-400',
+    });
+  }
+
+  // 반복
+  if (task.recurrence.type !== 'none') {
+    badges.push({
+      type: 'recurring',
+      label: '반복',
+      icon: '🔄',
+      colorClass: 'bg-purple-500/20 text-purple-400',
+    });
+  }
+
+  // 즐겨찾기
+  if (task.favorite) {
+    badges.push({
+      type: 'favorite',
+      label: '즐겨찾기',
+      icon: '⭐',
+      colorClass: 'bg-amber-500/20 text-amber-400',
+    });
+  }
+
+  // 아카이브
+  if (task.isArchived) {
+    badges.push({
+      type: 'archived',
+      label: '보관됨',
+      icon: '📦',
+      colorClass: 'bg-gray-500/20 text-gray-400',
+    });
+  }
+
+  // 소요 시간
+  const duration = task.endTime - task.startTime;
+  if (duration > 0) {
+    badges.push(getDurationBadge(duration));
+  }
+
+  return badges;
+};

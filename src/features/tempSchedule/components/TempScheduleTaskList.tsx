@@ -16,6 +16,7 @@ import { memo, useMemo, useState, useEffect } from 'react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { TempScheduleTask, RecurrenceRule } from '@/shared/types/tempSchedule';
 import { getLocalDate, minutesToTimeStr } from '@/shared/lib/utils';
+import { RecurringBadge, FavoriteBadge, ArchivedBadge, DurationBadge } from './StatusBadges';
 
 // ============================================================================
 // Constants
@@ -26,14 +27,6 @@ const IMMINENT_THRESHOLD_MINUTES = 60;
 
 /** 진행 중 일정 갱신 간격 (ms) */
 const REFRESH_INTERVAL_MS = 60_000; // 1분
-
-/** 소요 시간 구간 (분) */
-const DURATION_THRESHOLDS = {
-  SHORT: 30,    // 30분 이하 - 짧음
-  MEDIUM: 90,   // 90분 이하 - 중간
-  LONG: 180,    // 180분 이하 - 김
-  // 그 이상 - 매우 김
-} as const;
 
 // ============================================================================
 // Helper Functions
@@ -142,34 +135,6 @@ function isPast(task: TempScheduleTask): boolean {
   }
   
   return false;
-}
-
-/**
- * 소요 시간 계산 (분 → 시간/분 문자열)
- */
-function getDurationLabel(startTime: number, endTime: number): string {
-  const duration = endTime - startTime;
-  if (duration < 60) return `${duration}분`;
-  const hours = Math.floor(duration / 60);
-  const mins = duration % 60;
-  return mins > 0 ? `${hours}시간 ${mins}분` : `${hours}시간`;
-}
-
-/**
- * 소요 시간에 따른 색상 클래스 반환
- */
-function getDurationColorClass(startTime: number, endTime: number): string {
-  const duration = endTime - startTime;
-  if (duration <= DURATION_THRESHOLDS.SHORT) {
-    return 'bg-emerald-500/20 text-emerald-400'; // 짧음 - 녹색
-  }
-  if (duration <= DURATION_THRESHOLDS.MEDIUM) {
-    return 'bg-blue-500/20 text-blue-400'; // 중간 - 파랑
-  }
-  if (duration <= DURATION_THRESHOLDS.LONG) {
-    return 'bg-amber-500/20 text-amber-400'; // 김 - 주황
-  }
-  return 'bg-rose-500/20 text-rose-400'; // 매우 김 - 빨강
 }
 
 /**
@@ -355,8 +320,9 @@ const TaskItem = memo(function TaskItem({
   const past = isPast(task);
   const inProgress = isInProgress(task, currentTime);
   const imminentLabel = getImminentLabel(task);
-  const durationLabel = getDurationLabel(task.startTime, task.endTime);
-  const durationColorClass = getDurationColorClass(task.startTime, task.endTime);
+  const durationMinutes = task.endTime - task.startTime;
+  const isRecurring = task.recurrence.type !== 'none';
+  const isArchived = task.isArchived;
   
   // 진행률 계산 (진행 중일 때)
   const progressPercent = useMemo(() => {
@@ -370,15 +336,17 @@ const TaskItem = memo(function TaskItem({
     <div
       className={`
         group flex items-start gap-3 rounded-xl border p-3 transition-all cursor-pointer relative overflow-hidden
-        ${inProgress
-          ? 'border-green-500/50 bg-green-500/10 shadow-md shadow-green-500/20 ring-2 ring-green-500/30'
-          : imminent 
-            ? 'border-orange-500/50 bg-orange-500/10 shadow-md shadow-orange-500/20' 
-            : past
-              ? 'border-[var(--color-border)]/50 bg-[var(--color-bg-surface)]/50 opacity-60'
-              : isNextUp
-                ? 'border-blue-500/50 bg-blue-500/5'
-                : 'border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-primary)]/50 hover:shadow-md'
+        ${isArchived
+          ? 'border-[var(--color-border)]/30 bg-[var(--color-bg-surface)]/30 opacity-50'
+          : inProgress
+            ? 'border-green-500/50 bg-green-500/10 shadow-md shadow-green-500/20 ring-2 ring-green-500/30'
+            : imminent 
+              ? 'border-orange-500/50 bg-orange-500/10 shadow-md shadow-orange-500/20' 
+              : past
+                ? 'border-[var(--color-border)]/50 bg-[var(--color-bg-surface)]/50 opacity-60'
+                : isNextUp
+                  ? 'border-blue-500/50 bg-blue-500/5'
+                  : 'border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-primary)]/50 hover:shadow-md'
         }
       `}
       onClick={() => onEdit(task)}
@@ -412,6 +380,9 @@ const TaskItem = memo(function TaskItem({
               다음
             </span>
           )}
+          {task.favorite && <FavoriteBadge />}
+          {isRecurring && <RecurringBadge />}
+          {isArchived && <ArchivedBadge />}
           <span className={`font-semibold text-sm truncate ${past ? 'text-[var(--color-text-tertiary)] line-through' : 'text-[var(--color-text)]'}`}>
             {task.name}
           </span>
@@ -422,9 +393,7 @@ const TaskItem = memo(function TaskItem({
           <span className={`font-mono font-bold text-base ${inProgress ? 'text-green-400' : imminent ? 'text-orange-400' : past ? 'text-[var(--color-text-tertiary)]' : 'text-[var(--color-text)]'}`}>
             {formatTimeRange(task.startTime, task.endTime)}
           </span>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${durationColorClass}`}>
-            {durationLabel}
-          </span>
+          <DurationBadge durationMinutes={durationMinutes} />
         </div>
         
         {/* 진행 중 - 남은 시간 */}

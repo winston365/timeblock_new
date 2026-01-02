@@ -21,6 +21,8 @@ import {
   type GridSnapInterval,
   type TempScheduleDragState,
   type TempScheduleTemplate,
+  type PromoteResult,
+  type PromotePostAction,
 } from '@/shared/types/tempSchedule';
 import {
   loadTempScheduleTasks,
@@ -32,8 +34,11 @@ import {
   saveTemplate,
   deleteTemplate,
   applyTemplate,
+  loadPinnedTemplateIds,
+  savePinnedTemplateIds,
 } from '@/data/repositories/tempScheduleRepository';
 import { getLocalDate } from '@/shared/lib/utils';
+import { notify } from '@/shared/lib/notify';
 
 // ============================================================================
 // Store Interface
@@ -47,12 +52,16 @@ interface TempScheduleState {
   isLoading: boolean;
   /** 에러 상태 */
   error: string | null;
+  /** 아카이브 보기 여부 */
+  showArchived: boolean;
 
   // === 템플릿 ===
   /** 저장된 템플릿 목록 */
   templates: TempScheduleTemplate[];
   /** 템플릿 모달 열림 여부 */
   isTemplateModalOpen: boolean;
+  /** 고정된 템플릿 ID 목록 */
+  pinnedTemplateIds: string[];
 
   // === 뷰 설정 ===
   /** 현재 뷰 모드 */
@@ -73,11 +82,13 @@ interface TempScheduleState {
   isTaskModalOpen: boolean;
   /** 편집 중인 작업 */
   editingTask: TempScheduleTask | null;
+  /** 커맨드 팔레트 열림 여부 */
+  isCommandPaletteOpen: boolean;
 
   // === Actions ===
   /** 데이터 로드 */
   loadData: () => Promise<void>;
-  /** 특정 날짜의 작업 가져오기 */
+  /** 특정 날짜의 작업 가져오기 (아카이브 필터 적용) */
   getTasksForDate: (date: string) => TempScheduleTask[];
   /** 작업 추가 */
   addTask: (task: Omit<TempScheduleTask, 'id' | 'createdAt' | 'updatedAt'>) => Promise<TempScheduleTask>;
@@ -87,8 +98,16 @@ interface TempScheduleState {
   deleteTask: (id: string) => Promise<void>;
   /** 작업 복제 */
   duplicateTask: (task: TempScheduleTask) => Promise<void>;
-  /** 실제 작업으로 변환 */
+  /** 실제 작업으로 변환 (레거시 - 결과 반환 없음) */
   promoteToRealTask: (task: TempScheduleTask) => Promise<void>;
+  /** 실제 작업으로 변환 + 후처리 (A1) */
+  promoteWithPostAction: (task: TempScheduleTask, postAction: PromotePostAction) => Promise<PromoteResult>;
+  /** 작업 아카이브 */
+  archiveTask: (id: string) => Promise<void>;
+  /** 아카이브 해제 */
+  unarchiveTask: (id: string) => Promise<void>;
+  /** 아카이브 보기 토글 */
+  toggleShowArchived: () => void;
 
   // === View Actions ===
   /** 뷰 모드 변경 */
@@ -121,6 +140,10 @@ interface TempScheduleState {
   openTaskModal: (task?: TempScheduleTask) => void;
   /** 작업 모달 닫기 */
   closeTaskModal: () => void;
+  /** 커맨드 팔레트 열기 */
+  openCommandPalette: () => void;
+  /** 커맨드 팔레트 닫기 */
+  closeCommandPalette: () => void;
 
   // === Template Actions ===
   /** 템플릿 모달 열기 */
@@ -133,6 +156,10 @@ interface TempScheduleState {
   removeTemplate: (id: string) => Promise<void>;
   /** 템플릿 적용 */
   applyTemplateToDate: (template: TempScheduleTemplate, date?: string) => Promise<void>;
+  /** 템플릿 핀 토글 (A7) */
+  toggleTemplatePin: (templateId: string) => Promise<void>;
+  /** 정렬된 템플릿 목록 (pinned 우선) */
+  getSortedTemplates: () => TempScheduleTemplate[];
 }
 
 // ============================================================================
@@ -144,8 +171,10 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
   tasks: [],
   isLoading: false,
   error: null,
+  showArchived: false,
   templates: [],
   isTemplateModalOpen: false,
+  pinnedTemplateIds: [],
   viewMode: 'day',
   selectedDate: getLocalDate(),
   gridSnapInterval: TEMP_SCHEDULE_DEFAULTS.gridSnapInterval,
@@ -153,21 +182,24 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
   isModalOpen: false,
   isTaskModalOpen: false,
   editingTask: null,
+  isCommandPaletteOpen: false,
 
   // === Data Actions ===
   loadData: async () => {
     set({ isLoading: true, error: null });
     try {
-      // 병렬 로드 (템플릿 포함)
-      const [tasks, templates, settings] = await Promise.all([
+      // 병렬 로드 (템플릿 + 핀 목록 포함)
+      const [tasks, templates, pinnedIds, settings] = await Promise.all([
         loadTempScheduleTasks(),
         loadTemplates(),
+        loadPinnedTemplateIds(),
         import('@/data/repositories/settingsRepository').then(m => m.loadSettings())
       ]);
 
       set({
         tasks,
         templates,
+        pinnedTemplateIds: pinnedIds,
         isLoading: false,
         gridSnapInterval: (settings.tempScheduleGridSnapInterval as GridSnapInterval) || TEMP_SCHEDULE_DEFAULTS.gridSnapInterval
       });
@@ -178,8 +210,12 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
   },
 
   getTasksForDate: (date: string) => {
-    const { tasks } = get();
-    return tasks.filter(task => shouldShowOnDate(task, date));
+    const { tasks, showArchived } = get();
+    return tasks.filter(task => {
+      // 아카이브 필터
+      if (!showArchived && task.isArchived) return false;
+      return shouldShowOnDate(task, date);
+    });
   },
 
   addTask: async (taskData) => {
@@ -269,6 +305,99 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
     }
   },
 
+  /**
+   * 실제 작업으로 승격 + 후처리 (A1)
+   * @description 승격 후 원본 temp task를 어떻게 처리할지 선택
+   */
+  promoteWithPostAction: async (task, postAction): Promise<PromoteResult> => {
+    try {
+      const { useDailyDataStore } = await import('@/shared/stores/dailyDataStore');
+      const { generateId } = await import('@/shared/lib/utils');
+
+      const realTaskId = generateId('task');
+      const realTask = {
+        id: realTaskId,
+        text: task.name,
+        completed: false,
+        completedAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        timeBlock: null,
+        goalId: null,
+        emoji: '📅',
+        duration: task.endTime - task.startTime,
+        adjustedDuration: task.endTime - task.startTime,
+        memo: task.memo || '',
+        baseDuration: task.endTime - task.startTime,
+        resistance: 'low' as const,
+        actualDuration: 0,
+      };
+
+      await useDailyDataStore.getState().addTask(realTask);
+
+      // 후처리
+      switch (postAction) {
+        case 'delete':
+          await get().deleteTask(task.id);
+          notify.success(`'${task.name}' 승격 완료 (원본 삭제됨)`);
+          break;
+        case 'archive':
+          await get().archiveTask(task.id);
+          notify.success(`'${task.name}' 승격 완료 (보관함으로 이동)`);
+          break;
+        case 'keep':
+        default:
+          notify.success(`'${task.name}' 승격 완료 (원본 유지)`);
+          break;
+      }
+
+      return {
+        success: true,
+        tempTaskId: task.id,
+        realTaskId,
+      };
+    } catch (error) {
+      console.error('Failed to promote temp schedule task:', error);
+      notify.error('승격 실패: ' + (error instanceof Error ? error.message : '알 수 없는 오류'));
+      return {
+        success: false,
+        tempTaskId: task.id,
+        error: error instanceof Error ? error.message : '알 수 없는 오류',
+      };
+    }
+  },
+
+  /**
+   * 작업 아카이브 (보관함으로 이동)
+   */
+  archiveTask: async (id) => {
+    try {
+      await get().updateTask(id, { isArchived: true });
+    } catch (error) {
+      console.error('Failed to archive temp schedule task:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 아카이브 해제
+   */
+  unarchiveTask: async (id) => {
+    try {
+      await get().updateTask(id, { isArchived: false });
+    } catch (error) {
+      console.error('Failed to unarchive temp schedule task:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 아카이브 보기 토글
+   */
+  toggleShowArchived: () => {
+    set(state => ({ showArchived: !state.showArchived }));
+  },
+
   // === View Actions ===
   setViewMode: (mode) => set({ viewMode: mode }),
 
@@ -341,7 +470,7 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
   // === Modal Actions ===
   openModal: () => set({ isModalOpen: true }),
 
-  closeModal: () => set({ isModalOpen: false, isTaskModalOpen: false, editingTask: null }),
+  closeModal: () => set({ isModalOpen: false, isTaskModalOpen: false, editingTask: null, isCommandPaletteOpen: false }),
 
   openTaskModal: (task) => set({
     isTaskModalOpen: true,
@@ -349,6 +478,10 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
   }),
 
   closeTaskModal: () => set({ isTaskModalOpen: false, editingTask: null }),
+
+  openCommandPalette: () => set({ isCommandPaletteOpen: true }),
+
+  closeCommandPalette: () => set({ isCommandPaletteOpen: false }),
 
   // === Template Actions ===
   openTemplateModal: () => set({ isTemplateModalOpen: true }),
@@ -398,5 +531,41 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
       console.error('Failed to apply template:', error);
       throw error;
     }
+  },
+
+  /**
+   * 템플릿 핀 토글 (A7)
+   */
+  toggleTemplatePin: async (templateId: string) => {
+    const { pinnedTemplateIds } = get();
+    const isPinned = pinnedTemplateIds.includes(templateId);
+    
+    const newPinnedIds = isPinned
+      ? pinnedTemplateIds.filter(id => id !== templateId)
+      : [...pinnedTemplateIds, templateId];
+
+    try {
+      await savePinnedTemplateIds(newPinnedIds);
+      set({ pinnedTemplateIds: newPinnedIds });
+    } catch (error) {
+      console.error('Failed to toggle template pin:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 정렬된 템플릿 목록 (pinned 우선)
+   */
+  getSortedTemplates: () => {
+    const { templates, pinnedTemplateIds } = get();
+    
+    const pinned = templates.filter(t => pinnedTemplateIds.includes(t.id));
+    const unpinned = templates.filter(t => !pinnedTemplateIds.includes(t.id));
+    
+    // pinned를 먼저, 그 다음 unpinned (각각 최신순)
+    return [
+      ...pinned.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+      ...unpinned.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+    ];
   },
 }));

@@ -455,6 +455,7 @@ export function createDefaultTempScheduleTask(
 // ============================================================================
 
 const TEMPLATES_STORAGE_KEY = 'tempScheduleTemplates';
+const PINNED_TEMPLATES_STORAGE_KEY = 'tempSchedulePinnedTemplateIds';
 
 /**
  * 템플릿 목록 로드
@@ -476,6 +477,32 @@ export async function loadTemplates(): Promise<TempScheduleTemplate[]> {
   } catch (error) {
     console.error('Failed to load templates:', error);
     return [];
+  }
+}
+
+/**
+ * 고정(핀)된 템플릿 ID 목록 로드 (A7)
+ */
+export async function loadPinnedTemplateIds(): Promise<string[]> {
+  try {
+    const record = await db.systemState.get(PINNED_TEMPLATES_STORAGE_KEY);
+    return (record?.value as string[]) || [];
+  } catch (error) {
+    console.error('Failed to load pinned template ids:', error);
+    return [];
+  }
+}
+
+/**
+ * 고정(핀)된 템플릿 ID 목록 저장 (A7)
+ */
+export async function savePinnedTemplateIds(ids: string[]): Promise<void> {
+  try {
+    await db.systemState.put({ key: PINNED_TEMPLATES_STORAGE_KEY, value: ids });
+    addSyncLog('dexie', 'save', 'Pinned template ids saved', { count: ids.length });
+  } catch (error) {
+    console.error('Failed to save pinned template ids:', error);
+    throw error;
   }
 }
 
