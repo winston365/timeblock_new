@@ -8,7 +8,8 @@
  */
 
 import { useCallback, useState } from 'react';
-import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
+// Note: useWeeklyGoalStore는 추후 목표량(target) 수정 기능 구현 시 사용 예정
+// import { useWeeklyGoalStore } from '@/shared/stores/weeklyGoalStore';
 import { useToastStore } from '@/shared/stores/toastStore';
 import { RECOMMENDED_PACE } from '../constants/goalConstants';
 import type { WeeklyGoal } from '@/shared/types/domain';
@@ -29,7 +30,8 @@ interface UseRecommendedPaceReturn {
  */
 export function useRecommendedPace(): UseRecommendedPaceReturn {
   const [isApplying, setIsApplying] = useState(false);
-  const setProgress = useWeeklyGoalStore(s => s.setProgress);
+  // Note: setProgress 는 추후 목표량(target) 수정 기능 구현 시 사용 예정
+  // const setProgress = useWeeklyGoalStore(s => s.setProgress);
   const addToast = useToastStore(s => s.addToast);
 
   /**

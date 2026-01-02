@@ -18,7 +18,7 @@
  * - useGoalsHotkeys: 카드 네비게이션 단축키
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import WeeklyGoalPanel from './WeeklyGoalPanel';
 import WeeklyGoalModal from './WeeklyGoalModal';
 import WeeklyResetCard from './components/WeeklyResetCard';

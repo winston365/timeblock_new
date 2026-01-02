@@ -24,6 +24,11 @@ import ExpandHintBadge from './components/ExpandHintBadge';
 import { useCatchUpAlertBanner } from './hooks/useCatchUpAlertBanner';
 import { useQuotaAchievement } from './hooks/useQuotaAchievement';
 import { filterGoals } from './components/GoalsFilterBar';
+import { 
+  getTodayProgressSnapshot, 
+  initializeTodayProgressSnapshots,
+  type TodayProgressSnapshot 
+} from './utils/todayProgressUtils';
 import type { WeeklyGoal } from '@/shared/types/domain';
 
 interface WeeklyGoalPanelProps {
@@ -72,6 +77,19 @@ export default function WeeklyGoalPanel({
   const [editingGoal, setEditingGoal] = useState<WeeklyGoal | undefined>(undefined);
   const [localHistoryGoal, setLocalHistoryGoal] = useState<WeeklyGoal | null>(null);
   const [isCatchUpModalOpen, setIsCatchUpModalOpen] = useState(false);
+  const [todayProgressSnapshot, setTodayProgressSnapshot] = useState<TodayProgressSnapshot | null>(null);
+
+  // 오늘 진행량 스냅샷 초기화 및 로드
+  useEffect(() => {
+    const initSnapshot = async () => {
+      if (goals.length > 0) {
+        await initializeTodayProgressSnapshots(goals);
+        const snapshot = await getTodayProgressSnapshot();
+        setTodayProgressSnapshot(snapshot);
+      }
+    };
+    void initSnapshot();
+  }, [goals]);
 
   // 외부 히스토리 요청 처리
   const effectiveHistoryGoal = useMemo(() => {
@@ -256,6 +274,7 @@ export default function WeeklyGoalPanel({
                 onFocus={() => onFocusGoal?.(goal.id)}
                 forceQuickLogOpen={quickLogGoalId === goal.id}
                 onQuickLogClose={onQuickLogClose}
+                todayProgressSnapshot={todayProgressSnapshot}
               />
             ))}
           </div>

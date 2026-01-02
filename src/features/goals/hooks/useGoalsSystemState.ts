@@ -57,17 +57,17 @@ export function useGoalsSystemState(): UseGoalsSystemStateReturn {
   const [loading, setLoading] = useState(true);
   
   // 필터 상태
-  const [filterTodayOnly, setFilterTodayOnlyState] = useState(
+  const [filterTodayOnly, setFilterTodayOnlyState] = useState<boolean>(
     SYSTEM_STATE_DEFAULTS.goalsFilterTodayOnly
   );
   
   // 축소 모드
-  const [compactMode, setCompactModeState] = useState(
+  const [compactMode, setCompactModeState] = useState<boolean>(
     SYSTEM_STATE_DEFAULTS.goalsCompactMode
   );
   
   // 고급 입력
-  const [advancedInputEnabled, setAdvancedInputEnabledState] = useState(
+  const [advancedInputEnabled, setAdvancedInputEnabledState] = useState<boolean>(
     SYSTEM_STATE_DEFAULTS.goalsAdvancedInputEnabled
   );
   
@@ -77,7 +77,7 @@ export function useGoalsSystemState(): UseGoalsSystemStateReturn {
   );
   
   // 더보기 힌트
-  const [expandHintShown, setExpandHintShownState] = useState(
+  const [expandHintShown, setExpandHintShownState] = useState<boolean>(
     SYSTEM_STATE_DEFAULTS.goalsExpandHintShown
   );
 

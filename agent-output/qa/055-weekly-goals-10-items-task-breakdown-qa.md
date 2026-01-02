@@ -16,6 +16,7 @@ Status: QA Failed
 | Date | Agent Handoff | Request | Summary |
 |------|---------------|---------|---------|
 | 2026-01-02 | User | “Weekly Goals 개선 10개 항목(F3/F5/F8/F9/F10/U1~U5) 구현 검증” | 테스트/타입체크/패턴 준수/통합(wiring) 점검 수행. 유틸 단위테스트는 통과했으나 TypeScript 컴파일/회귀 테스트 실패 및 일부 기능 미연결로 QA Failed. |
+| 2026-01-02 | User | “최종 검증(테스트는 통과)” 재점검 | `npm test`는 PASS(32 files, 388 pass, 1 skip)로 회귀는 해소. 다만 repo-wide `tsc --noEmit`는 여전히 FAIL(Goals 포함)이며, 일부 핵심 훅/유틸이 UI에 연결되지 않거나(guard/undo) 버튼 액션이 비어있어 기능 요구사항 기준 QA Failed 유지. |
 
 ## Timeline
 - **Test Strategy Started**: 2026-01-02
@@ -24,6 +25,11 @@ Status: QA Failed
 - **Testing Started**: 2026-01-02
 - **Testing Completed**: 2026-01-02
 - **Final Status**: QA Failed
+
+## 검증 결과 요약
+- 자동화 테스트(vitest): PASS (`npm test` 기준 32 파일, 388 통과, 1 스킵)
+- 타입 안정성(repo-wide): FAIL (`npx tsc -p tsconfig.json --noEmit` 기준 106 errors)
+- 사용자 플로우 관점: 일부 핵심 기능이 UI에 미연결(Guard/Undo/테마 그룹/리셋카드 히스토리 버튼 액션)로 실제 사용 시 기대 동작 불일치 리스크
 
 ## Test Strategy (Pre-Implementation)
 사용자 관점에서 “주간 목표를 매일 여는 흐름”이 깨지지 않는지에 초점을 둔다.
@@ -107,18 +113,38 @@ npm i -D jsdom @testing-library/react @testing-library/user-event @testing-libra
 
 ### Regression / Full Suite
 - **Command**: `npm test`
-- **Status**: FAIL
-- **Notes**: `tests/template-system.test.ts`에서 2개 실패(weekly-goals와 직접 관련 없는 회귀로 보이지만, CI 관점에서는 블로커)
+- **Status**: PASS
+- **Output Summary**: Test Files 32 passed (32) / Tests 388 passed | 1 skipped (389)
 
 ### Type Safety
 - **Command**: `npx tsc -p tsconfig.json --noEmit`
 - **Status**: FAIL
-- **Notes**: repo-wide로 다수 에러(Goals 관련 파일에서도 boolean literal typing/unused import 등 오류 관측)
+- **Notes**: repo-wide로 106 errors. Weekly Goals 영역에서도 에러가 포함됨(예: `src/features/goals/GoalsModal.tsx` unused import, `src/features/goals/hooks/useGoalsSystemState.ts` boolean state typing, `src/features/goals/hooks/useRecommendedPace.ts` unused variable).
 
 ## Key Findings (User-Facing Risk)
-- 구현된 훅 중 일부(`useProgressGuard`, `useProgressUndo`, `useRecommendedPace`)는 call-site가 확인되지 않아 실제 UX로 발현되지 않을 가능성이 큼
-- `WeeklyResetCard`의 “📊 히스토리” 버튼은 UI는 존재하나 실제 액션 연결 여부가 불명확(테스트/코드 연결 확인 필요)
-- 현재 테스트 인프라(vitest node-only)에서는 Goals TSX 상호작용(ESC/모달/핫키/버튼 클릭)을 자동 검증할 수 없음
+- `useProgressGuard` / `useProgressUndo` / `useRecommendedPace`는 현재 코드베이스에서 import/호출(call-site)이 확인되지 않음 → 기능이 “구현되어 있으나 사용자에게 노출되지 않는” 통합 리스크.
+- `themeGroupUtils`는 테스트 외 사용처가 없어(=UI 연결 없음) “테마 그룹/필터” 기능이 요구사항 대비 미완.
+- `WeeklyResetCard`의 “📊 히스토리” 버튼은 onClick이 없어 사용자 액션이 동작하지 않음(현재는 시각적 버튼만 존재).
+- `npm test`는 PASS지만, repo-wide `tsc --noEmit`가 FAIL이라 타입 안정성 기준으로는 배포 리스크가 남아 있음.
+
+## 구현 완료 vs 남은 작업
+
+### 구현 완료(확인됨)
+- 주차 계산/표현 유틸: `weekUtils` (unit tests PASS)
+- 히스토리 인사이트 계산 + UI: `historyInsightUtils` + `HistoryInsightPanel` (유틸 테스트 PASS, TSX는 자동 검증 불가)
+- “오늘만 보기”/축소 모드 토글 UI: `GoalsFilterBar` (WeeklyGoalPanel/GoalsModal에 연결 확인)
+- 주 1회 배지/힌트 상태 영속화: `goalSystemState` 경유로 systemState 저장(직접 localStorage 사용 없음)
+
+### 남은 작업(블로커/갭)
+- Guard/Undo/권장페이스 훅을 실제 UI(WeeklyGoalCard/CatchUp 등)와 연결하고, 사용자 플로우로 검증
+- `WeeklyResetCard` 히스토리 버튼에 실제 액션(히스토리 모달 오픈 등) 연결
+- repo-wide `tsc -p tsconfig.json --noEmit` 통과(Goals 관련 오류 포함)
+- (권장) UI/Hook 상호작용 테스트 인프라 추가(jsdom + testing-library 등)로 Goals TSX 자동 검증 가능하게 확장
+
+## 권장 후속 작업
+- **P0(배포 전)**: `tsc --noEmit`를 0 에러로 만들거나, 최소한 Goals 관련 에러를 제거해 “변경 범위”를 안정화
+- **P0(기능 완성)**: Guard/Undo/ResetCard 히스토리 버튼을 실제 UX에 연결하고 수동 시나리오(±, 직접입력, undo 타이머, 주간 배너 1회 규칙) 체크리스트로 확인
+- **P1(품질/회귀 방지)**: Goals 영역에만 한정한 jsdom 기반 테스트 러너(또는 분리된 vitest config)를 추가해 TSX/Hook 상호작용을 자동 검증
 
 ---
 

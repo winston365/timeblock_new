@@ -30,6 +30,10 @@ import { QUICK_UPDATE_BUTTONS, GOAL_THEME_PRESETS } from './constants/goalConsta
 import { calculateCatchUpInfo } from './utils/catchUpUtils';
 import GoalStatusTooltip from './components/GoalStatusTooltip';
 import QuickLogSessionPopover from './components/QuickLogSessionPopover';
+import { useProgressGuard } from './hooks/useProgressGuard';
+import { useProgressUndo } from './hooks/useProgressUndo';
+import type { TodayProgressSnapshot } from './utils/todayProgressUtils';
+import { calculateTodayProgressSync } from './utils/todayProgressUtils';
 
 interface WeeklyGoalCardProps {
   goal: WeeklyGoal;
@@ -46,6 +50,8 @@ interface WeeklyGoalCardProps {
   forceQuickLogOpen?: boolean;
   /** Quick Log 닫기 콜백 */
   onQuickLogClose?: () => void;
+  /** 오늘 진행량 스냅샷 (부모에서 전달) */
+  todayProgressSnapshot?: TodayProgressSnapshot | null;
 }
 
 /**
@@ -61,6 +67,7 @@ export default function WeeklyGoalCard({
   onFocus,
   forceQuickLogOpen = false,
   onQuickLogClose,
+  todayProgressSnapshot,
 }: WeeklyGoalCardProps) {
   const updateProgress = useWeeklyGoalStore((s) => s.updateProgress);
   const setProgress = useWeeklyGoalStore((s) => s.setProgress);
@@ -69,6 +76,10 @@ export default function WeeklyGoalCard({
   const getRemainingDays = useWeeklyGoalStore((s) => s.getRemainingDays);
   const getDailyTargetForToday = useWeeklyGoalStore((s) => s.getDailyTargetForToday);
   const addToast = useToastStore((s) => s.addToast);
+
+  // T26/T27: 진행도 Guard 및 Undo 훅
+  const { checkChange, checkDirectSet } = useProgressGuard();
+  const { recordChange, canUndo, executeUndo, remainingTime } = useProgressUndo();
   
   const [directInput, setDirectInput] = useState('');
   const [showDirectInput, setShowDirectInput] = useState(false);
@@ -129,6 +140,11 @@ export default function WeeklyGoalCard({
   const { isCompleted, isBehind, catchUpNeeded, config: severityConfig, severity } = catchUpInfo;
   const progressPercent = goal.target > 0 ? Math.round((goal.currentProgress / goal.target) * 100) : 0;
 
+  // 오늘 진행량 계산 (부모에서 스냅샷 전달받음)
+  const todayProgress = useMemo(() => {
+    return calculateTodayProgressSync(todayProgressSnapshot ?? null, goal.id, goal.currentProgress);
+  }, [todayProgressSnapshot, goal.id, goal.currentProgress]);
+
   // 오늘 할당량 달성 여부 (전체 목표 미달성 상태에서)
   const isQuotaAchieved = useMemo(() => {
     return goal.currentProgress >= todayTarget && goal.currentProgress < goal.target;
@@ -163,9 +179,19 @@ export default function WeeklyGoalCard({
 
   const handleQuickUpdate = async (delta: number) => {
     if (updating) return;
+
+    // T26: Guard 확인
+    if (!checkChange(goal.currentProgress, delta, goal.title)) {
+      return;
+    }
+
     setUpdating(true);
     try {
+      const previousProgress = goal.currentProgress;
       await updateProgress(goal.id, delta);
+      
+      // T27: Undo용 변경 기록
+      recordChange(goal.id, previousProgress, previousProgress + delta);
       
       // 애니메이션
       triggerAnimation(delta);
@@ -184,13 +210,30 @@ export default function WeeklyGoalCard({
     }
     
     if (updating) return;
+
+    // T26: Guard 확인
+    const isAddMode = directInput.startsWith('+') || directInput.startsWith('-');
+    if (isAddMode) {
+      if (!checkChange(goal.currentProgress, value, goal.title)) {
+        return;
+      }
+    } else {
+      if (!checkDirectSet(goal.currentProgress, value, goal.title)) {
+        return;
+      }
+    }
+
     setUpdating(true);
     try {
+      const previousProgress = goal.currentProgress;
+      
       // 입력값을 추가할지 설정할지 결정 (+ 접두사가 있으면 추가)
-      if (directInput.startsWith('+') || directInput.startsWith('-')) {
+      if (isAddMode) {
         await updateProgress(goal.id, value);
+        recordChange(goal.id, previousProgress, previousProgress + value);
       } else {
         await setProgress(goal.id, value);
+        recordChange(goal.id, previousProgress, value);
       }
       setDirectInput('');
       setShowDirectInput(false);
@@ -431,6 +474,25 @@ export default function WeeklyGoalCard({
           </div>
         </GoalStatusTooltip>
 
+        {/* 오늘 진행량 배지 (오늘 얼마나 했는지) */}
+        <div
+          className={`rounded-lg ${
+            todayProgress > 0 
+              ? 'bg-cyan-500/10 text-cyan-300' 
+              : todayProgress < 0 
+              ? 'bg-red-500/10 text-red-300'
+              : 'bg-white/5 text-white/50'
+          } ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}
+          title={`오늘 ${todayProgress >= 0 ? '+' : ''}${todayProgress} ${goal.unit} 진행`}
+          aria-label={`오늘 진행량: ${todayProgress >= 0 ? '+' : ''}${todayProgress} ${goal.unit}`}
+        >
+          <span className="text-inherit/70">오늘:</span>{' '}
+          <span className="font-bold">
+            {todayProgress >= 0 ? '+' : ''}{todayProgress.toLocaleString()}
+          </span>
+          <span className="ml-0.5 opacity-60">{goal.unit}</span>
+        </div>
+
         {/* 히스토리 미리보기 칩 (hover-only 금지) */}
         <button
           type="button"
@@ -527,6 +589,18 @@ export default function WeeklyGoalCard({
               {label}
             </button>
           ))}
+
+          {/* T27: Undo 버튼 (5초 내 가능) */}
+          {canUndo && (
+            <button
+              onClick={executeUndo}
+              className={`rounded-lg bg-amber-500/20 font-bold text-amber-300 hover:bg-amber-500/30 animate-pulse ${compact ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
+              title={`${Math.ceil(remainingTime / 1000)}초 내 취소 가능`}
+              aria-label="변경 취소"
+            >
+              ↩️ 취소 ({Math.ceil(remainingTime / 1000)}s)
+            </button>
+          )}
 
           {/* Quick Log Session 버튼 */}
           <div className="relative">
