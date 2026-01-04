@@ -251,9 +251,13 @@ export async function tryAll<T>(
 // Validation Helpers
 // ============================================================================
 
-/**
+// NOTE: 아래 가드 함수들은 현재 사용처가 없어 주석 처리됨 (PR6, 2026-01-03)
+// 범용 타입 가드는 src/shared/lib/typeGuards.ts 사용 권장
+
+/*
  * 값이 존재하는지 검증 (null, undefined, 빈 문자열 체크)
- */
+ * @deprecated 사용처 없음. 새 코드에서는 typeGuards.ts의 isNonNullish 사용
+ *
 export function assertExists<T>(
   value: T | null | undefined,
   fieldName: string
@@ -262,10 +266,12 @@ export function assertExists<T>(
     throw new Error(`Validation failed: ${fieldName} is required`);
   }
 }
+*/
 
-/**
+/*
  * 배열이 비어있지 않은지 검증
- */
+ * @deprecated 사용처 없음. 새 코드에서는 typeGuards.ts의 isNonEmptyArray 사용
+ *
 export function assertNotEmpty<T>(
   array: T[],
   fieldName: string
@@ -274,10 +280,12 @@ export function assertNotEmpty<T>(
     throw new Error(`Validation failed: ${fieldName} must not be empty`);
   }
 }
+*/
 
-/**
+/*
  * 숫자가 범위 내에 있는지 검증
- */
+ * @deprecated 사용처 없음
+ *
 export function assertInRange(
   value: number,
   min: number,
@@ -288,3 +296,4 @@ export function assertInRange(
     throw new Error(`Validation failed: ${fieldName} must be between ${min} and ${max}`);
   }
 }
+*/

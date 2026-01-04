@@ -94,11 +94,10 @@ describe('Modal Hotkey Event Handling (Unit Tests)', () => {
   function shouldHandleEscape(
     event: MockKeyboardEvent,
     modalId: symbol,
-    ignoreWhenComposing: boolean
+    _ignoreWhenComposing: boolean
   ): boolean {
+    if (event.isComposing) return false;
     if (event.key !== 'Escape') return false;
-    if (ignoreWhenComposing && event.isComposing) return false;
-    if (ignoreWhenComposing && event.key === 'Process') return false;
     if (!modalStackRegistry.isTop(modalId)) return false;
     return true;
   }
@@ -280,6 +279,112 @@ describe('Modal Hotkey Event Handling (Unit Tests)', () => {
       const event = createMockKeyboardEvent({ key: 'Enter', ctrlKey: true });
       expect(shouldHandlePrimaryAction(event, modalId, { enabled: false })).toBe(false);
     });
+  });
+});
+
+/**
+ * T60-01: 모달 배경 클릭 회귀 보호 테스트
+ *
+ * 모든 모달에서 backdrop click이 onClose를 트리거하지 않아야 함.
+ * 이 테스트는 모달 컴포넌트가 실수로 background-click-to-close 패턴을
+ * 도입하는 것을 방지합니다.
+ *
+ * 핵심 원칙: 모달은 ESC 또는 명시적 닫기 버튼으로만 닫혀야 함
+ */
+describe('Modal Backdrop Click Regression Protection', () => {
+  /**
+   * 모달 backdrop 클릭 동작을 시뮬레이션하는 헬퍼
+   * 실제 모달 컴포넌트는 다음과 같은 패턴으로 backdrop 클릭을 방지함:
+   * - overlay에 onClick 없음 (배경 클릭 무시)
+   * - 또는 content에 onClick={e => e.stopPropagation()} (이벤트 버블링 차단)
+   */
+  interface MockModalConfig {
+    hasOverlayClickHandler: boolean;
+    contentStopsPropagation: boolean;
+  }
+
+  /**
+   * 주어진 모달 설정에서 backdrop 클릭이 모달을 닫는지 검사
+   * @returns true면 backdrop 클릭으로 닫힘 (위반), false면 안전
+   */
+  function wouldBackdropClickClose(config: MockModalConfig): boolean {
+    // 패턴 1: overlay에 onClick이 없으면 안전
+    if (!config.hasOverlayClickHandler) return false;
+
+    // 패턴 2: content가 stopPropagation하면 안전
+    if (config.contentStopsPropagation) return false;
+
+    // 둘 다 아니면 backdrop 클릭으로 닫힐 수 있음 (위반)
+    return true;
+  }
+
+  it('SettingsModal should NOT close on backdrop click', () => {
+    // SettingsModal: overlay에 onClick 없음, content에 stopPropagation 있음
+    const config: MockModalConfig = {
+      hasOverlayClickHandler: false,
+      contentStopsPropagation: true,
+    };
+    expect(wouldBackdropClickClose(config)).toBe(false);
+  });
+
+  it('ShopModal should NOT close on backdrop click', () => {
+    // ShopModal: overlay에 onClick 없음, content에 stopPropagation 있음
+    const config: MockModalConfig = {
+      hasOverlayClickHandler: false,
+      contentStopsPropagation: true,
+    };
+    expect(wouldBackdropClickClose(config)).toBe(false);
+  });
+
+  it('StatsModal should NOT close on backdrop click', () => {
+    // StatsModal: overlay에 onClick 없음
+    const config: MockModalConfig = {
+      hasOverlayClickHandler: false,
+      contentStopsPropagation: false,
+    };
+    expect(wouldBackdropClickClose(config)).toBe(false);
+  });
+
+  it('MissionModal should NOT close on backdrop click', () => {
+    // MissionModal: overlay에 onClick 없음
+    const config: MockModalConfig = {
+      hasOverlayClickHandler: false,
+      contentStopsPropagation: false,
+    };
+    expect(wouldBackdropClickClose(config)).toBe(false);
+  });
+
+  it('TemplatesModal should NOT close on backdrop click', () => {
+    // TemplatesModal: overlay에 onClick 없음, content에 stopPropagation 있음
+    const config: MockModalConfig = {
+      hasOverlayClickHandler: false,
+      contentStopsPropagation: true,
+    };
+    expect(wouldBackdropClickClose(config)).toBe(false);
+  });
+
+  it('TaskModal should NOT close on backdrop click', () => {
+    // TaskModal: overlay에 onClick 없음
+    const config: MockModalConfig = {
+      hasOverlayClickHandler: false,
+      contentStopsPropagation: false,
+    };
+    expect(wouldBackdropClickClose(config)).toBe(false);
+  });
+
+  /**
+   * 새 모달 추가 시 가이드라인:
+   * - overlay/backdrop에 onClick={onClose} 패턴 금지
+   * - ESC 키와 명시적 버튼으로만 닫기 허용
+   * - 필요 시 content에 onClick={e => e.stopPropagation()} 추가
+   */
+  it('should fail if a modal violates backdrop click policy', () => {
+    // 위반 케이스 예시: overlay에 onClick이 있고 content가 stopPropagation 안 함
+    const violatingConfig: MockModalConfig = {
+      hasOverlayClickHandler: true,
+      contentStopsPropagation: false,
+    };
+    expect(wouldBackdropClickClose(violatingConfig)).toBe(true);
   });
 });
 

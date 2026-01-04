@@ -179,9 +179,9 @@ export function LogsTab({
                                         </span>
                                     </div>
                                     <div className="font-medium text-[var(--color-text)]">{log.message}</div>
-                                    {log.details && (
+                                    {log.data && (
                                         <pre className="mt-1 overflow-x-auto rounded bg-[var(--color-bg-tertiary)] p-2 font-mono text-[10px] text-[var(--color-text-secondary)]">
-                                            {JSON.stringify(log.details, null, 2)}
+                                            {log.data}
                                         </pre>
                                     )}
                                 </div>

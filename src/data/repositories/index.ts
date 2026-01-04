@@ -8,7 +8,18 @@
 
 export * from './baseRepository';
 export * from './dailyDataRepository';
-export * from './gameStateRepository';
+// gameStateRepository에서 templateRepository와 중복되는 export 제외
+export {
+  createInitialGameState,
+  loadGameState,
+  saveGameState,
+  updateGameState,
+  addXP,
+  spendXP,
+  initializeNewDay,
+  updateQuestProgress,
+  processDailyReset,
+} from './gameStateRepository';
 export * from './settingsRepository';
 export * from './waifuRepository';
 export * from './templateRepository';

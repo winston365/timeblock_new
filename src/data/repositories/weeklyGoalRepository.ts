@@ -107,6 +107,8 @@ function normalizeWeeklyGoal(goal: WeeklyGoal, fallbackOrder: number, currentWee
         ? goal.currentProgress
         : 0,
     order: typeof goal.order === 'number' && Number.isFinite(goal.order) ? goal.order : fallbackOrder,
+    // priority가 없는 기존 데이터는 order 값을 fallback으로 사용
+    priority: typeof goal.priority === 'number' && Number.isFinite(goal.priority) ? goal.priority : (goal.order ?? fallbackOrder),
     weekStartDate: typeof goal.weekStartDate === 'string' && goal.weekStartDate ? goal.weekStartDate : currentWeekStart,
     history: safeHistory,
   };
@@ -205,6 +207,11 @@ export async function addWeeklyGoal(
     const goals = await loadWeeklyGoals();
     const currentWeekStart = getWeekStartDate();
 
+    // priority 계산: 전달된 값이 있으면 사용, 없으면 기존 최대값 + 1 (또는 1)
+    const existingPriorities = goals.map(g => g.priority ?? g.order ?? 0);
+    const maxPriority = existingPriorities.length > 0 ? Math.max(...existingPriorities) : 0;
+    const defaultPriority = (data as { priority?: number }).priority ?? maxPriority + 1;
+
     const newGoal: WeeklyGoal = {
       ...data,
       id: generateId('wgoal'),
@@ -212,6 +219,7 @@ export async function addWeeklyGoal(
       weekStartDate: currentWeekStart,
       history: [],
       order: goals.length,
+      priority: defaultPriority,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

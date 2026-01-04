@@ -24,15 +24,18 @@ npm run dist:win              # Build Windows installer
 npm run dist:mac              # Build macOS app
 npm run dist:linux            # Build Linux package
 
-# Code Quality
-npm run lint                  # Run ESLint on TypeScript files (only automated check - no test suite)
+# Code Quality & Testing
+npm run lint                  # Run ESLint on TypeScript files
+npm test                      # Run Vitest test suite (494+ tests)
+npm run test:watch            # Run tests in watch mode
+npm run test:coverage         # Run tests with coverage report
 npm run bump                  # Bump patch version and commit
 
 # Preview
 npm run preview               # Preview production build
 ```
 
-**Note**: There is no dedicated test suite. Manually verify in both `npm run preview` and `npm run electron:prod` when behavior could diverge between web and desktop.
+**Note**: Run `npm test` to execute the full test suite (Vitest). For behavior that could diverge between web and desktop, also verify in both `npm run preview` and `npm run electron:prod`.
 
 ## Architecture Overview
 

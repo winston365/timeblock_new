@@ -563,6 +563,19 @@ describe('unifiedTaskService', () => {
 
       expect(loadDailyData).toHaveBeenCalledWith('2025-01-05');
     });
+
+    // T70-05: getUncompletedTasks 에러 전파 검증
+    it('getUncompletedTasks propagates error from getAllActiveTasks', async () => {
+      loadDailyData.mockRejectedValueOnce(new Error('Repository failure'));
+
+      const { getUncompletedTasks } = await import('@/shared/services/task/unifiedTaskService');
+
+      // getUncompletedTasks는 내부적으로 getAllActiveTasks를 호출하므로
+      // 동일한 에러 코드가 전파되어야 함
+      await expect(getUncompletedTasks()).rejects.toMatchObject({
+        code: 'TASK_GET_ALL_ACTIVE_FAILED',
+      });
+    });
   });
 
   // =========================================================================
@@ -690,23 +703,38 @@ describe('unifiedTaskService', () => {
     });
 
     it('moveBlockToInbox with optimistic=false calls repo when task found', async () => {
-      // Skip this test for now - the mock isolation issue requires
-      // a deeper refactor of the test setup. The optimistic path
-      // (which is the default) is well-tested above.
-      // 
-      // The non-optimistic path is a fallback and the core functionality
-      // (finding task location + calling repo) is tested in other tests.
-      expect(true).toBe(true);
+      vi.clearAllMocks();
+      vi.resetModules();
+      
+      // mock을 명시적으로 초기화하고 재설정
+      getInboxTaskById.mockReset();
+      loadDailyData.mockReset();
+      updateDailyTask.mockReset();
+
+      const task = makeTask({ id: 'move-out-legacy', timeBlock: 'morning' });
+
+      // inbox에서 못 찾고 daily에서 찾도록 설정
+      getInboxTaskById.mockResolvedValue(null);
+      // dateHint로 전달할 날짜에서 task를 반환하도록 설정
+      loadDailyData.mockResolvedValue({ tasks: [task] });
+      updateDailyTask.mockResolvedValue(undefined);
+
+      const { moveBlockToInbox } = await import('@/shared/services/task/unifiedTaskService');
+
+      // dateHint를 제공하여 findTaskLocation이 해당 날짜에서 바로 task를 찾도록 함
+      const result = await moveBlockToInbox('move-out-legacy', '2025-01-10', { optimistic: false });
+
+      expect(result).toBe(true);
+      expect(updateDailyTask).toHaveBeenCalledWith('move-out-legacy', { timeBlock: null }, '2025-01-10');
+      expect(dailyRefresh).toHaveBeenCalled();
+      expect(inboxRefresh).toHaveBeenCalled();
     });
 
-    // Note: These edge case tests for non-optimistic mode are skipped due to
-    // mock isolation issues in the current test setup. The non-optimistic path
-    // is a fallback feature and the core optimistic functionality is well-tested.
-    // See: moveInboxToBlock/moveBlockToInbox with optimistic=true tests above.
-    it.skip('moveInboxToBlock returns false when task not in inbox (non-optimistic)', async () => {
+    it('moveInboxToBlock returns false when task not in inbox (non-optimistic)', async () => {
       vi.clearAllMocks();
-      
-      getInboxTaskById.mockResolvedValueOnce(null);
+
+      // 명시적으로 inbox와 dailyData 모두에서 못 찾도록 설정
+      getInboxTaskById.mockResolvedValue(null);
       loadDailyData.mockResolvedValue(null);
 
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -733,6 +761,47 @@ describe('unifiedTaskService', () => {
       expect(result).toBe(false);
       expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Task not found in daily'));
       consoleWarnSpy.mockRestore();
+    });
+
+    // T70-03: moveInboxToBlock 에러 코드 래핑 검증
+    it('moveInboxToBlock throws TASK_MOVE_INBOX_TO_BLOCK_FAILED when repo fails (non-optimistic)', async () => {
+      vi.clearAllMocks();
+
+      const task = makeTask({ id: 'move-error-task' });
+
+      getInboxTaskById.mockResolvedValue(task);
+      updateInboxTask.mockRejectedValueOnce(new Error('Repository failure'));
+
+      const { moveInboxToBlock } = await import('@/shared/services/task/unifiedTaskService');
+
+      await expect(moveInboxToBlock('move-error-task', 'morning', { optimistic: false })).rejects.toMatchObject({
+        code: 'TASK_MOVE_INBOX_TO_BLOCK_FAILED',
+      });
+    });
+
+    // T70-04: moveBlockToInbox 에러 코드 래핑 검증
+    it('moveBlockToInbox throws TASK_MOVE_BLOCK_TO_INBOX_FAILED when repo fails (non-optimistic)', async () => {
+      vi.clearAllMocks();
+      vi.resetModules();
+
+      // mock을 명시적으로 초기화하고 재설정
+      getInboxTaskById.mockReset();
+      loadDailyData.mockReset();
+      updateDailyTask.mockReset();
+
+      const task = makeTask({ id: 'move-error-task-2', timeBlock: 'morning' });
+
+      getInboxTaskById.mockResolvedValue(null);
+      // dateHint로 전달할 날짜에서 task를 반환하도록 설정
+      loadDailyData.mockResolvedValue({ tasks: [task] });
+      updateDailyTask.mockRejectedValue(new Error('Repository failure'));
+
+      const { moveBlockToInbox } = await import('@/shared/services/task/unifiedTaskService');
+
+      // dateHint를 제공하여 findTaskLocation이 해당 날짜에서 바로 task를 찾도록 함
+      await expect(moveBlockToInbox('move-error-task-2', '2025-01-10', { optimistic: false })).rejects.toMatchObject({
+        code: 'TASK_MOVE_BLOCK_TO_INBOX_FAILED',
+      });
     });
   });
 });

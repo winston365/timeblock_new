@@ -240,8 +240,10 @@ describe('Template Legacy Normalization', () => {
     weeklyDays: number[];
     intervalDays: number;
   } {
-    const hasRecurrence = template.recurrenceType && template.recurrenceType !== 'none';
-    const shouldAutoGenerate = template.autoGenerate ?? hasRecurrence ?? false;
+    const hasRecurrence = Boolean(template.recurrenceType && template.recurrenceType !== 'none');
+    const shouldAutoGenerate: boolean = template.autoGenerate !== undefined 
+      ? template.autoGenerate 
+      : hasRecurrence;
     
     // autoGenerate가 true인데 recurrenceType이 'none'이면 'daily'로 기본값 설정
     const effectiveRecurrenceType = shouldAutoGenerate && (!template.recurrenceType || template.recurrenceType === 'none')

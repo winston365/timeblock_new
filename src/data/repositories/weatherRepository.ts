@@ -5,20 +5,12 @@
  * @description 날씨 API 응답을 로컬에 캐싱하여 API 호출 횟수를 줄입니다.
  */
 
-import { db } from '../db/dexieClient';
+import { db, type WeatherCacheRecord } from '../db/dexieClient';
 import type { DayForecast } from '@/shared/types/weather';
 import { getLocalDate } from '@/shared/lib/utils';
 
-export interface WeatherCacheData {
-    forecast: DayForecast[];
-}
-
-export interface WeatherCacheRecord {
-    id: string;
-    data: WeatherCacheData;
-    timestamp: number;
-    lastUpdatedDate: string;
-}
+// Re-export for external usage
+export type { WeatherCacheRecord };
 
 function isValidForecast(forecast: unknown): forecast is DayForecast[] {
     return Array.isArray(forecast) && forecast.length > 0;
@@ -33,8 +25,8 @@ export async function loadCachedWeather(): Promise<{ forecast: DayForecast[]; ti
         const cached = await db.weather.get('latest');
         if (!cached) return null;
 
-        // 기본 필드 검증
-        if (!cached.data || !isValidForecast(cached.data.forecast) || !cached.timestamp || !cached.lastUpdatedDate) {
+        // 기본 필드 검증 - data가 DayForecast[] 배열임
+        if (!cached.data || !isValidForecast(cached.data) || !cached.timestamp || !cached.lastUpdatedDate) {
             console.warn('[WeatherRepository] Cached weather data invalid. Ignoring cache.');
             await db.weather.delete('latest').catch((err) => console.error('[WeatherRepository] Failed to clear invalid cache', err));
             return null;
@@ -46,7 +38,7 @@ export async function loadCachedWeather(): Promise<{ forecast: DayForecast[]; ti
             return null;
         }
 
-        return { forecast: cached.data.forecast, timestamp: cached.timestamp };
+        return { forecast: cached.data, timestamp: cached.timestamp };
     } catch (error) {
         console.error('[WeatherRepository] Load failed:', error);
         return null;
@@ -63,7 +55,7 @@ export async function cacheWeather(forecast: DayForecast[], timestamp: number): 
         const today = getLocalDate();
         await db.weather.put({
             id: 'latest',
-            data: { forecast },
+            data: forecast,
             timestamp: timestamp,
             lastUpdatedDate: today
         });

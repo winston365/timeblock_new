@@ -267,6 +267,14 @@ JSON 배열로만 응답하세요:
 type NonNullTimeBlockId = Exclude<TimeBlockId, null>;
 
 const TIME_BLOCK_LABELS: Record<NonNullTimeBlockId, string> = {
+    // New semantic IDs
+    'dawn': '새벽 (5-8시)',
+    'morning': '오전 (8-11시)',
+    'noon': '점심 (11-14시)',
+    'afternoon': '오후 (14-17시)',
+    'evening': '저녁 (17-20시)',
+    'night': '밤 (20-23시)',
+    // Legacy IDs (기존 저장 데이터 호환)
     '5-8': '이른 아침 (5-8시)',
     '8-11': '오전 (8-11시)',
     '11-14': '점심 (11-14시)',

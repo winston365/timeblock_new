@@ -35,6 +35,8 @@ interface FocusViewProps {
     onEditTask: (task: Task) => void;
     onUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void> | void;
     onToggleTask: (taskId: string) => Promise<void> | void;
+    /** 타임블록 잠금 토글 */
+    onToggleLock?: () => void;
     onExitFocusMode: () => void;
     onCreateTask: (text: string, blockId: TimeBlockId, hourSlot?: number) => Promise<void>;
 }
@@ -47,6 +49,7 @@ export function FocusView({
     onEditTask,
     onUpdateTask,
     onToggleTask,
+    onToggleLock: _onToggleLock,
     onExitFocusMode,
     onCreateTask,
 }: FocusViewProps) {

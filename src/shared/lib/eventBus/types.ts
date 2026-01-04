@@ -76,6 +76,10 @@ export interface InboxTaskRemovedEvent {
     taskId: string;
 }
 
+export interface InboxDailyGoalAchievedEvent {
+    goalCount: number;
+}
+
 /**
  * TimeBlock 도메인 이벤트
  */
@@ -173,6 +177,7 @@ export interface EventTypeMap {
 
     // Inbox events
     'inbox:taskRemoved': InboxTaskRemovedEvent;
+    'inbox:dailyGoalAchieved': InboxDailyGoalAchievedEvent;
 
     // Block events
     'block:locked': BlockLockedEvent;

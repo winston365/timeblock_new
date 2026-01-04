@@ -25,7 +25,7 @@ import { loadData, saveData, type RepositoryConfig } from './baseRepository';
 /**
  * WaifuState Repository 설정
  */
-const waifuStateConfig: RepositoryConfig<WaifuState> = {
+const waifuStateConfig: RepositoryConfig<WaifuState, string> = {
   table: db.waifuState,
   createInitial: () => ({
     affection: 0,

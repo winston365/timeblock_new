@@ -42,6 +42,7 @@ import {
 import { useModalHotkeys } from '@/shared/hooks';
 import AsyncStatePanel from '@/shared/components/status/AsyncStatePanel';
 import StatusBanner from '@/shared/components/status/StatusBanner';
+import { ModalEscHint } from '@/shared/components/ModalEscHint';
 
 const modalOverlayClass =
     'fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(0,0,0,0.65)] p-4 backdrop-blur';
@@ -151,9 +152,9 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
             (Object.keys(localSettings) as (keyof Settings)[]).forEach(key => {
                 const value = localSettings[key];
                 if (secretKeys.includes(key)) {
-                    secretUpdates[key] = value;
+                    (secretUpdates as Record<string, unknown>)[key] = value;
                 } else {
-                    syncUpdates[key] = value;
+                    (syncUpdates as Record<string, unknown>)[key] = value;
                 }
             });
 
@@ -250,7 +251,10 @@ export default function SettingsModal({ isOpen, onClose, onSaved }: SettingsModa
                 <div className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
                     <div>
                         <h2 className="text-xl font-semibold text-[var(--color-text)]">⚙️ 설정</h2>
-                        <p className="text-xs uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">API 키 및 앱 설정</p>
+                        <div className="flex items-center gap-3">
+                            <p className="text-xs uppercase tracking-[0.3em] text-[var(--color-text-tertiary)]">API 키 및 앱 설정</p>
+                            <ModalEscHint variant="header" />
+                        </div>
                     </div>
                     <button
                         className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1 text-lg font-semibold text-[var(--color-text)] transition hover:border-[var(--color-primary)] hover:text-white"

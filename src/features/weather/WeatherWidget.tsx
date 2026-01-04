@@ -22,7 +22,7 @@ import type { HourlyWeather } from '@/shared/types/weather';
 import { getLocalDate } from '@/shared/lib/utils';
 
 /** 자동 새로고침 시간대 (9시, 11시, 12시, 15시) */
-const AUTO_REFRESH_HOURS = [9, 11, 12, 15] as const;
+const AUTO_REFRESH_HOURS: readonly number[] = [9, 11, 12, 15];
 
 /**
  * TopToolbar 날씨 위젯 컴포넌트

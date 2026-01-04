@@ -51,7 +51,8 @@ export default function ScheduleView() {
   } = useDailyData();
   const { updateQuestProgress } = useGameState();
   const { show: showWaifu } = useWaifuCompanionStore();
-  const { isFocusMode, toggleFocusMode, setFocusMode } = useFocusModeStore();
+  const { isFocusMode, toggleFocusMode: _toggleFocusMode, setFocusMode } = useFocusModeStore();
+  void _toggleFocusMode; // 추후 포커스 모드 토글 버튼에서 사용 예정
   const { 
     showPastBlocks, 
     isWarmupModalOpen, 
@@ -357,14 +358,15 @@ export default function ScheduleView() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _handleToggleFocusMode = () => {
+  /* 현재 사용되지 않음 - 추후 포커스 모드 토글 버튼에서 사용 예정
+  const handleToggleFocusMode = () => {
     if (!currentBlockId) {
       alert('현재 진행 중인 타임블록이 있을 때만 켤 수 있어.');
       return;
     }
     toggleFocusMode();
   };
+  */
 
   const handleDropTask = async (taskId: string, targetBlockId: TimeBlockId) => {
     if (!dailyData) return;
@@ -428,12 +430,14 @@ export default function ScheduleView() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _handleManualWarmup = () => {
+  /* 현재 사용되지 않음 - 추후 워밍업 버튼에서 사용 예정
+  const handleManualWarmup = () => {
     const target = getNextWarmupTarget(currentHour);
     if (!target) return;
     insertWarmupTasks(target.blockId, target.hourSlot);
   };
+  */
+
   const handleSaveWarmupPreset = (preset: WarmupPresetItem[]) => {
     setWarmupPreset(preset);
     syncToFirebase(warmupPresetStrategy, preset).catch(err =>

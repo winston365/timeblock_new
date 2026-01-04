@@ -66,7 +66,7 @@ export {
 /**
  * GameState Repository 설정
  */
-const gameStateConfig: RepositoryConfig<GameState> = {
+const gameStateConfig: RepositoryConfig<GameState, string> = {
   table: db.gameState,
   firebaseStrategy: gameStateStrategy,
   createInitial: () => ({
@@ -84,7 +84,7 @@ const gameStateConfig: RepositoryConfig<GameState> = {
     dailyTimerCount: 0,
     inventory: {},
   }),
-  sanitize: (data: GameState) => {
+  sanitize: (data) => {
     const { level: _legacyLevel, ...rest } = data as GameState & { level?: number };
     void _legacyLevel;
     return {
@@ -286,14 +286,17 @@ export async function updateQuestProgress(
 
     // 완료된 퀘스트들의 보상 XP 지급
     for (const quest of completedQuests) {
-      await addXP(quest.reward);
+      const rewardXP = quest.reward ?? 0;
+      if (rewardXP > 0) {
+        await addXP(rewardXP);
+      }
       const { gameStateEventHandler } = await import('@/shared/services/gameplay/gameState');
       await gameStateEventHandler.handleEvents([
         {
           type: 'quest_completed',
           questId: quest.id,
           questTitle: quest.title,
-          reward: quest.reward,
+          reward: rewardXP,
         },
       ]);
     }

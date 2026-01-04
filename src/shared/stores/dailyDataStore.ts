@@ -482,7 +482,7 @@ export const useDailyDataStore = create<DailyDataStore>((set, get) => ({
         // 🎉 Event Bus: task:completed 이벤트 발행
         eventBus.emit('task:completed', {
           taskId: updatedTask.id,
-          xpEarned: result?.xpEarned || 0,
+          xpEarned: result?.xpGained || 0,
           isPerfectBlock: result?.isPerfectBlock || false,
           blockId: updatedTask.timeBlock || undefined,
           goalId: updatedTask.goalId || undefined,

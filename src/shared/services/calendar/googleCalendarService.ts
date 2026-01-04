@@ -545,8 +545,9 @@ export async function getTaskCalendarMapping(taskId: string): Promise<TaskCalend
   // Convert GenericCalendarMapping to TaskCalendarMapping format
   return {
     taskId: mapping.taskId,
-    eventId: mapping.calendarEventId,
-    calendarId: 'primary', // Generic mapping doesn't store calendarId
+    calendarEventId: mapping.calendarEventId,
+    date: mapping.date ?? '', // GenericCalendarMapping may not have date
     lastSyncedAt: mapping.lastSyncedAt,
+    syncStatus: 'synced' as const,
   };
 }

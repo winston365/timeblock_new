@@ -10,9 +10,8 @@
  *   - DailyTokenUsage: 토큰 사용량 타입
  */
 
-import type { Settings, DontDoChecklistItem, TimeSlotTagTemplate } from '@/shared/types';
-import type { SyncAction, SyncType, SyncLogEntry } from '@/shared/services/firebase/syncLogger';
-import type { DailyTokenUsage } from '@/data/repositories/tokenUsageRepository';
+import type { Settings, DontDoChecklistItem, TimeSlotTagTemplate, DailyTokenUsage } from '@/shared/types/domain';
+import type { SyncAction, SyncType, SyncLogEntry } from '@/shared/services/sync/syncLogger';
 
 // Setter type for local settings
 export type SetLocalSettings = React.Dispatch<React.SetStateAction<Settings | null>>;

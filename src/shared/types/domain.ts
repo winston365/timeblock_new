@@ -87,6 +87,10 @@ export interface Task {
   actualDuration: number; // 실제 소요시간 (분)
   createdAt: string; // 생성 시각 (ISO 8601)
   completedAt: string | null; // 완료 시각 (ISO 8601)
+  /** 마지막 업데이트 시각 (ISO 8601) - 동기화 충돌 해결 시 사용 */
+  updatedAt?: string;
+  /** 예정된 날짜 (YYYY-MM-DD) - 캘린더 동기화 시 사용 */
+  scheduledDate?: string;
   fromAutoTemplate?: boolean; // 자동생성 템플릿 여부
   preparation1?: string; // 준비 사항 1 (예상 방해물 또는 대처 환경)
   preparation2?: string; // 준비 사항 2 (예상 방해물 또는 대처 환경)
@@ -172,6 +176,8 @@ export interface Quest {
   target: number; // 목표값
   progress: number; // 현재 진행도
   completed: boolean;
+  /** 퀘스트 완료 시 보상 XP */
+  reward?: number;
 }
 
 /**
@@ -503,6 +509,8 @@ export interface AIInsight {
   date: string; // YYYY-MM-DD (Primary Key)
   content: string; // 인사이트 내용
   createdAt: string; // 생성 시각 (ISO)
+  /** 생성 시각 (타임스탬프) - 레거시 호환 */
+  generatedAt?: number;
 }
 
 // ============================================================================
@@ -543,7 +551,9 @@ export interface WeeklyGoal {
   // 메타데이터
   icon?: string; // 아이콘 (이모지)
   color?: string; // 색상
-  order: number; // 정렬 순서
+  order: number; // 정렬 순서 (레거시, 드래그 앤 드롭용)
+  /** 우선순위 (낮을수록 높은 우선순위, 먼저 표시됨) */
+  priority?: number;
 
   // T07: 테마 필드 (카테고리화)
   /** 테마/카테고리 (예: 'study', 'health', '커스텀 테마') */
@@ -651,7 +661,13 @@ export interface DailyBattleState {
  * 전투 설정
  */
 export interface BattleSettings {
-
+  // 보스 기본 설정
+  /** 일일 보스 생성 횟수 제한 */
+  dailyBossCount?: number;
+  /** 보스 기본 HP */
+  bossBaseHP?: number;
+  /** 보스 처치 시 기본 XP */
+  bossDefeatXP?: number;
 
   // 미션 설정
   missions: BattleMission[];     // 미션 목록 (Firebase 동기화)

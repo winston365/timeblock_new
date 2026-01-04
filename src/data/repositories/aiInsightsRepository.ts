@@ -6,19 +6,17 @@
  */
 
 import { db } from '../db/dexieClient';
+import type { AIInsight } from '@/shared/types/domain';
 
-export interface AIInsightRecord {
-    date: string;        // YYYY-MM-DD
-    content: string;     // 인사이트 내용
-    generatedAt: number; // 생성 시각
-}
+// AIInsightRecord는 레거시 alias - 이제 AIInsight 사용 권장
+export type AIInsightRecord = AIInsight;
 
 /**
  * AI 인사이트 조회
  * @param date 날짜 (YYYY-MM-DD)
  * @returns 인사이트 레코드 또는 undefined
  */
-export async function getAIInsight(date: string): Promise<AIInsightRecord | undefined> {
+export async function getAIInsight(date: string): Promise<AIInsight | undefined> {
     try {
         return await db.aiInsights.get(date);
     } catch (error) {
@@ -37,6 +35,7 @@ export async function saveAIInsight(date: string, content: string): Promise<void
         await db.aiInsights.put({
             date,
             content,
+            createdAt: new Date().toISOString(),
             generatedAt: Date.now(),
         });
     } catch (error) {

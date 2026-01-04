@@ -458,9 +458,9 @@ const TEMPLATES_STORAGE_KEY = 'tempScheduleTemplates';
 const PINNED_TEMPLATES_STORAGE_KEY = 'tempSchedulePinnedTemplateIds';
 
 /**
- * 템플릿 목록 로드
+ * 임시 일정 템플릿 목록 로드
  */
-export async function loadTemplates(): Promise<TempScheduleTemplate[]> {
+export async function loadTempScheduleTemplates(): Promise<TempScheduleTemplate[]> {
   try {
     const record = await db.systemState.get(TEMPLATES_STORAGE_KEY);
     const templates = (record?.value as TempScheduleTemplate[]) || [];
@@ -534,7 +534,7 @@ export async function saveTemplate(
   };
 
   try {
-    const templates = await loadTemplates();
+    const templates = await loadTempScheduleTemplates();
     templates.push(template);
     await db.systemState.put({ key: TEMPLATES_STORAGE_KEY, value: templates });
     addSyncLog('dexie', 'save', 'Template saved', { id: template.id, name });
@@ -546,11 +546,11 @@ export async function saveTemplate(
 }
 
 /**
- * 템플릿 삭제
+ * 임시 일정 템플릿 삭제
  */
-export async function deleteTemplate(id: string): Promise<void> {
+export async function deleteTempScheduleTemplate(id: string): Promise<void> {
   try {
-    const templates = await loadTemplates();
+    const templates = await loadTempScheduleTemplates();
     const filtered = templates.filter(t => t.id !== id);
     await db.systemState.put({ key: TEMPLATES_STORAGE_KEY, value: filtered });
     addSyncLog('dexie', 'save', 'Template deleted', { id });

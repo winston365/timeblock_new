@@ -40,6 +40,8 @@ flowchart LR
     Subscribers[subscribers/*]
     TaskCompletion[taskCompletionService
 (handler pipeline)]
+    UnifiedTaskService[unifiedTaskService
+(usecase/orchestrator)]
   end
 
   subgraph Data[Data Layer]
@@ -70,12 +72,16 @@ flowchart LR
   DailyStore --> TaskCompletion
   InboxStore --> EventBus
   DailyStore --> EventBus
+  DailyStore --> UnifiedTaskService
+  InboxStore --> UnifiedTaskService
   EventBus --> Subscribers
   Subscribers --> Repo
 
   GoalsUI --> WeeklyGoalStore
   WeeklyGoalStore --> Repo
   GlobalGoalStore --> Repo
+
+  UnifiedTaskService --> Repo
 
   DailyHook --> Repo --> Dexie
   ScheduleStore --> SystemState

@@ -169,7 +169,7 @@ export function mergeTaskArray(
 
   // Map을 배열로 변환하고 createdAt으로 정렬 (최신순)
   const mergedTasks = Array.from(taskMap.values()).sort(
-    (a, b) => b.createdAt - a.createdAt
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
   // 더 최신 타임스탬프 사용

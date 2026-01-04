@@ -170,7 +170,7 @@ export const useInboxStore = create<InboxStore>((set, get) => ({
                 // 🎉 Event Bus: task:completed 이벤트 발행
                 eventBus.emit('task:completed', {
                     taskId: updatedTask.id,
-                    xpEarned: result?.xpEarned || 0,
+                    xpEarned: result?.xpGained || 0,
                     isPerfectBlock: false, // 인박스 작업은 블록이 없으므로 항상 false
                     blockId: undefined,
                     goalId: updatedTask.goalId || undefined,

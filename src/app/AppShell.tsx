@@ -235,6 +235,8 @@ export default function AppShell() {
             onToggleTimeline={toggleTimeline}
             onToggleLeftPanel={toggleLeftSidebar}
             leftPanelVisible={!effectiveLeftCollapsed}
+            isAlwaysOnTop={isAlwaysOnTop}
+            onToggleAlwaysOnTop={handleToggleAlwaysOnTop}
           />
           {/* DailyXPBar 제거됨 (Phase 1) - 컴포넌트 파일은 유지 */}
           {/* TimeBlockXPBar 제거됨 (Phase 1 - 오늘 하루 전체 XP바(목표x6) 제거) - 컴포넌트 파일은 유지 */}

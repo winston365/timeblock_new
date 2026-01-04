@@ -42,7 +42,7 @@ const DEFAULT_TIME_SLOT_TAGS: TimeSlotTagTemplate[] = [
   { id: 'focus', label: '집중', color: '#c7d2fe', icon: '🎯' },
 ];
 
-const settingsConfig: RepositoryConfig<Settings> = {
+const settingsConfig: RepositoryConfig<Settings, string> = {
   table: db.settings,
 
   firebaseStrategy: settingsStrategy,
@@ -65,7 +65,7 @@ const settingsConfig: RepositoryConfig<Settings> = {
     updatedAt: Date.now(),
     updatedByDevice: getDeviceId(),
   }),
-  sanitize: (data: Settings) => {
+  sanitize: (data) => {
     // 기존 사용자를 위한 마이그레이션 - 중앙화된 기본값 사용
     return {
       ...data,

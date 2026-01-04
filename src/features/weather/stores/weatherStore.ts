@@ -28,6 +28,8 @@ interface WeatherStore extends WeatherState {
     insightCache: InsightCache;
     /** 인사이트 로딩 중인 날짜 인덱스 */
     insightLoadingDay: number | null;
+    /** 마지막 에러 발생 시각 (ms) */
+    lastErrorAt: number | null;
     
     fetchWeather: (forceRefresh?: boolean, dayIndex?: number, allowRecovery?: boolean) => Promise<void>;
     setSelectedDay: (day: number) => void;

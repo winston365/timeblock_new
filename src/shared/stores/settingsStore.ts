@@ -67,18 +67,20 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   /**
    * 설정 데이터 로드
    *
-   * @returns {Promise<void>}
+   * @returns {Promise<Settings>}
    * @throws {Error} 로드 실패 시
    * @sideEffects
    *   - IndexedDB에서 설정 조회
    *   - 상태 업데이트
    */
   loadData: async () => {
-    return withAsyncAction(set, async () => {
+    const result = await withAsyncAction(set, async () => {
       const settings = await loadSettings();
       set({ settings });
       return settings;
     }, { errorPrefix: 'SettingsStore: load' });
+    // loadSettings는 항상 값을 반환하므로 (createInitial fallback이 있음)
+    return result as Settings;
   },
 
   /**

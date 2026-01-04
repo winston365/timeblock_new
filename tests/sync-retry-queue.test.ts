@@ -165,3 +165,95 @@ describe('syncRetryQueue', () => {
     expect(getRetryQueueSize()).toBe(0);
   });
 });
+
+// ============================================================================
+// T80-03: 오프라인→온라인 재연결 시 drainRetryQueue 소모 검증
+// ============================================================================
+describe('syncRetryQueue - Offline→Online Reconnect Drain (T80-03)', () => {
+  beforeEach(() => {
+    clearRetryQueue();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    clearRetryQueue();
+  });
+
+  it('simulates offline: failed writes enqueue, reconnect drains queue', async () => {
+    // 시나리오: 네트워크 끊김 → 3개 write 실패 → 큐 적재 → 재연결 → drain 호출 → 성공
+    const syncFn1 = vi.fn(async () => { /* 재연결 후 성공 */ });
+    const syncFn2 = vi.fn(async () => { /* 재연결 후 성공 */ });
+    const syncFn3 = vi.fn(async () => { /* 재연결 후 성공 */ });
+
+    // 오프라인 상태에서 실패한 작업들이 큐에 추가됨
+    addToRetryQueue('offline-task-1', { collection: 'dailyData' }, { task: 'a' }, '2024-01-15', syncFn1, 3);
+    addToRetryQueue('offline-task-2', { collection: 'dailyData' }, { task: 'b' }, '2024-01-16', syncFn2, 3);
+    addToRetryQueue('offline-task-3', { collection: 'gameState' }, { xp: 100 }, undefined, syncFn3, 3);
+
+    expect(getRetryQueueSize()).toBe(3);
+
+    // 재연결 시 drainRetryQueue 호출
+    const result = await drainRetryQueue();
+
+    expect(result.success).toBe(3);
+    expect(result.failed).toBe(0);
+    expect(getRetryQueueSize()).toBe(0);
+
+    // 각 syncFn이 한 번씩 호출됨
+    expect(syncFn1).toHaveBeenCalledTimes(1);
+    expect(syncFn2).toHaveBeenCalledTimes(1);
+    expect(syncFn3).toHaveBeenCalledTimes(1);
+  });
+
+  it('drain handles partial success: some items succeed, others fail', async () => {
+    const successFn = vi.fn(async () => { /* success */ });
+    const failFn = vi.fn(async () => { throw new Error('still offline'); });
+
+    addToRetryQueue('partial-1', { collection: 'c1' }, {}, 'k1', successFn, 3);
+    addToRetryQueue('partial-2', { collection: 'c2' }, {}, 'k2', failFn, 1); // 1회 재시도 후 실패
+    addToRetryQueue('partial-3', { collection: 'c3' }, {}, 'k3', successFn, 3);
+
+    expect(getRetryQueueSize()).toBe(3);
+
+    const result = await drainRetryQueue();
+
+    expect(result.success).toBe(2);
+    expect(result.failed).toBe(1);
+    
+    // 실패한 항목도 maxRetries 초과로 큐에서 제거됨
+    expect(getRetryQueueSize()).toBe(0);
+  });
+
+  it('drain preserves order: items processed sequentially', async () => {
+    const order: string[] = [];
+
+    const makeSyncFn = (id: string) => vi.fn(async () => {
+      order.push(id);
+    });
+
+    addToRetryQueue('order-a', { collection: 'c' }, {}, 'a', makeSyncFn('a'), 3);
+    addToRetryQueue('order-b', { collection: 'c' }, {}, 'b', makeSyncFn('b'), 3);
+    addToRetryQueue('order-c', { collection: 'c' }, {}, 'c', makeSyncFn('c'), 3);
+
+    await drainRetryQueue();
+
+    // Map의 삽입 순서대로 처리
+    expect(order).toEqual(['a', 'b', 'c']);
+  });
+
+  it('multiple drains: second drain on empty queue is no-op', async () => {
+    const syncFn = vi.fn(async () => { /* success */ });
+    addToRetryQueue('multi-drain', { collection: 'c' }, {}, 'k', syncFn, 3);
+
+    const result1 = await drainRetryQueue();
+    expect(result1.success).toBe(1);
+    expect(syncFn).toHaveBeenCalledTimes(1);
+
+    // 두 번째 drain: 큐가 비어있음
+    const result2 = await drainRetryQueue();
+    expect(result2.success).toBe(0);
+    expect(result2.failed).toBe(0);
+    expect(syncFn).toHaveBeenCalledTimes(1); // 추가 호출 없음
+  });
+});

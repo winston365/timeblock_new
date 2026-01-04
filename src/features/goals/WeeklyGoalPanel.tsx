@@ -23,7 +23,7 @@ import CatchUpAlertModal from './CatchUpAlertModal';
 import ExpandHintBadge from './components/ExpandHintBadge';
 import { useCatchUpAlertBanner } from './hooks/useCatchUpAlertBanner';
 import { useQuotaAchievement } from './hooks/useQuotaAchievement';
-import { filterGoals } from './components/GoalsFilterBar';
+import { filterGoals } from './utils/goalsFilterUtils';
 import { 
   getTodayProgressSnapshot, 
   initializeTodayProgressSnapshots,

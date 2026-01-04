@@ -1,6 +1,6 @@
 # System Architecture — TimeBlock Planner (Renderer 중심)
 
-> Last updated: 2025-12-22
+> Last updated: 2026-01-03
 
 ## Changelog
 | Date | Change | Rationale | Plan/Ref |
@@ -9,11 +9,15 @@
 | 2025-12-17 | Phased rollout 설계: UI 5개 변경(탭/목표/TempSchedule/XP바) | 회귀 위험이 높은 UI 삭제를 “엔트리 제거→정리”로 단계화하여 롤백/검증을 단순화 | 002-ui-five-changes-phased-rollout-architecture-findings.md |
 | 2025-12-17 | 구조 개선 대안(A/B) 및 추천안 정리(프론트/UI 중심) | 레이어는 존재하지만 DB 접근/이벤트 발행이 경계 밖으로 새어 결합도가 증가 → “경계 재정착”을 최우선으로 제안 | 003-frontend-structural-improvements-architecture-findings.md |
 | 2025-12-18 | Firebase RTDB 다운로드 스파이크 완화(Phase 0~3) 설계 추가 | 백엔드 변경 없이도 리스너/초기 fetch 폭주를 즉시 차단하고, 계측→정합성→가드레일 순으로 리스크를 낮춤 | 004-firebase-rtdb-mitigation-phased-architecture-findings.md |
+| 2025-12-18 | RTDB 리스너 폭주 완화 구현(리스너 레지스트리/리더락/stopListening/single-flight) 반영 | 멀티 윈도우/재초기화/연속 sync에서 다운로드 증폭을 구조로 차단하고 DEV 계측 기반 원인 확정을 가능하게 함 | 008-firebase-rtdb-download-leak-pr-breakdown-implementation.md |
+| 2025-12-21 | TempSchedule 로컬 날짜 파싱 규약 반영(UTC 파싱 리그레션 차단) | `YYYY-MM-DD`의 UTC 해석으로 날짜가 틀어지는 문제를 재발 방지 테스트로 고정 | temp-schedule-local-date-parsing-patch.md |
 | 2025-12-21 | 장기목표(WeeklyGoal) 프론트/UI 개선 아키텍처 옵션(A/B/C) 및 권고안 추가 | weekly/global 목표 의미론 분리로 인한 경계 혼선을 낮추고, 모달 UX/검증/구조 부채를 “UI-only” 범위에서 우선 해결 | 005-long-term-goals-frontend-architecture-findings.md |
 | 2025-12-22 | 전 모달 공통 UX: ESC 닫기 + Ctrl/Cmd+Enter primary 표준화 권고안 추가 | 기존 `useModalEscapeClose`(스택 기반) 패턴을 확장해 스택 정합성과 IME(조합) 리스크를 동시에 해결 | 006-modal-hotkeys-standardization-architecture-findings.md |
 | 2025-12-23 | 구조 개선 대안 A/B 보강(Repo-tailored) | direct Dexie 접근/emit 규칙 드리프트를 UI-only 범위에서 단계적으로 수렴(A 우선, B는 선택적/점진 적용) | 034-structural-improvement-alternatives-A-B-architecture-findings.md |
 | 2025-12-23 | Schedule 무제한 + Inbox→Block 즉시 반영(Optimistic) 설계 추가 | MAX=3 제한이 UI/유틸에 중복 전파되어 회귀 위험이 큼. 또한 Inbox→Schedule 이동이 repository 직접 호출로 dailyDataStore 상태가 갱신되지 않아 리프레시가 필요함 → 단일 경로 + optimistic update로 수렴 | 007-schedule-unlimited-optimistic-update-architecture-findings.md |
 | 2025-12-28 | Critic 우선순위 리스트 아키텍처 검토 및 Optimistic Update/Sync 테스트 기준 보강 | Optimistic Update를 local-first(Dexie write-through)로 정의하고, Sync 안정성 목표를 브랜치 커버리지→불변조건/시나리오로 보강 | 008-critic-priority-review-architecture-findings.md |
+| 2025-12-28 | Optimistic Update 구현 패턴(스토어 위임 + 롤백 + 테스트) 반영 | Inbox↔Block 이동/업데이트의 단일 경로와 롤백 안전성을 테스트로 고정하여 UX/무결성 동시 개선 | pr7-optimistic-update-implementation.md |
+| 2026-01-03 | 전체 아키텍처 진단 및 레이어별 리팩토링/PR 분류 업데이트 | 강점/리스크를 명확히 하고, UI-only 단계에서 가능한 경계 하드닝/테스트/UX 표준화와 나중(Sync/백엔드) 작업을 구분 | 059-overall-architecture-assessment-2026-01-03-architecture-findings.md |
 
 ## Purpose
 - Renderer(Electron + React) 중심의 시스템 경계/데이터 흐름/결정(ADR)을 기록하는 단일 출처.

@@ -25,9 +25,11 @@ import {
     InsightsTab,
     type XPHistoryEntry,
     type GoalProgress,
+    type StackedBlockDataEntry,
 } from './components/tabs';
 import CompletedTab from '@/features/tasks/CompletedTab';
 import { useModalEscapeClose } from '@/shared/hooks';
+import { ModalEscHint } from '@/shared/components/ModalEscHint';
 
 interface StatsModalProps {
     open: boolean;
@@ -249,7 +251,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
         }
 
         return arr.map(entry => {
-            const blockXPRow: Record<string, string | number> = { date: entry.date };
+            const blockXPRow: StackedBlockDataEntry = { date: entry.date };
             BLOCKS_WITH_OTHER.forEach(block => {
                 blockXPRow[block.id] = entry.blocks?.[block.id] ?? 0;
             });
@@ -400,7 +402,10 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
                         <div>
                             <div className="text-xs uppercase tracking-[0.12em] text-[var(--color-text-tertiary)]">Insights</div>
                             <h2 className="text-xl font-bold">통계 대시보드</h2>
-                            <p className="text-xs text-[var(--color-text-secondary)]">최근 흐름과 타임블록 성과를 한눈에 확인하세요.</p>
+                            <div className="flex items-center gap-3">
+                                <p className="text-xs text-[var(--color-text-secondary)]">최근 흐름과 타임블록 성과를 한눈에 확인하세요.</p>
+                                <ModalEscHint variant="header" />
+                            </div>
                         </div>
                         <button
                             type="button"

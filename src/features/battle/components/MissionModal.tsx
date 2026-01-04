@@ -19,6 +19,7 @@ import {
 } from '../stores/battleStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { useDailyData, useModalEscapeClose, useNamedTimeouts } from '@/shared/hooks';
+import { ModalEscHint } from '@/shared/components/ModalEscHint';
 import { playAttackSound, playBossDefeatSound } from '../services/battleSoundService';
 import type { BattleMission, BossDifficulty } from '@/shared/types/domain';
 import { createNewTask } from '@/shared/utils/taskFactory';
@@ -155,7 +156,7 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
   // 현재 보스
   const currentBossProgress = dailyState ? getCurrentBoss() : null;
   const currentBoss = useMemo(
-    () => (currentBossProgress ? getBossById(currentBossProgress.bossId) : null),
+    () => (currentBossProgress ? getBossById(currentBossProgress.bossId) ?? null : null),
     [currentBossProgress],
   );
   const isCurrentBossDefeated = currentBossProgress?.defeatedAt !== undefined;
@@ -264,6 +265,17 @@ export function MissionModal({ open, onClose }: MissionModalProps) {
     <div className="fixed inset-0 z-[120] flex items-center justify-center">
       {/* 배경 오버레이 - 배틀 분위기 */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/90 via-red-950/30 to-black/90 backdrop-blur-md" />
+
+      {/* 닫기 버튼 (좌측 상단 고정) */}
+      <button
+        onClick={onClose}
+        className="absolute left-6 top-6 z-10 flex items-center gap-2 rounded-xl border border-slate-600/50 bg-slate-800/90 px-4 py-2 text-sm font-medium text-slate-300 shadow-lg backdrop-blur-sm transition hover:border-slate-500 hover:bg-slate-700/90 hover:text-white"
+        aria-label="미션 모달 닫기"
+      >
+        <span className="text-lg">←</span>
+        <span>닫기</span>
+        <ModalEscHint variant="inline" className="ml-1 opacity-70" />
+      </button>
 
       {/* 메인 컨테이너 - 좌우 배치 */}
       <div className="relative w-full max-w-6xl mx-6 max-h-[92vh] flex gap-6">

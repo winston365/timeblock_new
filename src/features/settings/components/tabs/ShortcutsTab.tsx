@@ -7,6 +7,7 @@
  * Responsibilities:
  * - 좌측/우측 패널 토글 단축키 설정
  * - 대량 할 일 추가 모달 단축키 설정
+ * - 창 최상위(Always-on-top) 토글 설정
  * - 키 조합 입력 캡처 및 변환 (Ctrl, Shift, Alt + 키)
  *
  * Key Dependencies:
@@ -14,6 +15,7 @@
  * - styles: 공통 스타일 클래스
  */
 
+import { Pin, PinOff } from 'lucide-react';
 import type { ShortcutsTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass } from './styles';
 
@@ -56,6 +58,56 @@ export function ShortcutsTab({ localSettings, setLocalSettings }: ShortcutsTabPr
             <div className={infoBoxClass}>
                 <strong>💡 사용법:</strong> 입력란을 클릭하고 원하는 키 조합을 누르세요.
                 Ctrl, Shift, Alt 키와 함께 사용하거나, 입력 필드가 아닐 때는 '1', '2', 'Q' 같은 간단한 키도 사용할 수 있습니다.
+            </div>
+
+            {/* T90-02: Always-on-top 토글 스위치 (ADHD 친화적 - 즉시 토글 가능) */}
+            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                            localSettings?.isAlwaysOnTopEnabled 
+                                ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]' 
+                                : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]'
+                        }`}>
+                            {localSettings?.isAlwaysOnTopEnabled ? (
+                                <Pin className="h-5 w-5 fill-current" />
+                            ) : (
+                                <PinOff className="h-5 w-5" />
+                            )}
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-semibold text-[var(--color-text)]">📌 창 항상 위</h4>
+                            <p className="text-xs text-[var(--color-text-secondary)]">
+                                앱 창을 다른 창 위에 항상 표시합니다
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        role="switch"
+                        aria-checked={localSettings?.isAlwaysOnTopEnabled ?? false}
+                        onClick={() => {
+                            setLocalSettings((prev: Settings | null) => prev ? ({ 
+                                ...prev, 
+                                isAlwaysOnTopEnabled: !prev.isAlwaysOnTopEnabled 
+                            }) : prev);
+                        }}
+                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 ${
+                            localSettings?.isAlwaysOnTopEnabled 
+                                ? 'bg-[var(--color-primary)]' 
+                                : 'bg-[var(--color-bg-tertiary)] border border-[var(--color-border)]'
+                        }`}
+                    >
+                        <span
+                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ${
+                                localSettings?.isAlwaysOnTopEnabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                        />
+                    </button>
+                </div>
+                <p className="mt-2 text-xs text-[var(--color-text-tertiary)]">
+                    💡 단축키: <kbd className="rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 font-mono text-[10px]">{localSettings?.alwaysOnTopToggleKey || 'Ctrl+Shift+T'}</kbd> 또는 툴바의 📌 버튼으로도 토글 가능
+                </p>
             </div>
 
             <div className={formGroupClass}>

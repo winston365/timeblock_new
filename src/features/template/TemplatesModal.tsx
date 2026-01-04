@@ -24,15 +24,15 @@ import { useTemplateStore } from '@/shared/stores/templateStore';
 import { TemplateModal } from './TemplateModal';
 import { calculateTaskXP, getLocalDate } from '@/shared/lib/utils';
 import { useModalHotkeys } from '@/shared/hooks';
+import { ModalEscHint } from '@/shared/components/ModalEscHint';
 import {
   createTodayTaskFromTemplate,
   loadTemplateUiPrefs,
   saveTemplateUiPrefs,
   loadAutoGenerateState,
   isUxV1Enabled,
-  type TemplateAutoGenerateState,
 } from '@/shared/services/template/templateTaskService';
-import { TEMPLATE_DEFAULTS } from '@/shared/constants/defaults';
+import { TEMPLATE_DEFAULTS, type TemplateAutoGenerateState } from '@/shared/constants/defaults';
 import { toast } from 'react-hot-toast';
 
 type SortBy = 'nextOccurrence' | 'name' | 'baseDuration' | 'createdAt';
@@ -355,7 +355,10 @@ export default function TemplatesModal({ isOpen, onClose, onTaskCreate }: Templa
         <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6 py-4">
           <div>
             <h2 className="text-xl font-bold text-[var(--color-text)]">📝 템플릿 관리</h2>
-            <p className="text-xs text-[var(--color-text-secondary)]">자주 사용하는 작업을 템플릿으로 저장하세요</p>
+            <div className="flex items-center gap-3">
+              <p className="text-xs text-[var(--color-text-secondary)]">자주 사용하는 작업을 템플릿으로 저장하세요</p>
+              <ModalEscHint variant="header" />
+            </div>
           </div>
           <div className="flex gap-2">
             {/* 자동생성 미리보기 토글 (UX v1 only) */}

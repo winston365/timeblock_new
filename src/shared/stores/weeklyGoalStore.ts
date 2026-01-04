@@ -68,7 +68,13 @@ export const useWeeklyGoalStore = create<WeeklyGoalStore>((set, get) => ({
   loadGoals: async () => {
     return withAsyncAction(set, async () => {
       const loadedGoals = await loadWeeklyGoals();
-      set({ goals: [...loadedGoals].sort((a, b) => a.order - b.order) });
+      // priority 기준 정렬 (낮을수록 높은 우선순위), 같으면 order로 fallback
+      set({ goals: [...loadedGoals].sort((a, b) => {
+        const aPriority = a.priority ?? a.order ?? 0;
+        const bPriority = b.priority ?? b.order ?? 0;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        return a.order - b.order;
+      }) });
     }, { errorPrefix: 'WeeklyGoalStore: loadGoals', rethrow: false });
   },
 
@@ -77,8 +83,14 @@ export const useWeeklyGoalStore = create<WeeklyGoalStore>((set, get) => ({
       const newGoal = await addWeeklyGoal(data);
 
       const currentGoals = get().goals;
+      // priority 기준 정렬
       set({
-        goals: [...currentGoals, newGoal].sort((a, b) => a.order - b.order)
+        goals: [...currentGoals, newGoal].sort((a, b) => {
+          const aPriority = a.priority ?? a.order ?? 0;
+          const bPriority = b.priority ?? b.order ?? 0;
+          if (aPriority !== bPriority) return aPriority - bPriority;
+          return a.order - b.order;
+        })
       });
 
       return newGoal;
@@ -112,7 +124,13 @@ export const useWeeklyGoalStore = create<WeeklyGoalStore>((set, get) => ({
   reorderGoals: async (goals) => {
     return withAsyncAction(set, async () => {
       await reorderWeeklyGoals(goals);
-      set({ goals: [...goals].sort((a, b) => a.order - b.order) });
+      // priority 기준 정렬
+      set({ goals: [...goals].sort((a, b) => {
+        const aPriority = a.priority ?? a.order ?? 0;
+        const bPriority = b.priority ?? b.order ?? 0;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        return a.order - b.order;
+      }) });
     }, { errorPrefix: 'WeeklyGoalStore: reorderGoals' });
   },
 

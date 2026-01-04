@@ -14,4 +14,4 @@ export {
   BLOCK_BOUNDARIES,
   TIMELINE_TOTAL_HOURS,
 } from './useTimelineData';
-export type { TimelineTaskItem, HourGroup } from './useTimelineData';
+export type { TimelineTaskItem, BucketGroup } from './useTimelineData';

@@ -13,6 +13,7 @@ import type { ShopItem } from '@/shared/types/domain';
 import { createShopItem, updateShopItem } from '@/data/repositories';
 import { toast } from 'react-hot-toast';
 import { useModalHotkeys } from '@/shared/hooks';
+import { ModalEscHint } from '@/shared/components/ModalEscHint';
 
 interface ShopModalProps {
     item: ShopItem | null; // null이면 신규 생성
@@ -139,7 +140,10 @@ export function ShopModal({ item, onClose }: ShopModalProps) {
         <div className="modal-overlay fixed inset-0 z-[1000] flex items-start justify-center bg-[color:var(--modal-backdrop)] px-4 py-8 backdrop-blur-sm md:items-center">
             <div className="modal-content relative w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--modal-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text)] shadow-[var(--modal-shadow)]" onClick={e => e.stopPropagation()}>
                 <div className="modal-header flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6 py-4">
-                    <h2>{item ? '상품 편집' : '상품 추가'}</h2>
+                    <div className="flex items-center gap-3">
+                        <h2>{item ? '상품 편집' : '상품 추가'}</h2>
+                        <ModalEscHint variant="header" />
+                    </div>
                     <button
                         className="modal-close inline-flex h-10 w-10 items-center justify-center rounded-full text-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/60"
                         onClick={handleCancel}

@@ -12,7 +12,7 @@
  */
 
 import { create } from 'zustand';
-import type { Template, Resistance } from '@/shared/types/domain';
+import type { Template, Resistance, TimeBlockId } from '@/shared/types/domain';
 import {
     loadTemplates,
     createTemplate,
@@ -38,7 +38,7 @@ interface TemplateStore {
         memo: string,
         baseDuration: number,
         resistance: Resistance,
-        timeBlock: string | null,
+        timeBlock: TimeBlockId,
         autoGenerate: boolean,
         preparation1: string,
         preparation2: string,

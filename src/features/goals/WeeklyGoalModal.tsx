@@ -53,6 +53,8 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
   const [customTheme, setCustomTheme] = useState('');
   const [saving, setSaving] = useState(false);
+  // 우선순위 상태
+  const [priority, setPriority] = useState<number | ''>('');
 
   const handleEscapeClose = () => {
     if (saving) return;
@@ -74,6 +76,8 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
       // T18: 테마 로드
       setSelectedTheme(goal.theme ?? null);
       setCustomTheme('');
+      // 우선순위 로드
+      setPriority(goal.priority ?? '');
     } else {
       setTitle('');
       setTarget(100);
@@ -82,6 +86,7 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
       setSelectedColor('#6366f1');
       setSelectedTheme(null);
       setCustomTheme('');
+      setPriority(''); // 새 목표는 비워두면 자동 계산
     }
     // T20: 모달 열릴 때 기본 단계로 리셋
     setStep('basic');
@@ -105,6 +110,8 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
       setSaving(true);
       // T18: 테마 결정 (커스텀 우선)
       const finalTheme = customTheme.trim() || selectedTheme || undefined;
+      // 우선순위 결정 (빈 값이면 undefined로 자동 계산 위임)
+      const finalPriority = priority !== '' ? priority : undefined;
       
       const goalData = {
         title: title.trim(),
@@ -113,6 +120,7 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
         icon: selectedIcon,
         color: selectedColor,
         theme: finalTheme,
+        priority: finalPriority,
       };
 
       if (isEditMode && goal) {
@@ -198,7 +206,7 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
                     className={inputClass}
                   />
                 </div>
-                <div className="w-32">
+                <div className="w-24">
                   <label className={labelClass}>단위</label>
                   <input
                     type="text"
@@ -213,6 +221,21 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
                       <option key={u} value={u} />
                     ))}
                   </datalist>
+                </div>
+                <div className="w-20">
+                  <label className={labelClass}>우선순위</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={priority}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPriority(val === '' ? '' : Math.max(1, parseInt(val) || 1));
+                    }}
+                    placeholder="자동"
+                    className={inputClass}
+                    title="낮을수록 먼저 표시됩니다"
+                  />
                 </div>
               </div>
 

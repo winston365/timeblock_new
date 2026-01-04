@@ -30,9 +30,9 @@ import {
   updateTempScheduleTask,
   deleteTempScheduleTask,
   shouldShowOnDate,
-  loadTemplates,
+  loadTempScheduleTemplates,
   saveTemplate,
-  deleteTemplate,
+  deleteTempScheduleTemplate,
   applyTemplate,
   loadPinnedTemplateIds,
   savePinnedTemplateIds,
@@ -191,7 +191,7 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
       // 병렬 로드 (템플릿 + 핀 목록 포함)
       const [tasks, templates, pinnedIds, settings] = await Promise.all([
         loadTempScheduleTasks(),
-        loadTemplates(),
+        loadTempScheduleTemplates(),
         loadPinnedTemplateIds(),
         import('@/data/repositories/settingsRepository').then(m => m.loadSettings())
       ]);
@@ -509,7 +509,7 @@ export const useTempScheduleStore = create<TempScheduleState>((set, get) => ({
 
   removeTemplate: async (id: string) => {
     try {
-      await deleteTemplate(id);
+      await deleteTempScheduleTemplate(id);
       set(state => ({
         templates: state.templates.filter(t => t.id !== id),
       }));

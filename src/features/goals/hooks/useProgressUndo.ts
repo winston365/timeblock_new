@@ -88,7 +88,7 @@ export function useProgressUndo(): UseProgressUndoReturn {
       return;
     }
 
-    timerRef.current = setInterval(() => {
+    const intervalId = setInterval(() => {
       setRemainingTime((prev) => {
         if (prev <= 100) {
           setLastChange(null);
@@ -100,11 +100,9 @@ export function useProgressUndo(): UseProgressUndoReturn {
     }, 100);
 
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      clearInterval(intervalId);
     };
-  }, [remainingTime > 0]);
+  }, [remainingTime]);
 
   // 진행도 변경 기록
   const recordChange = useCallback(

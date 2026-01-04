@@ -32,8 +32,7 @@ import GoalStatusTooltip from './components/GoalStatusTooltip';
 import QuickLogSessionPopover from './components/QuickLogSessionPopover';
 import { useProgressGuard } from './hooks/useProgressGuard';
 import { useProgressUndo } from './hooks/useProgressUndo';
-import type { TodayProgressSnapshot } from './utils/todayProgressUtils';
-import { calculateTodayProgressSync } from './utils/todayProgressUtils';
+import { calculateTodayProgressSync, type TodayProgressSnapshot } from './utils/todayProgressUtils';
 
 interface WeeklyGoalCardProps {
   goal: WeeklyGoal;
@@ -356,8 +355,16 @@ export default function WeeklyGoalCard({
             {isCompleted ? '🎉' : goal.icon || '📚'}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <h3 className={`font-bold text-white truncate ${compact ? 'text-xs' : 'text-sm'}`}>{goal.title}</h3>
+            <div className="flex items-center gap-1.5">              {/* 우선순위 배지 */}
+              {goal.priority != null && (
+                <span 
+                  className={`shrink-0 flex items-center justify-center rounded-full bg-amber-500/20 text-amber-300 font-bold ${compact ? 'h-4 w-4 text-[8px]' : 'h-5 w-5 text-[10px]'}`}
+                  title={`우선순위 ${goal.priority}`}
+                  aria-label={`우선순위 ${goal.priority}`}
+                >
+                  {goal.priority}
+                </span>
+              )}              <h3 className={`font-bold text-white truncate ${compact ? 'text-xs' : 'text-sm'}`}>{goal.title}</h3>
               {/* T18: 테마 라벨 */}
               {themeLabel && (
                 <span className={`shrink-0 rounded-full bg-white/10 text-white/60 ${compact ? 'px-1.5 py-0.5 text-[8px]' : 'px-2 py-0.5 text-[10px]'}`}>

@@ -11,7 +11,7 @@
 
 import { useMemo } from 'react';
 import type { WeeklyGoal } from '@/shared/types/domain';
-import { getTodayTarget, getDayOfWeekIndex } from '@/data/repositories/weeklyGoalRepository';
+import { hasTaskForToday } from '../utils/goalsFilterUtils';
 
 interface GoalsFilterBarProps {
   /** 오늘만 보기 필터 상태 */
@@ -24,21 +24,6 @@ interface GoalsFilterBarProps {
   onCompactModeChange: (value: boolean) => void;
   /** 전체 목표 목록 (필터 적용 전) */
   allGoals: WeeklyGoal[];
-}
-
-/**
- * 오늘 할당량이 있는 목표인지 확인
- */
-function hasTaskForToday(goal: WeeklyGoal): boolean {
-  // 이미 완료된 목표는 오늘 할 일 없음
-  if (goal.currentProgress >= goal.target) return false;
-  
-  // 오늘까지 해야 하는 목표량 계산
-  const dayIndex = getDayOfWeekIndex();
-  const todayTarget = getTodayTarget(goal.target, dayIndex);
-  
-  // 현재 진행도가 오늘 목표량보다 적으면 오늘 할 일 있음
-  return goal.currentProgress < todayTarget || goal.currentProgress < goal.target;
 }
 
 /**
@@ -137,12 +122,4 @@ export default function GoalsFilterBar({
       </div>
     </div>
   );
-}
-
-/**
- * 필터 적용 함수 (WeeklyGoalPanel에서 사용)
- */
-export function filterGoals(goals: WeeklyGoal[], filterTodayOnly: boolean): WeeklyGoal[] {
-  if (!filterTodayOnly) return goals;
-  return goals.filter(hasTaskForToday);
 }

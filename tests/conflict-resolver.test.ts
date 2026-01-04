@@ -346,3 +346,264 @@ describe('Conflict Resolution Determinism (Task 5.3)', () => {
     });
   });
 });
+
+// ============================================================================
+// T80-07: conflictResolver 창 제약 회귀 보호
+// ============================================================================
+describe('Conflict Resolver - Window Constraints Regression Protection (T80-07)', () => {
+  describe('timeBlockXPHistory 5-day window constraint', () => {
+    it('mergeGameState limits timeBlockXPHistory to 5 days', () => {
+      // 로컬: 3일치 데이터
+      const localHistory: Array<{ date: string; blocks: Record<string, number> }> = [
+        { date: '2024-01-10', blocks: { morning: 10 } },
+        { date: '2024-01-11', blocks: { morning: 20 } },
+        { date: '2024-01-12', blocks: { morning: 30 } },
+      ];
+
+      // 리모트: 4일치 데이터 (일부 겹침)
+      const remoteHistory: Array<{ date: string; blocks: Record<string, number> }> = [
+        { date: '2024-01-11', blocks: { morning: 15, afternoon: 5 } },
+        { date: '2024-01-12', blocks: { morning: 25 } },
+        { date: '2024-01-13', blocks: { morning: 40 } },
+        { date: '2024-01-14', blocks: { morning: 50 } },
+      ];
+
+      const local: SyncData<GameState> = {
+        data: makeGameState({ timeBlockXPHistory: localHistory }),
+        updatedAt: 100,
+        deviceId: 'A',
+      };
+
+      const remote: SyncData<GameState> = {
+        data: makeGameState({ timeBlockXPHistory: remoteHistory }),
+        updatedAt: 99,
+        deviceId: 'B',
+      };
+
+      const merged = mergeGameState(local, remote);
+
+      // 5일 제한 확인
+      expect(merged.data.timeBlockXPHistory.length).toBeLessThanOrEqual(5);
+    });
+
+    it('timeBlockXPHistory keeps most recent 5 days when exceeding limit', () => {
+      // 7일치 데이터 (합치면 초과)
+      const localHistory: Array<{ date: string; blocks: Record<string, number> }> = [
+        { date: '2024-01-08', blocks: { a: 1 } },
+        { date: '2024-01-09', blocks: { a: 2 } },
+        { date: '2024-01-10', blocks: { a: 3 } },
+        { date: '2024-01-11', blocks: { a: 4 } },
+      ];
+
+      const remoteHistory: Array<{ date: string; blocks: Record<string, number> }> = [
+        { date: '2024-01-12', blocks: { a: 5 } },
+        { date: '2024-01-13', blocks: { a: 6 } },
+        { date: '2024-01-14', blocks: { a: 7 } },
+      ];
+
+      const local: SyncData<GameState> = {
+        data: makeGameState({ timeBlockXPHistory: localHistory }),
+        updatedAt: 100,
+        deviceId: 'A',
+      };
+
+      const remote: SyncData<GameState> = {
+        data: makeGameState({ timeBlockXPHistory: remoteHistory }),
+        updatedAt: 99,
+        deviceId: 'B',
+      };
+
+      const merged = mergeGameState(local, remote);
+
+      // 최근 5일만 유지
+      expect(merged.data.timeBlockXPHistory.length).toBe(5);
+
+      // 가장 오래된 데이터(01-08, 01-09)가 제거되고 최신 5일 유지
+      const dates = merged.data.timeBlockXPHistory.map(h => h.date);
+      expect(dates).toContain('2024-01-14');
+      expect(dates).toContain('2024-01-13');
+      expect(dates).toContain('2024-01-12');
+      expect(dates).not.toContain('2024-01-08'); // 오래된 것은 제거
+    });
+
+    it('timeBlockXPHistory merges block XP by max value per date', () => {
+      const localHistory = [
+        { date: '2024-01-15', blocks: { morning: 100, afternoon: 50 } },
+      ];
+
+      const remoteHistory = [
+        { date: '2024-01-15', blocks: { morning: 80, afternoon: 70, evening: 30 } },
+      ];
+
+      const local: SyncData<GameState> = {
+        data: makeGameState({ timeBlockXPHistory: localHistory }),
+        updatedAt: 100,
+        deviceId: 'A',
+      };
+
+      const remote: SyncData<GameState> = {
+        data: makeGameState({ timeBlockXPHistory: remoteHistory }),
+        updatedAt: 99,
+        deviceId: 'B',
+      };
+
+      const merged = mergeGameState(local, remote);
+      const day15 = merged.data.timeBlockXPHistory.find(h => h.date === '2024-01-15');
+
+      expect(day15).toBeDefined();
+      expect(day15?.blocks.morning).toBe(100);   // max(100, 80)
+      expect(day15?.blocks.afternoon).toBe(70);  // max(50, 70)
+      expect(day15?.blocks.evening).toBe(30);    // remote only
+    });
+  });
+
+  describe('completedTasksHistory 50-item constraint', () => {
+    it('mergeGameState limits completedTasksHistory to 50 items', () => {
+      // 로컬: 30개
+      const localHistory = Array.from({ length: 30 }, (_, i) => ({
+        id: `local-${i}`,
+        text: `Local Task ${i}`,
+        completedAt: Date.now() - i * 1000,
+      }));
+
+      // 리모트: 30개
+      const remoteHistory = Array.from({ length: 30 }, (_, i) => ({
+        id: `remote-${i}`,
+        text: `Remote Task ${i}`,
+        completedAt: Date.now() - i * 1000,
+      }));
+
+      const local: SyncData<GameState> = {
+        data: makeGameState({ completedTasksHistory: localHistory as never[] }),
+        updatedAt: 100,
+        deviceId: 'A',
+      };
+
+      const remote: SyncData<GameState> = {
+        data: makeGameState({ completedTasksHistory: remoteHistory as never[] }),
+        updatedAt: 99,
+        deviceId: 'B',
+      };
+
+      const merged = mergeGameState(local, remote);
+
+      // 50개 제한 확인
+      expect(merged.data.completedTasksHistory.length).toBeLessThanOrEqual(50);
+    });
+
+    it('completedTasksHistory truncates to exactly 50 when exceeding', () => {
+      // 로컬: 40개
+      const localHistory = Array.from({ length: 40 }, (_, i) => ({ id: `l${i}` }));
+
+      // 리모트: 40개
+      const remoteHistory = Array.from({ length: 40 }, (_, i) => ({ id: `r${i}` }));
+
+      const local: SyncData<GameState> = {
+        data: makeGameState({ completedTasksHistory: localHistory as never[] }),
+        updatedAt: 100,
+        deviceId: 'A',
+      };
+
+      const remote: SyncData<GameState> = {
+        data: makeGameState({ completedTasksHistory: remoteHistory as never[] }),
+        updatedAt: 99,
+        deviceId: 'B',
+      };
+
+      const merged = mergeGameState(local, remote);
+
+      expect(merged.data.completedTasksHistory.length).toBe(50);
+    });
+
+    it('completedTasksHistory preserves order: local items come first', () => {
+      const localHistory = [{ id: 'local-1' }, { id: 'local-2' }];
+      const remoteHistory = [{ id: 'remote-1' }, { id: 'remote-2' }];
+
+      const local: SyncData<GameState> = {
+        data: makeGameState({ completedTasksHistory: localHistory as never[] }),
+        updatedAt: 100,
+        deviceId: 'A',
+      };
+
+      const remote: SyncData<GameState> = {
+        data: makeGameState({ completedTasksHistory: remoteHistory as never[] }),
+        updatedAt: 99,
+        deviceId: 'B',
+      };
+
+      const merged = mergeGameState(local, remote);
+
+      // 로컬 먼저, 리모트 뒤에
+      const ids = merged.data.completedTasksHistory.map((h: { id: string }) => h.id);
+      expect(ids[0]).toBe('local-1');
+      expect(ids[1]).toBe('local-2');
+      expect(ids[2]).toBe('remote-1');
+    });
+  });
+
+  describe('xpHistory 7-day window constraint', () => {
+    it('mergeGameState limits xpHistory to 7 days', () => {
+      const localHistory = Array.from({ length: 5 }, (_, i) => ({
+        date: `2024-01-${10 + i}`,
+        xp: (i + 1) * 100,
+      }));
+
+      const remoteHistory = Array.from({ length: 5 }, (_, i) => ({
+        date: `2024-01-${13 + i}`,
+        xp: (i + 1) * 50,
+      }));
+
+      const local: SyncData<GameState> = {
+        data: makeGameState({ xpHistory: localHistory }),
+        updatedAt: 100,
+        deviceId: 'A',
+      };
+
+      const remote: SyncData<GameState> = {
+        data: makeGameState({ xpHistory: remoteHistory }),
+        updatedAt: 99,
+        deviceId: 'B',
+      };
+
+      const merged = mergeGameState(local, remote);
+
+      // 7일 제한 확인
+      expect(merged.data.xpHistory.length).toBeLessThanOrEqual(7);
+    });
+
+    it('xpHistory merges same date with max XP value', () => {
+      const localHistory = [
+        { date: '2024-01-15', xp: 100 },
+        { date: '2024-01-16', xp: 200 },
+      ];
+
+      const remoteHistory = [
+        { date: '2024-01-15', xp: 150 }, // 같은 날, 더 높은 XP
+        { date: '2024-01-17', xp: 300 },
+      ];
+
+      const local: SyncData<GameState> = {
+        data: makeGameState({ xpHistory: localHistory }),
+        updatedAt: 100,
+        deviceId: 'A',
+      };
+
+      const remote: SyncData<GameState> = {
+        data: makeGameState({ xpHistory: remoteHistory }),
+        updatedAt: 99,
+        deviceId: 'B',
+      };
+
+      const merged = mergeGameState(local, remote);
+
+      const day15 = merged.data.xpHistory.find(h => h.date === '2024-01-15');
+      expect(day15?.xp).toBe(150); // max(100, 150)
+
+      const day16 = merged.data.xpHistory.find(h => h.date === '2024-01-16');
+      expect(day16?.xp).toBe(200); // local only
+
+      const day17 = merged.data.xpHistory.find(h => h.date === '2024-01-17');
+      expect(day17?.xp).toBe(300); // remote only
+    });
+  });
+});

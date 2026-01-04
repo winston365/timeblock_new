@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useRef, useMemo, useState } from 'react';
+import { Pin, PinOff } from 'lucide-react';
 import { TIME_BLOCKS, type GameState } from '@/shared/types/domain';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { getAffectionColor } from '@/features/waifu/waifuImageUtils';
@@ -46,6 +47,10 @@ interface TopToolbarProps {
   onToggleLeftPanel?: () => void;
   /** 좌측 패널 표시 상태 */
   leftPanelVisible?: boolean;
+  /** 창 최상위 고정 상태 */
+  isAlwaysOnTop?: boolean;
+  /** 창 최상위 토글 콜백 */
+  onToggleAlwaysOnTop?: () => void;
 }
 
 /**
@@ -61,7 +66,9 @@ export default function TopToolbar({
   timelineVisible,
   onToggleTimeline,
   onToggleLeftPanel,
-  leftPanelVisible = true
+  leftPanelVisible = true,
+  isAlwaysOnTop = false,
+  onToggleAlwaysOnTop,
 }: TopToolbarProps) {
   const { waifuState, currentMood, currentAudio } = useWaifu();
   const { show: showWaifu } = useWaifuCompanionStore();
@@ -154,6 +161,26 @@ export default function TopToolbar({
           title={leftPanelVisible ? '보스 패널 숨기기 (Ctrl+B)' : '보스 패널 보기 (Ctrl+B)'}
         >
           🛡️
+        </button>
+
+        {/* T90-01: Always-on-top 토글 버튼 (ADHD 친화적 - 44px+ 히트영역) */}
+        <button
+          type="button"
+          onClick={onToggleAlwaysOnTop}
+          aria-pressed={isAlwaysOnTop}
+          className={`shrink-0 flex h-11 w-11 items-center justify-center rounded-lg text-sm transition-all duration-150 ${
+            isAlwaysOnTop
+              ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)] border border-[var(--color-primary)]/40'
+              : 'text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text)] border border-transparent'
+          }`}
+          title={isAlwaysOnTop ? '항상 위: 켜짐 (Ctrl+Shift+T)' : '항상 위: 꺼짐 (Ctrl+Shift+T)'}
+        >
+          {isAlwaysOnTop ? (
+            <Pin className="h-5 w-5 fill-current" aria-hidden="true" />
+          ) : (
+            <PinOff className="h-5 w-5" aria-hidden="true" />
+          )}
+          <span className="sr-only">{isAlwaysOnTop ? '항상 위: 켜짐' : '항상 위: 꺼짐'}</span>
         </button>
 
         <h1 className="shrink-0 text-sm font-semibold tracking-tight">하루 루틴 컨트롤러</h1>

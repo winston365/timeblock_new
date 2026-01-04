@@ -23,6 +23,7 @@ import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
 import { useTaskContextSuggestion } from './hooks/useTaskContextSuggestion';
 import { TASK_DEFAULTS } from '@/shared/constants/defaults';
 import { useModalHotkeys } from '@/shared/hooks';
+import { ModalEscHint } from '@/shared/components/ModalEscHint';
 
 interface TaskModalProps {
   task: Task | null;
@@ -55,7 +56,7 @@ export default function TaskModal({
   const isOpen = !!task;
   const [text, setText] = useState('');
   const [memo, setMemo] = useState('');
-  const [baseDuration, setBaseDuration] = useState(TASK_DEFAULTS.baseDuration);
+  const [baseDuration, setBaseDuration] = useState<number>(TASK_DEFAULTS.baseDuration);
   const [resistance, setResistance] = useState<Resistance>(TASK_DEFAULTS.resistance);
   const [preparation1, setPreparation1] = useState('');
   const [preparation2, setPreparation2] = useState('');
@@ -183,8 +184,9 @@ export default function TaskModal({
       return;
     }
 
-    // 현재 입력 상태로 임시 Task 객체 생성
-    const draftTask: Partial<Task> & { timeBlock: TimeBlockId } = {
+    // 현재 입력 상태로 임시 Task 객체 생성 (세분화에 필요한 최소 필드만)
+    const draftTask = {
+      id: task?.id ?? '',
       text: text.trim(),
       memo: memo.trim(),
       baseDuration,
@@ -193,9 +195,11 @@ export default function TaskModal({
       preparation2: preparation2.trim(),
       preparation3: preparation3.trim(),
       timeBlock: initialBlockId,
-    };
+      completed: false,
+      createdAt: task?.createdAt ?? new Date().toISOString(),
+    } satisfies Partial<Task> & { timeBlock: TimeBlockId };
 
-    triggerBreakdown(draftTask, source, settings.geminiApiKey, 50);
+    triggerBreakdown(draftTask as Task, source, settings.geminiApiKey, 50);
   };
 
   const handleAutoEmoji = async () => {
@@ -288,7 +292,7 @@ export default function TaskModal({
               onClick={onClose}
               aria-label="닫기"
             >
-              <kbd className="hidden rounded bg-[var(--color-bg)] px-1.5 py-0.5 text-[10px] font-sans text-[var(--color-text-tertiary)] shadow-sm group-hover:text-[var(--color-text-secondary)] sm:inline-block">ESC</kbd>
+              <ModalEscHint variant="header" />
               <span className="text-xl leading-none">×</span>
             </button>
           </div>

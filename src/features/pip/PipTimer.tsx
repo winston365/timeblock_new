@@ -53,8 +53,8 @@ export default function PipTimer() {
     const [themeOption, setThemeOption] = useState<'default' | 'dark' | 'light'>('default');
 
     useEffect(() => {
-        const unsubscribe = window.electronAPI?.onPipUpdate((data: PipTimerState) => {
-            setState(data);
+        const unsubscribe = window.electronAPI?.onPipUpdate((data: unknown) => {
+            setState(data as PipTimerState);
         });
 
         return () => {

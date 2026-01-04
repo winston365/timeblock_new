@@ -13,7 +13,6 @@ import { MemoModal } from './MemoModal';
 import { useDragDropManager } from './hooks/useDragDropManager';
 import { NeonCheckbox } from '@/shared/components/ui/NeonCheckbox';
 import { toast } from 'react-hot-toast';
-import { useXPParticleStore } from '@/features/gamification/stores/xpParticleStore';
 import { useMemoMissionStore } from '@/shared/stores/memoMissionStore';
 import { getBucketStartHour } from './utils/timeBlockBucket';
 
@@ -144,8 +143,8 @@ export default function TaskCard({
     onDragEnd?.();
   };
 
-  const handleToggleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  /** 체크박스 토글 (순수 콜백 버전 - NeonCheckbox용) */
+  const handleCheckboxToggle = () => {
     if (task.completed) {
       onToggle();
       toast('완료를 취소했어요. XP가 회수됩니다.', {
@@ -154,11 +153,6 @@ export default function TaskCard({
       });
       return;
     }
-
-    // XP Particle Effect Trigger
-    const rect = (e.target as HTMLElement).getBoundingClientRect();
-    useXPParticleStore.getState().spawnParticle(rect.left + rect.width / 2, rect.top + rect.height / 2, xp);
-
     onToggle();
   };
 
@@ -264,7 +258,7 @@ export default function TaskCard({
             <div className="flex items-center justify-center w-6 h-6" data-task-interactive="true">
               <NeonCheckbox
                 checked={task.completed}
-                onChange={handleToggleClick}
+                onChange={handleCheckboxToggle}
                 size={20}
               />
             </div>
@@ -343,7 +337,7 @@ export default function TaskCard({
           <div className="flex items-center justify-center w-8 h-8 pt-1" data-task-interactive="true">
             <NeonCheckbox
               checked={task.completed}
-              onChange={handleToggleClick}
+              onChange={handleCheckboxToggle}
               size={24}
             />
           </div>

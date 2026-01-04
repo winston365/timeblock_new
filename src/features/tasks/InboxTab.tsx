@@ -89,9 +89,9 @@ export default function InboxTab() {
   }, [triageEnabled]);
 
   // HUD 상태도 로컬로 관리 (store에 미정의)
-  const [hudCollapsed, setHudCollapsed] = useState(SYSTEM_STATE_DEFAULTS.inboxHudCollapsed);
-  const [dailyGoalCount, setDailyGoalCount] = useState(SYSTEM_STATE_DEFAULTS.inboxTriageDailyGoalCount);
-  const [todayProcessedCount, setTodayProcessedCount] = useState(SYSTEM_STATE_DEFAULTS.inboxTodayProcessedCount);
+  const [hudCollapsed, setHudCollapsed] = useState<boolean>(SYSTEM_STATE_DEFAULTS.inboxHudCollapsed);
+  const [dailyGoalCount, setDailyGoalCount] = useState<number>(SYSTEM_STATE_DEFAULTS.inboxTriageDailyGoalCount);
+  const [todayProcessedCount] = useState<number>(SYSTEM_STATE_DEFAULTS.inboxTodayProcessedCount);
 
   /**
    * 빠른 배치 함수 (store에 미정의 → 로컬 구현)
@@ -822,63 +822,5 @@ export default function InboxTab() {
         />
       )}
     </div>
-  );
-}
-
-// 섹션별 렌더링 (최근/난이도)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function renderGroupedTasks(
-  tasks: Task[],
-  onEdit: (task: Task) => void,
-  onDelete: (id: string) => void,
-  onToggle: (id: string) => void,
-  onUpdateTask: (id: string, updates: Partial<Task>) => Promise<void>,
-  refresh: () => Promise<void>
-) {
-  if (tasks.length === 0) return null;
-
-  const sorted = [...tasks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  const recent = sorted.slice(0, 3);
-  const rest = sorted.slice(3);
-
-  const byResistance = rest.reduce<Record<'high' | 'medium' | 'low', Task[]>>((groupedTasks, task) => {
-    groupedTasks[task.resistance]?.push(task);
-    return groupedTasks;
-  }, { high: [], medium: [], low: [] });
-
-  const section = (title: string, list: Task[]) => (
-    list.length > 0 && (
-      <div key={title} className="space-y-2">
-        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-[0.08em] px-1">
-          <span className="h-px w-6 bg-[var(--color-border)]" />
-          <span>{title}</span>
-        </div>
-        <div className="flex flex-col gap-3">
-          {list.map(task => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onEdit={() => onEdit(task)}
-              onDelete={() => onDelete(task.id)}
-              onToggle={() => onToggle(task.id)}
-              onUpdateTask={(updates) => onUpdateTask(task.id, updates)}
-              onDragEnd={() => {
-                setTimeout(() => refresh(), 300);
-              }}
-              compact
-            />
-          ))}
-        </div>
-      </div>
-    )
-  );
-
-  return (
-    <>
-      {section('최근 추가', recent)}
-      {section('High 난이도', byResistance.high)}
-      {section('Medium 난이도', byResistance.medium)}
-      {section('Low 난이도', byResistance.low)}
-    </>
   );
 }

@@ -30,17 +30,18 @@ import { fetchFromFirebase, syncToFirebase, type SyncStrategy } from '@/shared/s
  * Repository 설정 인터페이스
  *
  * @template T - 저장할 데이터 타입
+ * @template K - 키 타입 (기본값: string)
  */
-export interface RepositoryConfig<T> {
+export interface RepositoryConfig<T, K extends string | number = string> {
   /** Dexie 테이블 (제네릭 Table 타입) */
-  table: Table<T & { key?: string | number }, string | number>;
+  table: Table<T & { key: K }, K, T & { key: K }>;
 
   /** Firebase 동기화 전략 */
   firebaseStrategy?: SyncStrategy<T>;
   /** 초기 데이터 생성 함수 */
   createInitial: () => T;
-  /** 데이터 정제 함수 (선택) - unknown 입력을 T로 변환 */
-  sanitize?: (data: unknown) => T;
+  /** 데이터 정제 함수 (선택) - 타입이 T인 데이터를 정제하여 T로 반환 */
+  sanitize?: (data: T) => T;
   /** 로그 접두사 (선택, 기본값: 테이블 이름) */
   logPrefix?: string;
 }
@@ -76,17 +77,18 @@ export interface SaveOptions {
  * @note localStorage fallback은 제거됨 (Dexie가 유일한 로컬 저장소)
  *
  * @template T - 데이터 타입
- * @param {RepositoryConfig<T>} config - Repository 설정
- * @param {string | number} key - 조회 키
+ * @template K - 키 타입
+ * @param {RepositoryConfig<T, K>} config - Repository 설정
+ * @param {K} key - 조회 키
  * @param {LoadOptions} [options] - 로드 옵션
  * @returns {Promise<T>} 로드된 데이터 또는 초기값
  *
  * @example
  * const gameState = await loadData(gameStateConfig, 'current');
  */
-export async function loadData<T>(
-  config: RepositoryConfig<T>,
-  key: string | number,
+export async function loadData<T, K extends string | number = string>(
+  config: RepositoryConfig<T, K>,
+  key: K,
   options: LoadOptions = {}
 ): Promise<T> {
   const { useFirebase = true, saveInitial = true } = options;
@@ -98,14 +100,14 @@ export async function loadData<T>(
     const data = await table.get(key);
 
     if (data) {
-      const sanitized = sanitize ? sanitize(data) : data;
+      const sanitized = sanitize ? sanitize(data as T) : (data as T);
       addSyncLog('dexie', 'load', `${prefix} loaded from IndexedDB`, { key });
       return sanitized;
     }
 
     // 2. Firebase에서 조회 (firebaseStrategy가 있을 때만)
     if (useFirebase && firebaseStrategy && isFirebaseInitialized()) {
-      const firebaseData = await fetchFromFirebase<T>(firebaseStrategy, key.toString());
+      const firebaseData = await fetchFromFirebase<T>(firebaseStrategy, String(key));
 
       if (firebaseData) {
         const sanitized = sanitize ? sanitize(firebaseData) : firebaseData;
@@ -136,8 +138,9 @@ export async function loadData<T>(
  * @note localStorage 저장은 제거됨 (Dexie가 유일한 로컬 저장소)
  *
  * @template T - 데이터 타입
- * @param {RepositoryConfig<T>} config - Repository 설정
- * @param {string | number} key - 저장 키
+ * @template K - 키 타입
+ * @param {RepositoryConfig<T, K>} config - Repository 설정
+ * @param {K} key - 저장 키
  * @param {T} data - 저장할 데이터
  * @param {SaveOptions} [options] - 저장 옵션
  * @returns {Promise<void>}
@@ -145,9 +148,9 @@ export async function loadData<T>(
  * @example
  * await saveData(gameStateConfig, 'current', gameState);
  */
-export async function saveData<T>(
-  config: RepositoryConfig<T>,
-  key: string | number,
+export async function saveData<T, K extends string | number = string>(
+  config: RepositoryConfig<T, K>,
+  key: K,
   data: T,
   options: SaveOptions = {}
 ): Promise<void> {
@@ -170,7 +173,7 @@ export async function saveData<T>(
     // 3. Firebase에 저장 (firebaseStrategy가 있을 때만)
     if (syncFirebase && firebaseStrategy && isFirebaseInitialized()) {
       // 비동기로 실행하여 UI 블로킹 방지
-      syncToFirebase(firebaseStrategy, data, key.toString()).catch((err) => {
+      syncToFirebase(firebaseStrategy, data, String(key)).catch((err) => {
         console.error(`Failed to sync ${prefix} to Firebase:`, err);
       });
     }
@@ -187,8 +190,9 @@ export async function saveData<T>(
  * 데이터 업데이트 (부분 업데이트)
  *
  * @template T - 데이터 타입
- * @param {RepositoryConfig<T>} config - Repository 설정
- * @param {string | number} key - 업데이트 키
+ * @template K - 키 타입
+ * @param {RepositoryConfig<T, K>} config - Repository 설정
+ * @param {K} key - 업데이트 키
  * @param {Partial<T>} updates - 업데이트할 필드
  * @param {SaveOptions} [options] - 저장 옵션
  * @returns {Promise<T>} 업데이트된 데이터
@@ -196,9 +200,9 @@ export async function saveData<T>(
  * @example
  * const updated = await updateData(gameStateConfig, 'current', { availableXP: 50 });
  */
-export async function updateData<T>(
-  config: RepositoryConfig<T>,
-  key: string | number,
+export async function updateData<T, K extends string | number = string>(
+  config: RepositoryConfig<T, K>,
+  key: K,
   updates: Partial<T>,
   options: SaveOptions = {}
 ): Promise<T> {
@@ -223,16 +227,17 @@ export async function updateData<T>(
  * 데이터 삭제
  *
  * @template T - 데이터 타입
- * @param {RepositoryConfig<T>} config - Repository 설정
- * @param {string | number} key - 삭제 키
+ * @template K - 키 타입
+ * @param {RepositoryConfig<T, K>} config - Repository 설정
+ * @param {K} key - 삭제 키
  * @returns {Promise<void>}
  *
  * @example
  * await deleteData(templateConfig, 'template-123');
  */
-export async function deleteData<T>(
-  config: RepositoryConfig<T>,
-  key: string | number
+export async function deleteData<T, K extends string | number = string>(
+  config: RepositoryConfig<T, K>,
+  key: K
 ): Promise<void> {
   const { table, logPrefix } = config;
   const prefix = logPrefix || table.name;
@@ -280,15 +285,16 @@ export async function loadCollection<T>(
       addSyncLog('dexie', 'load', `${config.logPrefix || table.name} loaded from IndexedDB`, {
         count: items.length,
       });
-      // sanitize는 T[] → T[]를 반환해야 하므로, 개별 아이템에 적용하지 않음
-      return sanitize ? sanitize(items) : items;
+      // sanitize는 T[] → T[]를 반환해야 하므로 items를 T[]로 캐스팅
+      const typedItems = items as T[];
+      return sanitize ? sanitize(typedItems) : typedItems;
     }
 
     // Firebase fallback
     if (options.useFirebase !== false && config.firebaseStrategy && isFirebaseInitialized()) {
       const firebaseData = await fetchFromFirebase<T[]>(config.firebaseStrategy, 'all');
       if (firebaseData && firebaseData.length > 0) {
-        await table.bulkPut(firebaseData);
+        await table.bulkPut(firebaseData as (T[] & { key: string })[] as never);
         addSyncLog('firebase', 'load', `${config.logPrefix || table.name} loaded from Firebase`, {
           count: firebaseData.length,
         });
@@ -331,7 +337,7 @@ export async function saveCollection<T>(
     // 1. IndexedDB에 저장 (전체 교체)
     await table.clear();
     if (items.length > 0) {
-      await table.bulkPut(items);
+      await table.bulkPut(items as (T[] & { key: string })[] as never);
     }
 
     // 2. SyncLog 기록

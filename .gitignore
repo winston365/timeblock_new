@@ -39,9 +39,29 @@ release
 *.dmg
 *.AppImage
 
+# Test coverage
+coverage
+
+# Vitest logs
+vitest-*.log
+
+# Builder debug files
+release/builder-debug.yml
+release/builder-effective-config.yaml
+
 # Local History (VS Code extension)
 .history
 
 # MemorySetting
 .flowbaby
+
+# VS Code Counter output
+.VSCodeCounter
+
+# Temporary script outputs
+scripts/temp_*.txt
+scripts/tmp_*.py
+
+# Agent output (optional - keep if you want to track planning docs)
+# agent-output/
 

@@ -97,20 +97,6 @@ class Logger {
   }
 
   /**
-   * 타임스탬프 생성 (HH:mm:ss.SSS)
-   *
-   * @returns 포맷된 타임스탬프 문자열
-   */
-  private getTimestamp(): string {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-    const ms = String(now.getMilliseconds()).padStart(3, '0');
-    return `${hours}:${minutes}:${seconds}.${ms}`;
-  }
-
-  /**
    * 포맷된 로그 메시지 생성
    *
    * @param level - 로그 레벨

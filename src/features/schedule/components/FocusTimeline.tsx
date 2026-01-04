@@ -15,6 +15,8 @@ interface FocusTimelineProps {
     tasks: Task[];
     onReorder: (newOrder: Task[]) => void;
     onEdit: (task: Task) => void;
+    /** 작업을 영웅 위치로 승격 */
+    onPromote?: (task: Task) => void;
 }
 
 /**
@@ -25,7 +27,7 @@ interface FocusTimelineProps {
  * @param props.onEdit - 작업 편집 시 호출되는 콜백 함수
  * @returns 드래그 가능한 작업 타임라인 UI
  */
-export function FocusTimeline({ tasks, onReorder, onEdit }: FocusTimelineProps) {
+export function FocusTimeline({ tasks, onReorder, onEdit, onPromote: _onPromote }: FocusTimelineProps) {
     return (
         <div className="space-y-4">
             <h3 className="text-lg font-semibold text-[var(--color-text-primary)] flex items-center gap-2">

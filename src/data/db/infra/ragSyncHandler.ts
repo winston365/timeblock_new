@@ -69,13 +69,13 @@ export class RAGSyncHandler {
         });
 
         // 2. Listen to Global Inbox changes
-        db.globalInbox.hook('creating', (primKey, taskRecord, transaction) => {
+        db.globalInbox.hook('creating', (_primKey, taskRecord, transaction) => {
             transaction.on('complete', () => {
                 this.indexTask(taskRecord as Task, 'inbox');
             });
         });
 
-        db.globalInbox.hook('updating', (modifications, primKey, existingTask, transaction) => {
+        db.globalInbox.hook('updating', (modifications, _primKey, existingTask, transaction) => {
             const updatedTask = { ...existingTask, ...modifications } as Task;
             transaction.on('complete', () => {
                 this.indexTask(updatedTask, 'inbox');
@@ -83,7 +83,7 @@ export class RAGSyncHandler {
         });
 
         // 3. Listen to Completed Inbox changes
-        db.completedInbox.hook('creating', (primKey, completedTaskRecord, transaction) => {
+        db.completedInbox.hook('creating', (_primKey, completedTaskRecord, transaction) => {
             transaction.on('complete', () => {
                 this.indexTask(completedTaskRecord as Task, 'completed_inbox');
             });

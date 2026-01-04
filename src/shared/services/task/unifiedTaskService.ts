@@ -14,7 +14,7 @@
  *   - inboxStore: UI 상태 (inbox)
  */
 
-import type { Task } from '@/shared/types/domain';
+import type { Task, TimeBlockId } from '@/shared/types/domain';
 import { 
   updateTask as updateDailyTask,
   deleteTask as deleteDailyTask,
@@ -465,7 +465,7 @@ export interface MoveTaskOptions {
  */
 export async function moveInboxToBlock(
   taskId: string,
-  timeBlock: string,
+  timeBlock: TimeBlockId,
   options?: MoveTaskOptions
 ): Promise<boolean> {
   const { optimistic = true } = options || {};

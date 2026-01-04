@@ -6,12 +6,11 @@ describe('tempSchedule date parsing (local-safe)', () => {
     const RealDate = globalThis.Date;
 
     class GuardedDate extends RealDate {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      constructor(...args: any[]) {
+      constructor(...args: ConstructorParameters<typeof Date>) {
         if (args.length === 1 && typeof args[0] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(args[0])) {
           throw new Error("Disallowed Date('YYYY-MM-DD') constructor usage");
         }
-        super(...(args as never[]));
+        super(...(args as [string | number | Date]));
       }
 
       static now = RealDate.now;

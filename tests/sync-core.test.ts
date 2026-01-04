@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const setSpy = vi.fn();
 const getSpy = vi.fn();
@@ -354,5 +354,187 @@ describe('syncCore - Listener Deduplication & Hash Cache (Task 5.2)', () => {
 
     // 다른 디바이스에서 온 데이터는 수신
     expect(onUpdate).toHaveBeenCalledWith({ x: 2 });
+  });
+});
+
+// ============================================================================
+// T80-01: getRemoteOnce 단일 비행(single-flight) + 2초 TTL 캐시 검증
+// ============================================================================
+describe('syncCore - getRemoteOnce Single-Flight + TTL Cache (T80-01)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    setSpy.mockClear();
+    getSpy.mockClear();
+    onValueSpy.mockClear();
+    offSpy.mockClear();
+    addSyncLogSpy.mockClear();
+    addToRetryQueueSpy.mockClear();
+    isFirebaseInitializedSpy.mockClear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('getRemoteOnce returns cached value within 2s TTL without calling get() again', async () => {
+    vi.resetModules();
+
+    isFirebaseInitializedSpy.mockReturnValue(true);
+    getSpy.mockResolvedValue({ val: () => ({ data: { cached: true }, updatedAt: 100, deviceId: 'remote' }) });
+    setSpy.mockResolvedValue(undefined);
+
+    const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
+
+    // 첫 번째 호출: get() 발생
+    await syncToFirebase({ collection: 'ttl-test' }, { first: 1 }, 'k1');
+    expect(getSpy).toHaveBeenCalledTimes(1);
+
+    // 1초 후: 캐시 유효 (TTL 2초 이내)
+    await vi.advanceTimersByTimeAsync(1000);
+
+    // 같은 path로 다시 호출: 캐시 사용, get() 호출 없음
+    getSpy.mockClear();
+    await syncToFirebase({ collection: 'ttl-test' }, { second: 2 }, 'k1');
+    expect(getSpy).not.toHaveBeenCalled();
+  });
+
+  it('getRemoteOnce invalidates cache after 2s TTL expires', async () => {
+    vi.resetModules();
+
+    isFirebaseInitializedSpy.mockReturnValue(true);
+    getSpy.mockResolvedValue({ val: () => null });
+    setSpy.mockResolvedValue(undefined);
+
+    const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
+
+    // 첫 번째 호출
+    await syncToFirebase({ collection: 'ttl-expire' }, { a: 1 }, 'key1');
+    expect(getSpy).toHaveBeenCalledTimes(1);
+
+    // 2.1초 후: TTL 만료
+    await vi.advanceTimersByTimeAsync(2100);
+
+    // 다시 호출: 캐시 만료로 get() 재호출
+    getSpy.mockClear();
+    getSpy.mockResolvedValue({ val: () => null });
+    await syncToFirebase({ collection: 'ttl-expire' }, { a: 2 }, 'key1');
+    expect(getSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('single-flight: concurrent calls to same path share one get() call', async () => {
+    vi.resetModules();
+
+    isFirebaseInitializedSpy.mockReturnValue(true);
+
+    // get()이 약간 지연되도록 설정 (동시 호출 시뮬레이션)
+    let resolveGet: ((val: { val: () => unknown }) => void) | null = null;
+    getSpy.mockImplementation(() => new Promise((resolve) => {
+      resolveGet = resolve;
+    }));
+    setSpy.mockResolvedValue(undefined);
+
+    const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
+
+    // 동시에 3개 호출 시작
+    const p1 = syncToFirebase({ collection: 'single-flight' }, { n: 1 }, 'sf-key');
+    const p2 = syncToFirebase({ collection: 'single-flight' }, { n: 2 }, 'sf-key');
+    const p3 = syncToFirebase({ collection: 'single-flight' }, { n: 3 }, 'sf-key');
+
+    // get()은 1번만 호출됨 (single-flight)
+    expect(getSpy).toHaveBeenCalledTimes(1);
+
+    // get() 완료
+    resolveGet!({ val: () => null });
+
+    await Promise.all([p1, p2, p3]);
+
+    // 여전히 1번만 호출됨
+    expect(getSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ============================================================================
+// T80-02: RTDB instrumentation 분기 검증
+// ============================================================================
+describe('syncCore - RTDB Instrumentation Branch (T80-02)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    setSpy.mockClear();
+    getSpy.mockClear();
+    addSyncLogSpy.mockClear();
+    addToRetryQueueSpy.mockClear();
+    isFirebaseInitializedSpy.mockClear();
+  });
+
+  it('records RTDB get/set metrics when instrumentation is ON', async () => {
+    // instrumentation ON 모킹
+    vi.doMock('@/shared/services/sync/firebase/rtdbMetrics', () => ({
+      recordRtdbGet: vi.fn(),
+      recordRtdbSet: vi.fn(),
+      recordRtdbError: vi.fn(),
+      isRtdbInstrumentationEnabled: vi.fn(() => true),
+    }));
+
+    vi.resetModules();
+
+    isFirebaseInitializedSpy.mockReturnValue(true);
+    getSpy.mockResolvedValue({ val: () => null });
+    setSpy.mockResolvedValue(undefined);
+
+    const rtdbMetrics = await import('@/shared/services/sync/firebase/rtdbMetrics');
+    const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
+
+    await syncToFirebase({ collection: 'instr-test' }, { x: 1 }, 'k');
+
+    // instrumentation ON이므로 recordRtdbGet, recordRtdbSet 호출됨
+    expect(rtdbMetrics.recordRtdbGet).toHaveBeenCalled();
+    expect(rtdbMetrics.recordRtdbSet).toHaveBeenCalled();
+  });
+
+  it('does NOT record RTDB metrics when instrumentation is OFF', async () => {
+    // instrumentation OFF 모킹
+    vi.doMock('@/shared/services/sync/firebase/rtdbMetrics', () => ({
+      recordRtdbGet: vi.fn(),
+      recordRtdbSet: vi.fn(),
+      recordRtdbError: vi.fn(),
+      isRtdbInstrumentationEnabled: vi.fn(() => false),
+    }));
+
+    vi.resetModules();
+
+    isFirebaseInitializedSpy.mockReturnValue(true);
+    getSpy.mockResolvedValue({ val: () => null });
+    setSpy.mockResolvedValue(undefined);
+
+    const rtdbMetrics = await import('@/shared/services/sync/firebase/rtdbMetrics');
+    const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
+
+    await syncToFirebase({ collection: 'instr-off' }, { y: 2 }, 'k2');
+
+    // instrumentation OFF이므로 record 함수 호출 안 됨
+    expect(rtdbMetrics.recordRtdbGet).not.toHaveBeenCalled();
+    expect(rtdbMetrics.recordRtdbSet).not.toHaveBeenCalled();
+  });
+
+  it('records RTDB error on sync failure when instrumentation is ON', async () => {
+    vi.doMock('@/shared/services/sync/firebase/rtdbMetrics', () => ({
+      recordRtdbGet: vi.fn(),
+      recordRtdbSet: vi.fn(),
+      recordRtdbError: vi.fn(),
+      isRtdbInstrumentationEnabled: vi.fn(() => true),
+    }));
+
+    vi.resetModules();
+
+    isFirebaseInitializedSpy.mockReturnValue(true);
+    getSpy.mockResolvedValue({ val: () => null });
+    setSpy.mockRejectedValueOnce(new Error('write failed'));
+
+    const rtdbMetrics = await import('@/shared/services/sync/firebase/rtdbMetrics');
+    const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
+
+    await syncToFirebase({ collection: 'instr-error' }, { z: 3 }, 'k3');
+
+    expect(rtdbMetrics.recordRtdbError).toHaveBeenCalled();
   });
 });

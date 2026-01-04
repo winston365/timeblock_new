@@ -16,7 +16,7 @@
  * - useWaifu: 와이푸 호감도(affection)
  */
 
-import { useCallback, useEffect, useId, useRef, useState, type React } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { RESISTANCE_MULTIPLIERS, TIME_BLOCKS, type Resistance, type Task, type TimeBlockId } from '@/shared/types/domain';
 import { generateId } from '@/shared/lib/utils';
 import { useTaskBreakdownStore } from './stores/breakdownStore';

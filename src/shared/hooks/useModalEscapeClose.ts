@@ -33,12 +33,12 @@ export function useModalEscapeClose(isOpen: boolean, onClose: () => void) {
     modalStackRegistry.add(modalId);
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-
-      // IME 조합 중 무시
-      if (e.isComposing || e.key === 'Process') {
+      // IME 조합 중 무시 (한글 입력 등)
+      if (e.isComposing) {
         return;
       }
+
+      if (e.key !== 'Escape') return;
 
       // 스택의 최상위 모달만 반응
       if (!modalStackRegistry.isTop(modalId)) {
