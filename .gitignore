@@ -65,3 +65,4 @@ scripts/tmp_*.py
 # Agent output (optional - keep if you want to track planning docs)
 # agent-output/
 
+/레퍼런스
