@@ -23,6 +23,7 @@ import { useTaskBreakdownStore } from './stores/breakdownStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
 import { useModalHotkeys } from '@/shared/hooks';
+import { DURATION_OPTIONS, parseTaskInputText, type ParsedTaskInput } from './utils/taskParsing';
 
 interface TaskBreakdownModalProps {
   isOpen: boolean;
@@ -31,15 +32,10 @@ interface TaskBreakdownModalProps {
   initialText: string;
 }
 
-interface ParsedTask {
+type ParsedTask = ParsedTaskInput & {
   id: string;
-  text: string;
-  memo?: string;
-  baseDuration?: number;
-  resistance?: Resistance;
-  timeBlock?: TimeBlockId;
   checked: boolean;
-}
+};
 
 const modalOverlayClass =
   'modal-overlay fixed inset-0 z-[2000] flex items-start justify-center bg-[color:var(--modal-backdrop)] px-4 py-8 backdrop-blur-xl md:items-center';
@@ -63,8 +59,6 @@ const resistanceLabel: Record<Resistance, string> = {
     medium: '중간 저항',
     high: '저항 높음',
 };
-/** 시간 선택 옵션 (분 단위) */
-const DURATION_OPTIONS = [5, 10, 15, 30, 45, 60, 90, 120];
 
 /** AI 로딩 스피너 컴포넌트 */
 const Spinner = () => (
@@ -189,82 +183,30 @@ export default function TaskBreakdownModal({
   // 입력 텍스트가 바뀌면 미리보기 갱신
   useEffect(() => {
     if (input.trim()) {
-      const parsed = parseInput(input);
-      setPreviewTasks(parsed);
+      const parsed = parseTaskInputText(
+        input,
+        {
+          defaultResistance,
+          defaultBaseDuration: defaultDuration,
+          defaultTimeBlock,
+        },
+        {
+          stripMarkdownListPrefix: true,
+        },
+      );
+
+      setPreviewTasks(
+        parsed.map((task) => ({
+          ...task,
+          id: generateId('parsed-task'),
+          checked: true,
+        })),
+      );
     } else {
       setPreviewTasks([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, defaultTimeBlock, defaultResistance, defaultDuration]);
-
-  /**
-   * 입력 텍스트 파싱 (BulkAddModal과 유사)
-   */
-  function parseInput(text: string): ParsedTask[] {
-    const lines = text.split('\n').filter(line => line.trim());
-    const tasks: ParsedTask[] = [];
-
-    for (const line of lines) {
-      let remainingText = line.trim();
-
-      // 마크다운 불릿 제거
-      remainingText = remainingText.replace(/^[-*]\s+/, '');
-      // 숫자 리스트 제거 (1. )
-      remainingText = remainingText.replace(/^\d+\.\s+/, '');
-
-      const task: ParsedTask = {
-        id: generateId('parsed-task'),
-        text: '',
-        resistance: defaultResistance,
-        baseDuration: defaultDuration,
-        timeBlock: defaultTimeBlock,
-        checked: true,
-      };
-
-      // 메모 추출 (| 뒷부분)
-      const memoMatch = remainingText.match(/\|(.+)$/);
-      if (memoMatch) {
-        task.memo = memoMatch[1].trim();
-        remainingText = remainingText.replace(/\|.+$/, '').trim();
-      }
-
-      // 블록 ID 추출 (@블록ID)
-      const blockMatch = remainingText.match(/@(\d+-\d+)/);
-      if (blockMatch) {
-        const blockId = blockMatch[1];
-        if (TIME_BLOCKS.some(block => block.id === blockId)) {
-          task.timeBlock = blockId as TimeBlockId;
-        }
-        remainingText = remainingText.replace(/@\d+-\d+/, '').trim();
-      }
-
-      // 저항도 추출 (🟢/🟠/🔴)
-      if (remainingText.includes('🟢')) {
-        task.resistance = 'low';
-        remainingText = remainingText.replace('🟢', '').trim();
-      } else if (remainingText.includes('🟠')) {
-        task.resistance = 'medium';
-        remainingText = remainingText.replace('🟠', '').trim();
-      } else if (remainingText.includes('🔴')) {
-        task.resistance = 'high';
-        remainingText = remainingText.replace('🔴', '').trim();
-      }
-
-      // 시간 추출 ([30m] 또는 [1h] 또는 [1h30m])
-      const timeMatch = remainingText.match(/\[(\d+(?:\.\d+)?)(h|m)\]/);
-      if (timeMatch) {
-        const value = parseFloat(timeMatch[1]);
-        const unit = timeMatch[2];
-        task.baseDuration = unit === 'h' ? value * 60 : value;
-        remainingText = remainingText.replace(/\[\d+(?:\.\d+)?(h|m)\]/, '').trim();
-      }
-
-      task.text = remainingText.trim() || '(제목 없음)';
-      tasks.push(task);
-    }
-
-    return tasks;
-  }
 
   const toggleTaskCheck = (taskId: string) => {
     setPreviewTasks(prev =>

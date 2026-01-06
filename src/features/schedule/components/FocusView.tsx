@@ -14,18 +14,17 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import type { Task, TimeBlockId } from '@/shared/types/domain';
-import { calculateTaskXP } from '@/shared/lib/utils';
 import { getRecommendationMessage } from '../utils/taskRecommendation';
 import { useFocusModeStore } from '../stores/focusModeStore';
-import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { FocusTimer } from './FocusTimer';
 import { FocusHeroTask } from './FocusHeroTask';
 import { FocusTimeline } from './FocusTimeline';
 import { QuickMemo } from './QuickMemo';
 import { BreakView } from './BreakView';
 import { FocusMusicPlayer } from './FocusMusicPlayer';
-import { useFocusMusicStore } from '../stores/focusMusicStore';
 import { getBlockById, getBlockDurationMinutes, getBlockLabel } from '@/shared/utils/timeBlockUtils';
+import { useMusicPlayer } from '@/features/focus/hooks/useMusicPlayer';
+import { useTaskControl } from '@/features/focus/hooks/useTaskControl';
 
 interface FocusViewProps {
     currentBlockId: TimeBlockId | null;
@@ -54,13 +53,7 @@ export function FocusView({
     onCreateTask,
 }: FocusViewProps) {
     const { setFocusMode, activeTaskId, activeTaskStartTime, startTask, stopTask, isPaused, pauseTask, resumeTask } = useFocusModeStore();
-    const { settings } = useSettingsStore();
     const [memoText, setMemoText] = useState('');
-    const [isBreakTime, setIsBreakTime] = useState(false);
-    const [breakRemainingSeconds, setBreakRemainingSeconds] = useState<number | null>(null);
-    const [pendingNextTaskId, setPendingNextTaskId] = useState<string | null>(null);
-
-    // Music player store
     const {
         selectedMusicFolder,
         musicTracks,
@@ -74,35 +67,11 @@ export function FocusView({
         handleTogglePlay,
         handleNextRandom,
         handleLoopModeChange,
-        fetchMusicTracks,
-    } = useFocusMusicStore();
-
-    // 현재 시각 상태 (타이머/슬롯 라벨용)
-    const [now, setNow] = useState(Date.now());
-    useEffect(() => {
-        const interval = setInterval(() => setNow(Date.now()), 1000);
-        return () => clearInterval(interval);
-    }, []);
-
-    // 초기 로드 (트랙이 비어있으면 로드)
-    useEffect(() => {
-        if (musicTracks.length === 0 && !isMusicLoading) {
-            fetchMusicTracks(settings?.githubToken);
-        }
-    }, [musicTracks.length, isMusicLoading, fetchMusicTracks, settings?.githubToken]);
+    } = useMusicPlayer();
 
     // ... rest of the component
 
     const lastSavedMemoRef = useRef<{ taskId: string | null; memo: string }>({ taskId: null, memo: '' });
-    // 시간/작업 계산 (상단에서 정의하여 TDZ 회피)
-    const nowDate = useMemo(() => new Date(now), [now]);
-    const currentHour = nowDate.getHours();
-    const currentMinute = nowDate.getMinutes();
-    const nowTotalMinutes = currentHour * 60 + currentMinute;
-    const currentBlock = getBlockById(currentBlockId);
-    const blockEndTotalMinutes = Math.min(currentBlock?.end ?? 24, 24) * 60;
-    const slotLabel = getBlockLabel(currentBlockId);
-    const remainingMinutes = Math.max(0, blockEndTotalMinutes - nowTotalMinutes);
 
     const currentBlockTasks = useMemo(() => {
         return [...tasks].sort((a, b) => {
@@ -121,6 +90,36 @@ export function FocusView({
         return currentBlockTasks.filter(t => !t.completed && t.id !== recommendedTask?.id);
     }, [currentBlockTasks, recommendedTask]);
     const [upcomingTasks, setUpcomingTasks] = useState(initialUpcomingTasks);
+
+    const {
+        now,
+        isBreakTime,
+        breakRemainingSeconds,
+        startBreakForNextTask,
+        endBreak,
+        resetBreak,
+        handleToggleTaskWrapper,
+    } = useTaskControl({
+        activeTaskId,
+        activeTaskStartTime,
+        isPaused,
+        startTask,
+        stopTask,
+        currentBlockTasks,
+        allDailyTasks,
+        onToggleTask,
+        onActiveTaskStopped: () => setMemoText(''),
+    });
+
+    // 시간/작업 계산
+    const nowDate = useMemo(() => new Date(now), [now]);
+    const currentHour = nowDate.getHours();
+    const currentMinute = nowDate.getMinutes();
+    const nowTotalMinutes = currentHour * 60 + currentMinute;
+    const currentBlock = getBlockById(currentBlockId);
+    const blockEndTotalMinutes = Math.min(currentBlock?.end ?? 24, 24) * 60;
+    const slotLabel = getBlockLabel(currentBlockId);
+    const remainingMinutes = Math.max(0, blockEndTotalMinutes - nowTotalMinutes);
 
     // 활성 작업 변경 시 메모 동기화
     useEffect(() => {
@@ -188,89 +187,10 @@ export function FocusView({
     // All completed tasks from the entire day
     const allCompletedTasks = allDailyTasks.filter(t => t.completed);
 
-    type ToggleOptions = { skipBonus?: boolean; bonusReason?: 'autoTimer' };
-
-    const startBreakForNextTask = useCallback((completedTaskId: string | null) => {
-        const nextTask = currentBlockTasks.find(t => !t.completed && t.id !== completedTaskId);
-        setIsBreakTime(true);
-        setBreakRemainingSeconds(60);
-        setPendingNextTaskId(nextTask?.id ?? null);
-    }, [currentBlockTasks]);
-
-    const handleToggleTaskWrapper = useCallback(async (taskId: string, options?: ToggleOptions) => {
-        const isCompletingActiveTask = taskId === activeTaskId;
-        const task =
-            currentBlockTasks.find(t => t.id === taskId) ||
-            allDailyTasks.find(t => t.id === taskId) ||
-            null;
-
-        try {
-            await onToggleTask(taskId);
-
-            // 집중 모드에서 자동(타이머 만료) 완료 시에만 추가 XP 보너스 지급 (총 4배)
-            // ✅ 수동 완료/토글 시에는 보너스를 지급하지 않는다.
-            if (isCompletingActiveTask && task && !task.completed && options?.bonusReason === 'autoTimer' && !options?.skipBonus) {
-                // 기본 XP는 다른 경로로 지급되므로, 여기서 3배 추가해 총 4배가 되도록 한다.
-                const bonusXP = calculateTaskXP(task) * 3;
-                const { useGameStateStore } = await import('@/shared/stores/gameStateStore');
-                const gameStateStore = useGameStateStore.getState();
-                await gameStateStore.addXP(bonusXP, task.timeBlock || undefined);
-            }
-
-            if (isCompletingActiveTask) {
-                stopTask();
-                setMemoText('');
-                startBreakForNextTask(taskId);
-            }
-        } catch (error) {
-            console.error('[FocusView] Failed to toggle task:', error);
-            toast.error('작업 완료 처리 중 문제가 발생했습니다.');
-        }
-    }, [activeTaskId, onToggleTask, startBreakForNextTask, stopTask, currentBlockTasks, allDailyTasks]);
-
     // Sync state when props change
     useEffect(() => {
         setUpcomingTasks(initialUpcomingTasks);
     }, [initialUpcomingTasks]);
-
-    // 작업 시간 경과 시 자동 완료 (보너스 XP 적용)
-    useEffect(() => {
-        if (!activeTaskId || !activeTaskStartTime || isPaused || isBreakTime) return;
-        const activeTask =
-            currentBlockTasks.find(t => t.id === activeTaskId) ||
-            allDailyTasks.find(t => t.id === activeTaskId) ||
-            null;
-        if (!activeTask || activeTask.completed) return;
-
-        const elapsedSeconds = Math.floor((now - activeTaskStartTime) / 1000);
-        const totalSeconds = (activeTask.baseDuration || 0) * 60;
-        if (totalSeconds > 0 && elapsedSeconds >= totalSeconds) {
-            handleToggleTaskWrapper(activeTaskId, { bonusReason: 'autoTimer' });
-        }
-    }, [now, activeTaskId, activeTaskStartTime, isPaused, isBreakTime, currentBlockTasks, allDailyTasks, handleToggleTaskWrapper]);
-
-    // 휴식 타이머 관리
-    useEffect(() => {
-        if (!isBreakTime || breakRemainingSeconds === null) return;
-
-        const interval = setInterval(() => {
-            setBreakRemainingSeconds(prev => {
-                if (prev === null) return prev;
-                if (prev <= 1) {
-                    clearInterval(interval);
-                    setIsBreakTime(false);
-                    if (pendingNextTaskId) {
-                        startTask(pendingNextTaskId);
-                    }
-                    setPendingNextTaskId(null);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [isBreakTime, breakRemainingSeconds, pendingNextTaskId, startTask]);
 
     const sendPipState = useCallback(() => {
         if (!window.electronAPI?.sendPipUpdate) return;
@@ -372,15 +292,13 @@ export function FocusView({
             if (action === 'stop-timer') {
                 stopTask();
                 setMemoText('');
-                setIsBreakTime(false);
-                setBreakRemainingSeconds(null);
-                setPendingNextTaskId(null);
+                resetBreak();
             }
         });
 
         return unsubscribe;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isPaused, pauseTask, resumeTask, activeTaskId, handleToggleTaskWrapper, startBreakForNextTask, recommendedTask, setFocusMode, startTask]);
+    }, [isPaused, pauseTask, resumeTask, activeTaskId, handleToggleTaskWrapper, startBreakForNextTask, recommendedTask, setFocusMode, startTask, resetBreak]);
 
     // Progress calculation for current hour tasks only
     const totalTasks = currentBlockTasks.length;
@@ -421,7 +339,7 @@ export function FocusView({
     if (isBreakTime) {
         return (
             <div className="mx-auto max-w-4xl p-6 flex items-center justify-center min-h-[600px]">
-                <BreakView onFinish={() => setIsBreakTime(false)} />
+                <BreakView onFinish={endBreak} />
             </div>
         );
     }

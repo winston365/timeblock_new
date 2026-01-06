@@ -1,0 +1,1843 @@
+﻿{
+  "App.tsx": [
+    "app/AppShell.tsx",
+    "shared/subscribers/googleSyncSubscriber.ts"
+  ],
+  "app/AppShell.tsx": [
+    "app/components/AppToaster.tsx",
+    "app/components/CenterContent.tsx",
+    "app/components/LeftSidebar.tsx",
+    "app/components/LoadingScreen.tsx",
+    "app/components/RightPanel.tsx",
+    "app/components/TopToolbar.tsx",
+    "app/components/WaifuAside.tsx",
+    "app/hooks/useAppInitialization.ts",
+    "app/hooks/useEventBusInit.ts",
+    "app/hooks/useKeyboardShortcuts.ts",
+    "app/hooks/useModalState.ts",
+    "app/hooks/usePanelLayout.ts",
+    "app/hooks/useServicesInit.ts",
+    "app/hooks/useSyncErrorHandling.ts",
+    "app/hooks/useWaifuVisibility.ts",
+    "data/repositories/templateRepository.ts",
+    "features/gamification/components/XPParticleOverlay.tsx",
+    "features/gemini/GeminiFullscreenChat.tsx",
+    "features/schedule/TimelineView/index.ts",
+    "features/schedule/stores/focusModeStore.ts",
+    "features/settings/SettingsModal.tsx",
+    "features/tasks/BulkAddModal.tsx",
+    "features/tasks/GlobalTaskBreakdown.tsx",
+    "features/template/TemplatesModal.tsx",
+    "shared/components/MemoMissionModal.tsx",
+    "shared/components/SyncErrorToast.tsx",
+    "shared/hooks/index.ts",
+    "shared/stores/dailyDataStore.ts",
+    "shared/stores/settingsStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "app/components/AppToaster.tsx": [],
+  "app/components/CenterContent.tsx": [
+    "features/schedule/ScheduleView.tsx"
+  ],
+  "app/components/DailyXPBar.tsx": [
+    "shared/types/domain.ts"
+  ],
+  "app/components/GlobalModals.tsx": [
+    "data/repositories/templateRepository.ts",
+    "features/gemini/GeminiFullscreenChat.tsx",
+    "features/settings/SettingsModal.tsx",
+    "features/tasks/BulkAddModal.tsx",
+    "features/template/TemplatesModal.tsx",
+    "shared/components/MemoMissionModal.tsx",
+    "shared/hooks/index.ts",
+    "shared/stores/dailyDataStore.ts",
+    "shared/stores/uiStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "app/components/LeftSidebar.tsx": [
+    "features/battle/components/index.ts",
+    "features/battle/stores/battleStore.ts"
+  ],
+  "app/components/LoadingScreen.tsx": [],
+  "app/components/RightPanel.tsx": [
+    "features/shop/ShopPanel.tsx"
+  ],
+  "app/components/TimeBlockXPBar.tsx": [
+    "shared/lib/timeBlockXP.ts"
+  ],
+  "app/components/TopToolbar.tsx": [
+    "data/repositories/waifuRepository.ts",
+    "features/battle/components/BossAlbumModal.tsx",
+    "features/battle/stores/battleStore.ts",
+    "features/gamification/stores/xpParticleStore.ts",
+    "features/goals/GoalsModal.tsx",
+    "features/goals/hooks/useGoalsHotkeys.ts",
+    "features/insight/DailySummaryModal.tsx",
+    "features/schedule/stores/focusModeStore.ts",
+    "features/schedule/stores/scheduleViewStore.ts",
+    "features/stats/StatsModal.tsx",
+    "features/tasks/InboxModal.tsx",
+    "features/tasks/stores/breakdownStore.ts",
+    "features/tempSchedule/index.ts",
+    "features/waifu/hooks/useWaifu.ts",
+    "features/waifu/waifuImageUtils.ts",
+    "features/weather/WeatherWidget.tsx",
+    "shared/services/media/audioService.ts",
+    "shared/stores/waifuCompanionStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "app/components/WaifuAside.tsx": [
+    "features/waifu/WaifuPanel.tsx"
+  ],
+  "app/hooks/index.ts": [
+    "app/hooks/useAppInitialization.ts",
+    "app/hooks/useEventBusInit.ts",
+    "app/hooks/useKeyboardShortcuts.ts",
+    "app/hooks/useModalState.ts",
+    "app/hooks/usePanelLayout.ts",
+    "app/hooks/useServicesInit.ts",
+    "app/hooks/useSyncErrorHandling.ts",
+    "app/hooks/useWaifuVisibility.ts"
+  ],
+  "app/hooks/useAppInitialization.ts": [
+    "data/db/infra/useAppInitialization.ts"
+  ],
+  "app/hooks/useEventBusInit.ts": [
+    "shared/lib/eventBus/index.ts",
+    "shared/subscribers/index.ts"
+  ],
+  "app/hooks/useKeyboardShortcuts.ts": [
+    "shared/types/domain.ts"
+  ],
+  "app/hooks/useModalState.ts": [],
+  "app/hooks/usePanelLayout.ts": [
+    "data/repositories/systemRepository.ts"
+  ],
+  "app/hooks/useServicesInit.ts": [
+    "shared/services/behavior/idleFocusModeService.ts",
+    "shared/services/behavior/inactivityAlertService.ts",
+    "shared/services/sync/firebase/firebaseDebug.ts",
+    "shared/stores/settingsStore.ts"
+  ],
+  "app/hooks/useSyncErrorHandling.ts": [
+    "shared/services/sync/firebase/syncRetryQueue.ts"
+  ],
+  "app/hooks/useWaifuVisibility.ts": [
+    "shared/stores/waifuCompanionStore.ts"
+  ],
+  "data/db/dexieClient.ts": [
+    "shared/services/calendar/googleCalendarTypes.ts",
+    "shared/services/calendar/googleTasksService.ts",
+    "shared/types/domain.ts",
+    "shared/types/tempSchedule.ts",
+    "shared/types/weather.ts"
+  ],
+  "data/db/index.ts": [
+    "data/db/dexieClient.ts"
+  ],
+  "data/db/infra/ragSyncHandler.ts": [
+    "data/db/dexieClient.ts",
+    "data/repositories/dailyDataRepository.ts",
+    "data/repositories/inboxRepository.ts",
+    "shared/lib/utils.ts",
+    "shared/services/rag/ragService.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/db/infra/syncEngine.ts": [
+    "data/db/infra/syncEngine/index.ts"
+  ],
+  "data/db/infra/syncEngine/index.ts": [
+    "data/db/dexieClient.ts",
+    "data/db/infra/syncEngine/lifecycle.ts",
+    "data/db/infra/syncEngine/listener.ts",
+    "data/db/infra/syncEngine/queue.ts",
+    "shared/services/sync/firebase/firebaseClient.ts",
+    "shared/services/sync/firebase/firebaseSyncLeaderLock.ts",
+    "shared/services/sync/firebase/strategies.ts",
+    "shared/services/sync/firebase/syncCore.ts",
+    "shared/services/sync/firebase/syncUtils.ts",
+    "shared/services/sync/syncLogger.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/db/infra/syncEngine/lifecycle.ts": [
+    "data/db/dexieClient.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/db/infra/syncEngine/listener.ts": [
+    "data/db/dexieClient.ts",
+    "shared/services/sync/firebase/rtdbListenerRegistry.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/db/infra/syncEngine/queue.ts": [],
+  "data/db/infra/useAppInitialization.ts": [
+    "data/db/dexieClient.ts",
+    "data/db/infra/ragSyncHandler.ts",
+    "data/db/infra/syncEngine.ts",
+    "data/repositories/gameStateRepository.ts",
+    "shared/services/rag/hybridRAGService.ts",
+    "shared/services/rag/ragService.ts",
+    "shared/services/sync/firebase/strategies.ts",
+    "shared/services/sync/firebase/syncCore.ts",
+    "shared/services/sync/firebaseService.ts",
+    "shared/stores/dailyDataStore.ts",
+    "shared/stores/gameStateStore.ts",
+    "shared/stores/settingsStore.ts",
+    "shared/stores/toastStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/aiInsightsRepository.ts": [
+    "data/db/dexieClient.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/baseRepository.ts": [
+    "shared/services/sync/firebase/syncCore.ts",
+    "shared/services/sync/firebaseService.ts",
+    "shared/services/sync/syncLogger.ts"
+  ],
+  "data/repositories/battleRepository.ts": [
+    "data/db/dexieClient.ts",
+    "shared/lib/utils.ts",
+    "shared/services/sync/firebase/strategies.ts",
+    "shared/services/sync/firebase/syncCore.ts",
+    "shared/services/sync/firebaseService.ts",
+    "shared/services/sync/syncLogger.ts",
+    "shared/types/domain.ts",
+    "shared/utils/firebaseGuard.ts"
+  ],
+  "data/repositories/calendarRepository.ts": [
+    "data/db/dexieClient.ts",
+    "data/repositories/systemRepository.ts"
+  ],
+  "data/repositories/chatHistoryRepository.ts": [
+    "data/db/dexieClient.ts",
+    "shared/lib/utils.ts",
+    "shared/services/sync/firebase/strategies.ts",
+    "shared/services/sync/firebase/syncCore.ts",
+    "shared/services/sync/firebaseService.ts",
+    "shared/services/sync/syncLogger.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/dailyData/blockOperations.ts": [
+    "data/repositories/dailyData/coreOperations.ts",
+    "shared/lib/utils.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/dailyData/coreOperations.ts": [
+    "data/db/dexieClient.ts",
+    "data/repositories/dailyData/types.ts",
+    "shared/lib/utils.ts",
+    "shared/services/sync/firebase/strategies.ts",
+    "shared/services/sync/firebase/syncCore.ts",
+    "shared/services/sync/firebaseService.ts",
+    "shared/services/sync/syncLogger.ts",
+    "shared/types/domain.ts",
+    "shared/utils/timeBlockUtils.ts"
+  ],
+  "data/repositories/dailyData/index.ts": [
+    "data/repositories/dailyData/blockOperations.ts",
+    "data/repositories/dailyData/coreOperations.ts",
+    "data/repositories/dailyData/queryHelpers.ts",
+    "data/repositories/dailyData/taskOperations.ts",
+    "data/repositories/dailyData/types.ts"
+  ],
+  "data/repositories/dailyData/queryHelpers.ts": [
+    "data/db/dexieClient.ts",
+    "data/repositories/dailyData/coreOperations.ts",
+    "data/repositories/inboxRepository.ts",
+    "shared/lib/utils.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/dailyData/taskOperations.ts": [
+    "data/db/dexieClient.ts",
+    "data/repositories/dailyData/coreOperations.ts",
+    "data/repositories/inboxRepository.ts",
+    "shared/lib/utils.ts",
+    "shared/services/sync/syncLogger.ts",
+    "shared/types/domain.ts",
+    "shared/utils/timeBlockUtils.ts"
+  ],
+  "data/repositories/dailyData/types.ts": [
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/dailyDataRepository.ts": [
+    "data/repositories/dailyData/index.ts"
+  ],
+  "data/repositories/gameState/dayOperations.ts": [
+    "data/repositories/dailyDataRepository.ts",
+    "data/repositories/gameState/historyOperations.ts",
+    "data/repositories/gameState/questOperations.ts",
+    "data/repositories/templateRepository.ts",
+    "shared/lib/utils.ts",
+    "shared/services/sync/firebaseService.ts",
+    "shared/services/template/templateTaskService.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/gameState/historyOperations.ts": [
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/gameState/index.ts": [
+    "data/db/dexieClient.ts",
+    "data/repositories/baseRepository.ts",
+    "data/repositories/gameState/dayOperations.ts",
+    "data/repositories/gameState/historyOperations.ts",
+    "data/repositories/gameState/questOperations.ts",
+    "data/repositories/gameState/xpOperations.ts",
+    "shared/lib/utils.ts",
+    "shared/services/gameplay/gameState/index.ts",
+    "shared/services/sync/firebase/strategies.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/gameState/questOperations.ts": [
+    "shared/types/domain.ts",
+    "shared/utils/gamification.ts"
+  ],
+  "data/repositories/gameState/xpOperations.ts": [
+    "shared/lib/utils.ts",
+    "shared/services/gameplay/gameState/index.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/gameStateRepository.ts": [
+    "data/repositories/gameState/index.ts"
+  ],
+  "data/repositories/imageRepository.ts": [
+    "data/db/dexieClient.ts"
+  ],
+  "data/repositories/inboxRepository.ts": [
+    "data/db/dexieClient.ts",
+    "shared/services/sync/firebase/strategies.ts",
+    "shared/services/sync/firebase/syncCore.ts",
+    "shared/services/sync/firebaseService.ts",
+    "shared/services/sync/syncLogger.ts",
+    "shared/types/domain.ts",
+    "shared/utils/firebaseGuard.ts"
+  ],
+  "data/repositories/index.ts": [
+    "data/repositories/baseRepository.ts",
+    "data/repositories/chatHistoryRepository.ts",
+    "data/repositories/dailyDataRepository.ts",
+    "data/repositories/gameStateRepository.ts",
+    "data/repositories/inboxRepository.ts",
+    "data/repositories/settingsRepository.ts",
+    "data/repositories/shopRepository.ts",
+    "data/repositories/systemRepository.ts",
+    "data/repositories/tempScheduleRepository.ts",
+    "data/repositories/templateRepository.ts",
+    "data/repositories/waifuRepository.ts",
+    "shared/services/task/unifiedTaskService.ts"
+  ],
+  "data/repositories/ragDocumentRepository.ts": [
+    "data/db/dexieClient.ts"
+  ],
+  "data/repositories/settingsRepository.ts": [
+    "data/db/dexieClient.ts",
+    "data/repositories/baseRepository.ts",
+    "shared/constants/defaults.ts",
+    "shared/lib/constants.ts",
+    "shared/services/sync/firebase/strategies.ts",
+    "shared/services/sync/firebase/syncUtils.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/shopRepository.ts": [
+    "data/db/dexieClient.ts",
+    "data/repositories/gameStateRepository.ts",
+    "data/repositories/waifuRepository.ts",
+    "shared/services/sync/firebase/strategies.ts",
+    "shared/services/sync/firebase/syncCore.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/syncLogRepository.ts": [
+    "data/db/dexieClient.ts",
+    "data/repositories/systemRepository.ts"
+  ],
+  "data/repositories/systemRepository.ts": [
+    "data/db/dexieClient.ts"
+  ],
+  "data/repositories/tempScheduleRepository.ts": [
+    "data/db/dexieClient.ts",
+    "shared/lib/eventBus/index.ts",
+    "shared/lib/utils.ts",
+    "shared/services/sync/firebase/syncCore.ts",
+    "shared/services/sync/firebaseService.ts",
+    "shared/services/sync/syncLogger.ts",
+    "shared/types/tempSchedule.ts",
+    "shared/utils/firebaseGuard.ts"
+  ],
+  "data/repositories/templateRepository.ts": [
+    "data/db/dexieClient.ts",
+    "shared/lib/utils.ts",
+    "shared/services/sync/firebase/strategies.ts",
+    "shared/services/sync/firebase/syncCore.ts",
+    "shared/services/sync/syncLogger.ts",
+    "shared/types/domain.ts",
+    "shared/utils/firebaseGuard.ts",
+    "shared/utils/timeBlockUtils.ts"
+  ],
+  "data/repositories/tokenUsageRepository.ts": [
+    "data/db/dexieClient.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/waifuRepository.ts": [
+    "data/db/dexieClient.ts",
+    "data/repositories/baseRepository.ts",
+    "data/repositories/gameStateRepository.ts",
+    "shared/lib/constants.ts",
+    "shared/types/domain.ts"
+  ],
+  "data/repositories/weatherRepository.ts": [
+    "data/db/dexieClient.ts",
+    "shared/lib/utils.ts",
+    "shared/types/weather.ts"
+  ],
+  "data/repositories/weeklyGoalRepository.ts": [
+    "data/db/dexieClient.ts",
+    "shared/lib/utils.ts",
+    "shared/services/sync/firebase/strategies.ts",
+    "shared/services/sync/firebase/syncCore.ts",
+    "shared/services/sync/syncLogger.ts",
+    "shared/types/domain.ts",
+    "shared/utils/firebaseGuard.ts"
+  ],
+  "features/battle/components/BattleSidebar.tsx": [
+    "features/battle/components/BossDefeatOverlay.tsx",
+    "features/battle/components/BossDisplay.tsx",
+    "features/battle/components/MissionModal.tsx",
+    "features/battle/stores/battleStore.ts",
+    "features/battle/utils/xp.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/battle/components/BossAlbumModal.tsx": [
+    "data/repositories/battleRepository.ts",
+    "features/battle/data/bossData.ts",
+    "features/battle/stores/battleStore.ts",
+    "features/battle/utils/assets.ts",
+    "shared/hooks/index.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/battle/components/BossDefeatOverlay.tsx": [
+    "features/battle/utils/quotes.ts",
+    "shared/hooks/index.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/battle/components/BossDisplay.tsx": [
+    "features/battle/stores/battleStore.ts",
+    "features/battle/utils/assets.ts",
+    "features/battle/utils/quotes.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/battle/components/BossHealthBar.tsx": [],
+  "features/battle/components/BossProgressIndicator.tsx": [
+    "shared/types/domain.ts"
+  ],
+  "features/battle/components/DamageFloatingText.tsx": [],
+  "features/battle/components/MissionCard.tsx": [
+    "shared/types/domain.ts"
+  ],
+  "features/battle/components/MissionModal.tsx": [
+    "features/battle/components/modal/index.ts",
+    "features/battle/constants/battleConstants.ts",
+    "features/battle/services/battleSoundService.ts",
+    "features/battle/stores/battleStore.ts",
+    "features/battle/utils/missionTier.ts",
+    "shared/components/ModalEscHint.tsx",
+    "shared/constants/defaults.ts",
+    "shared/hooks/index.ts",
+    "shared/stores/gameStateStore.ts",
+    "shared/types/domain.ts",
+    "shared/utils/taskFactory.ts",
+    "shared/utils/timeBlockUtils.ts"
+  ],
+  "features/battle/components/index.ts": [
+    "features/battle/components/BattleSidebar.tsx",
+    "features/battle/components/BossDefeatOverlay.tsx",
+    "features/battle/components/BossDisplay.tsx",
+    "features/battle/components/BossHealthBar.tsx",
+    "features/battle/components/BossProgressIndicator.tsx",
+    "features/battle/components/DamageFloatingText.tsx",
+    "features/battle/components/MissionCard.tsx",
+    "features/battle/components/MissionModal.tsx",
+    "features/battle/components/modal/index.ts"
+  ],
+  "features/battle/components/modal/BattleMissionCard.tsx": [
+    "features/battle/constants/battleConstants.ts",
+    "shared/hooks/index.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/battle/components/modal/BossHPBar.tsx": [
+    "features/battle/constants/battleConstants.ts"
+  ],
+  "features/battle/components/modal/BossPanel.tsx": [
+    "features/battle/components/BattleSidebar.tsx",
+    "features/battle/components/modal/BossHPBar.tsx",
+    "features/battle/constants/battleConstants.ts",
+    "features/battle/utils/assets.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/battle/components/modal/MissionCardGrid.tsx": [
+    "features/battle/components/modal/BattleMissionCard.tsx",
+    "features/battle/stores/battleStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/battle/components/modal/index.ts": [
+    "features/battle/components/modal/BattleMissionCard.tsx",
+    "features/battle/components/modal/BossHPBar.tsx",
+    "features/battle/components/modal/BossPanel.tsx",
+    "features/battle/components/modal/MissionCardGrid.tsx"
+  ],
+  "features/battle/constants/battleConstants.ts": [],
+  "features/battle/constants/index.ts": [
+    "features/battle/constants/battleConstants.ts"
+  ],
+  "features/battle/data/bossData.ts": [
+    "shared/types/domain.ts"
+  ],
+  "features/battle/services/battleSoundService.ts": [],
+  "features/battle/stores/battleStore.ts": [
+    "data/repositories/battleRepository.ts",
+    "features/battle/data/bossData.ts",
+    "features/battle/utils/xp.ts",
+    "shared/lib/utils.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/battle/utils/assets.ts": [],
+  "features/battle/utils/missionTier.ts": [
+    "features/battle/constants/battleConstants.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/battle/utils/quotes.ts": [],
+  "features/battle/utils/xp.ts": [
+    "features/battle/data/bossData.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/gamification/components/XPParticleOverlay.tsx": [
+    "features/gamification/stores/xpParticleStore.ts"
+  ],
+  "features/gamification/stores/xpParticleStore.ts": [],
+  "features/gemini/GeminiFullscreenChat.tsx": [
+    "data/repositories/chatHistoryRepository.ts",
+    "features/waifu/hooks/useWaifu.ts",
+    "features/waifu/waifuImageUtils.ts",
+    "shared/hooks/index.ts",
+    "shared/services/ai/aiService.ts",
+    "shared/stores/settingsStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/CatchUpAlertModal.tsx": [
+    "data/repositories/systemRepository.ts",
+    "features/goals/utils/catchUpUtils.ts",
+    "shared/constants/defaults.ts",
+    "shared/hooks/index.ts",
+    "shared/stores/toastStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/GoalsModal.tsx": [
+    "features/goals/WeeklyGoalModal.tsx",
+    "features/goals/WeeklyGoalPanel.tsx",
+    "features/goals/components/GoalsFilterBar.tsx",
+    "features/goals/components/WeeklyResetCard.tsx",
+    "features/goals/hooks/useGoalsHotkeys.ts",
+    "features/goals/hooks/useGoalsSystemState.ts",
+    "features/goals/utils/weekUtils.ts",
+    "shared/hooks/index.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/WeeklyGoalCard.tsx": [
+    "features/goals/WeeklyProgressBar.tsx",
+    "features/goals/components/GoalStatusTooltip.tsx",
+    "features/goals/components/QuickLogSessionPopover.tsx",
+    "features/goals/constants/goalConstants.ts",
+    "features/goals/hooks/useProgressGuard.ts",
+    "features/goals/hooks/useProgressUndo.ts",
+    "features/goals/utils/catchUpUtils.ts",
+    "features/goals/utils/todayProgressUtils.ts",
+    "shared/stores/toastStore.ts",
+    "shared/stores/weeklyGoalStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/WeeklyGoalHistoryModal.tsx": [
+    "shared/hooks/index.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/WeeklyGoalModal.tsx": [
+    "features/goals/constants/goalConstants.ts",
+    "shared/hooks/index.ts",
+    "shared/stores/weeklyGoalStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/WeeklyGoalPanel.tsx": [
+    "features/goals/CatchUpAlertModal.tsx",
+    "features/goals/WeeklyGoalCard.tsx",
+    "features/goals/WeeklyGoalHistoryModal.tsx",
+    "features/goals/WeeklyGoalModal.tsx",
+    "features/goals/components/CatchUpAlertBanner.tsx",
+    "features/goals/components/ExpandHintBadge.tsx",
+    "features/goals/hooks/useCatchUpAlertBanner.ts",
+    "features/goals/hooks/useQuotaAchievement.ts",
+    "features/goals/utils/goalsFilterUtils.ts",
+    "features/goals/utils/todayProgressUtils.ts",
+    "shared/stores/weeklyGoalStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/WeeklyProgressBar.tsx": [],
+  "features/goals/components/CatchUpAlertBanner.tsx": [
+    "features/goals/constants/goalConstants.ts",
+    "features/goals/utils/catchUpUtils.ts",
+    "shared/constants/defaults.ts",
+    "shared/hooks/modalStackRegistry.ts",
+    "shared/stores/toastStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/components/ExpandHintBadge.tsx": [
+    "features/goals/utils/goalSystemState.ts"
+  ],
+  "features/goals/components/GoalStatusTooltip.tsx": [
+    "features/goals/constants/goalConstants.ts",
+    "features/goals/utils/catchUpUtils.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/components/GoalsFilterBar.tsx": [
+    "features/goals/utils/goalsFilterUtils.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/components/HistoryInsightPanel.tsx": [
+    "features/goals/utils/historyInsightUtils.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/components/QuickLogSessionPopover.tsx": [
+    "shared/hooks/modalStackRegistry.ts"
+  ],
+  "features/goals/components/QuotaAchievementToast.tsx": [],
+  "features/goals/components/WeeklyResetCard.tsx": [
+    "features/goals/utils/goalSystemState.ts",
+    "features/goals/utils/weekUtils.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/constants/goalConstants.ts": [],
+  "features/goals/hooks/index.ts": [
+    "features/goals/hooks/useCatchUpAlert.ts",
+    "features/goals/hooks/useCatchUpAlertBanner.ts",
+    "features/goals/hooks/useGoalsHotkeys.ts",
+    "features/goals/hooks/useQuotaAchievement.ts"
+  ],
+  "features/goals/hooks/useCatchUpAlert.ts": [
+    "data/repositories/systemRepository.ts",
+    "features/goals/utils/catchUpUtils.ts",
+    "shared/stores/weeklyGoalStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/hooks/useCatchUpAlertBanner.ts": [
+    "data/repositories/systemRepository.ts",
+    "features/goals/utils/catchUpUtils.ts",
+    "shared/constants/defaults.ts",
+    "shared/stores/weeklyGoalStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/hooks/useGoalsHotkeys.ts": [
+    "shared/hooks/modalStackRegistry.ts"
+  ],
+  "features/goals/hooks/useGoalsSystemState.ts": [
+    "features/goals/utils/goalSystemState.ts",
+    "shared/constants/defaults.ts"
+  ],
+  "features/goals/hooks/useProgressGuard.ts": [
+    "features/goals/constants/goalConstants.ts"
+  ],
+  "features/goals/hooks/useProgressUndo.ts": [
+    "features/goals/constants/goalConstants.ts",
+    "features/goals/utils/goalSystemState.ts",
+    "shared/constants/defaults.ts",
+    "shared/stores/toastStore.ts",
+    "shared/stores/weeklyGoalStore.ts"
+  ],
+  "features/goals/hooks/useQuotaAchievement.ts": [
+    "data/repositories/systemRepository.ts",
+    "features/goals/components/QuotaAchievementToast.tsx",
+    "shared/stores/weeklyGoalStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/hooks/useRecommendedPace.ts": [
+    "features/goals/constants/goalConstants.ts",
+    "shared/stores/toastStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/utils/catchUpUtils.ts": [
+    "features/goals/constants/goalConstants.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/utils/goalSystemState.ts": [
+    "data/repositories/systemRepository.ts",
+    "shared/constants/defaults.ts"
+  ],
+  "features/goals/utils/goalsFilterUtils.ts": [
+    "data/repositories/weeklyGoalRepository.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/utils/historyInsightUtils.ts": [
+    "shared/types/domain.ts"
+  ],
+  "features/goals/utils/themeGroupUtils.ts": [
+    "features/goals/constants/goalConstants.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/goals/utils/todayProgressUtils.ts": [
+    "data/repositories/systemRepository.ts",
+    "features/goals/utils/weekUtils.ts"
+  ],
+  "features/goals/utils/weekUtils.ts": [],
+  "features/insight/DailySummaryModal.tsx": [
+    "data/repositories/dailyDataRepository.ts",
+    "data/repositories/systemRepository.ts",
+    "shared/hooks/index.ts",
+    "shared/lib/utils.ts",
+    "shared/services/ai/geminiApi.ts",
+    "shared/stores/settingsStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/insight/InsightPanel.tsx": [
+    "data/repositories/index.ts",
+    "features/waifu/hooks/useWaifu.ts",
+    "shared/components/status/AsyncStatePanel.tsx",
+    "shared/constants/defaults.ts",
+    "shared/hooks/index.ts",
+    "shared/lib/utils.ts",
+    "shared/services/ai/aiService.ts",
+    "shared/stores/settingsStore.ts",
+    "shared/stores/waifuCompanionStore.ts"
+  ],
+  "features/inventory/InventoryPanel.tsx": [
+    "shared/stores/gameStateStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/pip/PipTimer.tsx": [
+    "shared/lib/utils.ts"
+  ],
+  "features/quickadd/QuickAddTask.tsx": [
+    "data/db/index.ts",
+    "shared/hooks/index.ts",
+    "shared/lib/utils.ts",
+    "shared/stores/inboxStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/CompletionCelebrationModal.tsx": [
+    "shared/hooks/index.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/HourBar.tsx": [
+    "features/schedule/TaskCard.tsx",
+    "features/schedule/hooks/useDragDropManager.ts",
+    "shared/stores/toastStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/MemoModal.tsx": [
+    "shared/hooks/index.ts"
+  ],
+  "features/schedule/ScheduleView.tsx": [
+    "data/repositories/dailyDataRepository.ts",
+    "data/repositories/inboxRepository.ts",
+    "data/repositories/systemRepository.ts",
+    "features/schedule/TaskModal.tsx",
+    "features/schedule/TimeBlock.tsx",
+    "features/schedule/components/FocusView.tsx",
+    "features/schedule/components/WarmupPresetModal.tsx",
+    "features/schedule/stores/focusModeStore.ts",
+    "features/schedule/stores/scheduleViewStore.ts",
+    "features/schedule/utils/timeBlockVisibility.ts",
+    "shared/constants/defaults.ts",
+    "shared/hooks/index.ts",
+    "shared/hooks/useGameState.ts",
+    "shared/services/sync/firebase/strategies.ts",
+    "shared/services/sync/firebase/syncCore.ts",
+    "shared/stores/settingsStore.ts",
+    "shared/stores/waifuCompanionStore.ts",
+    "shared/types/domain.ts",
+    "shared/utils/taskFactory.ts"
+  ],
+  "features/schedule/TaskCard.tsx": [
+    "features/schedule/MemoModal.tsx",
+    "features/schedule/hooks/useDragDropManager.ts",
+    "features/schedule/utils/timeBlockBucket.ts",
+    "shared/components/ui/NeonCheckbox.tsx",
+    "shared/lib/utils.ts",
+    "shared/stores/memoMissionStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/TaskModal.tsx": [
+    "features/schedule/MemoModal.tsx",
+    "features/schedule/hooks/useTaskContextSuggestion.ts",
+    "features/tasks/stores/breakdownStore.ts",
+    "shared/components/ModalEscHint.tsx",
+    "shared/constants/defaults.ts",
+    "shared/hooks/index.ts",
+    "shared/lib/utils.ts",
+    "shared/services/ai/emojiSuggester.ts",
+    "shared/services/ai/geminiApi.ts",
+    "shared/stores/settingsStore.ts",
+    "shared/types/domain.ts",
+    "shared/utils/tokenUtils.ts"
+  ],
+  "features/schedule/TimeBlock.tsx": [
+    "features/schedule/components/TimeBlockContent.tsx",
+    "features/schedule/components/TimeBlockHeader.tsx",
+    "features/schedule/hooks/useDragDrop.ts",
+    "features/schedule/hooks/useTimeBlockCalculations.ts",
+    "features/schedule/hooks/useTimeBlockStats.ts",
+    "features/schedule/hooks/useTimeBlockTimer.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/TimelineView/TimelineTaskBlock.tsx": [
+    "features/schedule/utils/timeBlockBucket.ts",
+    "shared/constants/defaults.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/TimelineView/TimelineView.tsx": [
+    "features/schedule/TaskModal.tsx",
+    "features/schedule/TimelineView/TimelineTaskBlock.tsx",
+    "features/schedule/TimelineView/useTimelineData.ts",
+    "features/schedule/hooks/useDragDropManager.ts",
+    "features/schedule/utils/timeBlockBucket.ts",
+    "features/tempSchedule/stores/tempScheduleStore.ts",
+    "shared/constants/defaults.ts",
+    "shared/lib/utils.ts",
+    "shared/stores/dailyDataStore.ts",
+    "shared/types/domain.ts",
+    "shared/utils/timeBlockUtils.ts"
+  ],
+  "features/schedule/TimelineView/index.ts": [
+    "features/schedule/TimelineView/TimelineTaskBlock.tsx",
+    "features/schedule/TimelineView/TimelineView.tsx",
+    "features/schedule/TimelineView/useTimelineData.ts"
+  ],
+  "features/schedule/TimelineView/useTimelineData.ts": [
+    "data/repositories/systemRepository.ts",
+    "features/schedule/utils/timeBlockBucket.ts",
+    "shared/constants/defaults.ts",
+    "shared/stores/dailyDataStore.ts",
+    "shared/types/domain.ts",
+    "shared/utils/timeBlockUtils.ts"
+  ],
+  "features/schedule/TimerConfirmModal.tsx": [
+    "shared/hooks/index.ts"
+  ],
+  "features/schedule/components/BreakView.tsx": [],
+  "features/schedule/components/DontDoChecklist.tsx": [
+    "data/repositories/systemRepository.ts",
+    "shared/components/ui/NeonCheckbox.tsx",
+    "shared/stores/dailyDataStore.ts",
+    "shared/stores/settingsStore.ts"
+  ],
+  "features/schedule/components/FocusHeroTask.tsx": [
+    "shared/lib/utils.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/components/FocusMusicPlayer.tsx": [
+    "features/schedule/stores/focusMusicStore.ts"
+  ],
+  "features/schedule/components/FocusTimeline.tsx": [
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/components/FocusTimer.tsx": [],
+  "features/schedule/components/FocusView.tsx": [
+    "features/schedule/components/BreakView.tsx",
+    "features/schedule/components/FocusHeroTask.tsx",
+    "features/schedule/components/FocusMusicPlayer.tsx",
+    "features/schedule/components/FocusTimeline.tsx",
+    "features/schedule/components/FocusTimer.tsx",
+    "features/schedule/components/QuickMemo.tsx",
+    "features/schedule/stores/focusModeStore.ts",
+    "features/schedule/stores/focusMusicStore.ts",
+    "features/schedule/utils/taskRecommendation.ts",
+    "shared/lib/utils.ts",
+    "shared/stores/gameStateStore.ts",
+    "shared/stores/settingsStore.ts",
+    "shared/types/domain.ts",
+    "shared/utils/timeBlockUtils.ts"
+  ],
+  "features/schedule/components/NextTaskCard.tsx": [
+    "shared/components/ui/NeonCheckbox.tsx",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/components/QuickMemo.tsx": [],
+  "features/schedule/components/ThreeHourBucket.tsx": [
+    "features/schedule/TaskCard.tsx",
+    "features/schedule/hooks/useDragDropManager.ts",
+    "features/schedule/utils/timeBlockBucket.ts",
+    "shared/stores/toastStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/components/TimeBlockBucket.tsx": [
+    "features/schedule/TaskCard.tsx",
+    "features/schedule/hooks/useDragDropManager.ts",
+    "features/schedule/utils/timeBlockBucket.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/components/TimeBlockContent.tsx": [
+    "features/schedule/components/DontDoChecklist.tsx",
+    "features/schedule/components/TimeBlockBucket.tsx",
+    "features/schedule/utils/timeBlockBucket.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/components/TimeBlockHeader.tsx": [
+    "features/schedule/hooks/useTimeBlockCalculations.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/components/TimeBlockStatus.tsx": [
+    "features/schedule/hooks/useTimeBlockCalculations.ts"
+  ],
+  "features/schedule/components/WarmupPresetModal.tsx": [
+    "data/repositories/systemRepository.ts",
+    "shared/constants/defaults.ts",
+    "shared/hooks/index.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/hooks/useDragDrop.ts": [
+    "features/schedule/hooks/useDragDropManager.ts",
+    "features/schedule/utils/timeBlockBucket.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/hooks/useDragDropManager.ts": [
+    "features/schedule/utils/timeBlockBucket.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/hooks/useFocusMusic.ts": [],
+  "features/schedule/hooks/useTaskContextSuggestion.ts": [
+    "shared/services/rag/autoTagService.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/hooks/useTimeBlockCalculations.ts": [],
+  "features/schedule/hooks/useTimeBlockStats.ts": [
+    "shared/lib/utils.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/hooks/useTimeBlockTimer.ts": [
+    "data/repositories/dailyDataRepository.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/stores/focusModeStore.ts": [],
+  "features/schedule/stores/focusMusicStore.ts": [],
+  "features/schedule/stores/scheduleViewStore.ts": [],
+  "features/schedule/utils/taskRecommendation.ts": [
+    "shared/types/domain.ts"
+  ],
+  "features/schedule/utils/threeHourBucket.ts": [
+    "shared/types/domain.ts",
+    "shared/utils/timeBlockUtils.ts"
+  ],
+  "features/schedule/utils/timeBlockBucket.ts": [
+    "shared/types/domain.ts",
+    "shared/utils/timeBlockUtils.ts"
+  ],
+  "features/schedule/utils/timeBlockVisibility.ts": [
+    "shared/types/domain.ts"
+  ],
+  "features/settings/SettingsModal.tsx": [
+    "data/repositories/chatHistoryRepository.ts",
+    "features/settings/components/tabs/index.ts",
+    "shared/components/ModalEscHint.tsx",
+    "shared/components/status/AsyncStatePanel.tsx",
+    "shared/components/status/StatusBanner.tsx",
+    "shared/hooks/index.ts",
+    "shared/services/sync/firebaseService.ts",
+    "shared/services/sync/syncLogger.ts",
+    "shared/stores/settingsStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/settings/SyncLogModal.tsx": [
+    "data/repositories/chatHistoryRepository.ts",
+    "shared/hooks/index.ts",
+    "shared/services/sync/syncLogger.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/settings/components/tabs/AppearanceTab.tsx": [
+    "features/settings/components/tabs/styles.ts",
+    "features/settings/components/tabs/types.ts"
+  ],
+  "features/settings/components/tabs/BattleTab.tsx": [
+    "features/battle/stores/battleStore.ts",
+    "features/settings/components/tabs/battle/BattleMissionsSection.tsx",
+    "features/settings/components/tabs/battle/BossImagePreviewEditor.tsx",
+    "features/settings/components/tabs/styles.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/settings/components/tabs/DontDoTab.tsx": [
+    "features/settings/components/tabs/styles.ts",
+    "features/settings/components/tabs/types.ts"
+  ],
+  "features/settings/components/tabs/FirebaseTab.tsx": [
+    "features/settings/components/tabs/styles.ts",
+    "features/settings/components/tabs/types.ts"
+  ],
+  "features/settings/components/tabs/GameplayTab.tsx": [
+    "features/settings/components/tabs/styles.ts",
+    "features/settings/components/tabs/types.ts",
+    "shared/constants/defaults.ts"
+  ],
+  "features/settings/components/tabs/GeminiTab.tsx": [
+    "features/settings/components/tabs/styles.ts",
+    "features/settings/components/tabs/types.ts"
+  ],
+  "features/settings/components/tabs/GoogleCalendarTab.tsx": [
+    "features/settings/components/tabs/styles.ts",
+    "shared/services/calendar/googleCalendarService.ts",
+    "shared/services/calendar/googleCalendarTypes.ts"
+  ],
+  "features/settings/components/tabs/LogsTab.tsx": [
+    "features/settings/components/tabs/styles.ts",
+    "features/settings/components/tabs/types.ts"
+  ],
+  "features/settings/components/tabs/ScheduleTab.tsx": [
+    "features/settings/components/tabs/styles.ts",
+    "features/settings/components/tabs/types.ts",
+    "shared/constants/defaults.ts"
+  ],
+  "features/settings/components/tabs/ShortcutsTab.tsx": [
+    "features/settings/components/tabs/styles.ts",
+    "features/settings/components/tabs/types.ts"
+  ],
+  "features/settings/components/tabs/battle/BattleMissionsSection.tsx": [
+    "features/battle/constants/battleConstants.ts",
+    "features/battle/stores/battleStore.ts",
+    "features/settings/components/tabs/styles.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/settings/components/tabs/battle/BossImagePreviewEditor.tsx": [
+    "features/battle/data/bossData.ts",
+    "features/battle/stores/battleStore.ts",
+    "features/battle/utils/assets.ts",
+    "features/settings/components/tabs/styles.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/settings/components/tabs/index.ts": [
+    "features/settings/components/tabs/AppearanceTab.tsx",
+    "features/settings/components/tabs/BattleTab.tsx",
+    "features/settings/components/tabs/DontDoTab.tsx",
+    "features/settings/components/tabs/FirebaseTab.tsx",
+    "features/settings/components/tabs/GameplayTab.tsx",
+    "features/settings/components/tabs/GeminiTab.tsx",
+    "features/settings/components/tabs/GoogleCalendarTab.tsx",
+    "features/settings/components/tabs/LogsTab.tsx",
+    "features/settings/components/tabs/ScheduleTab.tsx",
+    "features/settings/components/tabs/ShortcutsTab.tsx",
+    "features/settings/components/tabs/styles.ts",
+    "features/settings/components/tabs/types.ts"
+  ],
+  "features/settings/components/tabs/styles.ts": [],
+  "features/settings/components/tabs/types.ts": [
+    "shared/services/sync/syncLogger.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/shop/ShopModal.tsx": [
+    "data/repositories/index.ts",
+    "shared/components/ModalEscHint.tsx",
+    "shared/hooks/index.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/shop/ShopPanel.tsx": [
+    "data/repositories/index.ts",
+    "features/shop/ShopModal.tsx",
+    "features/waifu/hooks/useWaifu.ts",
+    "shared/hooks/index.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/stats/StatsModal.tsx": [
+    "data/repositories/aiInsightsRepository.ts",
+    "features/stats/components/tabs/index.ts",
+    "features/tasks/CompletedTab.tsx",
+    "shared/components/ModalEscHint.tsx",
+    "shared/hooks/index.ts",
+    "shared/hooks/useGameState.ts",
+    "shared/lib/utils.ts",
+    "shared/services/ai/geminiApi.ts",
+    "shared/stores/completedTasksStore.ts",
+    "shared/stores/settingsStore.ts",
+    "shared/types/domain.ts",
+    "shared/utils/tokenUtils.ts"
+  ],
+  "features/stats/StatsTab.tsx": [
+    "shared/hooks/index.ts",
+    "shared/lib/utils.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/stats/components/tabs/InsightsTab.tsx": [
+    "features/stats/components/tabs/types.ts"
+  ],
+  "features/stats/components/tabs/OverviewTab.tsx": [
+    "features/stats/components/tabs/types.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/stats/components/tabs/TimeBlocksTab.tsx": [
+    "features/stats/components/tabs/OverviewTab.tsx",
+    "features/stats/components/tabs/XPAnalysisTab.tsx",
+    "features/stats/components/tabs/types.ts",
+    "features/stats/utils/chartColors.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/stats/components/tabs/XPAnalysisTab.tsx": [
+    "features/stats/components/tabs/types.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/stats/components/tabs/index.ts": [
+    "features/stats/components/tabs/InsightsTab.tsx",
+    "features/stats/components/tabs/OverviewTab.tsx",
+    "features/stats/components/tabs/TimeBlocksTab.tsx",
+    "features/stats/components/tabs/XPAnalysisTab.tsx",
+    "features/stats/components/tabs/types.ts"
+  ],
+  "features/stats/components/tabs/types.ts": [
+    "shared/types/domain.ts"
+  ],
+  "features/stats/utils/chartColors.ts": [],
+  "features/tasks/BulkAddModal.tsx": [
+    "shared/hooks/index.ts",
+    "shared/types/domain.ts",
+    "shared/utils/taskFactory.ts"
+  ],
+  "features/tasks/CompletedTab.tsx": [
+    "shared/lib/utils.ts",
+    "shared/stores/completedTasksStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/tasks/GlobalTaskBreakdown.tsx": [
+    "features/tasks/TaskBreakdownModal.tsx",
+    "features/tasks/stores/breakdownStore.ts",
+    "shared/hooks/useDailyData.ts",
+    "shared/hooks/useGameState.ts",
+    "shared/hooks/useXPToast.ts",
+    "shared/lib/utils.ts",
+    "shared/stores/inboxStore.ts",
+    "shared/stores/waifuCompanionStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/tasks/InboxModal.tsx": [
+    "features/tasks/InboxTab.tsx",
+    "shared/hooks/index.ts"
+  ],
+  "features/tasks/InboxTab.tsx": [
+    "data/repositories/dailyDataRepository.ts",
+    "features/schedule/TaskCard.tsx",
+    "features/schedule/TaskModal.tsx",
+    "features/schedule/hooks/useDragDropManager.ts",
+    "features/tasks/hooks/useInboxHotkeys.ts",
+    "shared/constants/defaults.ts",
+    "shared/hooks/useDailyData.ts",
+    "shared/hooks/useGameState.ts",
+    "shared/lib/eventBus/index.ts",
+    "shared/lib/notify.ts",
+    "shared/lib/utils.ts",
+    "shared/services/schedule/slotFinder.ts",
+    "shared/stores/inboxStore.ts",
+    "shared/types/domain.ts",
+    "shared/utils/taskFactory.ts"
+  ],
+  "features/tasks/TaskBreakdownModal.tsx": [
+    "features/tasks/stores/breakdownStore.ts",
+    "features/waifu/hooks/useWaifu.ts",
+    "shared/hooks/index.ts",
+    "shared/lib/utils.ts",
+    "shared/stores/settingsStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/tasks/hooks/useInboxHotkeys.ts": [
+    "shared/hooks/modalStackRegistry.ts",
+    "shared/hooks/useDailyData.ts",
+    "shared/lib/notify.ts",
+    "shared/lib/utils.ts",
+    "shared/services/schedule/slotFinder.ts",
+    "shared/stores/inboxStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/tasks/stores/breakdownStore.ts": [
+    "shared/services/ai/geminiApi.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/tempSchedule/TempScheduleModal.tsx": [
+    "features/tempSchedule/components/AddTempScheduleTaskModal.tsx",
+    "features/tempSchedule/components/CommandPalette.tsx",
+    "features/tempSchedule/components/MonthlyScheduleView.tsx",
+    "features/tempSchedule/components/TempScheduleTaskList.tsx",
+    "features/tempSchedule/components/TempScheduleTimelineView.tsx",
+    "features/tempSchedule/components/TemplateModal.tsx",
+    "features/tempSchedule/components/WeeklyScheduleView.tsx",
+    "features/tempSchedule/stores/tempScheduleStore.ts",
+    "shared/components/status/AsyncStatePanel.tsx",
+    "shared/hooks/index.ts",
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/tempSchedule/components/AddTempScheduleTaskModal.tsx": [
+    "features/tempSchedule/stores/tempScheduleStore.ts",
+    "shared/hooks/index.ts",
+    "shared/lib/utils.ts",
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/tempSchedule/components/CommandPalette.tsx": [
+    "features/tempSchedule/stores/tempScheduleStore.ts"
+  ],
+  "features/tempSchedule/components/InlineEditPopover.tsx": [
+    "features/tempSchedule/stores/tempScheduleStore.ts",
+    "shared/lib/notify.ts",
+    "shared/lib/utils.ts",
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/tempSchedule/components/MonthlyScheduleView.tsx": [
+    "data/repositories/tempScheduleRepository.ts",
+    "features/tempSchedule/stores/tempScheduleStore.ts",
+    "shared/lib/utils.ts",
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/tempSchedule/components/PromotePostActionPopup.tsx": [
+    "features/tempSchedule/stores/tempScheduleStore.ts",
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/tempSchedule/components/QuickActionButtons.tsx": [
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/tempSchedule/components/StatusBadges.tsx": [
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/tempSchedule/components/TempScheduleContextMenu.tsx": [
+    "features/tempSchedule/components/PromotePostActionPopup.tsx",
+    "features/tempSchedule/stores/tempScheduleStore.ts",
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/tempSchedule/components/TempScheduleTaskList.tsx": [
+    "features/tempSchedule/components/StatusBadges.tsx",
+    "features/tempSchedule/stores/tempScheduleStore.ts",
+    "shared/lib/utils.ts",
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/tempSchedule/components/TempScheduleTimelineView.tsx": [
+    "features/tempSchedule/components/InlineEditPopover.tsx",
+    "features/tempSchedule/components/PromotePostActionPopup.tsx",
+    "features/tempSchedule/components/StatusBadges.tsx",
+    "features/tempSchedule/components/TempScheduleContextMenu.tsx",
+    "features/tempSchedule/stores/tempScheduleStore.ts",
+    "shared/lib/notify.ts",
+    "shared/lib/utils.ts",
+    "shared/stores/dailyDataStore.ts",
+    "shared/types/domain.ts",
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/tempSchedule/components/TemplateModal.tsx": [
+    "features/tempSchedule/stores/tempScheduleStore.ts",
+    "shared/hooks/index.ts",
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/tempSchedule/components/WeekRecurrenceMoveDialog.tsx": [
+    "shared/lib/notify.ts"
+  ],
+  "features/tempSchedule/components/WeeklyScheduleView.tsx": [
+    "data/repositories/tempScheduleRepository.ts",
+    "features/tempSchedule/components/InlineEditPopover.tsx",
+    "features/tempSchedule/components/PromotePostActionPopup.tsx",
+    "features/tempSchedule/components/StatusBadges.tsx",
+    "features/tempSchedule/components/WeekRecurrenceMoveDialog.tsx",
+    "features/tempSchedule/stores/tempScheduleStore.ts",
+    "shared/lib/notify.ts",
+    "shared/lib/utils.ts",
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/tempSchedule/index.ts": [
+    "features/tempSchedule/TempScheduleModal.tsx",
+    "features/tempSchedule/components/AddTempScheduleTaskModal.tsx",
+    "features/tempSchedule/components/MonthlyScheduleView.tsx",
+    "features/tempSchedule/components/TempScheduleTaskList.tsx",
+    "features/tempSchedule/components/TempScheduleTimelineView.tsx",
+    "features/tempSchedule/components/WeeklyScheduleView.tsx",
+    "features/tempSchedule/stores/tempScheduleStore.ts",
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/tempSchedule/stores/tempScheduleStore.ts": [
+    "data/repositories/settingsRepository.ts",
+    "data/repositories/tempScheduleRepository.ts",
+    "shared/lib/notify.ts",
+    "shared/lib/utils.ts",
+    "shared/stores/dailyDataStore.ts",
+    "shared/types/tempSchedule.ts"
+  ],
+  "features/template/TemplateModal.tsx": [
+    "data/repositories/index.ts",
+    "data/repositories/settingsRepository.ts",
+    "shared/hooks/index.ts",
+    "shared/schemas/templateSchemas.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/template/TemplatePanel.tsx": [
+    "data/repositories/index.ts",
+    "features/template/TemplateModal.tsx",
+    "shared/lib/utils.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/template/TemplatesModal.tsx": [
+    "features/template/TemplateModal.tsx",
+    "shared/components/ModalEscHint.tsx",
+    "shared/constants/defaults.ts",
+    "shared/hooks/index.ts",
+    "shared/lib/utils.ts",
+    "shared/services/template/templateTaskService.ts",
+    "shared/stores/templateStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/waifu/WaifuPanel.tsx": [
+    "data/repositories/waifuRepository.ts",
+    "features/waifu/base.png",
+    "features/waifu/hooks/useWaifu.ts",
+    "features/waifu/waifuImagePreloader.ts",
+    "features/waifu/waifuImageUtils.ts",
+    "shared/components/ui/Typewriter.tsx",
+    "shared/constants/defaults.ts",
+    "shared/services/media/audioService.ts",
+    "shared/stores/gameStateStore.ts",
+    "shared/stores/settingsStore.ts",
+    "shared/stores/waifuCompanionStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/waifu/base.png": [],
+  "features/waifu/hooks/useWaifu.ts": [
+    "data/repositories/waifuRepository.ts",
+    "features/waifu/stores/waifuStore.ts",
+    "shared/stores/gameStateStore.ts"
+  ],
+  "features/waifu/stores/waifuStore.ts": [
+    "data/repositories/waifuRepository.ts",
+    "shared/types/domain.ts"
+  ],
+  "features/waifu/waifuImagePreloader.ts": [
+    "features/waifu/waifuImageUtils.ts"
+  ],
+  "features/waifu/waifuImageUtils.ts": [],
+  "features/weather/WeatherWidget.tsx": [
+    "features/weather/services/weatherService.ts",
+    "features/weather/stores/weatherStore.ts",
+    "shared/lib/utils.ts",
+    "shared/types/weather.ts"
+  ],
+  "features/weather/services/weatherApi.ts": [
+    "shared/stores/settingsStore.ts",
+    "shared/types/weather.ts"
+  ],
+  "features/weather/services/weatherService.ts": [
+    "data/repositories/weatherRepository.ts",
+    "features/weather/services/weatherApi.ts",
+    "shared/services/ai/gemini/index.ts",
+    "shared/stores/settingsStore.ts",
+    "shared/types/weather.ts",
+    "shared/utils/tokenUtils.ts"
+  ],
+  "features/weather/stores/weatherStore.ts": [
+    "features/weather/services/weatherService.ts",
+    "shared/types/weather.ts"
+  ],
+  "main.tsx": [
+    "App.tsx",
+    "features/pip/PipTimer.tsx",
+    "features/quickadd/QuickAddTask.tsx",
+    "styles/design-system.css",
+    "styles/globals.css",
+    "styles/tailwind.css"
+  ],
+  "shared/commands/Command.ts": [],
+  "shared/components/MemoMissionModal.tsx": [
+    "features/schedule/components/FocusTimer.tsx",
+    "shared/hooks/index.ts",
+    "shared/stores/gameStateStore.ts",
+    "shared/stores/memoMissionStore.ts"
+  ],
+  "shared/components/ModalEscHint.tsx": [],
+  "shared/components/SyncErrorToast.tsx": [],
+  "shared/components/XPToast.tsx": [],
+  "shared/components/status/AsyncStatePanel.tsx": [
+    "shared/components/status/StatusBanner.tsx"
+  ],
+  "shared/components/status/StatusBanner.tsx": [],
+  "shared/components/status/index.ts": [
+    "shared/components/status/AsyncStatePanel.tsx",
+    "shared/components/status/StatusBanner.tsx"
+  ],
+  "shared/components/ui/NeonCheckbox.tsx": [],
+  "shared/components/ui/Toast.tsx": [
+    "shared/stores/toastStore.ts"
+  ],
+  "shared/components/ui/Typewriter.tsx": [],
+  "shared/constants/defaults.ts": [
+    "shared/lib/constants.ts",
+    "shared/lib/utils.ts"
+  ],
+  "shared/constants/index.ts": [
+    "shared/constants/defaults.ts"
+  ],
+  "shared/hooks/index.ts": [
+    "shared/hooks/modalStackRegistry.ts",
+    "shared/hooks/useDailyData.ts",
+    "shared/hooks/useGameState.ts",
+    "shared/hooks/useKeyboardNavigation.ts",
+    "shared/hooks/useModalEscapeClose.ts",
+    "shared/hooks/useModalHotkeys.ts",
+    "shared/hooks/useTimeout.ts"
+  ],
+  "shared/hooks/modalStackRegistry.ts": [],
+  "shared/hooks/useCanvasImage.ts": [
+    "shared/services/imageStorageService.ts"
+  ],
+  "shared/hooks/useDailyData.ts": [
+    "shared/lib/utils.ts",
+    "shared/stores/dailyDataStore.ts"
+  ],
+  "shared/hooks/useGameState.ts": [
+    "shared/stores/gameStateStore.ts"
+  ],
+  "shared/hooks/useKeyboardNavigation.ts": [],
+  "shared/hooks/useModalEscapeClose.ts": [
+    "shared/hooks/modalStackRegistry.ts"
+  ],
+  "shared/hooks/useModalHotkeys.ts": [
+    "shared/hooks/modalStackRegistry.ts"
+  ],
+  "shared/hooks/useTimeout.ts": [],
+  "shared/hooks/useXPToast.ts": [],
+  "shared/lib/constants.ts": [],
+  "shared/lib/errorHandler.ts": [
+    "shared/lib/logger.ts"
+  ],
+  "shared/lib/eventBus/EventBus.ts": [
+    "shared/lib/eventBus/types.ts"
+  ],
+  "shared/lib/eventBus/index.ts": [
+    "shared/lib/eventBus/EventBus.ts",
+    "shared/lib/eventBus/middleware/logger.ts",
+    "shared/lib/eventBus/middleware/performance.ts",
+    "shared/lib/eventBus/types.ts"
+  ],
+  "shared/lib/eventBus/middleware/logger.ts": [
+    "shared/lib/eventBus/types.ts"
+  ],
+  "shared/lib/eventBus/middleware/performance.ts": [
+    "shared/lib/eventBus/types.ts"
+  ],
+  "shared/lib/eventBus/types.ts": [
+    "shared/types/tempSchedule.ts"
+  ],
+  "shared/lib/logger.ts": [],
+  "shared/lib/notify.ts": [],
+  "shared/lib/personaUtils.ts": [
+    "data/repositories/dailyDataRepository.ts",
+    "data/repositories/inboxRepository.ts",
+    "shared/services/ai/geminiApi.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/lib/standardError.ts": [],
+  "shared/lib/storeUtils.ts": [
+    "shared/types/domain.ts",
+    "shared/utils/firebaseSanitizer.ts",
+    "shared/utils/timeBlockUtils.ts"
+  ],
+  "shared/lib/timeBlockXP.ts": [
+    "shared/types/domain.ts",
+    "shared/utils/timeBlockUtils.ts"
+  ],
+  "shared/lib/typeGuards.ts": [],
+  "shared/lib/utils.ts": [
+    "shared/lib/constants.ts",
+    "shared/types/domain.ts",
+    "shared/utils/timeBlockUtils.ts"
+  ],
+  "shared/schemas/index.ts": [
+    "shared/schemas/templateSchemas.ts"
+  ],
+  "shared/schemas/templateSchemas.ts": [],
+  "shared/services/ai/aiService.ts": [
+    "shared/lib/personaUtils.ts",
+    "shared/services/ai/geminiApi.ts",
+    "shared/services/rag/hybridRAGService.ts",
+    "shared/types/domain.ts",
+    "shared/utils/tokenUtils.ts"
+  ],
+  "shared/services/ai/emojiSuggester.ts": [
+    "data/repositories/settingsRepository.ts",
+    "shared/services/ai/geminiApi.ts",
+    "shared/services/task/index.ts",
+    "shared/utils/tokenUtils.ts"
+  ],
+  "shared/services/ai/gemini/apiClient.ts": [
+    "shared/services/ai/gemini/types.ts"
+  ],
+  "shared/services/ai/gemini/index.ts": [
+    "shared/services/ai/gemini/apiClient.ts",
+    "shared/services/ai/gemini/personaPrompts.ts",
+    "shared/services/ai/gemini/taskFeatures.ts",
+    "shared/services/ai/gemini/types.ts"
+  ],
+  "shared/services/ai/gemini/personaPrompts.ts": [
+    "shared/services/ai/gemini/types.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/services/ai/gemini/taskFeatures.ts": [
+    "shared/services/ai/gemini/apiClient.ts",
+    "shared/services/ai/gemini/types.ts",
+    "shared/utils/tokenUtils.ts"
+  ],
+  "shared/services/ai/gemini/types.ts": [],
+  "shared/services/ai/geminiApi.ts": [
+    "shared/services/ai/gemini/index.ts"
+  ],
+  "shared/services/behavior/idleFocusModeService.ts": [
+    "features/schedule/stores/focusModeStore.ts",
+    "shared/constants/defaults.ts",
+    "shared/stores/settingsStore.ts"
+  ],
+  "shared/services/behavior/inactivityAlertService.ts": [
+    "shared/lib/constants.ts"
+  ],
+  "shared/services/behavior/procrastinationMonitor.ts": [
+    "data/repositories/systemRepository.ts",
+    "shared/lib/utils.ts",
+    "shared/stores/waifuCompanionStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/services/calendar/googleCalendarService.ts": [
+    "data/repositories/calendarRepository.ts",
+    "shared/services/calendar/googleCalendarTypes.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/services/calendar/googleCalendarTypes.ts": [],
+  "shared/services/calendar/googleTasksService.ts": [
+    "data/repositories/calendarRepository.ts",
+    "shared/lib/utils.ts",
+    "shared/services/calendar/googleCalendarService.ts",
+    "shared/services/calendar/googleCalendarTypes.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/services/calendar/index.ts": [
+    "shared/services/calendar/googleCalendarService.ts",
+    "shared/services/calendar/googleCalendarTypes.ts"
+  ],
+  "shared/services/gameplay/gameService.ts": [
+    "data/repositories/index.ts"
+  ],
+  "shared/services/gameplay/gameState/gameStateEventHandler.ts": [
+    "shared/components/XPToast.tsx",
+    "shared/services/gameplay/gameState/types.ts",
+    "shared/stores/waifuCompanionStore.ts"
+  ],
+  "shared/services/gameplay/gameState/index.ts": [
+    "shared/services/gameplay/gameState/gameStateEventHandler.ts",
+    "shared/services/gameplay/gameState/types.ts"
+  ],
+  "shared/services/gameplay/gameState/types.ts": [
+    "shared/types/domain.ts"
+  ],
+  "shared/services/gameplay/taskCompletion/handlers/blockCompletionHandler.ts": [
+    "data/repositories/dailyDataRepository.ts",
+    "data/repositories/gameStateRepository.ts",
+    "shared/services/gameplay/gameState/index.ts",
+    "shared/services/gameplay/taskCompletion/types.ts"
+  ],
+  "shared/services/gameplay/taskCompletion/handlers/questProgressHandler.ts": [
+    "data/repositories/gameStateRepository.ts",
+    "shared/lib/utils.ts",
+    "shared/services/gameplay/gameState/index.ts",
+    "shared/services/gameplay/taskCompletion/types.ts"
+  ],
+  "shared/services/gameplay/taskCompletion/handlers/waifuAffectionHandler.ts": [
+    "data/repositories/waifuRepository.ts",
+    "shared/services/gameplay/gameState/index.ts",
+    "shared/services/gameplay/taskCompletion/types.ts"
+  ],
+  "shared/services/gameplay/taskCompletion/handlers/xpRewardHandler.ts": [
+    "shared/lib/utils.ts",
+    "shared/services/gameplay/gameState/index.ts",
+    "shared/services/gameplay/taskCompletion/types.ts",
+    "shared/stores/gameStateStore.ts"
+  ],
+  "shared/services/gameplay/taskCompletion/index.ts": [
+    "shared/services/gameplay/taskCompletion/taskCompletionService.ts",
+    "shared/services/gameplay/taskCompletion/types.ts"
+  ],
+  "shared/services/gameplay/taskCompletion/taskCompletionService.ts": [
+    "shared/lib/utils.ts",
+    "shared/services/gameplay/gameState/index.ts",
+    "shared/services/gameplay/taskCompletion/handlers/blockCompletionHandler.ts",
+    "shared/services/gameplay/taskCompletion/handlers/questProgressHandler.ts",
+    "shared/services/gameplay/taskCompletion/handlers/waifuAffectionHandler.ts",
+    "shared/services/gameplay/taskCompletion/handlers/xpRewardHandler.ts",
+    "shared/services/gameplay/taskCompletion/types.ts",
+    "shared/stores/waifuCompanionStore.ts"
+  ],
+  "shared/services/gameplay/taskCompletion/types.ts": [
+    "shared/services/gameplay/gameState/index.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/services/imageStorageService.ts": [
+    "data/repositories/imageRepository.ts"
+  ],
+  "shared/services/media/audioService.ts": [],
+  "shared/services/rag/autoTagService.ts": [
+    "data/repositories/dailyDataRepository.ts",
+    "data/repositories/inboxRepository.ts",
+    "shared/services/ai/geminiApi.ts",
+    "shared/types/domain.ts",
+    "shared/utils/tokenUtils.ts"
+  ],
+  "shared/services/rag/directQueryService.ts": [
+    "data/repositories/dailyDataRepository.ts",
+    "data/repositories/inboxRepository.ts",
+    "shared/lib/utils.ts",
+    "shared/services/rag/queryParser.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/services/rag/embeddingService.ts": [
+    "data/repositories/chatHistoryRepository.ts",
+    "shared/stores/settingsStore.ts"
+  ],
+  "shared/services/rag/hybridRAGService.ts": [
+    "shared/services/rag/directQueryService.ts",
+    "shared/services/rag/queryParser.ts",
+    "shared/services/rag/ragService.ts"
+  ],
+  "shared/services/rag/queryParser.ts": [],
+  "shared/services/rag/ragService.ts": [
+    "shared/services/rag/embeddingService.ts",
+    "shared/services/rag/vectorStore.ts"
+  ],
+  "shared/services/rag/ragSyncHandler.ts": [
+    "data/db/infra/ragSyncHandler.ts"
+  ],
+  "shared/services/rag/vectorPersistence.ts": [
+    "data/db/index.ts",
+    "data/repositories/ragDocumentRepository.ts",
+    "shared/lib/utils.ts",
+    "shared/services/rag/vectorStore.ts"
+  ],
+  "shared/services/rag/vectorStore.ts": [
+    "shared/services/rag/vectorPersistence.ts"
+  ],
+  "shared/services/schedule/slotFinder.ts": [
+    "shared/lib/utils.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/services/sync/firebase/conflictResolver.ts": [
+    "shared/types/domain.ts"
+  ],
+  "shared/services/sync/firebase/firebaseClient.ts": [
+    "shared/services/sync/firebase/rtdbListenerRegistry.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/services/sync/firebase/firebaseDebug.ts": [
+    "shared/services/sync/firebase/firebaseClient.ts"
+  ],
+  "shared/services/sync/firebase/firebaseSyncLeaderLock.ts": [
+    "shared/services/sync/syncLogger.ts"
+  ],
+  "shared/services/sync/firebase/rtdbListenerRegistry.ts": [
+    "shared/services/sync/firebase/rtdbMetrics.ts",
+    "shared/services/sync/syncLogger.ts"
+  ],
+  "shared/services/sync/firebase/rtdbMetrics.ts": [],
+  "shared/services/sync/firebase/strategies.ts": [
+    "shared/services/sync/firebase/conflictResolver.ts",
+    "shared/services/sync/firebase/syncCore.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/services/sync/firebase/syncCore.ts": [
+    "shared/services/sync/firebase/conflictResolver.ts",
+    "shared/services/sync/firebase/firebaseClient.ts",
+    "shared/services/sync/firebase/rtdbMetrics.ts",
+    "shared/services/sync/firebase/syncRetryQueue.ts",
+    "shared/services/sync/firebase/syncUtils.ts",
+    "shared/services/sync/syncLogger.ts",
+    "shared/utils/firebaseSanitizer.ts"
+  ],
+  "shared/services/sync/firebase/syncRetryQueue.ts": [
+    "shared/services/sync/syncLogger.ts"
+  ],
+  "shared/services/sync/firebase/syncUtils.ts": [
+    "data/repositories/syncLogRepository.ts",
+    "shared/lib/utils.ts"
+  ],
+  "shared/services/sync/firebaseService.ts": [
+    "shared/services/sync/firebase/conflictResolver.ts",
+    "shared/services/sync/firebase/firebaseClient.ts",
+    "shared/services/sync/firebase/firebaseDebug.ts",
+    "shared/services/sync/firebase/syncUtils.ts",
+    "shared/services/sync/syncLogger.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/services/sync/syncEngine.ts": [
+    "data/db/infra/syncEngine.ts"
+  ],
+  "shared/services/sync/syncLogger.ts": [
+    "data/repositories/syncLogRepository.ts",
+    "shared/lib/utils.ts"
+  ],
+  "shared/services/task/index.ts": [
+    "shared/services/task/unifiedTaskService.ts"
+  ],
+  "shared/services/task/unifiedTaskService.ts": [
+    "data/repositories/dailyDataRepository.ts",
+    "data/repositories/inboxRepository.ts",
+    "shared/lib/standardError.ts",
+    "shared/lib/utils.ts",
+    "shared/stores/dailyDataStore.ts",
+    "shared/stores/inboxStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/services/template/index.ts": [
+    "shared/services/template/templateTaskService.ts"
+  ],
+  "shared/services/template/templateTaskService.ts": [
+    "data/repositories/systemRepository.ts",
+    "data/repositories/templateRepository.ts",
+    "shared/constants/defaults.ts",
+    "shared/lib/utils.ts",
+    "shared/stores/dailyDataStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/stores/completedTasksStore.ts": [
+    "data/repositories/dailyDataRepository.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/stores/dailyDataStore.ts": [
+    "data/repositories/inboxRepository.ts",
+    "data/repositories/index.ts",
+    "shared/lib/eventBus/index.ts",
+    "shared/lib/standardError.ts",
+    "shared/lib/storeUtils.ts",
+    "shared/lib/utils.ts",
+    "shared/services/ai/emojiSuggester.ts",
+    "shared/services/behavior/procrastinationMonitor.ts",
+    "shared/services/gameplay/taskCompletion/index.ts",
+    "shared/services/gameplay/taskCompletion/types.ts",
+    "shared/stores/gameStateStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/stores/focusStore.ts": [],
+  "shared/stores/gameStateStore.ts": [
+    "data/repositories/gameStateRepository.ts",
+    "data/repositories/index.ts",
+    "shared/lib/utils.ts",
+    "shared/services/gameplay/gameState/index.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/stores/inboxStore.ts": [
+    "data/repositories/inboxRepository.ts",
+    "shared/lib/eventBus/index.ts",
+    "shared/lib/storeUtils.ts",
+    "shared/lib/utils.ts",
+    "shared/services/ai/emojiSuggester.ts",
+    "shared/services/gameplay/taskCompletion/index.ts",
+    "shared/services/gameplay/taskCompletion/types.ts",
+    "shared/stores/dailyDataStore.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/stores/memoMissionStore.ts": [
+    "shared/types/domain.ts"
+  ],
+  "shared/stores/persist/dexieSystemStateStorage.ts": [
+    "data/repositories/systemRepository.ts"
+  ],
+  "shared/stores/settingsStore.ts": [
+    "data/repositories/settingsRepository.ts",
+    "shared/lib/storeUtils.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/stores/templateStore.ts": [
+    "data/repositories/settingsRepository.ts",
+    "data/repositories/templateRepository.ts",
+    "shared/lib/storeUtils.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/stores/toastStore.ts": [
+    "shared/lib/utils.ts"
+  ],
+  "shared/stores/uiStore.ts": [
+    "shared/stores/persist/dexieSystemStateStorage.ts"
+  ],
+  "shared/stores/waifuCompanionStore.ts": [],
+  "shared/stores/weeklyGoalStore.ts": [
+    "data/repositories/weeklyGoalRepository.ts",
+    "shared/lib/storeUtils.ts",
+    "shared/types/domain.ts"
+  ],
+  "shared/subscribers/gameStateSubscriber.ts": [
+    "shared/lib/eventBus/index.ts",
+    "shared/stores/gameStateStore.ts"
+  ],
+  "shared/subscribers/googleSyncSubscriber.ts": [
+    "data/repositories/dailyDataRepository.ts",
+    "data/repositories/inboxRepository.ts",
+    "shared/lib/eventBus/index.ts",
+    "shared/lib/utils.ts",
+    "shared/services/calendar/googleCalendarService.ts",
+    "shared/services/calendar/googleCalendarTypes.ts",
+    "shared/services/calendar/googleTasksService.ts",
+    "shared/types/domain.ts",
+    "shared/types/tempSchedule.ts"
+  ],
+  "shared/subscribers/inboxSubscriber.ts": [
+    "shared/lib/eventBus/index.ts",
+    "shared/stores/inboxStore.ts"
+  ],
+  "shared/subscribers/index.ts": [
+    "shared/subscribers/gameStateSubscriber.ts",
+    "shared/subscribers/googleSyncSubscriber.ts",
+    "shared/subscribers/inboxSubscriber.ts",
+    "shared/subscribers/waifuSubscriber.ts",
+    "shared/subscribers/xpSubscriber.ts"
+  ],
+  "shared/subscribers/waifuSubscriber.ts": [
+    "shared/lib/eventBus/index.ts",
+    "shared/stores/waifuCompanionStore.ts"
+  ],
+  "shared/subscribers/xpSubscriber.ts": [
+    "shared/lib/eventBus/index.ts",
+    "shared/stores/gameStateStore.ts"
+  ],
+  "shared/types/domain.ts": [
+    "shared/services/ai/gemini/types.ts",
+    "shared/types/domain/index.ts",
+    "shared/types/domain/task.types.ts"
+  ],
+  "shared/types/domain/battle.types.ts": [],
+  "shared/types/domain/goal.types.ts": [],
+  "shared/types/domain/index.ts": [
+    "shared/types/domain/battle.types.ts",
+    "shared/types/domain/goal.types.ts",
+    "shared/types/domain/schedule.types.ts",
+    "shared/types/domain/task.types.ts"
+  ],
+  "shared/types/domain/schedule.types.ts": [
+    "shared/types/domain/goal.types.ts",
+    "shared/types/domain/task.types.ts"
+  ],
+  "shared/types/domain/task.types.ts": [],
+  "shared/types/tempSchedule.ts": [],
+  "shared/types/weather.ts": [],
+  "shared/utils/firebaseGuard.ts": [
+    "shared/services/sync/firebaseService.ts"
+  ],
+  "shared/utils/firebaseSanitizer.ts": [],
+  "shared/utils/gamification.ts": [
+    "shared/types/domain.ts"
+  ],
+  "shared/utils/index.ts": [
+    "shared/utils/firebaseSanitizer.ts",
+    "shared/utils/gamification.ts",
+    "shared/utils/taskFactory.ts"
+  ],
+  "shared/utils/taskFactory.ts": [
+    "shared/constants/defaults.ts",
+    "shared/lib/utils.ts",
+    "shared/types/domain.ts",
+    "shared/utils/timeBlockUtils.ts"
+  ],
+  "shared/utils/taskFilters.ts": [
+    "shared/types/domain.ts"
+  ],
+  "shared/utils/timeBlockUtils.ts": [
+    "shared/types/domain.ts"
+  ],
+  "shared/utils/tokenUtils.ts": [
+    "data/repositories/chatHistoryRepository.ts"
+  ],
+  "styles/design-system.css": [],
+  "styles/globals.css": [],
+  "styles/tailwind.css": [],
+  "vite-env.d.ts": []
+}

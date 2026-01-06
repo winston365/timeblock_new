@@ -12,41 +12,21 @@
  */
 
 import { memo, useMemo, useCallback, useLayoutEffect, useRef, useState, useEffect } from 'react';
-import { Trash2, ArrowUpRight, Archive } from 'lucide-react';
 import { useTempScheduleStore } from '../stores/tempScheduleStore';
 import type { TempScheduleTask } from '@/shared/types/tempSchedule';
 import { shouldShowOnDate } from '@/data/repositories/tempScheduleRepository';
-import { getLocalDate, minutesToTimeStr } from '@/shared/lib/utils';
-import { RecurringBadge, FavoriteBadge, ArchivedBadge } from './StatusBadges';
+import { getLocalDate } from '@/shared/lib/utils';
 import { InlineEditPopover } from './InlineEditPopover';
 import { WeekRecurrenceMoveDialog, type RecurrenceMoveScope } from './WeekRecurrenceMoveDialog';
 import { PromotePostActionPopup } from './PromotePostActionPopup';
 import { notify } from '@/shared/lib/notify';
+import { parseYmdToLocalDate, snapToPixel } from '../utils/weeklyScheduleUtils';
+import { WeeklyDayColumn } from './weekly/WeeklyDayColumn';
+import { WeeklyTimeRail } from './weekly/WeeklyTimeRail';
 
 // ============================================================================
 // Helper: Calculate Week Dates
 // ============================================================================
-
-function parseYmdToLocalDate(dateStr: string): Date | null {
-  if (typeof dateStr !== 'string') return null;
-  const match = /^\d{4}-\d{2}-\d{2}$/.exec(dateStr);
-  if (!match) return null;
-
-  const [yearStr, monthStr, dayStr] = dateStr.split('-');
-  const year = Number(yearStr);
-  const month = Number(monthStr);
-  const day = Number(dayStr);
-
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
-  if (month < 1 || month > 12) return null;
-  if (day < 1 || day > 31) return null;
-
-  const date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year) return null;
-  if (date.getMonth() !== month - 1) return null;
-  if (date.getDate() !== day) return null;
-  return date;
-}
 
 export function calculateWeekDates(selectedDate: string | null | undefined): string[] {
   const parsed = typeof selectedDate === 'string' ? parseYmdToLocalDate(selectedDate) : null;
@@ -72,40 +52,12 @@ export function calculateWeekDates(selectedDate: string | null | undefined): str
 // Constants
 // ============================================================================
 
-const WEEK_DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
 const DEFAULT_HOUR_HEIGHT = 24; // 시간당 기본 높이 (픽셀)
 const HEADER_HEIGHT = 52; // 요일 헤더 높이 (px) - CSS에서도 h-[52px]로 고정
 const START_HOUR = 5;
 const END_HOUR = 24;
 const TIME_RAIL_WIDTH = 48; // 시간 레일 너비 (px)
 const CURRENT_TIME_REFRESH_INTERVAL = 60_000; // 현재 시간 갱신 간격 (1분)
-
-/**
- * Subpixel 스냅 유틸리티
- * devicePixelRatio를 고려하여 픽셀 경계에 맞춰 반올림
- * 이로써 시간 구분선과 현재시간선이 동일한 그리드에 정렬됨
- */
-function snapToPixel(value: number): number {
-  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-  return Math.round(value * dpr) / dpr;
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-function formatDate(dateStr: string): { day: number; month: number; isToday: boolean; isWeekend: boolean } {
-  const date = parseYmdToLocalDate(dateStr) ?? new Date(dateStr);
-  const today = getLocalDate();
-  const dayOfWeek = date.getDay();
-
-  return {
-    day: date.getDate(),
-    month: date.getMonth() + 1,
-    isToday: dateStr === today,
-    isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
-  };
-}
 
 // ============================================================================
 // Drag State Type
@@ -117,340 +69,6 @@ interface DragState {
   taskColor: string;
   sourceDate: string;
 }
-
-// ============================================================================
-// Sub Components
-// ============================================================================
-
-interface TaskBlockProps {
-  task: TempScheduleTask;
-  hourHeight: number;
-  onDragStart: (task: TempScheduleTask, e: React.DragEvent) => void;
-  onTaskEdit: (task: TempScheduleTask) => void;
-  /** A3: 더블클릭 시 인라인 편집 팝오버 표시 */
-  onDoubleClick: (task: TempScheduleTask, position: { x: number; y: number }) => void;
-  /** B2: 퀵 액션 - 삭제 */
-  onDelete: (task: TempScheduleTask) => void;
-  /** B2: 퀵 액션 - 프로모션 */
-  onPromote: (task: TempScheduleTask, position: { x: number; y: number }) => void;
-  /** B2: 퀵 액션 - 보관 */
-  onArchive: (task: TempScheduleTask) => void;
-}
-
-const TaskBlock = memo(function TaskBlock({ task, hourHeight, onDragStart, onTaskEdit, onDoubleClick, onDelete, onPromote, onArchive }: TaskBlockProps) {
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 });
-  const blockRef = useRef<HTMLDivElement>(null);
-
-  const startMinutes = task.startTime;
-  const endMinutes = task.endTime;
-  const top = Math.max(0, (startMinutes - START_HOUR * 60) / 60 * hourHeight);
-  const height = Math.max(12, (endMinutes - startMinutes) / 60 * hourHeight);
-  const duration = endMinutes - startMinutes;
-  const isArchived = task.isArchived;
-  const isRecurring = task.recurrence.type !== 'none';
-
-  const handleMouseEnter = (e: React.MouseEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setPreviewPosition({
-      x: rect.right + 8,
-      y: rect.top,
-    });
-    setShowPreview(true);
-  };
-
-  const handleMouseLeave = () => {
-    setShowPreview(false);
-  };
-
-  /** 싱글 클릭: 전체 편집 모달 */
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onTaskEdit(task);
-  };
-
-  /** A3: 더블 클릭: 빠른 인라인 편집 */
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onDoubleClick(task, { x: e.clientX, y: e.clientY });
-  };
-
-  /** B2: 퀵 액션 버튼 클릭 - 드래그 방지 */
-  const handlePromoteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onPromote(task, { x: e.clientX, y: e.clientY });
-  };
-
-  const handleArchiveClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onArchive(task);
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onDelete(task);
-  };
-
-  return (
-    <>
-      <div
-        ref={blockRef}
-        draggable
-        onDragStart={(e) => onDragStart(task, e)}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
-        onDoubleClick={handleDoubleClick}
-        className={`absolute left-0.5 right-0.5 rounded text-[8px] px-1 py-0.5 overflow-hidden cursor-pointer hover:ring-2 hover:ring-white/50 hover:scale-[1.02] hover:z-10 transition-all group ${
-          isArchived ? 'opacity-50' : ''
-        }`}
-        style={{
-          top: `${top}px`,
-          height: `${height}px`,
-          backgroundColor: task.color + '30',
-          borderLeft: `2px solid ${task.color}`,
-        }}
-      >
-        <span style={{ color: task.color }} className="font-semibold flex items-center gap-0.5">
-          {task.favorite && <FavoriteBadge compact />}
-          {isRecurring && <RecurringBadge compact />}
-          {isArchived && <ArchivedBadge compact />}
-          <span className="truncate">{task.name}</span>
-        </span>
-
-        {/* B2: 호버 시 퀵 액션 버튼들 */}
-        <div 
-          className="absolute top-0 right-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-20"
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {!isArchived && (
-            <button
-              type="button"
-              className="p-0.5 rounded bg-white/20 hover:bg-white/40 text-white transition-colors"
-              onClick={handlePromoteClick}
-              onMouseDown={(e) => e.stopPropagation()}
-              title="실제 일정으로 프로모션"
-              aria-label="실제 일정으로 프로모션"
-            >
-              <ArrowUpRight size={10} />
-            </button>
-          )}
-          {!isArchived && (
-            <button
-              type="button"
-              className="p-0.5 rounded bg-white/20 hover:bg-white/40 text-white transition-colors"
-              onClick={handleArchiveClick}
-              onMouseDown={(e) => e.stopPropagation()}
-              title="보관함으로 이동"
-              aria-label="보관함으로 이동"
-            >
-              <Archive size={10} />
-            </button>
-          )}
-          <button
-            type="button"
-            className="p-0.5 rounded bg-white/20 hover:bg-red-400/80 text-white transition-colors"
-            onClick={handleDeleteClick}
-            onMouseDown={(e) => e.stopPropagation()}
-            title="삭제"
-            aria-label="삭제"
-          >
-            <Trash2 size={10} />
-          </button>
-        </div>
-      </div>
-
-      {/* 호버 확대 미리보기 */}
-      {showPreview && (
-        <div
-          className="fixed z-[200] min-w-[180px] max-w-[250px] rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-2xl overflow-hidden pointer-events-none animate-in fade-in zoom-in-95 duration-150"
-          style={{
-            left: `${previewPosition.x}px`,
-            top: `${previewPosition.y}px`,
-          }}
-        >
-          {/* 헤더 */}
-          <div
-            className="px-3 py-2 border-b border-[var(--color-border)]"
-            style={{ backgroundColor: task.color + '20' }}
-          >
-            <div className="flex items-center gap-2">
-              {task.favorite && <FavoriteBadge />}
-              {isRecurring && <RecurringBadge />}
-              {isArchived && <ArchivedBadge />}
-              <span className="font-bold text-sm" style={{ color: task.color }}>
-                {task.name}
-              </span>
-            </div>
-          </div>
-
-          {/* 내용 */}
-          <div className="p-3 space-y-2">
-            {/* 시간 */}
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-[var(--color-text-tertiary)]">⏰</span>
-              <span className="font-mono text-[var(--color-text)]">
-                {minutesToTimeStr(startMinutes)} - {minutesToTimeStr(endMinutes)}
-              </span>
-              <span className="text-[var(--color-text-secondary)]">
-                ({duration}분)
-              </span>
-            </div>
-
-            {/* 반복 */}
-            {task.recurrence.type !== 'none' && (
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-[var(--color-text-tertiary)]">🔄</span>
-                <span className="text-[var(--color-text-secondary)]">
-                  {task.recurrence.type === 'daily' && '매일'}
-                  {task.recurrence.type === 'weekly' && `매주 ${task.recurrence.weeklyDays?.map(d => ['일','월','화','수','목','금','토'][d]).join(', ')}`}
-                  {task.recurrence.type === 'monthly' && '매월'}
-                  {task.recurrence.type === 'custom' && `${task.recurrence.intervalDays}일마다`}
-                </span>
-              </div>
-            )}
-
-            {/* 메모 */}
-            {task.memo && (
-              <div className="text-[10px] text-[var(--color-text-tertiary)] bg-[var(--color-bg-tertiary)] rounded p-2 line-clamp-2">
-                {task.memo}
-              </div>
-            )}
-          </div>
-
-          {/* 안내 */}
-          <div className="px-3 py-1.5 bg-[var(--color-bg-tertiary)] text-[9px] text-[var(--color-text-tertiary)] text-center">
-            클릭하여 편집 • 드래그하여 이동
-          </div>
-        </div>
-      )}
-    </>
-  );
-});
-
-interface DayColumnProps {
-  date: string;
-  dayIndex: number;
-  tasks: TempScheduleTask[];
-  onDayClick: (date: string) => void;
-  hourHeight: number;
-  onDragStart: (task: TempScheduleTask, e: React.DragEvent) => void;
-  onDragOver: (e: React.DragEvent) => void;
-  onDrop: (date: string, e: React.DragEvent) => void;
-  isDragOver: boolean;
-  onTaskEdit: (task: TempScheduleTask) => void;
-  /** A3: 더블클릭 시 인라인 편집 팝오버 표시 */
-  onDoubleClick: (task: TempScheduleTask, position: { x: number; y: number }) => void;
-  /** B2: 퀵 액션 - 삭제 */
-  onDelete: (task: TempScheduleTask) => void;
-  /** B2: 퀵 액션 - 프로모션 */
-  onPromote: (task: TempScheduleTask, position: { x: number; y: number }) => void;
-  /** B2: 퀵 액션 - 보관 */
-  onArchive: (task: TempScheduleTask) => void;
-}
-
-const DayColumn = memo(function DayColumn({
-  date,
-  dayIndex,
-  tasks,
-  onDayClick,
-  hourHeight,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  isDragOver,
-  onTaskEdit,
-  onDoubleClick,
-  onDelete,
-  onPromote,
-  onArchive,
-}: DayColumnProps) {
-  const { day, month, isToday, isWeekend } = formatDate(date);
-
-  return (
-    <div
-      className={`
-        flex-1 border-r border-[var(--color-border)]/30 last:border-r-0 min-w-0 cursor-pointer transition-colors relative
-        ${isWeekend ? 'bg-[var(--color-bg-tertiary)]/30' : ''}
-        ${isToday ? 'bg-[var(--color-primary)]/5' : ''}
-        ${isDragOver ? 'bg-[var(--color-primary)]/20 ring-2 ring-inset ring-[var(--color-primary)]/50' : 'hover:bg-[var(--color-bg-secondary)]/50'}
-      `}
-      onClick={() => onDayClick(date)}
-      onDragOver={onDragOver}
-      onDrop={(e) => onDrop(date, e)}
-    >
-      {/* 오늘 컬럼 전체 테두리 */}
-      {isToday && (
-        <div className="absolute inset-0 border-2 border-[var(--color-primary)]/50 pointer-events-none z-[5]" />
-      )}
-      
-      {/* 요일 헤더 - 고정 높이로 레이아웃 안정화 */}
-      <div className={`
-        sticky top-0 z-10 border-b border-[var(--color-border)] px-1 py-2 text-center h-[52px] box-border
-        ${isToday 
-          ? 'bg-[var(--color-primary)]/20 border-b-2 border-b-[var(--color-primary)]' 
-          : 'bg-[var(--color-bg-surface)]'
-        }
-      `}>
-        <div className={`text-[10px] font-medium ${
-          isWeekend ? 'text-red-400' : 'text-[var(--color-text-tertiary)]'
-        }`}>
-          {WEEK_DAY_LABELS[dayIndex]}
-        </div>
-        <div className={`text-sm font-bold ${
-          isToday
-            ? 'text-white bg-[var(--color-primary)] rounded-full w-6 h-6 flex items-center justify-center mx-auto'
-            : isWeekend
-              ? 'text-red-400'
-              : 'text-[var(--color-text)]'
-        }`}>
-          {day}
-        </div>
-        <div className="text-[8px] text-[var(--color-text-tertiary)] opacity-80 h-3 flex items-center justify-center">
-          {(dayIndex === 0 || day === 1) ? `${month}월` : '\u00A0'}
-        </div>
-      </div>
-
-      {/* 스케줄 블록들 */}
-      <div
-        className="relative"
-        style={{
-          height: `${(END_HOUR - START_HOUR) * hourHeight}px`,
-        }}
-      >
-        {/* 시간별 구분선 - snapToPixel로 서브픽셀 정렬 */}
-        <div className="absolute inset-0 pointer-events-none z-0">
-          {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
-            <div
-              key={i}
-              className="absolute left-0 right-0 border-t border-[var(--color-border)]/20"
-              style={{ top: `${snapToPixel(i * hourHeight)}px` }}
-            />
-          ))}
-        </div>
-        
-        {tasks.map(task => (
-          <TaskBlock
-            key={task.id}
-            task={task}
-            hourHeight={hourHeight}
-            onDragStart={onDragStart}
-            onTaskEdit={onTaskEdit}
-            onDoubleClick={onDoubleClick}
-            onDelete={onDelete}
-            onPromote={onPromote}
-            onArchive={onArchive}
-          />
-        ))}
-      </div>
-    </div>
-  );
-});
 
 // ============================================================================
 // Main Component
@@ -714,50 +332,13 @@ function WeeklyScheduleViewComponent() {
 
       {/* 시간 라벨 + 7일 열 */}
       <div className="flex flex-1 overflow-hidden">
-        {/* 시간 레일 (개선됨) */}
-        <div 
-          className="flex-shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-surface)]"
-          style={{ width: `${TIME_RAIL_WIDTH}px` }}
-        >
-          {/* 헤더 공간 */}
-          <div className="h-[52px] border-b border-[var(--color-border)] flex items-end justify-center pb-1">
-            <span className="text-[8px] text-[var(--color-text-tertiary)]">시간</span>
-          </div>
-          
-          {/* 시간 라벨들 */}
-          <div
-            className="relative"
-            style={{
-              height: `${(END_HOUR - START_HOUR) * hourHeight}px`,
-            }}
-          >
-            {Array.from({ length: (END_HOUR - START_HOUR) + 1 }, (_, i) => START_HOUR + i).map(hour => (
-              <div
-                key={hour}
-                className="absolute left-0 right-0 flex items-center justify-end pr-2 text-[10px] text-[var(--color-text-tertiary)] font-mono"
-                style={{ top: `${(hour - START_HOUR) * hourHeight - 6}px` }}
-              >
-                <span className={hour === Math.floor(currentTimeMinutes / 60) ? 'text-red-400 font-bold' : ''}>
-                  {hour.toString().padStart(2, '0')}:00
-                </span>
-              </div>
-            ))}
-            
-            {/* 현재 시간 표시 (시간 레일 내) */}
-            {currentTimeMinutes >= START_HOUR * 60 && currentTimeMinutes <= END_HOUR * 60 && (
-              <div
-                className="absolute left-0 right-0 flex items-center justify-end pr-1 z-20"
-                style={{ 
-                  top: `${(currentTimeMinutes - START_HOUR * 60) / 60 * hourHeight - 8}px` 
-                }}
-              >
-                <span className="text-[9px] font-bold text-red-500 bg-red-500/10 px-1 rounded">
-                  {minutesToTimeStr(currentTimeMinutes)}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+        <WeeklyTimeRail
+          widthPx={TIME_RAIL_WIDTH}
+          startHour={START_HOUR}
+          endHour={END_HOUR}
+          hourHeight={hourHeight}
+          currentTimeMinutes={currentTimeMinutes}
+        />
 
         {/* 7일 열 */}
         <div className="flex flex-1 overflow-y-auto relative">
@@ -783,12 +364,14 @@ function WeeklyScheduleViewComponent() {
               onDragEnter={() => handleDragEnter(date)}
               onDragLeave={handleDragLeave}
             >
-              <DayColumn
+              <WeeklyDayColumn
                 date={date}
                 dayIndex={index}
                 tasks={tasksByDate[date] || []}
                 onDayClick={handleDayClick}
                 hourHeight={hourHeight}
+                startHour={START_HOUR}
+                endHour={END_HOUR}
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}

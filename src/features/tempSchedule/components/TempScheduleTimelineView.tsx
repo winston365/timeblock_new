@@ -18,11 +18,26 @@ import { getLocalDate, minutesToTimeStr } from '@/shared/lib/utils';
 import { TempScheduleContextMenu } from './TempScheduleContextMenu';
 import { InlineEditPopover } from './InlineEditPopover';
 import { PromotePostActionPopup } from './PromotePostActionPopup';
-import { Trash2, ArrowUpRight, Archive } from 'lucide-react';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
-import { TIME_BLOCKS, type Task } from '@/shared/types/domain';
-import { RecurringBadge, FavoriteBadge, ArchivedBadge } from './StatusBadges';
+import { TIME_BLOCKS } from '@/shared/types/domain';
 import { notify } from '@/shared/lib/notify';
+import {
+  calculateBlockPositions,
+  deriveMainSnapshotPosition,
+  yToSnappedTimeMinutes,
+  type MainSnapshotPosition,
+} from '../utils/timelinePositioning';
+import {
+  clampTimelineY,
+  computeCreatePreview,
+  computeDraggedTimeRange,
+  computePreviewRectFromTimeRange,
+  type TimelineCreatePreview,
+  type TimelineDragPreview,
+} from '../utils/timelineCalculations';
+import { useTimelineSelection } from '../hooks/useTimelineSelection';
+import { TimelineBlock } from './timeline/TimelineBlock';
+import { TimelineHeader } from './timeline/TimelineHeader';
 
 // ============================================================================
 // Constants
@@ -34,267 +49,6 @@ const TIMELINE_HEIGHT = TOTAL_HOURS * hourHeight;
 const PIXELS_PER_MINUTE = hourHeight / 60;
 const MAIN_SNAPSHOT_WIDTH_PERCENT = 12;
 const MIN_MAIN_SNAPSHOT_HEIGHT = 10;
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * 중첩 블록 그룹화 및 열 할당
- */
-interface BlockPosition {
-  task: TempScheduleTask;
-  column: number;
-  totalColumns: number;
-  top: number;
-  height: number;
-}
-
-function calculateBlockPositions(tasks: TempScheduleTask[]): BlockPosition[] {
-  if (tasks.length === 0) return [];
-
-  // 시작 시간 순으로 정렬
-  const sorted = [...tasks].sort((a, b) => a.startTime - b.startTime);
-
-  const positions: BlockPosition[] = [];
-  const columns: { endTime: number }[] = [];
-
-  for (const task of sorted) {
-    const startMinutes = task.startTime;
-    const endMinutes = task.endTime;
-    const top = (startMinutes - timelineStartHour * 60) * PIXELS_PER_MINUTE;
-    const height = Math.max((endMinutes - startMinutes) * PIXELS_PER_MINUTE, 20);
-
-    // 사용 가능한 열 찾기
-    let columnIndex = columns.findIndex(col => col.endTime <= startMinutes);
-
-    if (columnIndex === -1) {
-      // 새 열 추가
-      columnIndex = columns.length;
-      columns.push({ endTime: endMinutes });
-    } else {
-      columns[columnIndex].endTime = endMinutes;
-    }
-
-    positions.push({
-      task,
-      column: columnIndex,
-      totalColumns: 1, // 나중에 업데이트
-      top,
-      height,
-    });
-  }
-
-  // totalColumns 업데이트 (같은 시간대에 겹치는 블록들의 최대 열 수)
-  for (const pos of positions) {
-    const startMinutes = pos.task.startTime;
-    const endMinutes = pos.task.endTime;
-
-    const overlapping = positions.filter(other => {
-      const otherStart = other.task.startTime;
-      const otherEnd = other.task.endTime;
-      return !(endMinutes <= otherStart || startMinutes >= otherEnd);
-    });
-
-    pos.totalColumns = Math.max(...overlapping.map(p => p.column + 1));
-  }
-
-  return positions;
-}
-
-interface MainSnapshotPosition {
-  id: string;
-  name: string;
-  top: number;
-  height: number;
-}
-
-function deriveMainSnapshotPosition(task: Task): MainSnapshotPosition | null {
-  // 시작 시각은 hourSlot 우선, 없으면 타임블록 시작
-  const block = task.timeBlock ? TIME_BLOCKS.find(b => b.id === task.timeBlock) : null;
-  const startMinutesRaw = task.hourSlot !== undefined && task.hourSlot !== null
-    ? task.hourSlot * 60
-    : block
-      ? block.start * 60
-      : null;
-
-  if (startMinutesRaw === null) return null;
-
-  // 지속 시간: 실제 > 조정된 > 기본, 최소 5분
-  const durationMinutes = Math.max(
-    task.actualDuration > 0 ? task.actualDuration : task.adjustedDuration || task.baseDuration || 30,
-    5
-  );
-
-  const endMinutesRaw = startMinutesRaw + durationMinutes;
-
-  // 타임라인 범위 내로 클램프
-  const visibleStart = Math.max(startMinutesRaw, timelineStartHour * 60);
-  const visibleEnd = Math.min(endMinutesRaw, timelineEndHour * 60);
-
-  if (visibleEnd <= visibleStart) return null;
-
-  const top = (visibleStart - timelineStartHour * 60) * PIXELS_PER_MINUTE;
-  const height = Math.max((visibleEnd - visibleStart) * PIXELS_PER_MINUTE, MIN_MAIN_SNAPSHOT_HEIGHT);
-
-  return {
-    id: `main-${task.id}`,
-    name: task.text,
-    top,
-    height,
-  };
-}
-
-// ============================================================================
-// Sub Components
-// ============================================================================
-
-interface TimelineBlockProps {
-  position: BlockPosition;
-  onEdit: (task: TempScheduleTask) => void;
-  /** A3: 더블클릭 시 인라인 편집 팝오버 표시 */
-  onDoubleClick: (task: TempScheduleTask, position: { x: number; y: number }) => void;
-  onDragStart: (task: TempScheduleTask, mode: 'move' | 'resize-top' | 'resize-bottom', e: React.MouseEvent) => void;
-  onContextMenu: (task: TempScheduleTask, e: React.MouseEvent) => void;
-  onDelete: (task: TempScheduleTask) => void;
-  onPromote: (task: TempScheduleTask) => void;
-  onArchive: (task: TempScheduleTask) => void;
-}
-
-const TimelineBlock = memo(function TimelineBlock({ 
-  position, 
-  onEdit: _onEdit,
-  onDoubleClick,
-  onDragStart, 
-  onContextMenu,
-  onDelete,
-  onPromote,
-  onArchive,
-}: TimelineBlockProps) {
-  const { task, column, totalColumns, top, height } = position;
-  const widthPercent = 100 / totalColumns;
-  const leftPercent = column * widthPercent;
-  const isRecurring = task.recurrence.type !== 'none';
-  const isFavorite = task.favorite;
-  const isArchived = task.isArchived;
-  const isCompact = height < 50; // 작은 블록일 때 컴팩트 모드
-
-  /** A3: 더블클릭 핸들러 - 인라인 편집 팝오버 */
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onDoubleClick(task, { x: e.clientX, y: e.clientY });
-  };
-
-  return (
-    <div
-      className={`absolute rounded-lg shadow-sm cursor-move transition-shadow hover:shadow-md group border ${
-        isArchived ? 'border-white/30 opacity-60' : 'border-white/10'
-      }`}
-      style={{
-        top: `${top}px`,
-        height: `${height}px`,
-        left: `calc(${leftPercent}% + 2px)`,
-        width: `calc(${widthPercent}% - 4px)`,
-        backgroundColor: task.color, // Solid color
-        zIndex: 10,
-      }}
-      onDoubleClick={handleDoubleClick}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onContextMenu(task, e);
-      }}
-      onMouseDown={(e) => {
-        if (e.button === 0) {
-          e.stopPropagation(); // 부모의 handleCreateStart 방지
-          onDragStart(task, 'move', e);
-        }
-      }}
-    >
-      {/* 상단 리사이즈 핸들 */}
-      <div
-        className="absolute top-0 left-0 right-0 h-2 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ backgroundColor: 'rgba(255,255,255,0.3)' }}
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          onDragStart(task, 'resize-top', e);
-        }}
-      />
-
-      {/* 내용 */}
-      <div className="px-2 py-1 overflow-hidden h-full flex flex-col text-white">
-        <div className="flex items-center gap-1 min-w-0">
-          {isFavorite && <FavoriteBadge compact />}
-          {isRecurring && <RecurringBadge compact />}
-          {isArchived && <ArchivedBadge compact />}
-          <div className="text-xs font-bold truncate drop-shadow-md">
-            {task.name}
-          </div>
-        </div>
-        {!isCompact && (
-          <div className="text-[10px] opacity-90 font-medium">
-            {minutesToTimeStr(task.startTime)} - {minutesToTimeStr(task.endTime)}
-          </div>
-        )}
-      </div>
-
-      {/* 호버 시 퀵 액션 버튼들 */}
-      <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-        {!isArchived && (
-          <button
-            type="button"
-            className="p-1 rounded bg-white/20 hover:bg-white/40 text-white transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              onPromote(task);
-            }}
-            title="실제 일정으로 프로모션"
-            aria-label="실제 일정으로 프로모션"
-          >
-            <ArrowUpRight size={12} />
-          </button>
-        )}
-        {!isArchived && (
-          <button
-            type="button"
-            className="p-1 rounded bg-white/20 hover:bg-white/40 text-white transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              onArchive(task);
-            }}
-            title="보관함으로 이동"
-            aria-label="보관함으로 이동"
-          >
-            <Archive size={12} />
-          </button>
-        )}
-        <button
-          type="button"
-          className="p-1 rounded bg-white/20 hover:bg-red-400/80 text-white transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(task);
-          }}
-          title="삭제"
-          aria-label="삭제"
-        >
-          <Trash2 size={12} />
-        </button>
-      </div>
-
-      {/* 하단 리사이즈 핸들 */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ backgroundColor: 'rgba(255,255,255,0.3)' }}
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          onDragStart(task, 'resize-bottom', e);
-        }}
-      />
-    </div>
-  );
-});
 
 // ============================================================================
 // Main Component
@@ -322,6 +76,18 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
 
   const [tooltip, setTooltip] = useState<DragTooltipInfo | null>(null);
 
+  const {
+    contextMenu,
+    inlineEditState,
+    promotePopupState,
+    openContextMenu,
+    closeContextMenu,
+    openInlineEdit,
+    closeInlineEdit,
+    openPromotePopupCentered,
+    closePromotePopup,
+  } = useTimelineSelection();
+
   // 메인 스케줄 데이터 가져오기 (오버레이용)
   const { dailyData, loadData: loadDailyData } = useDailyDataStore();
 
@@ -336,28 +102,34 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
 
     return dailyData.tasks
       .filter(t => t.timeBlock !== null)
-      .map(deriveMainSnapshotPosition)
+      .map(task =>
+        deriveMainSnapshotPosition(
+          task,
+          {
+            timelineStartHour,
+            timelineEndHour,
+            pixelsPerMinute: PIXELS_PER_MINUTE,
+            minHeightPx: MIN_MAIN_SNAPSHOT_HEIGHT,
+          },
+          TIME_BLOCKS
+        )
+      )
       .filter((b): b is MainSnapshotPosition => b !== null);
   }, [dailyData]);
 
-  const [createPreview, setCreatePreview] = useState<{ top: number; height: number; startTime: number; endTime: number } | null>(null);
-  const [dragPreview, setDragPreview] = useState<{ top: number; height: number; color: string; name: string; startTime: number; endTime: number } | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ task: TempScheduleTask; x: number; y: number } | null>(null);
-  
-  // A3: 인라인 편집 팝오버 상태
-  const [inlineEditState, setInlineEditState] = useState<{
-    task: TempScheduleTask;
-    position: { x: number; y: number };
-  } | null>(null);
-  
-  // A1: 프로모션 후 처리 팝업 상태
-  const [promotePopupState, setPromotePopupState] = useState<{
-    task: TempScheduleTask;
-    position: { x: number; y: number };
-  } | null>(null);
+  const [createPreview, setCreatePreview] = useState<TimelineCreatePreview | null>(null);
+  const [dragPreview, setDragPreview] = useState<TimelineDragPreview | null>(null);
 
   const tasks = getTasksForDate(selectedDate);
-  const blockPositions = useMemo(() => calculateBlockPositions(tasks), [tasks]);
+  const blockPositions = useMemo(
+    () =>
+      calculateBlockPositions(tasks, {
+        timelineStartHour,
+        pixelsPerMinute: PIXELS_PER_MINUTE,
+        minBlockHeightPx: 20,
+      }),
+    [tasks]
+  );
 
   // 현재 시간 마커
   const [currentTimeTop, setCurrentTimeTop] = useState<number | null>(null);
@@ -383,15 +155,18 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
 
   // Y 좌표를 시간으로 변환
   const yToTime = useCallback((y: number): number => {
-    const minutes = (y / PIXELS_PER_MINUTE) + (timelineStartHour * 60);
-    const snapped = Math.round(minutes / gridSnapInterval) * gridSnapInterval;
-    return Math.max(timelineStartHour * 60, Math.min(timelineEndHour * 60 - 1, snapped));
+    return yToSnappedTimeMinutes(y, {
+      timelineStartHour,
+      timelineEndHour,
+      pixelsPerMinute: PIXELS_PER_MINUTE,
+      gridSnapInterval,
+    });
   }, [gridSnapInterval]);
 
   // 드래그 시작 핸들러
   const handleDragStart = useCallback((task: TempScheduleTask, mode: 'move' | 'resize-top' | 'resize-bottom', e: React.MouseEvent) => {
     e.preventDefault();
-    setContextMenu(null); // 드래그 시작 시 메뉴 닫기
+    closeContextMenu(); // 드래그 시작 시 메뉴 닫기
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
@@ -403,14 +178,14 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
       originalStartTime: task.startTime,
       originalEndTime: task.endTime,
     });
-  }, [startDrag]);
+  }, [closeContextMenu, startDrag]);
 
   // 새 블록 생성 드래그 시작
   const handleCreateStart = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
     // 이미 드래그 중이면 무시 (블록 이동 중일 수 있음)
     if (dragState) return;
-    setContextMenu(null); // 생성 시작 시 메뉴 닫기
+    closeContextMenu(); // 생성 시작 시 메뉴 닫기
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
@@ -425,13 +200,16 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
       startTimeAtDrag: startTime,
     });
 
-    setCreatePreview({
-      top: y,
-      height: 0,
-      startTime,
-      endTime: startTime,
-    });
-  }, [startDrag, yToTime, dragState]);
+    setCreatePreview(
+      computeCreatePreview({
+        startTimeMinutes: startTime,
+        currentTimeMinutes: startTime,
+        timelineStartMinutes: timelineStartHour * 60,
+        pixelsPerMinute: PIXELS_PER_MINUTE,
+        minHeightPx: 0,
+      })
+    );
+  }, [closeContextMenu, startDrag, yToTime, dragState]);
 
   // 마우스 이동 핸들러
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -440,86 +218,70 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
-    const currentY = Math.max(0, Math.min(TIMELINE_HEIGHT, e.clientY - rect.top));
+    const currentY = clampTimelineY(e.clientY - rect.top, TIMELINE_HEIGHT);
     updateDrag(currentY);
 
     const currentTime = yToTime(currentY);
 
     if (dragState.mode === 'create') {
-      const startTime = dragState.startTimeAtDrag!;
-      const startMinutes = startTime;
-      const currentMinutes = currentTime;
+      const startTimeAtDrag = dragState.startTimeAtDrag;
+      if (startTimeAtDrag === undefined) return;
 
-      const [finalStart, finalEnd] = startMinutes <= currentMinutes
-        ? [startTime, currentTime]
-        : [currentTime, startTime];
-
-      const top = (finalStart - timelineStartHour * 60) * PIXELS_PER_MINUTE;
-      const height = Math.max((finalEnd - finalStart) * PIXELS_PER_MINUTE, 10);
-
-      setCreatePreview({
-        top,
-        height,
-        startTime: finalStart,
-        endTime: finalEnd,
+      const preview = computeCreatePreview({
+        startTimeMinutes: startTimeAtDrag,
+        currentTimeMinutes: currentTime,
+        timelineStartMinutes: timelineStartHour * 60,
+        pixelsPerMinute: PIXELS_PER_MINUTE,
+        minHeightPx: 10,
       });
 
+      setCreatePreview(preview);
+
       setTooltip({
-        startTime: finalStart,
-        endTime: finalEnd,
-        durationMinutes: finalEnd - finalStart,
+        startTime: preview.startTime,
+        endTime: preview.endTime,
+        durationMinutes: preview.endTime - preview.startTime,
         x: e.clientX,
         y: e.clientY,
       });
     } else if (dragState.taskId) {
-      // 기존 블록 이동/리사이즈
-      let newStartTime = dragState.originalStartTime!;
-      let newEndTime = dragState.originalEndTime!;
-      const delta = (currentY - dragState.startY) / PIXELS_PER_MINUTE;
-      const snappedDelta = Math.round(delta / gridSnapInterval) * gridSnapInterval;
+      const originalStartTime = dragState.originalStartTime;
+      const originalEndTime = dragState.originalEndTime;
+      if (originalStartTime === undefined || originalEndTime === undefined) return;
 
-      switch (dragState.mode) {
-        case 'move':
-          newStartTime = dragState.originalStartTime! + snappedDelta;
-          newEndTime = dragState.originalEndTime! + snappedDelta;
-          break;
-        case 'resize-top':
-          newStartTime = Math.min(
-            dragState.originalStartTime! + snappedDelta,
-            dragState.originalEndTime! - gridSnapInterval
-          );
-          break;
-        case 'resize-bottom':
-          newEndTime = Math.max(
-            dragState.originalEndTime! + snappedDelta,
-            dragState.originalStartTime! + gridSnapInterval
-          );
-          break;
-      }
-
-      // Clamp values
-      newStartTime = Math.max(timelineStartHour * 60, Math.min(timelineEndHour * 60 - gridSnapInterval, newStartTime));
-      newEndTime = Math.max(timelineStartHour * 60 + gridSnapInterval, Math.min(timelineEndHour * 60, newEndTime));
+      const range = computeDraggedTimeRange({
+        mode: dragState.mode,
+        originalStartTime,
+        originalEndTime,
+        deltaYPx: currentY - dragState.startY,
+        pixelsPerMinute: PIXELS_PER_MINUTE,
+        gridSnapInterval,
+        timelineStartMinutes: timelineStartHour * 60,
+        timelineEndMinutes: timelineEndHour * 60,
+      });
 
       setTooltip({
-        startTime: newStartTime,
-        endTime: newEndTime,
-        durationMinutes: newEndTime - newStartTime,
+        startTime: range.startTime,
+        endTime: range.endTime,
+        durationMinutes: range.endTime - range.startTime,
         x: e.clientX,
         y: e.clientY,
       });
 
       const task = tasks.find(t => t.id === dragState.taskId);
       if (task) {
-        const previewTop = (newStartTime - timelineStartHour * 60) * PIXELS_PER_MINUTE;
-        const previewHeight = Math.max((newEndTime - newStartTime) * PIXELS_PER_MINUTE, 10);
+        const rect = computePreviewRectFromTimeRange(range, {
+          timelineStartMinutes: timelineStartHour * 60,
+          pixelsPerMinute: PIXELS_PER_MINUTE,
+          minHeightPx: 10,
+        });
         setDragPreview({
-          top: previewTop,
-          height: previewHeight,
+          top: rect.top,
+          height: rect.height,
           color: task.color,
           name: task.name,
-          startTime: newStartTime,
-          endTime: newEndTime,
+          startTime: range.startTime,
+          endTime: range.endTime,
         });
       }
     }
@@ -560,51 +322,17 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
     setDragPreview(null);
   }, [dragState, createPreview, tooltip, addTask, updateTask, endDrag, selectedDate, tasks.length, openTaskModal]);
 
-  // 컨텍스트 메뉴 핸들러
-  const handleContextMenu = useCallback((task: TempScheduleTask, e: React.MouseEvent) => {
-    setContextMenu({
-      task,
-      x: e.clientX,
-      y: e.clientY,
-    });
-  }, []);
-
   // 삭제 핸들러
   const handleDelete = useCallback(async (task: TempScheduleTask) => {
     await deleteTask(task.id);
     notify.success(`"${task.name}" 삭제됨`);
   }, [deleteTask]);
 
-  // A1: 프로모션 핸들러 - 팝업 표시
-  const handlePromote = useCallback((task: TempScheduleTask) => {
-    // 톍 액션 버튼에서 호출될 때는 마우스 위치 그대로 팝업 표시
-    const rect = document.body.getBoundingClientRect();
-    setPromotePopupState({
-      task,
-      position: { x: rect.width / 2, y: rect.height / 3 },
-    });
-  }, []);
-
-  /** A1: 프로모션 팝업 닫기 */
-  const handlePromotePopupClose = useCallback(() => {
-    setPromotePopupState(null);
-  }, []);
-
   // 보관함 이동 핸들러
   const handleArchive = useCallback(async (task: TempScheduleTask) => {
     await archiveTask(task.id);
     notify.info(`"${task.name}" 보관함으로 이동됨`);
   }, [archiveTask]);
-
-  /** A3: 더블클릭 시 인라인 편집 팝오버 표시 */
-  const handleDoubleClick = useCallback((task: TempScheduleTask, position: { x: number; y: number }) => {
-    setInlineEditState({ task, position });
-  }, []);
-
-  /** A3: 인라인 편집 팝오버 닫기 */
-  const handleInlineEditClose = useCallback(() => {
-    setInlineEditState(null);
-  }, []);
 
   // 시간 레이블 생성
   const hourLabels = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => timelineStartHour + i);
@@ -622,30 +350,11 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
-          {/* 시간 눈금 */}
-          {hourLabels.map((hour, index) => (
-            <div
-              key={hour}
-              className="absolute left-0 right-0 border-t border-[var(--color-border)]/40"
-              style={{ top: `${index * hourHeight}px` }}
-            >
-              <div className="absolute left-1 top-0.5 text-[10px] font-semibold text-[var(--color-text-secondary)]">
-                {String(hour).padStart(2, '0')}:00
-              </div>
-              {/* 30분 보조선 */}
-              {index < TOTAL_HOURS && (
-                <div
-                  className="absolute left-8 right-0 border-t border-dashed border-[var(--color-border)]/20"
-                  style={{ top: `${hourHeight / 2}px` }}
-                />
-              )}
-            </div>
-          ))}
-
-          {/* 스플릿 뷰 구분선 */}
-          <div
-            className="absolute top-0 bottom-0 border-r border-blue-500/40"
-            style={{ left: `${MAIN_SNAPSHOT_WIDTH_PERCENT}%` }}
+          <TimelineHeader
+            hourLabels={hourLabels}
+            hourHeight={hourHeight}
+            totalHours={TOTAL_HOURS}
+            mainSnapshotWidthPercent={MAIN_SNAPSHOT_WIDTH_PERCENT}
           />
 
           {/* 메인 스케줄 (좌측 스냅샷) */}
@@ -685,11 +394,11 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
                 key={pos.task.id}
                 position={pos}
                 onEdit={openTaskModal}
-                onDoubleClick={handleDoubleClick}
+                onDoubleClick={openInlineEdit}
                 onDragStart={handleDragStart}
-                onContextMenu={handleContextMenu}
+                onContextMenu={openContextMenu}
                 onDelete={handleDelete}
-                onPromote={handlePromote}
+                onPromote={openPromotePopupCentered}
                 onArchive={handleArchive}
               />
             ))}
@@ -772,7 +481,7 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
           task={contextMenu.task}
           x={contextMenu.x}
           y={contextMenu.y}
-          onClose={() => setContextMenu(null)}
+          onClose={closeContextMenu}
         />
       )}
 
@@ -781,8 +490,8 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
         <InlineEditPopover
           task={inlineEditState.task}
           position={inlineEditState.position}
-          onClose={handleInlineEditClose}
-          onSaved={handleInlineEditClose}
+          onClose={closeInlineEdit}
+          onSaved={closeInlineEdit}
         />
       )}
 
@@ -791,8 +500,8 @@ function TempScheduleTimelineViewComponent({ selectedDate }: TempScheduleTimelin
         <PromotePostActionPopup
           task={promotePopupState.task}
           position={promotePopupState.position}
-          onClose={handlePromotePopupClose}
-          onComplete={handlePromotePopupClose}
+          onClose={closePromotePopup}
+          onComplete={closePromotePopup}
         />
       )}
     </div>

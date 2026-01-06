@@ -1,0 +1,2706 @@
+{
+  "totalFiles": 353,
+  "topFiles": [
+    {
+      "file": "features/battle/stores/battleStore.ts",
+      "loc": 1031,
+      "longFnCount": 5,
+      "sampleLongFns": [
+        {
+          "file": "features/battle/stores/battleStore.ts",
+          "name": "normalizeDailyBattleState_core",
+          "lines": 66,
+          "start": 68,
+          "end": 133
+        },
+        {
+          "file": "features/battle/stores/battleStore.ts",
+          "name": "computeSpawnBossResult_core",
+          "lines": 63,
+          "start": 280,
+          "end": 342
+        },
+        {
+          "file": "features/battle/stores/battleStore.ts",
+          "name": "computeCompleteMissionResult_core",
+          "lines": 81,
+          "start": 393,
+          "end": 473
+        },
+        {
+          "file": "features/battle/stores/battleStore.ts",
+          "name": "anonymous",
+          "lines": 488,
+          "start": 534,
+          "end": 1021
+        },
+        {
+          "file": "features/battle/stores/battleStore.ts",
+          "name": "completeMission",
+          "lines": 117,
+          "start": 839,
+          "end": 955
+        }
+      ],
+      "importCount": 6,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/tempSchedule/components/WeeklyScheduleView.tsx",
+      "loc": 842,
+      "longFnCount": 3,
+      "sampleLongFns": [
+        {
+          "file": "features/tempSchedule/components/WeeklyScheduleView.tsx",
+          "name": "TaskBlock",
+          "lines": 195,
+          "start": 140,
+          "end": 334
+        },
+        {
+          "file": "features/tempSchedule/components/WeeklyScheduleView.tsx",
+          "name": "DayColumn",
+          "lines": 97,
+          "start": 357,
+          "end": 453
+        },
+        {
+          "file": "features/tempSchedule/components/WeeklyScheduleView.tsx",
+          "name": "WeeklyScheduleViewComponent",
+          "lines": 380,
+          "start": 459,
+          "end": 838
+        }
+      ],
+      "importCount": 11,
+      "externalImportCount": 2
+    },
+    {
+      "file": "features/tasks/InboxTab.tsx",
+      "loc": 827,
+      "longFnCount": 4,
+      "sampleLongFns": [
+        {
+          "file": "features/tasks/InboxTab.tsx",
+          "name": "InboxTab",
+          "lines": 777,
+          "start": 50,
+          "end": 826
+        },
+        {
+          "file": "features/tasks/InboxTab.tsx",
+          "name": "anonymous",
+          "lines": 53,
+          "start": 217,
+          "end": 269
+        },
+        {
+          "file": "features/tasks/InboxTab.tsx",
+          "name": "renderHUD",
+          "lines": 85,
+          "start": 537,
+          "end": 621
+        },
+        {
+          "file": "features/tasks/InboxTab.tsx",
+          "name": "renderActionButtons",
+          "lines": 82,
+          "start": 626,
+          "end": 707
+        }
+      ],
+      "importCount": 16,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/tempSchedule/components/TempScheduleTimelineView.tsx",
+      "loc": 804,
+      "longFnCount": 4,
+      "sampleLongFns": [
+        {
+          "file": "features/tempSchedule/components/TempScheduleTimelineView.tsx",
+          "name": "calculateBlockPositions",
+          "lines": 51,
+          "start": 53,
+          "end": 103
+        },
+        {
+          "file": "features/tempSchedule/components/TempScheduleTimelineView.tsx",
+          "name": "TimelineBlock",
+          "lines": 134,
+          "start": 164,
+          "end": 297
+        },
+        {
+          "file": "features/tempSchedule/components/TempScheduleTimelineView.tsx",
+          "name": "TempScheduleTimelineViewComponent",
+          "lines": 494,
+          "start": 307,
+          "end": 800
+        },
+        {
+          "file": "features/tempSchedule/components/TempScheduleTimelineView.tsx",
+          "name": "anonymous",
+          "lines": 90,
+          "start": 437,
+          "end": 526
+        }
+      ],
+      "importCount": 12,
+      "externalImportCount": 2
+    },
+    {
+      "file": "features/insight/DailySummaryModal.tsx",
+      "loc": 781,
+      "longFnCount": 5,
+      "sampleLongFns": [
+        {
+          "file": "features/insight/DailySummaryModal.tsx",
+          "name": "generateAIAnalysis",
+          "lines": 60,
+          "start": 113,
+          "end": 172
+        },
+        {
+          "file": "features/insight/DailySummaryModal.tsx",
+          "name": "downloadReport",
+          "lines": 62,
+          "start": 225,
+          "end": 286
+        },
+        {
+          "file": "features/insight/DailySummaryModal.tsx",
+          "name": "OverviewSection",
+          "lines": 70,
+          "start": 296,
+          "end": 365
+        },
+        {
+          "file": "features/insight/DailySummaryModal.tsx",
+          "name": "TasksSection",
+          "lines": 58,
+          "start": 371,
+          "end": 428
+        },
+        {
+          "file": "features/insight/DailySummaryModal.tsx",
+          "name": "DailySummaryModal",
+          "lines": 292,
+          "start": 489,
+          "end": 780
+        }
+      ],
+      "importCount": 11,
+      "externalImportCount": 4
+    },
+    {
+      "file": "shared/stores/dailyDataStore.ts",
+      "loc": 729,
+      "longFnCount": 4,
+      "sampleLongFns": [
+        {
+          "file": "shared/stores/dailyDataStore.ts",
+          "name": "anonymous",
+          "lines": 629,
+          "start": 100,
+          "end": 728
+        },
+        {
+          "file": "shared/stores/dailyDataStore.ts",
+          "name": "updateTask",
+          "lines": 132,
+          "start": 222,
+          "end": 353
+        },
+        {
+          "file": "shared/stores/dailyDataStore.ts",
+          "name": "toggleTaskCompletion",
+          "lines": 124,
+          "start": 401,
+          "end": 524
+        },
+        {
+          "file": "shared/stores/dailyDataStore.ts",
+          "name": "toggleBlockLock",
+          "lines": 65,
+          "start": 557,
+          "end": 621
+        }
+      ],
+      "importCount": 12,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/template/TemplateModal.tsx",
+      "loc": 711,
+      "longFnCount": 3,
+      "sampleLongFns": [
+        {
+          "file": "features/template/TemplateModal.tsx",
+          "name": "TemplateModal",
+          "lines": 672,
+          "start": 39,
+          "end": 710
+        },
+        {
+          "file": "features/template/TemplateModal.tsx",
+          "name": "anonymous",
+          "lines": 67,
+          "start": 137,
+          "end": 203
+        },
+        {
+          "file": "features/template/TemplateModal.tsx",
+          "name": "handleSubmit",
+          "lines": 60,
+          "start": 262,
+          "end": 321
+        }
+      ],
+      "importCount": 7,
+      "externalImportCount": 2
+    },
+    {
+      "file": "shared/types/domain.ts",
+      "loc": 706,
+      "longFnCount": 0,
+      "sampleLongFns": [],
+      "importCount": 1,
+      "externalImportCount": 0
+    },
+    {
+      "file": "features/goals/WeeklyGoalCard.tsx",
+      "loc": 693,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "features/goals/WeeklyGoalCard.tsx",
+          "name": "WeeklyGoalCard",
+          "lines": 634,
+          "start": 59,
+          "end": 692
+        }
+      ],
+      "importCount": 12,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/battle/components/BossAlbumModal.tsx",
+      "loc": 689,
+      "longFnCount": 5,
+      "sampleLongFns": [
+        {
+          "file": "features/battle/components/BossAlbumModal.tsx",
+          "name": "BossCard",
+          "lines": 148,
+          "start": 70,
+          "end": 217
+        },
+        {
+          "file": "features/battle/components/BossAlbumModal.tsx",
+          "name": "BossDetailOverlay",
+          "lines": 56,
+          "start": 227,
+          "end": 282
+        },
+        {
+          "file": "features/battle/components/BossAlbumModal.tsx",
+          "name": "StatsTab",
+          "lines": 185,
+          "start": 291,
+          "end": 475
+        },
+        {
+          "file": "features/battle/components/BossAlbumModal.tsx",
+          "name": "anonymous",
+          "lines": 60,
+          "start": 358,
+          "end": 417
+        },
+        {
+          "file": "features/battle/components/BossAlbumModal.tsx",
+          "name": "BossAlbumModal",
+          "lines": 209,
+          "start": 480,
+          "end": 688
+        }
+      ],
+      "importCount": 7,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/template/TemplatesModal.tsx",
+      "loc": 679,
+      "longFnCount": 3,
+      "sampleLongFns": [
+        {
+          "file": "features/template/TemplatesModal.tsx",
+          "name": "TemplatesModal",
+          "lines": 629,
+          "start": 50,
+          "end": 678
+        },
+        {
+          "file": "features/template/TemplatesModal.tsx",
+          "name": "anonymous",
+          "lines": 65,
+          "start": 200,
+          "end": 264
+        },
+        {
+          "file": "features/template/TemplatesModal.tsx",
+          "name": "anonymous",
+          "lines": 124,
+          "start": 532,
+          "end": 655
+        }
+      ],
+      "importCount": 10,
+      "externalImportCount": 2
+    },
+    {
+      "file": "features/tempSchedule/components/TempScheduleTaskList.tsx",
+      "loc": 678,
+      "longFnCount": 3,
+      "sampleLongFns": [
+        {
+          "file": "features/tempSchedule/components/TempScheduleTaskList.tsx",
+          "name": "groupTasksByDate",
+          "lines": 62,
+          "start": 228,
+          "end": 289
+        },
+        {
+          "file": "features/tempSchedule/components/TempScheduleTaskList.tsx",
+          "name": "TaskItem",
+          "lines": 165,
+          "start": 311,
+          "end": 475
+        },
+        {
+          "file": "features/tempSchedule/components/TempScheduleTaskList.tsx",
+          "name": "TempScheduleTaskListComponent",
+          "lines": 190,
+          "start": 485,
+          "end": 674
+        }
+      ],
+      "importCount": 5,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/schedule/TaskModal.tsx",
+      "loc": 663,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "features/schedule/TaskModal.tsx",
+          "name": "TaskModal",
+          "lines": 615,
+          "start": 48,
+          "end": 662
+        }
+      ],
+      "importCount": 12,
+      "externalImportCount": 1
+    },
+    {
+      "file": "data/db/infra/syncEngine.ts",
+      "loc": 649,
+      "longFnCount": 3,
+      "sampleLongFns": [
+        {
+          "file": "data/db/infra/syncEngine.ts",
+          "name": "initialize",
+          "lines": 80,
+          "start": 142,
+          "end": 221
+        },
+        {
+          "file": "data/db/infra/syncEngine.ts",
+          "name": "startListening",
+          "lines": 227,
+          "start": 232,
+          "end": 458
+        },
+        {
+          "file": "data/db/infra/syncEngine.ts",
+          "name": "applyRemoteUpdate",
+          "lines": 63,
+          "start": 516,
+          "end": 578
+        }
+      ],
+      "importCount": 11,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/tempSchedule/components/MonthlyScheduleView.tsx",
+      "loc": 595,
+      "longFnCount": 3,
+      "sampleLongFns": [
+        {
+          "file": "features/tempSchedule/components/MonthlyScheduleView.tsx",
+          "name": "TaskPopover",
+          "lines": 109,
+          "start": 103,
+          "end": 211
+        },
+        {
+          "file": "features/tempSchedule/components/MonthlyScheduleView.tsx",
+          "name": "DayCell",
+          "lines": 95,
+          "start": 226,
+          "end": 320
+        },
+        {
+          "file": "features/tempSchedule/components/MonthlyScheduleView.tsx",
+          "name": "MonthlyScheduleViewComponent",
+          "lines": 266,
+          "start": 326,
+          "end": 591
+        }
+      ],
+      "importCount": 5,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/insight/InsightPanel.tsx",
+      "loc": 594,
+      "longFnCount": 3,
+      "sampleLongFns": [
+        {
+          "file": "features/insight/InsightPanel.tsx",
+          "name": "InsightPanel",
+          "lines": 536,
+          "start": 58,
+          "end": 593
+        },
+        {
+          "file": "features/insight/InsightPanel.tsx",
+          "name": "parseInsightResponse",
+          "lines": 105,
+          "start": 99,
+          "end": 203
+        },
+        {
+          "file": "features/insight/InsightPanel.tsx",
+          "name": "generateInsight",
+          "lines": 82,
+          "start": 238,
+          "end": 319
+        }
+      ],
+      "importCount": 11,
+      "externalImportCount": 2
+    },
+    {
+      "file": "data/repositories/tempScheduleRepository.ts",
+      "loc": 589,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "data/repositories/tempScheduleRepository.ts",
+          "name": "shouldShowOnDate",
+          "lines": 65,
+          "start": 84,
+          "end": 148
+        }
+      ],
+      "importCount": 8,
+      "externalImportCount": 0
+    },
+    {
+      "file": "features/weather/WeatherWidget.tsx",
+      "loc": 582,
+      "longFnCount": 2,
+      "sampleLongFns": [
+        {
+          "file": "features/weather/WeatherWidget.tsx",
+          "name": "WeatherWidget",
+          "lines": 381,
+          "start": 32,
+          "end": 412
+        },
+        {
+          "file": "features/weather/WeatherWidget.tsx",
+          "name": "anonymous",
+          "lines": 52,
+          "start": 134,
+          "end": 185
+        }
+      ],
+      "importCount": 6,
+      "externalImportCount": 2
+    },
+    {
+      "file": "features/battle/data/bossData.ts",
+      "loc": 579,
+      "longFnCount": 0,
+      "sampleLongFns": [],
+      "importCount": 1,
+      "externalImportCount": 0
+    },
+    {
+      "file": "features/schedule/TimelineView/TimelineView.tsx",
+      "loc": 576,
+      "longFnCount": 2,
+      "sampleLongFns": [
+        {
+          "file": "features/schedule/TimelineView/TimelineView.tsx",
+          "name": "TimelineViewComponent",
+          "lines": 510,
+          "start": 63,
+          "end": 572
+        },
+        {
+          "file": "features/schedule/TimelineView/TimelineView.tsx",
+          "name": "anonymous",
+          "lines": 81,
+          "start": 377,
+          "end": 457
+        }
+      ],
+      "importCount": 12,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/tempSchedule/stores/tempScheduleStore.ts",
+      "loc": 572,
+      "longFnCount": 2,
+      "sampleLongFns": [
+        {
+          "file": "features/tempSchedule/stores/tempScheduleStore.ts",
+          "name": "anonymous",
+          "lines": 403,
+          "start": 169,
+          "end": 571
+        },
+        {
+          "file": "features/tempSchedule/stores/tempScheduleStore.ts",
+          "name": "promoteWithPostAction",
+          "lines": 57,
+          "start": 312,
+          "end": 368
+        }
+      ],
+      "importCount": 5,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/schedule/ScheduleView.tsx",
+      "loc": 568,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "features/schedule/ScheduleView.tsx",
+          "name": "ScheduleView",
+          "lines": 527,
+          "start": 41,
+          "end": 567
+        }
+      ],
+      "importCount": 19,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/schedule/components/FocusView.tsx",
+      "loc": 567,
+      "longFnCount": 2,
+      "sampleLongFns": [
+        {
+          "file": "features/schedule/components/FocusView.tsx",
+          "name": "FocusView",
+          "lines": 523,
+          "start": 44,
+          "end": 566
+        },
+        {
+          "file": "features/schedule/components/FocusView.tsx",
+          "name": "anonymous",
+          "lines": 53,
+          "start": 275,
+          "end": 327
+        }
+      ],
+      "importCount": 15,
+      "externalImportCount": 2
+    },
+    {
+      "file": "shared/services/task/unifiedTaskService.ts",
+      "loc": 563,
+      "longFnCount": 0,
+      "sampleLongFns": [],
+      "importCount": 5,
+      "externalImportCount": 0
+    },
+    {
+      "file": "features/settings/components/tabs/battle/BattleMissionsSection.tsx",
+      "loc": 558,
+      "longFnCount": 3,
+      "sampleLongFns": [
+        {
+          "file": "features/settings/components/tabs/battle/BattleMissionsSection.tsx",
+          "name": "TimeSlotEditor",
+          "lines": 104,
+          "start": 42,
+          "end": 145
+        },
+        {
+          "file": "features/settings/components/tabs/battle/BattleMissionsSection.tsx",
+          "name": "BattleMissionsSection",
+          "lines": 408,
+          "start": 150,
+          "end": 557
+        },
+        {
+          "file": "features/settings/components/tabs/battle/BattleMissionsSection.tsx",
+          "name": "anonymous",
+          "lines": 162,
+          "start": 375,
+          "end": 536
+        }
+      ],
+      "importCount": 5,
+      "externalImportCount": 1
+    },
+    {
+      "file": "shared/services/calendar/googleCalendarService.ts",
+      "loc": 554,
+      "longFnCount": 2,
+      "sampleLongFns": [
+        {
+          "file": "shared/services/calendar/googleCalendarService.ts",
+          "name": "callCalendarApi",
+          "lines": 71,
+          "start": 247,
+          "end": 317
+        },
+        {
+          "file": "shared/services/calendar/googleCalendarService.ts",
+          "name": "taskToCalendarEvent",
+          "lines": 59,
+          "start": 322,
+          "end": 380
+        }
+      ],
+      "importCount": 3,
+      "externalImportCount": 0
+    },
+    {
+      "file": "features/tasks/TaskBreakdownModal.tsx",
+      "loc": 551,
+      "longFnCount": 3,
+      "sampleLongFns": [
+        {
+          "file": "features/tasks/TaskBreakdownModal.tsx",
+          "name": "TaskBreakdownModal",
+          "lines": 459,
+          "start": 92,
+          "end": 550
+        },
+        {
+          "file": "features/tasks/TaskBreakdownModal.tsx",
+          "name": "parseInput",
+          "lines": 65,
+          "start": 203,
+          "end": 267
+        },
+        {
+          "file": "features/tasks/TaskBreakdownModal.tsx",
+          "name": "anonymous",
+          "lines": 55,
+          "start": 457,
+          "end": 511
+        }
+      ],
+      "importCount": 7,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/tasks/hooks/useInboxHotkeys.ts",
+      "loc": 540,
+      "longFnCount": 4,
+      "sampleLongFns": [
+        {
+          "file": "features/tasks/hooks/useInboxHotkeys.ts",
+          "name": "useInboxHotkeys",
+          "lines": 451,
+          "start": 89,
+          "end": 539
+        },
+        {
+          "file": "features/tasks/hooks/useInboxHotkeys.ts",
+          "name": "anonymous",
+          "lines": 60,
+          "start": 233,
+          "end": 292
+        },
+        {
+          "file": "features/tasks/hooks/useInboxHotkeys.ts",
+          "name": "anonymous",
+          "lines": 109,
+          "start": 403,
+          "end": 511
+        },
+        {
+          "file": "features/tasks/hooks/useInboxHotkeys.ts",
+          "name": "handleKeyDown",
+          "lines": 88,
+          "start": 416,
+          "end": 503
+        }
+      ],
+      "importCount": 8,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/waifu/WaifuPanel.tsx",
+      "loc": 535,
+      "longFnCount": 3,
+      "sampleLongFns": [
+        {
+          "file": "features/waifu/WaifuPanel.tsx",
+          "name": "WaifuPanel",
+          "lines": 473,
+          "start": 62,
+          "end": 534
+        },
+        {
+          "file": "features/waifu/WaifuPanel.tsx",
+          "name": "anonymous",
+          "lines": 58,
+          "start": 124,
+          "end": 181
+        },
+        {
+          "file": "features/waifu/WaifuPanel.tsx",
+          "name": "anonymous",
+          "lines": 54,
+          "start": 307,
+          "end": 360
+        }
+      ],
+      "importCount": 14,
+      "externalImportCount": 2
+    },
+    {
+      "file": "shared/services/behavior/idleFocusModeService.ts",
+      "loc": 526,
+      "longFnCount": 0,
+      "sampleLongFns": [],
+      "importCount": 4,
+      "externalImportCount": 1
+    },
+    {
+      "file": "data/repositories/battleRepository.ts",
+      "loc": 515,
+      "longFnCount": 0,
+      "sampleLongFns": [],
+      "importCount": 8,
+      "externalImportCount": 0
+    },
+    {
+      "file": "features/tasks/BulkAddModal.tsx",
+      "loc": 508,
+      "longFnCount": 3,
+      "sampleLongFns": [
+        {
+          "file": "features/tasks/BulkAddModal.tsx",
+          "name": "BulkAddModal",
+          "lines": 434,
+          "start": 73,
+          "end": 506
+        },
+        {
+          "file": "features/tasks/BulkAddModal.tsx",
+          "name": "parseInput",
+          "lines": 59,
+          "start": 170,
+          "end": 228
+        },
+        {
+          "file": "features/tasks/BulkAddModal.tsx",
+          "name": "anonymous",
+          "lines": 69,
+          "start": 390,
+          "end": 458
+        }
+      ],
+      "importCount": 4,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/stats/StatsModal.tsx",
+      "loc": 500,
+      "longFnCount": 2,
+      "sampleLongFns": [
+        {
+          "file": "features/stats/StatsModal.tsx",
+          "name": "StatsModal",
+          "lines": 448,
+          "start": 52,
+          "end": 499
+        },
+        {
+          "file": "features/stats/StatsModal.tsx",
+          "name": "anonymous",
+          "lines": 58,
+          "start": 319,
+          "end": 376
+        }
+      ],
+      "importCount": 13,
+      "externalImportCount": 1
+    },
+    {
+      "file": "shared/services/rag/autoTagService.ts",
+      "loc": 491,
+      "longFnCount": 2,
+      "sampleLongFns": [
+        {
+          "file": "shared/services/rag/autoTagService.ts",
+          "name": "suggestTagsForTask",
+          "lines": 69,
+          "start": 102,
+          "end": 170
+        },
+        {
+          "file": "shared/services/rag/autoTagService.ts",
+          "name": "suggestTaskContext",
+          "lines": 158,
+          "start": 295,
+          "end": 452
+        }
+      ],
+      "importCount": 3,
+      "externalImportCount": 0
+    },
+    {
+      "file": "data/db/dexieClient.ts",
+      "loc": 490,
+      "longFnCount": 0,
+      "sampleLongFns": [],
+      "importCount": 6,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/schedule/TaskCard.tsx",
+      "loc": 490,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "features/schedule/TaskCard.tsx",
+          "name": "TaskCard",
+          "lines": 422,
+          "start": 68,
+          "end": 489
+        }
+      ],
+      "importCount": 9,
+      "externalImportCount": 2
+    },
+    {
+      "file": "features/schedule/HourBar.tsx",
+      "loc": 488,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "features/schedule/HourBar.tsx",
+          "name": "HourBar",
+          "lines": 436,
+          "start": 52,
+          "end": 487
+        }
+      ],
+      "importCount": 5,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/gemini/GeminiFullscreenChat.tsx",
+      "loc": 471,
+      "longFnCount": 3,
+      "sampleLongFns": [
+        {
+          "file": "features/gemini/GeminiFullscreenChat.tsx",
+          "name": "GeminiFullscreenChat",
+          "lines": 419,
+          "start": 52,
+          "end": 470
+        },
+        {
+          "file": "features/gemini/GeminiFullscreenChat.tsx",
+          "name": "handleSend",
+          "lines": 68,
+          "start": 150,
+          "end": 217
+        },
+        {
+          "file": "features/gemini/GeminiFullscreenChat.tsx",
+          "name": "anonymous",
+          "lines": 51,
+          "start": 370,
+          "end": 420
+        }
+      ],
+      "importCount": 10,
+      "externalImportCount": 3
+    },
+    {
+      "file": "features/weather/services/weatherApi.ts",
+      "loc": 470,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "features/weather/services/weatherApi.ts",
+          "name": "fetchWeatherFromApi",
+          "lines": 101,
+          "start": 183,
+          "end": 283
+        }
+      ],
+      "importCount": 2,
+      "externalImportCount": 0
+    },
+    {
+      "file": "features/weather/services/weatherService.ts",
+      "loc": 467,
+      "longFnCount": 2,
+      "sampleLongFns": [
+        {
+          "file": "features/weather/services/weatherService.ts",
+          "name": "buildWeatherInsightPrompt",
+          "lines": 80,
+          "start": 171,
+          "end": 250
+        },
+        {
+          "file": "features/weather/services/weatherService.ts",
+          "name": "parseGeminiWeatherResponse",
+          "lines": 88,
+          "start": 255,
+          "end": 342
+        }
+      ],
+      "importCount": 6,
+      "externalImportCount": 0
+    },
+    {
+      "file": "features/tempSchedule/components/CommandPalette.tsx",
+      "loc": 433,
+      "longFnCount": 2,
+      "sampleLongFns": [
+        {
+          "file": "features/tempSchedule/components/CommandPalette.tsx",
+          "name": "CommandPaletteComponent",
+          "lines": 360,
+          "start": 70,
+          "end": 429
+        },
+        {
+          "file": "features/tempSchedule/components/CommandPalette.tsx",
+          "name": "anonymous",
+          "lines": 84,
+          "start": 91,
+          "end": 174
+        }
+      ],
+      "importCount": 4,
+      "externalImportCount": 3
+    },
+    {
+      "file": "shared/lib/storeUtils.ts",
+      "loc": 432,
+      "longFnCount": 0,
+      "sampleLongFns": [],
+      "importCount": 2,
+      "externalImportCount": 0
+    },
+    {
+      "file": "features/tempSchedule/components/AddTempScheduleTaskModal.tsx",
+      "loc": 429,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "features/tempSchedule/components/AddTempScheduleTaskModal.tsx",
+          "name": "AddTempScheduleTaskModalComponent",
+          "lines": 380,
+          "start": 46,
+          "end": 425
+        }
+      ],
+      "importCount": 5,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/schedule/components/FocusHeroTask.tsx",
+      "loc": 424,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "features/schedule/components/FocusHeroTask.tsx",
+          "name": "FocusHeroTask",
+          "lines": 357,
+          "start": 67,
+          "end": 423
+        }
+      ],
+      "importCount": 4,
+      "externalImportCount": 2
+    },
+    {
+      "file": "data/repositories/templateRepository.ts",
+      "loc": 420,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "data/repositories/templateRepository.ts",
+          "name": "createTemplate",
+          "lines": 57,
+          "start": 112,
+          "end": 168
+        }
+      ],
+      "importCount": 8,
+      "externalImportCount": 0
+    },
+    {
+      "file": "shared/types/tempSchedule.ts",
+      "loc": 420,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "shared/types/tempSchedule.ts",
+          "name": "getTaskBadges",
+          "lines": 68,
+          "start": 352,
+          "end": 419
+        }
+      ],
+      "importCount": 0,
+      "externalImportCount": 0
+    },
+    {
+      "file": "features/quickadd/QuickAddTask.tsx",
+      "loc": 411,
+      "longFnCount": 2,
+      "sampleLongFns": [
+        {
+          "file": "features/quickadd/QuickAddTask.tsx",
+          "name": "QuickAddTask",
+          "lines": 383,
+          "start": 28,
+          "end": 410
+        },
+        {
+          "file": "features/quickadd/QuickAddTask.tsx",
+          "name": "handleSubmit",
+          "lines": 69,
+          "start": 175,
+          "end": 243
+        }
+      ],
+      "importCount": 6,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/goals/WeeklyGoalModal.tsx",
+      "loc": 409,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "features/goals/WeeklyGoalModal.tsx",
+          "name": "WeeklyGoalModal",
+          "lines": 369,
+          "start": 40,
+          "end": 408
+        }
+      ],
+      "importCount": 5,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/settings/SettingsModal.tsx",
+      "loc": 404,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "features/settings/SettingsModal.tsx",
+          "name": "SettingsModal",
+          "lines": 332,
+          "start": 72,
+          "end": 403
+        }
+      ],
+      "importCount": 12,
+      "externalImportCount": 2
+    },
+    {
+      "file": "shared/services/schedule/slotFinder.ts",
+      "loc": 398,
+      "longFnCount": 2,
+      "sampleLongFns": [
+        {
+          "file": "shared/services/schedule/slotFinder.ts",
+          "name": "findSuggestedSlot",
+          "lines": 92,
+          "start": 208,
+          "end": 299
+        },
+        {
+          "file": "shared/services/schedule/slotFinder.ts",
+          "name": "findFirstAvailableBlock",
+          "lines": 57,
+          "start": 320,
+          "end": 376
+        }
+      ],
+      "importCount": 2,
+      "externalImportCount": 0
+    },
+    {
+      "file": "features/goals/components/CatchUpAlertBanner.tsx",
+      "loc": 396,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "features/goals/components/CatchUpAlertBanner.tsx",
+          "name": "CatchUpAlertBanner",
+          "lines": 280,
+          "start": 83,
+          "end": 362
+        }
+      ],
+      "importCount": 7,
+      "externalImportCount": 1
+    },
+    {
+      "file": "features/battle/components/BossDisplay.tsx",
+      "loc": 395,
+      "longFnCount": 2,
+      "sampleLongFns": [
+        {
+          "file": "features/battle/components/BossDisplay.tsx",
+          "name": "computeDifficultyStyles",
+          "lines": 55,
+          "start": 43,
+          "end": 97
+        },
+        {
+          "file": "features/battle/components/BossDisplay.tsx",
+          "name": "BossDisplay",
+          "lines": 197,
+          "start": 198,
+          "end": 394
+        }
+      ],
+      "importCount": 5,
+      "externalImportCount": 1
+    },
+    {
+      "file": "data/repositories/gameState/index.ts",
+      "loc": 390,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "data/repositories/gameState/index.ts",
+          "name": "updateQuestProgress",
+          "lines": 51,
+          "start": 259,
+          "end": 309
+        }
+      ],
+      "importCount": 9,
+      "externalImportCount": 0
+    },
+    {
+      "file": "features/tempSchedule/TempScheduleModal.tsx",
+      "loc": 371,
+      "longFnCount": 2,
+      "sampleLongFns": [
+        {
+          "file": "features/tempSchedule/TempScheduleModal.tsx",
+          "name": "TempScheduleModalComponent",
+          "lines": 271,
+          "start": 97,
+          "end": 367
+        },
+        {
+          "file": "features/tempSchedule/TempScheduleModal.tsx",
+          "name": "anonymous",
+          "lines": 52,
+          "start": 129,
+          "end": 180
+        }
+      ],
+      "importCount": 12,
+      "externalImportCount": 1
+    },
+    {
+      "file": "data/repositories/inboxRepository.ts",
+      "loc": 370,
+      "longFnCount": 0,
+      "sampleLongFns": [],
+      "importCount": 7,
+      "externalImportCount": 0
+    },
+    {
+      "file": "shared/constants/defaults.ts",
+      "loc": 367,
+      "longFnCount": 0,
+      "sampleLongFns": [],
+      "importCount": 2,
+      "externalImportCount": 0
+    },
+    {
+      "file": "data/repositories/waifuRepository.ts",
+      "loc": 366,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "data/repositories/waifuRepository.ts",
+          "name": "getDialogueFromAffection",
+          "lines": 89,
+          "start": 277,
+          "end": 365
+        }
+      ],
+      "importCount": 5,
+      "externalImportCount": 0
+    },
+    {
+      "file": "features/settings/components/tabs/GoogleCalendarTab.tsx",
+      "loc": 366,
+      "longFnCount": 1,
+      "sampleLongFns": [
+        {
+          "file": "features/settings/components/tabs/GoogleCalendarTab.tsx",
+          "name": "GoogleCalendarTab",
+          "lines": 331,
+          "start": 35,
+          "end": 365
+        }
+      ],
+      "importCount": 5,
+      "externalImportCount": 2
+    },
+    {
+      "file": "shared/lib/utils.ts",
+      "loc": 365,
+      "longFnCount": 0,
+      "sampleLongFns": [],
+      "importCount": 3,
+      "externalImportCount": 0
+    },
+    {
+      "file": "data/repositories/baseRepository.ts",
+      "loc": 363,
+      "longFnCount": 0,
+      "sampleLongFns": [],
+      "importCount": 4,
+      "externalImportCount": 1
+    }
+  ],
+  "topLongFns": [
+    {
+      "file": "features/tasks/InboxTab.tsx",
+      "name": "InboxTab",
+      "lines": 777,
+      "start": 50,
+      "end": 826
+    },
+    {
+      "file": "features/template/TemplateModal.tsx",
+      "name": "TemplateModal",
+      "lines": 672,
+      "start": 39,
+      "end": 710
+    },
+    {
+      "file": "features/goals/WeeklyGoalCard.tsx",
+      "name": "WeeklyGoalCard",
+      "lines": 634,
+      "start": 59,
+      "end": 692
+    },
+    {
+      "file": "features/template/TemplatesModal.tsx",
+      "name": "TemplatesModal",
+      "lines": 629,
+      "start": 50,
+      "end": 678
+    },
+    {
+      "file": "shared/stores/dailyDataStore.ts",
+      "name": "anonymous",
+      "lines": 629,
+      "start": 100,
+      "end": 728
+    },
+    {
+      "file": "features/schedule/TaskModal.tsx",
+      "name": "TaskModal",
+      "lines": 615,
+      "start": 48,
+      "end": 662
+    },
+    {
+      "file": "features/insight/InsightPanel.tsx",
+      "name": "InsightPanel",
+      "lines": 536,
+      "start": 58,
+      "end": 593
+    },
+    {
+      "file": "features/schedule/ScheduleView.tsx",
+      "name": "ScheduleView",
+      "lines": 527,
+      "start": 41,
+      "end": 567
+    },
+    {
+      "file": "features/schedule/components/FocusView.tsx",
+      "name": "FocusView",
+      "lines": 523,
+      "start": 44,
+      "end": 566
+    },
+    {
+      "file": "features/schedule/TimelineView/TimelineView.tsx",
+      "name": "TimelineViewComponent",
+      "lines": 510,
+      "start": 63,
+      "end": 572
+    },
+    {
+      "file": "features/tempSchedule/components/TempScheduleTimelineView.tsx",
+      "name": "TempScheduleTimelineViewComponent",
+      "lines": 494,
+      "start": 307,
+      "end": 800
+    },
+    {
+      "file": "features/battle/stores/battleStore.ts",
+      "name": "anonymous",
+      "lines": 488,
+      "start": 534,
+      "end": 1021
+    },
+    {
+      "file": "features/waifu/WaifuPanel.tsx",
+      "name": "WaifuPanel",
+      "lines": 473,
+      "start": 62,
+      "end": 534
+    },
+    {
+      "file": "features/tasks/TaskBreakdownModal.tsx",
+      "name": "TaskBreakdownModal",
+      "lines": 459,
+      "start": 92,
+      "end": 550
+    },
+    {
+      "file": "features/tasks/hooks/useInboxHotkeys.ts",
+      "name": "useInboxHotkeys",
+      "lines": 451,
+      "start": 89,
+      "end": 539
+    },
+    {
+      "file": "features/stats/StatsModal.tsx",
+      "name": "StatsModal",
+      "lines": 448,
+      "start": 52,
+      "end": 499
+    },
+    {
+      "file": "features/schedule/HourBar.tsx",
+      "name": "HourBar",
+      "lines": 436,
+      "start": 52,
+      "end": 487
+    },
+    {
+      "file": "features/tasks/BulkAddModal.tsx",
+      "name": "BulkAddModal",
+      "lines": 434,
+      "start": 73,
+      "end": 506
+    },
+    {
+      "file": "features/schedule/TaskCard.tsx",
+      "name": "TaskCard",
+      "lines": 422,
+      "start": 68,
+      "end": 489
+    },
+    {
+      "file": "features/gemini/GeminiFullscreenChat.tsx",
+      "name": "GeminiFullscreenChat",
+      "lines": 419,
+      "start": 52,
+      "end": 470
+    },
+    {
+      "file": "features/settings/components/tabs/battle/BattleMissionsSection.tsx",
+      "name": "BattleMissionsSection",
+      "lines": 408,
+      "start": 150,
+      "end": 557
+    },
+    {
+      "file": "features/tempSchedule/stores/tempScheduleStore.ts",
+      "name": "anonymous",
+      "lines": 403,
+      "start": 169,
+      "end": 571
+    },
+    {
+      "file": "features/quickadd/QuickAddTask.tsx",
+      "name": "QuickAddTask",
+      "lines": 383,
+      "start": 28,
+      "end": 410
+    },
+    {
+      "file": "features/weather/WeatherWidget.tsx",
+      "name": "WeatherWidget",
+      "lines": 381,
+      "start": 32,
+      "end": 412
+    },
+    {
+      "file": "features/tempSchedule/components/AddTempScheduleTaskModal.tsx",
+      "name": "AddTempScheduleTaskModalComponent",
+      "lines": 380,
+      "start": 46,
+      "end": 425
+    },
+    {
+      "file": "features/tempSchedule/components/WeeklyScheduleView.tsx",
+      "name": "WeeklyScheduleViewComponent",
+      "lines": 380,
+      "start": 459,
+      "end": 838
+    },
+    {
+      "file": "features/goals/WeeklyGoalModal.tsx",
+      "name": "WeeklyGoalModal",
+      "lines": 369,
+      "start": 40,
+      "end": 408
+    },
+    {
+      "file": "features/tempSchedule/components/CommandPalette.tsx",
+      "name": "CommandPaletteComponent",
+      "lines": 360,
+      "start": 70,
+      "end": 429
+    },
+    {
+      "file": "features/schedule/components/FocusHeroTask.tsx",
+      "name": "FocusHeroTask",
+      "lines": 357,
+      "start": 67,
+      "end": 423
+    },
+    {
+      "file": "features/settings/SettingsModal.tsx",
+      "name": "SettingsModal",
+      "lines": 332,
+      "start": 72,
+      "end": 403
+    },
+    {
+      "file": "features/settings/components/tabs/GoogleCalendarTab.tsx",
+      "name": "GoogleCalendarTab",
+      "lines": 331,
+      "start": 35,
+      "end": 365
+    },
+    {
+      "file": "shared/components/ui/NeonCheckbox.tsx",
+      "name": "NeonCheckbox",
+      "lines": 313,
+      "start": 44,
+      "end": 356
+    },
+    {
+      "file": "features/insight/DailySummaryModal.tsx",
+      "name": "DailySummaryModal",
+      "lines": 292,
+      "start": 489,
+      "end": 780
+    },
+    {
+      "file": "features/pip/PipTimer.tsx",
+      "name": "PipTimer",
+      "lines": 284,
+      "start": 46,
+      "end": 329
+    },
+    {
+      "file": "features/battle/components/BossDefeatOverlay.tsx",
+      "name": "BossDefeatOverlay",
+      "lines": 283,
+      "start": 40,
+      "end": 322
+    },
+    {
+      "file": "features/goals/components/CatchUpAlertBanner.tsx",
+      "name": "CatchUpAlertBanner",
+      "lines": 280,
+      "start": 83,
+      "end": 362
+    },
+    {
+      "file": "features/battle/components/BattleSidebar.tsx",
+      "name": "BattleSidebar",
+      "lines": 276,
+      "start": 67,
+      "end": 342
+    },
+    {
+      "file": "app/components/TopToolbar.tsx",
+      "name": "TopToolbar",
+      "lines": 273,
+      "start": 61,
+      "end": 333
+    },
+    {
+      "file": "features/tempSchedule/TempScheduleModal.tsx",
+      "name": "TempScheduleModalComponent",
+      "lines": 271,
+      "start": 97,
+      "end": 367
+    },
+    {
+      "file": "features/tempSchedule/components/MonthlyScheduleView.tsx",
+      "name": "MonthlyScheduleViewComponent",
+      "lines": 266,
+      "start": 326,
+      "end": 591
+    },
+    {
+      "file": "features/battle/components/MissionModal.tsx",
+      "name": "MissionModal",
+      "lines": 263,
+      "start": 50,
+      "end": 312
+    },
+    {
+      "file": "data/db/infra/useAppInitialization.ts",
+      "name": "useAppInitialization",
+      "lines": 256,
+      "start": 45,
+      "end": 300
+    },
+    {
+      "file": "app/AppShell.tsx",
+      "name": "AppShell",
+      "lines": 252,
+      "start": 59,
+      "end": 310
+    },
+    {
+      "file": "data/db/infra/useAppInitialization.ts",
+      "name": "anonymous",
+      "lines": 243,
+      "start": 55,
+      "end": 297
+    },
+    {
+      "file": "features/goals/WeeklyGoalPanel.tsx",
+      "name": "WeeklyGoalPanel",
+      "lines": 241,
+      "start": 61,
+      "end": 301
+    },
+    {
+      "file": "features/settings/SyncLogModal.tsx",
+      "name": "SyncLogModal",
+      "lines": 240,
+      "start": 108,
+      "end": 347
+    },
+    {
+      "file": "data/db/infra/useAppInitialization.ts",
+      "name": "initApp",
+      "lines": 239,
+      "start": 56,
+      "end": 294
+    },
+    {
+      "file": "features/settings/components/tabs/battle/BossImagePreviewEditor.tsx",
+      "name": "BossImagePreviewEditor",
+      "lines": 236,
+      "start": 58,
+      "end": 293
+    },
+    {
+      "file": "features/shop/ShopPanel.tsx",
+      "name": "ShopPanel",
+      "lines": 229,
+      "start": 34,
+      "end": 262
+    },
+    {
+      "file": "features/schedule/hooks/useFocusMusic.ts",
+      "name": "useFocusMusic",
+      "lines": 228,
+      "start": 49,
+      "end": 276
+    },
+    {
+      "file": "features/settings/components/tabs/GameplayTab.tsx",
+      "name": "GameplayTab",
+      "lines": 228,
+      "start": 21,
+      "end": 248
+    },
+    {
+      "file": "data/db/infra/syncEngine.ts",
+      "name": "startListening",
+      "lines": 227,
+      "start": 232,
+      "end": 458
+    },
+    {
+      "file": "features/tempSchedule/components/InlineEditPopover.tsx",
+      "name": "InlineEditPopoverComponent",
+      "lines": 227,
+      "start": 43,
+      "end": 269
+    },
+    {
+      "file": "shared/components/MemoMissionModal.tsx",
+      "name": "MemoMissionModal",
+      "lines": 226,
+      "start": 33,
+      "end": 258
+    },
+    {
+      "file": "features/battle/components/modal/BattleMissionCard.tsx",
+      "name": "BattleMissionCard",
+      "lines": 220,
+      "start": 48,
+      "end": 267
+    },
+    {
+      "file": "features/goals/GoalsModal.tsx",
+      "name": "GoalsModal",
+      "lines": 218,
+      "start": 58,
+      "end": 275
+    },
+    {
+      "file": "features/settings/components/tabs/LogsTab.tsx",
+      "name": "LogsTab",
+      "lines": 216,
+      "start": 39,
+      "end": 254
+    },
+    {
+      "file": "shared/services/ai/gemini/personaPrompts.ts",
+      "name": "generateWaifuPersona",
+      "lines": 214,
+      "start": 61,
+      "end": 274
+    },
+    {
+      "file": "features/goals/components/QuickLogSessionPopover.tsx",
+      "name": "QuickLogSessionPopover",
+      "lines": 210,
+      "start": 36,
+      "end": 245
+    },
+    {
+      "file": "features/template/TemplatePanel.tsx",
+      "name": "TemplatePanel",
+      "lines": 210,
+      "start": 34,
+      "end": 243
+    },
+    {
+      "file": "features/battle/components/BossAlbumModal.tsx",
+      "name": "BossAlbumModal",
+      "lines": 209,
+      "start": 480,
+      "end": 688
+    },
+    {
+      "file": "features/shop/ShopModal.tsx",
+      "name": "ShopModal",
+      "lines": 208,
+      "start": 33,
+      "end": 240
+    },
+    {
+      "file": "shared/stores/gameStateStore.ts",
+      "name": "anonymous",
+      "lines": 203,
+      "start": 62,
+      "end": 264
+    },
+    {
+      "file": "features/goals/components/GoalStatusTooltip.tsx",
+      "name": "GoalStatusTooltip",
+      "lines": 201,
+      "start": 37,
+      "end": 237
+    },
+    {
+      "file": "shared/stores/settingsStore.ts",
+      "name": "anonymous",
+      "lines": 201,
+      "start": 61,
+      "end": 261
+    },
+    {
+      "file": "features/battle/components/BossDisplay.tsx",
+      "name": "BossDisplay",
+      "lines": 197,
+      "start": 198,
+      "end": 394
+    },
+    {
+      "file": "features/schedule/components/WarmupPresetModal.tsx",
+      "name": "WarmupPresetModal",
+      "lines": 195,
+      "start": 22,
+      "end": 216
+    },
+    {
+      "file": "features/tempSchedule/components/WeeklyScheduleView.tsx",
+      "name": "TaskBlock",
+      "lines": 195,
+      "start": 140,
+      "end": 334
+    },
+    {
+      "file": "features/schedule/TimeBlock.tsx",
+      "name": "TimeBlock",
+      "lines": 192,
+      "start": 48,
+      "end": 239
+    },
+    {
+      "file": "features/settings/components/tabs/ShortcutsTab.tsx",
+      "name": "ShortcutsTab",
+      "lines": 192,
+      "start": 33,
+      "end": 224
+    },
+    {
+      "file": "features/tempSchedule/components/TempScheduleTaskList.tsx",
+      "name": "TempScheduleTaskListComponent",
+      "lines": 190,
+      "start": 485,
+      "end": 674
+    },
+    {
+      "file": "features/tempSchedule/components/TemplateModal.tsx",
+      "name": "TemplateModalComponent",
+      "lines": 189,
+      "start": 109,
+      "end": 297
+    },
+    {
+      "file": "features/battle/components/BossAlbumModal.tsx",
+      "name": "StatsTab",
+      "lines": 185,
+      "start": 291,
+      "end": 475
+    },
+    {
+      "file": "features/stats/StatsTab.tsx",
+      "name": "StatsTab",
+      "lines": 179,
+      "start": 21,
+      "end": 199
+    },
+    {
+      "file": "shared/lib/personaUtils.ts",
+      "name": "buildPersonaContext",
+      "lines": 179,
+      "start": 56,
+      "end": 234
+    },
+    {
+      "file": "features/settings/components/tabs/BattleTab.tsx",
+      "name": "BattleTab",
+      "lines": 178,
+      "start": 110,
+      "end": 287
+    },
+    {
+      "file": "features/schedule/hooks/useTaskContextSuggestion.ts",
+      "name": "useTaskContextSuggestion",
+      "lines": 176,
+      "start": 43,
+      "end": 218
+    },
+    {
+      "file": "data/db/infra/useAppInitialization.ts",
+      "name": "anonymous",
+      "lines": 172,
+      "start": 84,
+      "end": 255
+    },
+    {
+      "file": "features/schedule/stores/focusMusicStore.ts",
+      "name": "anonymous",
+      "lines": 172,
+      "start": 79,
+      "end": 250
+    },
+    {
+      "file": "features/schedule/components/ThreeHourBucket.tsx",
+      "name": "ThreeHourBucket",
+      "lines": 170,
+      "start": 22,
+      "end": 191
+    },
+    {
+      "file": "features/settings/components/tabs/ScheduleTab.tsx",
+      "name": "ScheduleTab",
+      "lines": 170,
+      "start": 29,
+      "end": 198
+    },
+    {
+      "file": "features/goals/hooks/useCatchUpAlertBanner.ts",
+      "name": "useCatchUpAlertBanner",
+      "lines": 166,
+      "start": 61,
+      "end": 226
+    },
+    {
+      "file": "features/settings/components/tabs/FirebaseTab.tsx",
+      "name": "FirebaseTab",
+      "lines": 165,
+      "start": 20,
+      "end": 184
+    },
+    {
+      "file": "features/tempSchedule/components/TempScheduleTaskList.tsx",
+      "name": "TaskItem",
+      "lines": 165,
+      "start": 311,
+      "end": 475
+    },
+    {
+      "file": "shared/stores/waifuCompanionStore.ts",
+      "name": "anonymous",
+      "lines": 163,
+      "start": 112,
+      "end": 274
+    },
+    {
+      "file": "features/settings/components/tabs/battle/BattleMissionsSection.tsx",
+      "name": "anonymous",
+      "lines": 162,
+      "start": 375,
+      "end": 536
+    },
+    {
+      "file": "features/schedule/components/TimeBlockBucket.tsx",
+      "name": "TimeBlockBucket",
+      "lines": 160,
+      "start": 21,
+      "end": 180
+    },
+    {
+      "file": "features/goals/CatchUpAlertModal.tsx",
+      "name": "CatchUpAlertModal",
+      "lines": 159,
+      "start": 45,
+      "end": 203
+    },
+    {
+      "file": "shared/services/rag/autoTagService.ts",
+      "name": "suggestTaskContext",
+      "lines": 158,
+      "start": 295,
+      "end": 452
+    },
+    {
+      "file": "features/goals/WeeklyGoalHistoryModal.tsx",
+      "name": "WeeklyGoalHistoryModal",
+      "lines": 152,
+      "start": 39,
+      "end": 190
+    },
+    {
+      "file": "features/battle/components/BossAlbumModal.tsx",
+      "name": "BossCard",
+      "lines": 148,
+      "start": 70,
+      "end": 217
+    },
+    {
+      "file": "features/battle/components/modal/MissionCardGrid.tsx",
+      "name": "MissionCardGrid",
+      "lines": 148,
+      "start": 46,
+      "end": 193
+    },
+    {
+      "file": "features/goals/WeeklyProgressBar.tsx",
+      "name": "WeeklyProgressBar",
+      "lines": 141,
+      "start": 43,
+      "end": 183
+    },
+    {
+      "file": "features/schedule/TimelineView/useTimelineData.ts",
+      "name": "useTimelineData",
+      "lines": 141,
+      "start": 54,
+      "end": 194
+    },
+    {
+      "file": "features/tempSchedule/components/WeekRecurrenceMoveDialog.tsx",
+      "name": "WeekRecurrenceMoveDialogComponent",
+      "lines": 140,
+      "start": 42,
+      "end": 181
+    },
+    {
+      "file": "app/hooks/usePanelLayout.ts",
+      "name": "usePanelLayout",
+      "lines": 139,
+      "start": 60,
+      "end": 198
+    },
+    {
+      "file": "features/goals/hooks/useGoalsHotkeys.ts",
+      "name": "useGoalsHotkeys",
+      "lines": 138,
+      "start": 77,
+      "end": 214
+    },
+    {
+      "file": "shared/stores/inboxStore.ts",
+      "name": "anonymous",
+      "lines": 136,
+      "start": 65,
+      "end": 200
+    },
+    {
+      "file": "features/tempSchedule/components/TempScheduleTimelineView.tsx",
+      "name": "TimelineBlock",
+      "lines": 134,
+      "start": 164,
+      "end": 297
+    },
+    {
+      "file": "shared/stores/dailyDataStore.ts",
+      "name": "updateTask",
+      "lines": 132,
+      "start": 222,
+      "end": 353
+    },
+    {
+      "file": "features/weather/stores/weatherStore.ts",
+      "name": "anonymous",
+      "lines": 131,
+      "start": 52,
+      "end": 182
+    },
+    {
+      "file": "features/settings/components/tabs/AppearanceTab.tsx",
+      "name": "AppearanceTab",
+      "lines": 130,
+      "start": 26,
+      "end": 155
+    },
+    {
+      "file": "features/settings/components/tabs/GeminiTab.tsx",
+      "name": "GeminiTab",
+      "lines": 128,
+      "start": 20,
+      "end": 147
+    },
+    {
+      "file": "features/tempSchedule/components/PromotePostActionPopup.tsx",
+      "name": "PromotePostActionPopupComponent",
+      "lines": 127,
+      "start": 41,
+      "end": 167
+    },
+    {
+      "file": "app/components/TimeBlockXPBar.tsx",
+      "name": "TimeBlockXPBarComponent",
+      "lines": 126,
+      "start": 27,
+      "end": 152
+    },
+    {
+      "file": "shared/services/rag/queryParser.ts",
+      "name": "parseQuery",
+      "lines": 125,
+      "start": 57,
+      "end": 181
+    },
+    {
+      "file": "features/goals/hooks/useProgressUndo.ts",
+      "name": "useProgressUndo",
+      "lines": 124,
+      "start": 37,
+      "end": 160
+    },
+    {
+      "file": "features/template/TemplatesModal.tsx",
+      "name": "anonymous",
+      "lines": 124,
+      "start": 532,
+      "end": 655
+    },
+    {
+      "file": "shared/stores/dailyDataStore.ts",
+      "name": "toggleTaskCompletion",
+      "lines": 124,
+      "start": 401,
+      "end": 524
+    },
+    {
+      "file": "features/settings/components/tabs/DontDoTab.tsx",
+      "name": "DontDoTab",
+      "lines": 123,
+      "start": 31,
+      "end": 153
+    },
+    {
+      "file": "features/schedule/components/FocusMusicPlayer.tsx",
+      "name": "FocusMusicPlayer",
+      "lines": 121,
+      "start": 45,
+      "end": 165
+    },
+    {
+      "file": "features/tempSchedule/components/TempScheduleContextMenu.tsx",
+      "name": "TempScheduleContextMenu",
+      "lines": 118,
+      "start": 14,
+      "end": 131
+    },
+    {
+      "file": "shared/services/sync/firebaseService.ts",
+      "name": "fetchDataFromFirebase",
+      "lines": 118,
+      "start": 46,
+      "end": 163
+    },
+    {
+      "file": "features/battle/stores/battleStore.ts",
+      "name": "completeMission",
+      "lines": 117,
+      "start": 839,
+      "end": 955
+    },
+    {
+      "file": "features/schedule/hooks/useDragDrop.ts",
+      "name": "useDragDrop",
+      "lines": 117,
+      "start": 33,
+      "end": 149
+    },
+    {
+      "file": "features/battle/components/modal/BossPanel.tsx",
+      "name": "BossPanel",
+      "lines": 115,
+      "start": 40,
+      "end": 154
+    },
+    {
+      "file": "features/goals/components/WeeklyResetCard.tsx",
+      "name": "WeeklyResetCard",
+      "lines": 115,
+      "start": 60,
+      "end": 174
+    },
+    {
+      "file": "features/tasks/CompletedTab.tsx",
+      "name": "CompletedTab",
+      "lines": 115,
+      "start": 28,
+      "end": 142
+    },
+    {
+      "file": "features/tempSchedule/components/QuickActionButtons.tsx",
+      "name": "QuickActionButtonsComponent",
+      "lines": 114,
+      "start": 113,
+      "end": 226
+    },
+    {
+      "file": "shared/stores/weeklyGoalStore.ts",
+      "name": "anonymous",
+      "lines": 114,
+      "start": 63,
+      "end": 176
+    },
+    {
+      "file": "features/goals/hooks/useGoalsSystemState.ts",
+      "name": "useGoalsSystemState",
+      "lines": 111,
+      "start": 56,
+      "end": 166
+    },
+    {
+      "file": "features/schedule/components/NextTaskCard.tsx",
+      "name": "NextTaskCard",
+      "lines": 111,
+      "start": 36,
+      "end": 146
+    },
+    {
+      "file": "features/tasks/hooks/useInboxHotkeys.ts",
+      "name": "anonymous",
+      "lines": 109,
+      "start": 403,
+      "end": 511
+    },
+    {
+      "file": "features/tempSchedule/components/MonthlyScheduleView.tsx",
+      "name": "TaskPopover",
+      "lines": 109,
+      "start": 103,
+      "end": 211
+    },
+    {
+      "file": "features/schedule/hooks/useTimeBlockTimer.ts",
+      "name": "useTimeBlockTimer",
+      "lines": 107,
+      "start": 47,
+      "end": 153
+    },
+    {
+      "file": "features/goals/hooks/useQuotaAchievement.ts",
+      "name": "useQuotaAchievement",
+      "lines": 106,
+      "start": 49,
+      "end": 154
+    },
+    {
+      "file": "features/schedule/components/TimeBlockHeader.tsx",
+      "name": "TimeBlockHeader",
+      "lines": 106,
+      "start": 91,
+      "end": 196
+    },
+    {
+      "file": "features/insight/InsightPanel.tsx",
+      "name": "parseInsightResponse",
+      "lines": 105,
+      "start": 99,
+      "end": 203
+    },
+    {
+      "file": "features/settings/components/tabs/battle/BattleMissionsSection.tsx",
+      "name": "TimeSlotEditor",
+      "lines": 104,
+      "start": 42,
+      "end": 145
+    },
+    {
+      "file": "shared/hooks/useModalHotkeys.ts",
+      "name": "useModalHotkeys",
+      "lines": 104,
+      "start": 75,
+      "end": 178
+    },
+    {
+      "file": "features/weather/services/weatherApi.ts",
+      "name": "fetchWeatherFromApi",
+      "lines": 101,
+      "start": 183,
+      "end": 283
+    },
+    {
+      "file": "shared/services/sync/firebase/syncCore.ts",
+      "name": "syncToFirebase",
+      "lines": 98,
+      "start": 124,
+      "end": 221
+    },
+    {
+      "file": "features/tempSchedule/components/WeeklyScheduleView.tsx",
+      "name": "DayColumn",
+      "lines": 97,
+      "start": 357,
+      "end": 453
+    },
+    {
+      "file": "features/schedule/components/FocusTimer.tsx",
+      "name": "FocusTimer",
+      "lines": 96,
+      "start": 41,
+      "end": 136
+    },
+    {
+      "file": "features/stats/components/tabs/TimeBlocksTab.tsx",
+      "name": "TimeBlocksTab",
+      "lines": 96,
+      "start": 50,
+      "end": 145
+    },
+    {
+      "file": "features/goals/utils/historyInsightUtils.ts",
+      "name": "generateInsightLines",
+      "lines": 95,
+      "start": 165,
+      "end": 259
+    },
+    {
+      "file": "features/schedule/components/DontDoChecklist.tsx",
+      "name": "DontDoChecklist",
+      "lines": 95,
+      "start": 30,
+      "end": 124
+    },
+    {
+      "file": "features/tempSchedule/components/MonthlyScheduleView.tsx",
+      "name": "DayCell",
+      "lines": 95,
+      "start": 226,
+      "end": 320
+    },
+    {
+      "file": "shared/services/rag/directQueryService.ts",
+      "name": "executeDirectQuery",
+      "lines": 95,
+      "start": 31,
+      "end": 125
+    },
+    {
+      "file": "features/goals/components/GoalsFilterBar.tsx",
+      "name": "GoalsFilterBar",
+      "lines": 94,
+      "start": 32,
+      "end": 125
+    },
+    {
+      "file": "app/components/DailyXPBar.tsx",
+      "name": "DailyXPBarComponent",
+      "lines": 93,
+      "start": 26,
+      "end": 118
+    },
+    {
+      "file": "data/repositories/calendarRepository.ts",
+      "name": "normalizeGoogleCalendarSettings",
+      "lines": 93,
+      "start": 30,
+      "end": 122
+    },
+    {
+      "file": "features/schedule/MemoModal.tsx",
+      "name": "MemoModal",
+      "lines": 93,
+      "start": 27,
+      "end": 119
+    },
+    {
+      "file": "shared/services/schedule/slotFinder.ts",
+      "name": "findSuggestedSlot",
+      "lines": 92,
+      "start": 208,
+      "end": 299
+    },
+    {
+      "file": "features/tempSchedule/components/TempScheduleTimelineView.tsx",
+      "name": "anonymous",
+      "lines": 90,
+      "start": 437,
+      "end": 526
+    },
+    {
+      "file": "data/repositories/waifuRepository.ts",
+      "name": "getDialogueFromAffection",
+      "lines": 89,
+      "start": 277,
+      "end": 365
+    },
+    {
+      "file": "features/goals/utils/historyInsightUtils.ts",
+      "name": "calculateGoalInsight",
+      "lines": 88,
+      "start": 50,
+      "end": 137
+    },
+    {
+      "file": "features/stats/components/tabs/XPAnalysisTab.tsx",
+      "name": "FilterSection",
+      "lines": 88,
+      "start": 49,
+      "end": 136
+    },
+    {
+      "file": "features/tasks/hooks/useInboxHotkeys.ts",
+      "name": "handleKeyDown",
+      "lines": 88,
+      "start": 416,
+      "end": 503
+    },
+    {
+      "file": "features/weather/services/weatherService.ts",
+      "name": "parseGeminiWeatherResponse",
+      "lines": 88,
+      "start": 255,
+      "end": 342
+    },
+    {
+      "file": "features/battle/components/MissionCard.tsx",
+      "name": "MissionCard",
+      "lines": 86,
+      "start": 21,
+      "end": 106
+    },
+    {
+      "file": "features/tasks/InboxTab.tsx",
+      "name": "renderHUD",
+      "lines": 85,
+      "start": 537,
+      "end": 621
+    },
+    {
+      "file": "shared/hooks/useKeyboardNavigation.ts",
+      "name": "useArrowKeyNavigation",
+      "lines": 85,
+      "start": 132,
+      "end": 216
+    },
+    {
+      "file": "shared/services/ai/gemini/apiClient.ts",
+      "name": "callGeminiAPI",
+      "lines": 85,
+      "start": 40,
+      "end": 124
+    },
+    {
+      "file": "features/goals/components/HistoryInsightPanel.tsx",
+      "name": "HistoryInsightPanel",
+      "lines": 84,
+      "start": 53,
+      "end": 136
+    },
+    {
+      "file": "features/goals/hooks/useRecommendedPace.ts",
+      "name": "useRecommendedPace",
+      "lines": 84,
+      "start": 31,
+      "end": 114
+    },
+    {
+      "file": "features/tempSchedule/components/CommandPalette.tsx",
+      "name": "anonymous",
+      "lines": 84,
+      "start": 91,
+      "end": 174
+    },
+    {
+      "file": "shared/hooks/useModalHotkeys.ts",
+      "name": "anonymous",
+      "lines": 84,
+      "start": 87,
+      "end": 170
+    },
+    {
+      "file": "shared/services/ai/gemini/taskFeatures.ts",
+      "name": "generateTaskBreakdown",
+      "lines": 84,
+      "start": 33,
+      "end": 116
+    },
+    {
+      "file": "features/schedule/hooks/useDragDropManager.ts",
+      "name": "useDragDropManager",
+      "lines": 83,
+      "start": 58,
+      "end": 140
+    },
+    {
+      "file": "shared/lib/eventBus/middleware/logger.ts",
+      "name": "createLoggerMiddleware",
+      "lines": 83,
+      "start": 59,
+      "end": 141
+    },
+    {
+      "file": "shared/services/sync/firebase/rtdbListenerRegistry.ts",
+      "name": "attachRtdbOnValue",
+      "lines": 83,
+      "start": 38,
+      "end": 120
+    },
+    {
+      "file": "features/insight/InsightPanel.tsx",
+      "name": "generateInsight",
+      "lines": 82,
+      "start": 238,
+      "end": 319
+    },
+    {
+      "file": "features/tasks/InboxTab.tsx",
+      "name": "renderActionButtons",
+      "lines": 82,
+      "start": 626,
+      "end": 707
+    },
+    {
+      "file": "features/battle/stores/battleStore.ts",
+      "name": "computeCompleteMissionResult_core",
+      "lines": 81,
+      "start": 393,
+      "end": 473
+    },
+    {
+      "file": "features/schedule/TimelineView/TimelineView.tsx",
+      "name": "anonymous",
+      "lines": 81,
+      "start": 377,
+      "end": 457
+    },
+    {
+      "file": "features/template/TemplatePanel.tsx",
+      "name": "anonymous",
+      "lines": 81,
+      "start": 151,
+      "end": 231
+    },
+    {
+      "file": "shared/services/ai/gemini/apiClient.ts",
+      "name": "callGeminiAPIWithTools",
+      "lines": 81,
+      "start": 135,
+      "end": 215
+    },
+    {
+      "file": "shared/services/sync/firebase/syncRetryQueue.ts",
+      "name": "retryNow",
+      "lines": 81,
+      "start": 120,
+      "end": 200
+    },
+    {
+      "file": "data/db/infra/syncEngine.ts",
+      "name": "initialize",
+      "lines": 80,
+      "start": 142,
+      "end": 221
+    },
+    {
+      "file": "data/repositories/dailyData/taskOperations.ts",
+      "name": "updateTask",
+      "lines": 80,
+      "start": 58,
+      "end": 137
+    },
+    {
+      "file": "data/repositories/gameState/questOperations.ts",
+      "name": "generateDailyQuests",
+      "lines": 80,
+      "start": 25,
+      "end": 104
+    },
+    {
+      "file": "features/weather/services/weatherService.ts",
+      "name": "buildWeatherInsightPrompt",
+      "lines": 80,
+      "start": 171,
+      "end": 250
+    },
+    {
+      "file": "features/tasks/GlobalTaskBreakdown.tsx",
+      "name": "GlobalTaskBreakdown",
+      "lines": 79,
+      "start": 37,
+      "end": 115
+    },
+    {
+      "file": "features/tempSchedule/components/TemplateModal.tsx",
+      "name": "TemplateItem",
+      "lines": 78,
+      "start": 26,
+      "end": 103
+    },
+    {
+      "file": "data/repositories/dailyData/coreOperations.ts",
+      "name": "loadDailyData",
+      "lines": 77,
+      "start": 62,
+      "end": 138
+    },
+    {
+      "file": "data/repositories/gameState/dayOperations.ts",
+      "name": "generateTasksFromAutoTemplates",
+      "lines": 77,
+      "start": 155,
+      "end": 231
+    },
+    {
+      "file": "shared/lib/notify.ts",
+      "name": "undo",
+      "lines": 77,
+      "start": 133,
+      "end": 209
+    },
+    {
+      "file": "shared/services/rag/hybridRAGService.ts",
+      "name": "executeHybridSearch",
+      "lines": 77,
+      "start": 140,
+      "end": 216
+    },
+    {
+      "file": "features/inventory/InventoryPanel.tsx",
+      "name": "InventoryPanel",
+      "lines": 76,
+      "start": 23,
+      "end": 98
+    },
+    {
+      "file": "shared/services/sync/firebase/firebaseSyncLeaderLock.ts",
+      "name": "acquireFirebaseSyncLeaderLock",
+      "lines": 76,
+      "start": 27,
+      "end": 102
+    },
+    {
+      "file": "app/components/GlobalModals.tsx",
+      "name": "GlobalModals",
+      "lines": 75,
+      "start": 30,
+      "end": 104
+    },
+    {
+      "file": "features/schedule/hooks/useTimeBlockCalculations.ts",
+      "name": "useTimeBlockCalculations",
+      "lines": 74,
+      "start": 14,
+      "end": 87
+    },
+    {
+      "file": "shared/stores/templateStore.ts",
+      "name": "anonymous",
+      "lines": 73,
+      "start": 61,
+      "end": 133
+    },
+    {
+      "file": "features/tasks/stores/breakdownStore.ts",
+      "name": "anonymous",
+      "lines": 72,
+      "start": 45,
+      "end": 116
+    },
+    {
+      "file": "shared/services/ai/aiService.ts",
+      "name": "callAIWithContext",
+      "lines": 72,
+      "start": 92,
+      "end": 163
+    },
+    {
+      "file": "shared/services/calendar/googleTasksService.ts",
+      "name": "callTasksApi",
+      "lines": 72,
+      "start": 69,
+      "end": 140
+    },
+    {
+      "file": "features/schedule/components/BreakView.tsx",
+      "name": "BreakView",
+      "lines": 71,
+      "start": 26,
+      "end": 96
+    },
+    {
+      "file": "shared/hooks/useKeyboardNavigation.ts",
+      "name": "anonymous",
+      "lines": 71,
+      "start": 143,
+      "end": 213
+    },
+    {
+      "file": "shared/services/calendar/googleCalendarService.ts",
+      "name": "callCalendarApi",
+      "lines": 71,
+      "start": 247,
+      "end": 317
+    },
+    {
+      "file": "features/goals/hooks/useCatchUpAlertBanner.ts",
+      "name": "anonymous",
+      "lines": 70,
+      "start": 146,
+      "end": 215
+    },
+    {
+      "file": "features/insight/DailySummaryModal.tsx",
+      "name": "OverviewSection",
+      "lines": 70,
+      "start": 296,
+      "end": 365
+    },
+    {
+      "file": "shared/lib/eventBus/middleware/logger.ts",
+      "name": "anonymous",
+      "lines": 70,
+      "start": 71,
+      "end": 140
+    },
+    {
+      "file": "features/quickadd/QuickAddTask.tsx",
+      "name": "handleSubmit",
+      "lines": 69,
+      "start": 175,
+      "end": 243
+    },
+    {
+      "file": "features/tasks/BulkAddModal.tsx",
+      "name": "anonymous",
+      "lines": 69,
+      "start": 390,
+      "end": 458
+    },
+    {
+      "file": "shared/lib/notify.ts",
+      "name": "anonymous",
+      "lines": 69,
+      "start": 135,
+      "end": 203
+    },
+    {
+      "file": "shared/services/rag/autoTagService.ts",
+      "name": "suggestTagsForTask",
+      "lines": 69,
+      "start": 102,
+      "end": 170
+    },
+    {
+      "file": "features/gemini/GeminiFullscreenChat.tsx",
+      "name": "handleSend",
+      "lines": 68,
+      "start": 150,
+      "end": 217
+    },
+    {
+      "file": "features/goals/hooks/useGoalsHotkeys.ts",
+      "name": "anonymous",
+      "lines": 68,
+      "start": 139,
+      "end": 206
+    },
+    {
+      "file": "features/schedule/TimelineView/TimelineTaskBlock.tsx",
+      "name": "TimelineTaskBlockComponent",
+      "lines": 68,
+      "start": 55,
+      "end": 122
+    }
+  ]
+}

@@ -23,6 +23,7 @@ import { initializeDatabase, db } from '../dexieClient';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
+import { useToastStore } from '@/shared/stores/toastStore';
 import { initializeFirebase, fetchDataFromFirebase } from '@/shared/services/sync/firebaseService';
 import { saveGameState } from '@/data/repositories/gameStateRepository';
 import { syncToFirebase } from '@/shared/services/sync/firebase/syncCore';
@@ -60,6 +61,14 @@ export function useAppInitialization() {
             try {
                 // 1. IndexedDB 초기화
                 await initializeDatabase();
+
+                // SyncEngine은 infra entry-point에서만 toast 의존을 주입합니다.
+                syncEngine.setOnError((message, errorForLog) => {
+                    if (errorForLog) {
+                        console.error('[SyncEngine]', errorForLog);
+                    }
+                    useToastStore.getState().addToast(message, 'error');
+                });
 
                 // SyncEngine 초기화 (Hooks 등록)
                 syncEngine.initialize();

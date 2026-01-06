@@ -6,8 +6,7 @@
  * @dependencies useDailyData, TimeBlock, TaskModal, FocusView
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { getSystemState, SYSTEM_KEYS } from '@/data/repositories/systemRepository';
+import { useEffect, useState } from 'react';
 import { getInboxTaskById } from '@/data/repositories/inboxRepository';
 import { useDailyData } from '@/shared/hooks';
 import { useGameState } from '@/shared/hooks/useGameState';
@@ -22,9 +21,8 @@ import { FocusView } from './components/FocusView';
 import { WarmupPresetModal } from './components/WarmupPresetModal';
 import { useFocusModeStore } from './stores/focusModeStore';
 import { useScheduleViewStore } from './stores/scheduleViewStore';
-import { fetchFromFirebase, syncToFirebase } from '@/shared/services/sync/firebase/syncCore';
-import { warmupPresetStrategy } from '@/shared/services/sync/firebase/strategies';
 import { getVisibleBlocks, getCurrentBlock, type VisibilityMode } from './utils/timeBlockVisibility';
+import { useScheduleSync } from './hooks/useScheduleSync';
 
 const DEFAULT_WARMUP_PRESET: WarmupPresetItem[] = [
   { text: '책상 정리', baseDuration: 5, resistance: 'low' },
@@ -64,14 +62,21 @@ export default function ScheduleView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<TimeBlockId>(null);
-  const [warmupPreset, setWarmupPreset] = useState<WarmupPresetItem[]>(DEFAULT_WARMUP_PRESET);
-  /** 워밍업 자동생성 활성화 여부 (Dexie systemState에서 로드) */
-  const [warmupAutoGenerateEnabled, setWarmupAutoGenerateEnabled] = useState<boolean>(
-    SYSTEM_STATE_DEFAULTS.warmupAutoGenerateEnabled
-  );
-
-  const autoInsertedRef = useRef<Set<string>>(new Set());
-  const lastAutoCheckRef = useRef<string | null>(null);
+  const {
+    warmupPreset,
+    handleWarmupAutoGenerateToggle,
+    handleSaveWarmupPreset,
+    handleApplyWarmupFromModal,
+  } = useScheduleSync({
+    currentHour,
+    dailyData,
+    defaultWarmupPreset: DEFAULT_WARMUP_PRESET,
+    defaultWarmupAutoGenerateEnabled: SYSTEM_STATE_DEFAULTS.warmupAutoGenerateEnabled,
+    addTask,
+    updateTask,
+    updateBlockState,
+    closeWarmupModal,
+  });
 
   // 현재 시각 동기화 (1분 간격)
   useEffect(() => {
@@ -84,90 +89,6 @@ export default function ScheduleView() {
   useEffect(() => {
     loadSettingsData().catch(console.error);
   }, [loadSettingsData]);
-
-  // 워밍업 프리셋 로드 (Firebase)
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const remotePreset = await fetchFromFirebase(warmupPresetStrategy);
-      if (mounted && remotePreset && Array.isArray(remotePreset) && remotePreset.length > 0) {
-        setWarmupPreset(remotePreset);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // 워밍업 자동생성 플래그 로드 (Dexie systemState)
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const storedValue = await getSystemState<boolean>(SYSTEM_KEYS.WARMUP_AUTO_GENERATE_ENABLED);
-        if (mounted && storedValue !== undefined) {
-          setWarmupAutoGenerateEnabled(storedValue);
-        }
-      } catch (error) {
-        console.error('Failed to load warmup auto-generate setting:', error);
-        // 실패 시 기본값 유지
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // 매 시간 50분에 자동 체크 후 다음 시간대(같은 블록이든 다음 블록이든)에 삽입 (22:50~03:50 제외)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // 워밍업 자동생성이 비활성화되어 있으면 early-return
-      if (!warmupAutoGenerateEnabled) return;
-      if (!dailyData) return;
-      const now = new Date();
-      const hour = now.getHours();
-      const minute = now.getMinutes();
-      if (minute !== 50) return;
-      if ([22, 23, 0, 1, 2, 3].includes(hour)) return;
-
-      const key = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${hour}`;
-      if (lastAutoCheckRef.current === key) return;
-      lastAutoCheckRef.current = key;
-
-      const currentBlock = TIME_BLOCKS.find(b => hour >= b.start && hour < b.end);
-      if (!currentBlock) return;
-
-      const currentBlockTasks = dailyData.tasks.filter(t => t.timeBlock === currentBlock.id);
-      const completedCount = currentBlockTasks.filter(t => t.completed).length;
-      if (completedCount > 0) return;
-
-      // 대상 시간대: 현재 시간 +1 시간이 동일 블록 안에 있으면 그대로, 아니면 다음 블록 시작 시간
-      const targetHour = hour + 1;
-      let targetBlock = TIME_BLOCKS.find(b => targetHour >= b.start && targetHour < b.end);
-      let targetHourInBlock = targetHour;
-
-      if (!targetBlock) {
-        const nextIndex = TIME_BLOCKS.findIndex(b => b.id === currentBlock.id) + 1;
-        if (nextIndex >= TIME_BLOCKS.length) return;
-        targetBlock = TIME_BLOCKS[nextIndex];
-        targetHourInBlock = targetBlock.start;
-      }
-
-      const targetKey = `${targetBlock.id}-${targetHourInBlock}`;
-      if (autoInsertedRef.current.has(targetKey)) return;
-
-      const targetTasks = dailyData.tasks.filter(
-        t => t.timeBlock === targetBlock!.id && t.hourSlot === targetHourInBlock
-      );
-      if (targetTasks.length > 2) return;
-
-      insertWarmupTasks(targetBlock.id as TimeBlockId, targetHourInBlock);
-      autoInsertedRef.current.add(targetKey);
-    }, 30 * 1000);
-
-    return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dailyData, warmupPreset, warmupAutoGenerateEnabled]);
 
   const getCurrentBlockId = (): TimeBlockId => {
     const hour = currentHour;
@@ -198,63 +119,6 @@ export default function ScheduleView() {
       setFocusMode(false);
     }
   }, [currentBlockId, isFocusMode, setFocusMode]);
-
-  // 지난 타임블록의 미완료 작업을 인박스로 이동 + 상태 처리
-  useEffect(() => {
-    const movePastIncompleteTasks = async () => {
-      if (!dailyData) return;
-      const currentTime = new Date();
-      const currentHourValue = currentTime.getHours();
-      const pastBlocksList = TIME_BLOCKS.filter(block => currentHourValue >= block.end);
-
-      const tasksToMove: Task[] = [];
-      for (const block of pastBlocksList) {
-        const incompleteTasks = dailyData.tasks.filter(task => task.timeBlock === block.id && !task.completed);
-        const blockState = dailyData.timeBlockStates[block.id];
-
-        if (blockState?.isLocked && incompleteTasks.length > 0 && !blockState.isFailed) {
-          try {
-            const { updateBlockState: repoUpdateBlockState } =
-              await import('@/data/repositories/dailyDataRepository');
-            await repoUpdateBlockState(block.id, { isFailed: true });
-          } catch (error) {
-            console.error(`Failed to set isFailed for block ${block.id}:`, error);
-          }
-        }
-        tasksToMove.push(...incompleteTasks);
-      }
-
-      for (const task of tasksToMove) {
-        try {
-          await updateTask(task.id, { timeBlock: null, hourSlot: undefined }, { skipBehaviorTracking: true, ignoreLock: true });
-        } catch (error) {
-          console.error(`Failed to move task ${task.id} to inbox:`, error);
-        }
-      }
-    };
-    movePastIncompleteTasks();
-  }, [currentHour, dailyData, updateTask]);
-
-  // 타임블록 상태 초기화
-  useEffect(() => {
-    if (!dailyData) return;
-    const missingBlocks = TIME_BLOCKS.filter(block => !dailyData.timeBlockStates[block.id]);
-    if (missingBlocks.length === 0) return;
-
-    (async () => {
-      for (const block of missingBlocks) {
-        try {
-          await updateBlockState(block.id, {
-            isLocked: false,
-            isPerfect: false,
-            isFailed: false,
-          });
-        } catch (error) {
-          console.error('Failed to initialize block state:', error);
-        }
-      }
-    })();
-  }, [dailyData, updateBlockState]);
 
   const handleAddTask = (blockId: TimeBlockId) => {
     setSelectedBlockId(blockId);
@@ -414,62 +278,6 @@ export default function ScheduleView() {
     }
   };
 
-  const insertWarmupTasks = async (blockId: TimeBlockId, hourSlot?: number, preset = warmupPreset) => {
-    const targetBlock = TIME_BLOCKS.find(b => b.id === blockId);
-    const targetHour = hourSlot ?? targetBlock?.start;
-    if (!targetBlock || targetHour === undefined) return;
-
-    for (const warmupItem of preset) {
-      const newTask = createNewTask(warmupItem.text, {
-        baseDuration: warmupItem.baseDuration,
-        resistance: warmupItem.resistance,
-        timeBlock: blockId,
-        hourSlot: targetHour,
-      });
-      await addTask(newTask);
-    }
-  };
-
-  /* 현재 사용되지 않음 - 추후 워밍업 버튼에서 사용 예정
-  const handleManualWarmup = () => {
-    const target = getNextWarmupTarget(currentHour);
-    if (!target) return;
-    insertWarmupTasks(target.blockId, target.hourSlot);
-  };
-  */
-
-  const handleSaveWarmupPreset = (preset: WarmupPresetItem[]) => {
-    setWarmupPreset(preset);
-    syncToFirebase(warmupPresetStrategy, preset).catch(err =>
-      console.error('Failed to sync warmup preset:', err)
-    );
-    closeWarmupModal();
-  };
-
-  const handleApplyWarmupFromModal = (preset: WarmupPresetItem[]) => {
-    const target = getNextWarmupTarget(currentHour);
-    if (!target) return;
-    insertWarmupTasks(target.blockId, target.hourSlot, preset);
-    syncToFirebase(warmupPresetStrategy, preset).catch(err =>
-      console.error('Failed to sync warmup preset:', err)
-    );
-    closeWarmupModal();
-  };
-
-  const getNextWarmupTarget = (hour: number): { blockId: TimeBlockId; hourSlot: number } | null => {
-    const targetHour = hour + 1;
-    const blockForTargetHour = TIME_BLOCKS.find(b => targetHour >= b.start && targetHour < b.end);
-    if (blockForTargetHour) {
-      return { blockId: blockForTargetHour.id as TimeBlockId, hourSlot: targetHour };
-    }
-
-    const nextBlock = TIME_BLOCKS.find(b => b.start > hour);
-    if (nextBlock) {
-      return { blockId: nextBlock.id as TimeBlockId, hourSlot: nextBlock.start };
-    }
-    return null;
-  };
-
   if (loading && !dailyData) {
     return (
       <div className="flex h-full flex-col overflow-y-auto p-6">
@@ -559,7 +367,7 @@ export default function ScheduleView() {
           onClose={closeWarmupModal}
           onSave={handleSaveWarmupPreset}
           onApply={handleApplyWarmupFromModal}
-          onAutoGenerateToggle={setWarmupAutoGenerateEnabled}
+          onAutoGenerateToggle={handleWarmupAutoGenerateToggle}
         />
       )}
     </div>

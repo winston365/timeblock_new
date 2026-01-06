@@ -18,6 +18,7 @@ import { useState, useRef, useEffect, useId, useCallback } from 'react';
 import { TIME_BLOCKS, type Task, type TimeBlockId, type Resistance } from '@/shared/types/domain';
 import { createTaskFromPartial } from '@/shared/utils/taskFactory';
 import { useModalHotkeys } from '@/shared/hooks';
+import { DURATION_OPTIONS, parseTaskInputText, type ParsedTaskInput } from './utils/taskParsing';
 
 interface BulkAddModalProps {
     isOpen: boolean;
@@ -25,13 +26,7 @@ interface BulkAddModalProps {
     onAddTasks: (tasks: Task[]) => Promise<void>;
 }
 
-interface ParsedTask {
-    text: string;
-    memo?: string;
-    baseDuration?: number;
-    resistance?: Resistance;
-    timeBlock?: TimeBlockId;
-}
+type ParsedTask = ParsedTaskInput;
 
 const modalOverlayClass =
     'modal-overlay fixed inset-0 z-[1000] flex items-start justify-center bg-[color:var(--modal-backdrop)] px-4 py-8 backdrop-blur-xl md:items-center';
@@ -55,9 +50,6 @@ const resistanceLabel: Record<Resistance, string> = {
     medium: '보통 저항',
     high: '저항 높음',
 };
-
-/** 시간 선택 옵션 (분 단위) */
-const DURATION_OPTIONS = [5, 10, 15, 30, 45, 60, 90, 120];
 
 /**
  * 대량 할 일 추가 모달 컴포넌트
@@ -147,85 +139,17 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
     // 입력값 변경 시 미리보기 업데이트
     useEffect(() => {
         if (input.trim()) {
-            const parsed = parseInput(input);
+            const parsed = parseTaskInputText(input, {
+                defaultResistance,
+                defaultBaseDuration: defaultDuration,
+                defaultTimeBlock,
+            });
             setPreviewTasks(parsed);
         } else {
             setPreviewTasks([]);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [input, defaultTimeBlock, defaultResistance, defaultDuration]);
-
-    /**
-     * 입력 텍스트 파싱
-     * 각 줄을 하나의 작업으로 변환
-     *
-     * 포맷:
-     * - 기본: "작업 제목"
-     * - 메모 포함: "작업 제목 | 메모"
-     * - 시간 포함: "작업 제목 [30m]" 또는 "작업 제목 [1h]"
-     * - 저항도 포함: "작업 제목 🟢" 또는 "작업 제목 🟡" 또는 "작업 제목 🔴"
-     * - 블록 지정: "작업 제목 @8-11" (블록 ID)
-     * - 복합: "작업 제목 [45m] 🟡 @11-14 | 메모"
-     */
-    function parseInput(text: string): ParsedTask[] {
-        const lines = text.split('\n').filter((line) => line.trim());
-        const tasks: ParsedTask[] = [];
-
-        for (const line of lines) {
-            let remainingText = line.trim();
-            const task: ParsedTask = {
-                text: '',
-                resistance: defaultResistance,
-                baseDuration: defaultDuration,
-                timeBlock: defaultTimeBlock,
-            };
-
-            // 메모 추출 (| 뒤의 내용)
-            const memoMatch = remainingText.match(/\|(.+)$/);
-            if (memoMatch) {
-                task.memo = memoMatch[1].trim();
-                remainingText = remainingText.replace(/\|.+$/, '').trim();
-            }
-
-            // 블록 ID 추출 (@블록ID)
-            const blockMatch = remainingText.match(/@(\d+-\d+)/);
-            if (blockMatch) {
-                const blockId = blockMatch[1];
-                if (TIME_BLOCKS.some((block) => block.id === blockId)) {
-                    task.timeBlock = blockId as TimeBlockId;
-                }
-                remainingText = remainingText.replace(/@\d+-\d+/, '').trim();
-            }
-
-            // 저항도 추출 (이모지)
-            if (remainingText.includes('🟢')) {
-                task.resistance = 'low';
-                remainingText = remainingText.replace('🟢', '').trim();
-            } else if (remainingText.includes('🟡')) {
-                task.resistance = 'medium';
-                remainingText = remainingText.replace('🟡', '').trim();
-            } else if (remainingText.includes('🔴')) {
-                task.resistance = 'high';
-                remainingText = remainingText.replace('🔴', '').trim();
-            }
-
-            // 시간 추출 ([30m] 또는 [1h] 또는 [1h30m])
-            const timeMatch = remainingText.match(/\[(\d+(?:\.\d+)?)(h|m)\]/);
-            if (timeMatch) {
-                const value = parseFloat(timeMatch[1]);
-                const unit = timeMatch[2];
-                task.baseDuration = unit === 'h' ? value * 60 : value;
-                remainingText = remainingText.replace(/\[\d+(?:\.\d+)?(h|m)\]/, '').trim();
-            }
-
-            // 남은 텍스트가 작업 제목
-            task.text = remainingText || '(제목 없음)';
-
-            tasks.push(task);
-        }
-
-        return tasks;
-    }
 
 
 
