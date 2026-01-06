@@ -3,10 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Task, TimeBlockState } from '@/shared/types/domain';
 import type { TaskCompletionContext } from '@/shared/services/gameplay/taskCompletion/types';
 
-vi.mock('@/shared/lib/utils', () => ({
-  calculateTaskXP: () => 10,
-  getLocalDate: () => '2025-01-10',
-}));
+vi.mock('@/shared/lib/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/shared/lib/utils')>();
+  return {
+    ...actual,
+    calculateTaskXP: () => 10,
+    getLocalDate: () => '2025-01-10',
+  };
+});
 
 const showSpy = vi.fn();
 vi.mock('@/shared/stores/waifuCompanionStore', () => ({

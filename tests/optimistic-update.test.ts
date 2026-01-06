@@ -19,10 +19,14 @@ import type { Task, DailyData } from '@/shared/types/domain';
 // Mocks
 // ============================================================================
 
-vi.mock('@/shared/lib/utils', () => ({
-  getLocalDate: () => '2025-01-10',
-  calculateTaskXP: () => 10,
-}));
+vi.mock('@/shared/lib/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/shared/lib/utils')>();
+  return {
+    ...actual,
+    getLocalDate: () => '2025-01-10',
+    calculateTaskXP: () => 10,
+  };
+});
 
 // Repository mocks
 const loadDailyData = vi.fn();

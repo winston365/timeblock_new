@@ -82,6 +82,18 @@ export const TIME_INTERVAL_DEFAULTS = {
   autoMessageInterval: 15,
 } as const;
 
+// ============================================================================
+// Firebase Sync 기본값
+// ============================================================================
+
+export const FIREBASE_SYNC_DEFAULTS = {
+  /**
+   * RTDB date-keyed map(dailyData/completedInbox/tokenUsage) 리스너 구독 범위(최근 N일).
+   * 오래된 데이터는 Dexie에 남아있으며, 실시간 동기화 범위만 제한합니다.
+   */
+  rtdbDateKeyedLookbackDays: 30,
+} as const;
+
 
 // ============================================================================
 // 통합 설정 기본값 (Settings 타입과 매칭)

@@ -20,6 +20,7 @@ import { useBattleStore } from '../stores/battleStore';
 import { getBossImageSrc } from '../utils/assets';
 import { getRecentBattleStats } from '@/data/repositories/battleRepository';
 import { useModalHotkeys } from '@/shared/hooks';
+import { getLocalDate } from '@/shared/lib/utils';
 import type { Boss, BossDifficulty, DailyBattleStats } from '@/shared/types/domain';
 
 interface BossAlbumModalProps {
@@ -359,7 +360,7 @@ function StatsTab({ recentStats }: StatsTabProps) {
             const heightPercent = (stat.defeatedCount / maxCount) * 100;
             const dateObj = new Date(stat.date);
             const dayLabel = dateObj.getDate();
-            const isToday = stat.date === new Date().toISOString().slice(0, 10);
+            const isToday = stat.date === getLocalDate();
 
             return (
               <div key={stat.date} className="flex-1 flex flex-col items-center gap-1">

@@ -28,7 +28,7 @@ import {
   getInboxTaskById,
   loadInboxTasks,
 } from '@/data/repositories/inboxRepository';
-import { getLocalDate } from '@/shared/lib/utils';
+import { getLocalDate, shiftYmd } from '@/shared/lib/utils';
 import { toStandardError } from '@/shared/lib/standardError';
 
 // ============================================================================
@@ -550,13 +550,12 @@ export async function moveBlockToInbox(
 
 function getRecentDates(days: number): string[] {
   const dates: string[] = [];
-  const today = new Date();
-  
+  const todayKey = getLocalDate();
+
   for (let i = 0; i < days; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    dates.push(d.toISOString().slice(0, 10));
+    const key = shiftYmd(todayKey, -i);
+    if (key) dates.push(key);
   }
-  
+
   return dates;
 }

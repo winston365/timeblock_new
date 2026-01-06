@@ -10,7 +10,7 @@
  */
 
 import { TIME_BLOCKS } from '@/shared/types/domain';
-import { getLocalDate, calculateTaskXP, getBlockIdFromHour } from '@/shared/lib/utils';
+import { getLocalDate, calculateTaskXP, getBlockIdFromHour, shiftYmd } from '@/shared/lib/utils';
 import { useGameState } from '@/shared/hooks/useGameState';
 import { useCompletedTasksStore } from '@/shared/stores/completedTasksStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
@@ -204,11 +204,8 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
 
         if (showLastWeekComparison) {
             return sliced.map(entry => {
-                const entryDate = new Date(entry.date);
-                const lastWeekDate = new Date(entryDate);
-                lastWeekDate.setDate(lastWeekDate.getDate() - 7);
-                const lastWeekDateStr = lastWeekDate.toISOString().slice(0, 10);
-                const lastWeekXP = map.get(lastWeekDateStr) ?? 0;
+                const lastWeekDateStr = shiftYmd(entry.date, -7);
+                const lastWeekXP = lastWeekDateStr ? (map.get(lastWeekDateStr) ?? 0) : 0;
                 return { ...entry, lastWeekXP };
             });
         }
@@ -285,9 +282,18 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
     // Goal progress calculations
     const weeklyProgress: GoalProgress | null = useMemo(() => {
         if (!settings?.weeklyXPGoal) return null;
-        const weekStart = new Date(today);
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-        const weekStartStr = weekStart.toISOString().slice(0, 10);
+        const weekStartStr = (() => {
+            const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(today);
+            if (!match) return today;
+
+            const year = Number(match[1]);
+            const month = Number(match[2]);
+            const day = Number(match[3]);
+            if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return today;
+
+            const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+            return shiftYmd(today, -weekday) ?? today;
+        })();
 
         const weekXP = xpHistory
             .filter(entry => entry.date >= weekStartStr)

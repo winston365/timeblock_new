@@ -3,10 +3,16 @@ import type { Database } from 'firebase/database';
 
 const onValueSpy = vi.fn();
 const refSpy = vi.fn();
+const querySpy = vi.fn();
+const orderByKeySpy = vi.fn();
+const startAtSpy = vi.fn();
 
 vi.mock('firebase/database', () => ({
   ref: refSpy,
   onValue: onValueSpy,
+  query: querySpy,
+  orderByKey: orderByKeySpy,
+  startAt: startAtSpy,
 }));
 
 vi.mock('@/shared/services/sync/syncLogger', () => ({
@@ -26,6 +32,9 @@ describe('rtdbListenerRegistry', () => {
     vi.resetModules();
     onValueSpy.mockReset();
     refSpy.mockReset();
+    querySpy.mockReset();
+    orderByKeySpy.mockReset();
+    startAtSpy.mockReset();
   });
 
   it('deduplicates onValue per path and refCounts consumers', async () => {
@@ -57,6 +66,96 @@ describe('rtdbListenerRegistry', () => {
     // detach last consumer: actual unsubscribe
     u2();
     expect(unsubscribeImpl).toHaveBeenCalledTimes(1);
+    expect(getActiveRtdbListenerCount()).toBe(0);
+  });
+});
+
+// ============================================================================
+// RTDB key-range query support (TDD)
+// ============================================================================
+describe('rtdbListenerRegistry - key-range query', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    onValueSpy.mockReset();
+    refSpy.mockReset();
+    querySpy.mockReset();
+    orderByKeySpy.mockReset();
+    startAtSpy.mockReset();
+  });
+
+  it('deduplicates onValue per (path,startAtKey) and refCounts consumers', async () => {
+    const unsubscribeImpl = vi.fn();
+    onValueSpy.mockReturnValue(unsubscribeImpl);
+
+    refSpy.mockImplementation((_db: unknown, path: string) => ({ path }));
+    orderByKeySpy.mockReturnValue({ kind: 'orderByKey' });
+    startAtSpy.mockImplementation((key: string) => ({ kind: 'startAt', key }));
+    querySpy.mockImplementation((refObj: unknown, ...constraints: unknown[]) => ({
+      kind: 'query',
+      refObj,
+      constraints,
+    }));
+
+    const { attachRtdbOnValueKeyRange, getActiveRtdbListenerCount } = await import(
+      '@/shared/services/sync/firebase/rtdbListenerRegistry'
+    );
+
+    const db = { kind: 'db' } as unknown as Database;
+    const path = 'users/user/dailyData';
+    const startAtKey = '2026-01-01';
+
+    const h1 = vi.fn();
+    const h2 = vi.fn();
+
+    const u1 = attachRtdbOnValueKeyRange(db, path, startAtKey, h1);
+    const u2 = attachRtdbOnValueKeyRange(db, path, startAtKey, h2);
+
+    expect(querySpy).toHaveBeenCalledTimes(1);
+    expect(onValueSpy).toHaveBeenCalledTimes(1);
+    expect(getActiveRtdbListenerCount()).toBe(1);
+
+    // detach first consumer: still attached
+    u1();
+    expect(unsubscribeImpl).not.toHaveBeenCalled();
+    expect(getActiveRtdbListenerCount()).toBe(1);
+
+    // detach last consumer: actual unsubscribe
+    u2();
+    expect(unsubscribeImpl).toHaveBeenCalledTimes(1);
+    expect(getActiveRtdbListenerCount()).toBe(0);
+  });
+
+  it('treats different startAtKey as different listeners', async () => {
+    const unsubscribe1 = vi.fn();
+    const unsubscribe2 = vi.fn();
+    onValueSpy
+      .mockReturnValueOnce(unsubscribe1)
+      .mockReturnValueOnce(unsubscribe2);
+
+    refSpy.mockImplementation((_db: unknown, path: string) => ({ path }));
+    orderByKeySpy.mockReturnValue({ kind: 'orderByKey' });
+    startAtSpy.mockImplementation((key: string) => ({ kind: 'startAt', key }));
+    querySpy.mockImplementation((refObj: unknown, ...constraints: unknown[]) => ({
+      kind: 'query',
+      refObj,
+      constraints,
+    }));
+
+    const { attachRtdbOnValueKeyRange, getActiveRtdbListenerCount } = await import(
+      '@/shared/services/sync/firebase/rtdbListenerRegistry'
+    );
+
+    const db = { kind: 'db' } as unknown as Database;
+    const path = 'users/user/dailyData';
+
+    const u1 = attachRtdbOnValueKeyRange(db, path, '2026-01-01', vi.fn());
+    const u2 = attachRtdbOnValueKeyRange(db, path, '2026-01-02', vi.fn());
+
+    expect(onValueSpy).toHaveBeenCalledTimes(2);
+    expect(getActiveRtdbListenerCount()).toBe(2);
+
+    u1();
+    u2();
     expect(getActiveRtdbListenerCount()).toBe(0);
   });
 });

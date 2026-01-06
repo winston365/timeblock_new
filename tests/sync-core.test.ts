@@ -5,12 +5,26 @@ const getSpy = vi.fn();
 const onValueSpy = vi.fn();
 const offSpy = vi.fn();
 
+const recordRtdbGetSpy = vi.fn();
+const recordRtdbSetSpy = vi.fn();
+const recordRtdbErrorSpy = vi.fn();
+const recordRtdbOnValueSpy = vi.fn();
+const isRtdbInstrumentationEnabledSpy = vi.fn(() => true);
+
 vi.mock('firebase/database', () => ({
   ref: vi.fn((_db: unknown, path: string) => ({ path })),
   set: setSpy,
   get: getSpy,
   onValue: onValueSpy,
   off: offSpy,
+}));
+
+vi.mock('@/shared/services/sync/firebase/rtdbMetrics', () => ({
+  recordRtdbGet: recordRtdbGetSpy,
+  recordRtdbSet: recordRtdbSetSpy,
+  recordRtdbError: recordRtdbErrorSpy,
+  recordRtdbOnValue: recordRtdbOnValueSpy,
+  isRtdbInstrumentationEnabled: isRtdbInstrumentationEnabledSpy,
 }));
 
 const isFirebaseInitializedSpy = vi.fn();
@@ -58,6 +72,11 @@ describe('syncCore', () => {
     isFirebaseInitializedSpy.mockClear();
     addSyncLogSpy.mockClear();
     addToRetryQueueSpy.mockClear();
+    recordRtdbGetSpy.mockClear();
+    recordRtdbSetSpy.mockClear();
+    recordRtdbErrorSpy.mockClear();
+    recordRtdbOnValueSpy.mockClear();
+    isRtdbInstrumentationEnabledSpy.mockClear();
     // keep getFirebaseDatabaseSpy stable
   });
 
@@ -72,6 +91,29 @@ describe('syncCore', () => {
 
     expect(setSpy).not.toHaveBeenCalled();
     expect(getSpy).not.toHaveBeenCalled();
+  });
+
+  it('records RTDB get only for actual network reads (not cache hits)', async () => {
+    vi.resetModules();
+
+    isFirebaseInitializedSpy.mockReturnValue(true);
+    isRtdbInstrumentationEnabledSpy.mockReturnValue(true);
+
+    // Remote exists but older than local.
+    getSpy.mockResolvedValue({
+      val: () => ({ data: { a: 9 }, updatedAt: 1, deviceId: 'remoteDevice' }),
+    });
+    setSpy.mockResolvedValue(undefined);
+
+    const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
+
+    // First call: should perform a network get.
+    await syncToFirebase({ collection: 'c' }, { a: 1 }, 'k');
+    // Second call within TTL: should hit cache and not perform another get.
+    await syncToFirebase({ collection: 'c' }, { a: 2 }, 'k');
+
+    expect(getSpy).toHaveBeenCalledTimes(1);
+    expect(recordRtdbGetSpy).toHaveBeenCalledTimes(1);
   });
 
   it('syncToFirebase skips duplicate syncs by hash', async () => {
@@ -172,6 +214,24 @@ describe('syncCore', () => {
     getSpy.mockRejectedValueOnce(new Error('boom'));
     await expect(fetchFromFirebase({ collection: 'c' }, 'k')).resolves.toBeNull();
     expect(addSyncLogSpy).toHaveBeenCalledWith('firebase', 'error', expect.stringContaining('Failed to fetch'), expect.any(Object), expect.any(Error));
+  });
+
+  it('records RTDB get for fetchFromFirebase when instrumentation is enabled', async () => {
+    vi.resetModules();
+
+    isFirebaseInitializedSpy.mockReturnValue(true);
+    isRtdbInstrumentationEnabledSpy.mockReturnValue(true);
+
+    getSpy.mockResolvedValueOnce({
+      val: () => ({ data: { a: 1 }, updatedAt: 1, deviceId: 'remote' }),
+    });
+
+    const { fetchFromFirebase } = await import('@/shared/services/sync/firebase/syncCore');
+
+    await expect(fetchFromFirebase({ collection: 'c' }, 'k')).resolves.toEqual({ a: 1 });
+
+    expect(recordRtdbGetSpy).toHaveBeenCalledTimes(1);
+    expect(recordRtdbGetSpy).toHaveBeenCalledWith('users/user/c/k', expect.anything());
   });
 });
 

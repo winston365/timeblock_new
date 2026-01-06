@@ -2,9 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Task } from '@/shared/types/domain';
 
-vi.mock('@/shared/lib/utils', () => ({
-  getLocalDate: () => '2025-01-10',
-}));
+vi.mock('@/shared/lib/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/shared/lib/utils')>();
+  return {
+    ...actual,
+    getLocalDate: () => '2025-01-10',
+  };
+});
 
 const loadDailyData = vi.fn();
 const updateDailyTask = vi.fn();

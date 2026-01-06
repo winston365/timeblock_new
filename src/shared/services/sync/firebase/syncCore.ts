@@ -21,7 +21,7 @@ import { getFirebaseDatabase, isFirebaseInitialized } from './firebaseClient';
 import { addSyncLog } from '../syncLogger';
 import { addToRetryQueue } from './syncRetryQueue';
 import { sanitizeForFirebase } from '@/shared/utils/firebaseSanitizer';
-import { recordRtdbGet, recordRtdbSet, recordRtdbError, isRtdbInstrumentationEnabled } from './rtdbMetrics';
+import { recordRtdbGet, recordRtdbSet, recordRtdbError, recordRtdbOnValue, isRtdbInstrumentationEnabled } from './rtdbMetrics';
 
 // ============================================================================
 // Types
@@ -91,6 +91,11 @@ async function getRemoteOnce(dataRef: ReturnType<typeof ref>, path: string): Pro
     .then((snapshot) => snapshot.val())
     .then((val) => {
       remoteCache.set(key, { value: val, cachedAt: Date.now() });
+
+      // Instrument only on actual network reads (cache hits should not count as bandwidth).
+      if (isRtdbInstrumentationEnabled()) {
+        recordRtdbGet(path, val);
+      }
       return val;
     })
     .finally(() => {
@@ -159,9 +164,6 @@ export async function syncToFirebase<T>(
     // 기존 데이터 확인 (single-flight + TTL cache로 다운로드 증폭 완화)
     const remoteRaw = await getRemoteOnce(dataRef, path);
     const remoteData = remoteRaw as SyncData<T> | null;
-    if (isRtdbInstrumentationEnabled()) {
-      recordRtdbGet(path, remoteRaw);
-    }
 
     const localSyncData: SyncData<T> = {
       data: sanitizedData,
@@ -254,7 +256,12 @@ export function listenToFirebase<T>(
     const dataRef = ref(db, path);
 
     const unsubscribe = onValue(dataRef, snapshot => {
-      const syncData = snapshot.val() as SyncData<T> | null;
+      const raw = snapshot.val() as unknown;
+      if (isRtdbInstrumentationEnabled()) {
+        recordRtdbOnValue(path, raw);
+      }
+
+      const syncData = raw as SyncData<T> | null;
 
       if (syncData && syncData.deviceId !== deviceId) {
         // 다른 디바이스에서 업데이트된 데이터
@@ -305,6 +312,10 @@ export async function fetchFromFirebase<T>(
 
     const snapshot = await get(dataRef);
     const syncData = snapshot.val() as SyncData<T> | null;
+
+    if (isRtdbInstrumentationEnabled()) {
+      recordRtdbGet(path, syncData);
+    }
 
     const data = syncData ? syncData.data : null;
     if (data !== null && data !== undefined) {

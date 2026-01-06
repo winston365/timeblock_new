@@ -13,12 +13,16 @@ vi.mock('@/data/db/dexieClient', () => ({
 }));
 
 let idCounter = 0;
-vi.mock('@/shared/lib/utils', () => ({
-  generateId: () => {
-    idCounter += 1;
-    return `log_${idCounter}`;
-  },
-}));
+vi.mock('@/shared/lib/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/shared/lib/utils')>();
+  return {
+    ...actual,
+    generateId: () => {
+      idCounter += 1;
+      return `log_${idCounter}`;
+    },
+  };
+});
 
 describe('syncLogger', () => {
   it('buffers logs before initialization and merges after init', async () => {

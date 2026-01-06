@@ -8,7 +8,7 @@
 
 import { useState, useEffect } from 'react';
 import type { Task, Resistance } from '@/shared/types/domain';
-import { formatDuration, calculateTaskXP } from '@/shared/lib/utils';
+import { formatDuration, calculateTaskXP, getLocalDate } from '@/shared/lib/utils';
 import { MemoModal } from './MemoModal';
 import { useDragDropManager } from './hooks/useDragDropManager';
 import { NeonCheckbox } from '@/shared/components/ui/NeonCheckbox';
@@ -280,7 +280,7 @@ export default function TaskCard({
                   {RESISTANCE_BADGE_LABEL[task.resistance]}
                 </span>
                 {!showMinimal && task.deadline && (
-                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${task.deadline < new Date().toISOString().split('T')[0] ? 'border-rose-400/60 bg-rose-500/10 text-rose-200' : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/70 text-[var(--color-text-secondary)]'}`}>
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${task.deadline < getLocalDate() ? 'border-rose-400/60 bg-rose-500/10 text-rose-200' : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/70 text-[var(--color-text-secondary)]'}`}>
                     📅 {task.deadline.slice(5).replace('-', '/')}
                   </span>
                 )}
@@ -414,7 +414,7 @@ export default function TaskCard({
                     {RESISTANCE_EMOJI[task.resistance]} {RESISTANCE_BADGE_LABEL[task.resistance]}
                   </button>
                   <span
-                    className={`rounded-full border px-2 py-0.5 font-semibold ${task.deadline && task.deadline < new Date().toISOString().split('T')[0]
+                    className={`rounded-full border px-2 py-0.5 font-semibold ${task.deadline && task.deadline < getLocalDate()
                       ? 'border-rose-400/60 bg-rose-500/10 text-rose-200'
                       : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/60 text-[var(--color-text-secondary)]'
                       }`}

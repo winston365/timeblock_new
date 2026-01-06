@@ -5,7 +5,9 @@
  */
 
 import { db } from '../../dexieClient';
-import { attachRtdbOnValue } from '@/shared/services/sync/firebase/rtdbListenerRegistry';
+import { attachRtdbOnValue, attachRtdbOnValueKeyRange } from '@/shared/services/sync/firebase/rtdbListenerRegistry';
+import { getLocalDate } from '@/shared/lib/utils';
+import { FIREBASE_SYNC_DEFAULTS } from '@/shared/constants/defaults';
 import type { DailyTokenUsage, Task } from '@/shared/types/domain';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -34,10 +36,15 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
   const { database, userId, deviceId, applyRemoteUpdate, sanitizeTokenUsage } = options;
   const unsubscribes: Array<() => void> = [];
 
+  // Narrow date-keyed root listeners to a recent window to reduce subtree re-download.
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - FIREBASE_SYNC_DEFAULTS.rtdbDateKeyedLookbackDays);
+  const startAtDateKey = getLocalDate(cutoff);
+
   // 1. DailyData Listener (date-keyed)
   const dailyPath = `users/${userId}/dailyData`;
   unsubscribes.push(
-    attachRtdbOnValue(database as never, dailyPath, (snapshot) => {
+    attachRtdbOnValueKeyRange(database as never, dailyPath, startAtDateKey, (snapshot) => {
       const raw = snapshot.val() as unknown;
       if (!isRecord(raw)) return;
 
@@ -149,7 +156,7 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
   // 5-1. CompletedInbox Listener (date-keyed)
   const completedInboxPath = `users/${userId}/completedInbox`;
   unsubscribes.push(
-    attachRtdbOnValue(database as never, completedInboxPath, (snapshot) => {
+    attachRtdbOnValueKeyRange(database as never, completedInboxPath, startAtDateKey, (snapshot) => {
       const raw = snapshot.val() as unknown;
       if (!isRecord(raw)) return;
 
@@ -179,7 +186,7 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
   // 6. TokenUsage Listener (date-keyed)
   const tokenUsagePath = `users/${userId}/tokenUsage`;
   unsubscribes.push(
-    attachRtdbOnValue(database as never, tokenUsagePath, (snapshot) => {
+    attachRtdbOnValueKeyRange(database as never, tokenUsagePath, startAtDateKey, (snapshot) => {
       const raw = snapshot.val() as unknown;
       if (!isRecord(raw)) return;
 

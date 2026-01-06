@@ -7,10 +7,14 @@ type GameStateEvent = import('@/shared/services/gameplay/gameState').GameStateEv
 
 const calculateTaskXPSpy = vi.fn((_task: unknown) => 10);
 const getLocalDateSpy = vi.fn(() => '2025-01-10');
-vi.mock('@/shared/lib/utils', () => ({
-  calculateTaskXP: (task: unknown) => calculateTaskXPSpy(task),
-  getLocalDate: () => getLocalDateSpy(),
-}));
+vi.mock('@/shared/lib/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/shared/lib/utils')>();
+  return {
+    ...actual,
+    calculateTaskXP: (task: unknown) => calculateTaskXPSpy(task),
+    getLocalDate: () => getLocalDateSpy(),
+  };
+});
 
 const addXPStoreSpy = vi.fn(async () => undefined);
 vi.mock('@/shared/stores/gameStateStore', () => ({

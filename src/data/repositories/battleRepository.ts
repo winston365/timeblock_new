@@ -15,7 +15,7 @@ import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
 import { battleMissionsStrategy, battleSettingsStrategy, bossImageSettingsStrategy } from '@/shared/services/sync/firebase/strategies';
-import { generateId, getLocalDate } from '@/shared/lib/utils';
+import { generateId, getLocalDate, shiftYmd } from '@/shared/lib/utils';
 import { withFirebaseSync } from '@/shared/utils/firebaseGuard';
 
 // ============================================================================
@@ -368,9 +368,8 @@ export async function cleanupOldBattleStates(): Promise<void> {
     const allKeys = await db.systemState.toArray();
     const battleStateKeys = allKeys.filter(item => item.key.startsWith(DAILY_STATE_KEY_PREFIX));
 
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const cutoffDate = sevenDaysAgo.toISOString().slice(0, 10);
+    const todayKey = getLocalDate();
+    const cutoffDate = shiftYmd(todayKey, -7) ?? todayKey;
 
     for (const item of battleStateKeys) {
       const dateStr = item.key.replace(DAILY_STATE_KEY_PREFIX, '');
@@ -492,11 +491,9 @@ export async function getRecentBattleStats(days: number = 14): Promise<DailyBatt
     const result: DailyBattleStats[] = [];
 
     // 최근 N일 날짜 생성
-    const today = new Date();
+    const todayKey = getLocalDate();
     for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().slice(0, 10);
+      const dateStr = shiftYmd(todayKey, -i) ?? todayKey;
 
       result.push(allStats[dateStr] ?? {
         date: dateStr,

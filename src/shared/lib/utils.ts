@@ -28,6 +28,57 @@ export function getLocalDate(date: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+const YMD_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+const parseYmdStrict = (dateKey: string): { year: number; month: number; day: number } | null => {
+  const match = YMD_REGEX.exec(dateKey);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  if (month < 1 || month > 12) return null;
+  if (day < 1 || day > 31) return null;
+
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  if (
+    utc.getUTCFullYear() !== year ||
+    utc.getUTCMonth() !== month - 1 ||
+    utc.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return { year, month, day };
+};
+
+/**
+ * 로컬 날짜 키(YYYY-MM-DD)를 기준으로 일(day) 단위 오프셋을 적용한 새 날짜 키를 반환합니다.
+ *
+ * @note `new Date('YYYY-MM-DD')`/`toISOString().slice(0,10)` 기반 계산은 환경/타임존에 따라
+ *       날짜가 하루 밀릴 수 있어, 날짜 키 연산은 UTC 기준의 캘린더 연산으로 처리합니다.
+ *
+ * @param dateKey - YYYY-MM-DD 형식의 날짜 키
+ * @param deltaDays - 더할 일 수 (음수면 과거)
+ * @returns YYYY-MM-DD 형식의 날짜 키 또는 null(입력 형식이 유효하지 않은 경우)
+ */
+export function shiftYmd(dateKey: string, deltaDays: number): string | null {
+  if (!Number.isFinite(deltaDays)) return null;
+  const parsed = parseYmdStrict(dateKey);
+  if (!parsed) return null;
+
+  const baseUtcMs = Date.UTC(parsed.year, parsed.month - 1, parsed.day);
+  const shiftedUtcMs = baseUtcMs + deltaDays * 24 * 60 * 60 * 1000;
+  const shifted = new Date(shiftedUtcMs);
+
+  const year = shifted.getUTCFullYear();
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(shifted.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 /**
  * "HH:MM" 문자열을 분(minutes from midnight)으로 변환
  * @param timeStr - "HH:MM" 형식의 시간 문자열

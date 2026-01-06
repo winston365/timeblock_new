@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
+import { getLocalDate } from '@/shared/lib/utils';
 
 // 실제 스키마 import (동적 import 필요 없음)
 import {
@@ -418,7 +419,7 @@ describe('Auto-generate Once-per-Day Logic', () => {
   it('should return false when last auto-generate was on a different day', async () => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const yesterdayStr = getLocalDate(yesterday);
 
     mockGetSystemState.mockResolvedValue({
       lastRunDate: yesterdayStr,
@@ -436,7 +437,7 @@ describe('Auto-generate Once-per-Day Logic', () => {
   });
 
   it('should return true when auto-generate already ran today', async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDate();
 
     mockGetSystemState.mockResolvedValue({
       lastRunDate: today,
@@ -511,7 +512,7 @@ describe('Auto-generate Midnight Boundary', () => {
     // 어제 날짜로 마지막 실행 상태 설정
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const yesterdayStr = getLocalDate(yesterday);
 
     mockGetSystemState.mockResolvedValue({
       lastRunDate: yesterdayStr,
@@ -533,7 +534,7 @@ describe('Auto-generate Midnight Boundary', () => {
     // Scenario: 오늘 06:00에 실행 → 오늘 18:00에 재실행 시도
     // 같은 로컬 날짜이므로 차단
     
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDate();
 
     mockGetSystemState.mockResolvedValue({
       lastRunDate: today,
@@ -551,9 +552,6 @@ describe('Auto-generate Midnight Boundary', () => {
   });
 
   it('should use local date (YYYY-MM-DD) for comparison, not timestamp', async () => {
-    // getLocalDate()가 로컬 시간대 기준 YYYY-MM-DD를 반환하는지 확인
-    const { getLocalDate } = await import('../src/shared/lib/utils');
-
     // 현재 시스템 시간대 기준으로 날짜 생성
     const now = new Date();
     const localDateStr = getLocalDate(now);
@@ -570,8 +568,6 @@ describe('Auto-generate Midnight Boundary', () => {
 
   it('should correctly detect date change at midnight boundary', async () => {
     // 자정 직전 (23:59:59) vs 자정 직후 (00:00:01)에 getLocalDate가 다른 값을 반환하는지 확인
-    const { getLocalDate } = await import('../src/shared/lib/utils');
-
     // 임의의 날짜 생성: 2025-12-23 23:59:59
     const beforeMidnight = new Date(2025, 11, 23, 23, 59, 59);
     const afterMidnight = new Date(2025, 11, 24, 0, 0, 1);

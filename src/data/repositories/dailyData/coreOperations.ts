@@ -19,7 +19,7 @@ import { getLocalDate } from '@/shared/lib/utils';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { getBlockById } from '@/shared/utils/timeBlockUtils';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
-import { fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
+import { rtdbBackfillManager } from '@/shared/services/sync/firebase/rtdbBackfill';
 import { dailyDataStrategy } from '@/shared/services/sync/firebase/strategies';
 import { normalizeTimeBlockStates } from './types';
 
@@ -95,7 +95,7 @@ export async function loadDailyData(date: string = getLocalDate()): Promise<Dail
 
     // 2. Firebase에서 조회 (IndexedDB 실패 시)
     if (isFirebaseInitialized()) {
-      const firebaseData = await fetchFromFirebase<DailyData>(dailyDataStrategy, date);
+      const firebaseData = await rtdbBackfillManager.backfillKeyOnce(dailyDataStrategy, date);
 
       if (firebaseData) {
         // 데이터 유효성 검사
