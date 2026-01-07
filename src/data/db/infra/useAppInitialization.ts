@@ -19,19 +19,16 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { initializeDatabase, db } from '../dexieClient';
+import { initializeDatabase } from '../dexieClient';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { useToastStore } from '@/shared/stores/toastStore';
-import { initializeFirebase, fetchDataFromFirebase } from '@/shared/services/sync/firebaseService';
-import { saveGameState } from '@/data/repositories/gameStateRepository';
-import { syncToFirebase } from '@/shared/services/sync/firebase/syncCore';
-import { dailyDataStrategy, gameStateStrategy } from '@/shared/services/sync/firebase/strategies';
+import { initializeFirebase } from '@/shared/services/sync/firebaseService';
 import { syncEngine } from './syncEngine';
 import { ragSyncHandler } from './ragSyncHandler';
 import { ragService } from '@/shared/services/rag/ragService';
-import type { GameState } from '@/shared/types/domain';
+import { runStartupFirebaseInitialRead } from './startupFirebaseSync';
 
 /**
  * 애플리케이션 초기화 훅
@@ -82,188 +79,12 @@ export function useAppInitialization() {
                 // 3. Firebase 초기화 및 데이터 동기화
                 if (settings.firebaseConfig) {
                     try {
-                        const firebaseInitialized = initializeFirebase(settings.firebaseConfig);
-                        if (firebaseInitialized) {
-                            // 초기 데이터 가져오기
-                            const firebaseData = await fetchDataFromFirebase();
+                        const initialRead = await runStartupFirebaseInitialRead(settings.firebaseConfig, {
+                            initializeFirebase,
+                        });
 
-                            // --- 데이터 병합 및 저장 로직 (Dexie Only) ---
-                            // SyncEngine.applyRemoteUpdate를 사용하여 훅 트리거 방지
-
-                            await syncEngine.applyRemoteUpdate(async () => {
-                                // 3.1 GameState 처리
-                                const localGameStateEntry = await db.gameState.get('current');
-                                const localGameState = localGameStateEntry
-                                    ? (() => {
-                                        // Extract gameState data, excluding internal key property
-                                        const { key: _internalKey, ...gameStateData } = localGameStateEntry as GameState & { key: string };
-                                        void _internalKey; // Intentionally unused - just for destructuring
-                                        return gameStateData as GameState;
-                                    })()
-                                    : null;
-
-                                let shouldUploadLocalGameState = false;
-
-                                if (firebaseData.gameState) {
-                                    const remoteGameState = firebaseData.gameState;
-                                    if (!localGameState) {
-                                        await saveGameState(remoteGameState);
-                                    } else {
-                                        // 간단한 충돌 해결: XP가 더 높은 쪽 선택
-                                        const localTotalXP = localGameState.totalXP ?? 0;
-                                        const remoteTotalXP = remoteGameState.totalXP ?? 0;
-
-                                        if (remoteTotalXP > localTotalXP) {
-                                            await saveGameState(remoteGameState);
-                                        } else if (localTotalXP > remoteTotalXP) {
-                                            shouldUploadLocalGameState = true;
-                                        }
-                                    }
-                                } else if (localGameState) {
-                                    shouldUploadLocalGameState = true;
-                                }
-
-                                // 3.2 DailyData 저장
-                                const dailyDataDates = Object.keys(firebaseData.dailyData);
-                                if (dailyDataDates.length > 0) {
-                                    const dailyDataUpdatePromises: Promise<unknown>[] = [];
-                                    for (const date of dailyDataDates) {
-                                        const remoteDailyEntry = firebaseData.dailyData[date];
-                                        if (!remoteDailyEntry || !Array.isArray(remoteDailyEntry.tasks)) {
-                                            continue;
-                                        }
-
-                                        dailyDataUpdatePromises.push((async () => {
-                                            const existingDailyEntry = await db.dailyData.get(date);
-                                            const remoteUpdatedAt = remoteDailyEntry.updatedAt ?? 0;
-                                            const localUpdatedAt = existingDailyEntry?.updatedAt ?? 0;
-
-                                            const mergedStates = {
-                                                ...(existingDailyEntry?.timeBlockStates || {}),
-                                                ...(remoteDailyEntry.timeBlockStates || {}),
-                                            };
-
-                                            if (!existingDailyEntry || remoteUpdatedAt > localUpdatedAt) {
-                                                await db.dailyData.put({
-                                                    date,
-                                                    tasks: remoteDailyEntry.tasks,
-                                                    goals: remoteDailyEntry.goals || [],
-                                                    timeBlockStates: mergedStates,
-                                                    updatedAt: remoteUpdatedAt || Date.now(),
-                                                });
-                                            } else if (remoteUpdatedAt < localUpdatedAt) {
-                                                syncToFirebase(dailyDataStrategy, {
-                                                    tasks: existingDailyEntry.tasks || [],
-                                                    goals: existingDailyEntry.goals || [],
-                                                    timeBlockStates: existingDailyEntry.timeBlockStates || {},
-                                                    updatedAt: existingDailyEntry.updatedAt || Date.now(),
-                                                }, date).catch(console.error);
-                                            }
-                                        })());
-                                    }
-                                    await Promise.all(dailyDataUpdatePromises);
-                                }
-
-                                // 3.3 GlobalInbox 저장
-                                if (firebaseData.globalInbox && Array.isArray(firebaseData.globalInbox)) {
-                                    await db.globalInbox.clear();
-                                    if (firebaseData.globalInbox.length > 0) {
-                                        await db.globalInbox.bulkAdd(firebaseData.globalInbox);
-                                    }
-                                }
-
-                                // 3.3-1 CompletedInbox 저장 (date-keyed)
-                                if (firebaseData.completedInbox) {
-                                    await db.completedInbox.clear();
-                                    const completedTasks = Object.values(firebaseData.completedInbox).flat();
-                                    if (completedTasks.length > 0) {
-                                        await db.completedInbox.bulkAdd(completedTasks);
-                                    }
-                                }
-
-                                // 3.4 ShopItems 저장
-                                if (firebaseData.shopItems && Array.isArray(firebaseData.shopItems)) {
-                                    await db.shopItems.clear();
-                                    if (firebaseData.shopItems.length > 0) {
-                                        await db.shopItems.bulkAdd(firebaseData.shopItems);
-                                    }
-                                }
-
-                                // 3.6 WaifuState 저장
-                                if (firebaseData.waifuState) {
-                                    await db.waifuState.put({
-                                        key: 'current',
-                                        ...firebaseData.waifuState,
-                                    });
-                                }
-
-                                // 3.7 Templates 저장
-                                if (firebaseData.templates && Array.isArray(firebaseData.templates)) {
-                                    await db.templates.clear();
-                                    if (firebaseData.templates.length > 0) {
-                                        await db.templates.bulkAdd(firebaseData.templates);
-                                    }
-                                }
-
-                                // 3.8 TokenUsage 저장
-                                if (firebaseData.tokenUsage) {
-                                    const tokenDates = Object.keys(firebaseData.tokenUsage);
-                                    const tokenUsageUpdatePromises: Promise<unknown>[] = [];
-                                    for (const tokenDate of tokenDates) {
-                                        const tokenUsageEntry = firebaseData.tokenUsage[tokenDate];
-                                        if (tokenUsageEntry) {
-                                            tokenUsageUpdatePromises.push(db.dailyTokenUsage.put({
-                                                ...tokenUsageEntry,
-                                                date: tokenDate
-                                            }));
-                                        }
-                                    }
-                                    await Promise.all(tokenUsageUpdatePromises);
-                                }
-
-                                // 3.10 Settings 저장 (병합 - 최신 updatedAt 우선)
-                                if (firebaseData.settings) {
-                                    const currentSettings = await db.settings.get('current');
-                                    const remoteUpdatedAt = firebaseData.settings.updatedAt ?? 0;
-                                    const localUpdatedAt = currentSettings?.updatedAt ?? 0;
-
-                                    const takeRemote = remoteUpdatedAt > localUpdatedAt && firebaseData.settings;
-                                    const mergedSettings = takeRemote
-                                        ? { ...currentSettings, ...firebaseData.settings, firebaseConfig: currentSettings?.firebaseConfig || firebaseData.settings.firebaseConfig }
-                                        : { ...firebaseData.settings, ...currentSettings };
-
-                                    await db.settings.put({
-                                        key: 'current',
-                                        ...mergedSettings
-                                    });
-                                }
-
-                                // --- 로컬 데이터 업로드 (Firebase에 없는 경우) ---
-                                // 이 부분은 applyRemoteUpdate 내부일 필요는 없지만, 
-                                // 로컬 데이터를 읽어서 Firebase로 보내는 것이므로 Hook과는 무관함 (쓰기가 아님).
-                                // 하지만 위에서 shouldUploadLocalGameState를 계산했으므로 여기서 처리.
-
-                                const allLocalDailyData = await db.dailyData.toArray();
-                                const firebaseDates = new Set(Object.keys(firebaseData.dailyData));
-
-                                for (const localData of allLocalDailyData) {
-                                    if (!firebaseDates.has(localData.date)) {
-                                        // 비동기로 실행 (await 안함)
-                                        syncToFirebase(dailyDataStrategy, {
-                                            tasks: localData.tasks || [],
-                                            goals: localData.goals || [],
-                                            timeBlockStates: localData.timeBlockStates || {},
-                                            updatedAt: localData.updatedAt || Date.now(),
-                                        }, localData.date).catch(console.error);
-                                    }
-                                }
-
-                                if (shouldUploadLocalGameState && localGameState) {
-                                    syncToFirebase(gameStateStrategy, localGameState).catch(console.error);
-                                }
-                            });
-
-                            // 실시간 동기화 활성화 (SyncEngine이 담당)
+                        // BW-01: bulk `get()`/download is skipped; listeners will populate local DB.
+                        if (initialRead !== undefined) {
                             await syncEngine.startListening();
 
                             // 창 종료 시 리스너 정리(누수 방지)

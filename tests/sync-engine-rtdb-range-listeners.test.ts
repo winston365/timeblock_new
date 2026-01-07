@@ -4,10 +4,14 @@ import { FIREBASE_SYNC_DEFAULTS } from '@/shared/constants/defaults';
 
 const attachRtdbOnValueSpy = vi.fn(() => vi.fn());
 const attachRtdbOnValueKeyRangeSpy = vi.fn(() => vi.fn());
+const attachRtdbOnChildKeyRangeSpy = vi.fn(() => vi.fn());
+const attachRtdbOnChildSpy = vi.fn(() => vi.fn());
 
 vi.mock('@/shared/services/sync/firebase/rtdbListenerRegistry', () => ({
   attachRtdbOnValue: attachRtdbOnValueSpy,
   attachRtdbOnValueKeyRange: attachRtdbOnValueKeyRangeSpy,
+  attachRtdbOnChildKeyRange: attachRtdbOnChildKeyRangeSpy,
+  attachRtdbOnChild: attachRtdbOnChildSpy,
 }));
 
 describe('SyncEngine RTDB listeners - date-keyed range subscriptions', () => {
@@ -18,13 +22,15 @@ describe('SyncEngine RTDB listeners - date-keyed range subscriptions', () => {
 
     attachRtdbOnValueSpy.mockClear();
     attachRtdbOnValueKeyRangeSpy.mockClear();
+    attachRtdbOnChildKeyRangeSpy.mockClear();
+    attachRtdbOnChildSpy.mockClear();
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('uses key-range listeners for dailyData/completedInbox/tokenUsage', async () => {
+  it('uses child key-range listeners for dailyData/completedInbox/tokenUsage', async () => {
     vi.resetModules();
 
     const { startRtdbListeners } = await import('@/data/db/infra/syncEngine/listener');
@@ -43,22 +49,23 @@ describe('SyncEngine RTDB listeners - date-keyed range subscriptions', () => {
     });
 
     // date-keyed collections should use range-limited subscriptions
-    expect(attachRtdbOnValueKeyRangeSpy).toHaveBeenCalledTimes(3);
-    expect(attachRtdbOnValueKeyRangeSpy).toHaveBeenCalledWith(
+    expect(attachRtdbOnValueKeyRangeSpy).not.toHaveBeenCalled();
+    expect(attachRtdbOnChildKeyRangeSpy).toHaveBeenCalledTimes(3);
+    expect(attachRtdbOnChildKeyRangeSpy).toHaveBeenCalledWith(
       expect.anything(),
       'users/user/dailyData',
       expectedStartAtKey,
       expect.any(Function),
       expect.objectContaining({ tag: 'SyncEngine.dailyData' })
     );
-    expect(attachRtdbOnValueKeyRangeSpy).toHaveBeenCalledWith(
+    expect(attachRtdbOnChildKeyRangeSpy).toHaveBeenCalledWith(
       expect.anything(),
       'users/user/completedInbox',
       expectedStartAtKey,
       expect.any(Function),
       expect.objectContaining({ tag: 'SyncEngine.completedInbox' })
     );
-    expect(attachRtdbOnValueKeyRangeSpy).toHaveBeenCalledWith(
+    expect(attachRtdbOnChildKeyRangeSpy).toHaveBeenCalledWith(
       expect.anything(),
       'users/user/tokenUsage',
       expectedStartAtKey,
@@ -66,7 +73,40 @@ describe('SyncEngine RTDB listeners - date-keyed range subscriptions', () => {
       expect.objectContaining({ tag: 'SyncEngine.tokenUsage' })
     );
 
-    // other collections stay as full onValue listeners
-    expect(attachRtdbOnValueSpy).toHaveBeenCalledTimes(5);
+    // other collections: small single-node objects stay as onValue
+    expect(attachRtdbOnValueSpy).toHaveBeenCalledTimes(2);
+
+    // array-like collections should use child listeners to avoid full re-download
+    expect(attachRtdbOnChildSpy).toHaveBeenCalledTimes(5);
+    expect(attachRtdbOnChildSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      'users/user/templates/data',
+      expect.any(Function),
+      expect.objectContaining({ tag: 'SyncEngine.templates' })
+    );
+    expect(attachRtdbOnChildSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      'users/user/shopItems/data',
+      expect.any(Function),
+      expect.objectContaining({ tag: 'SyncEngine.shopItems' })
+    );
+    expect(attachRtdbOnChildSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      'users/user/shopItems/all/data',
+      expect.any(Function),
+      expect.objectContaining({ tag: 'SyncEngine.shopItems' })
+    );
+    expect(attachRtdbOnChildSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      'users/user/globalInbox/data',
+      expect.any(Function),
+      expect.objectContaining({ tag: 'SyncEngine.globalInbox' })
+    );
+    expect(attachRtdbOnChildSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      'users/user/globalInbox/all/data',
+      expect.any(Function),
+      expect.objectContaining({ tag: 'SyncEngine.globalInbox' })
+    );
   });
 });

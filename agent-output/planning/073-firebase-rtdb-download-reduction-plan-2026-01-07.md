@@ -2,7 +2,7 @@
 ID: 73
 Origin: 73
 UUID: c2ab37f1
-Status: Active
+Status: In Progress
 ---
 
 # Plan Header
@@ -11,9 +11,15 @@ Status: Active
 - Epic Alignment: Firebase RTDB 비용/대역폭 절감 + Sync 안정성(중복 리스너/중복 스냅샷 제거)
 - Status: In Progress
 
+## Bandwidth Goal
+- Baseline: **136MB/hour 다운로드**(현재 상태, 수용 불가)
+- Target: 정상 사용 기준 **≤ 10MB/hour**, 바쁜 사용(드래그/편집 연속) 기준 **≤ 25MB/hour**
+- Success definition: “작은 변경 1회”가 **서브트리 전체 재다운로드를 트리거하지 않음**
+
 ## Changelog
 - 2026-01-07: Created from analysis 073; adds discovery + implementation task breakdown.
-- 2026-01-07: Status set to In Progress; implementation started (version/release step explicitly skipped by user).
+- 2026-01-07: Reformatted into an execution-first, bandwidth-focused task list with estimated reduction per task.
+- 2026-01-07: BW-04 진행 — templates/shopItems/globalInbox를 `onValue` 전체 스냅샷에서 child events(`.../data`) 기반 delta 적용으로 전환(테스트 포함).
 
 ## Value Statement and Business Objective
 As a local-first 사용자(특히 ADHD 사용자), I want Firebase RTDB 다운로드가 데이터 크기에 비례해 폭증하지 않게 만들고(특히 dailyData/completedInbox), so that 앱이 재시작/작은 변경에도 느려지지 않고 운영 비용/쿼터 리스크 없이 안정적으로 동기화된다.
@@ -23,6 +29,13 @@ As a local-first 사용자(특히 ADHD 사용자), I want Firebase RTDB 다운�
 - (b) 스타트업의 “bulk get + 리스너 초기 스냅샷” 중복 다운로드를 제거한다.
 - (c) write path의 “get-before-set”로 발생하는 추가 read를 최소화하고, 리스너 echo와 결합된 증폭을 줄인다.
 - DEV에서 리스너 이벤트당 바이트를 계측해 개선 폭을 수치로 확인한다.
+
+## Root Causes (Confirmed in code)
+- Startup double-download: [src/data/db/infra/useAppInitialization.ts](src/data/db/infra/useAppInitialization.ts)에서 `fetchDataFromFirebase()`로 대량 `get()` 후, 곧바로 `syncEngine.startListening()`이 RTDB 초기 스냅샷을 다시 수신
+- Non-date “single-node arrays” full download: [src/data/db/infra/syncEngine/listener.ts](src/data/db/infra/syncEngine/listener.ts)의 `templates/shopItems/globalInbox`가 `onValue`로 전체 배열을 매번 다운로드 + Dexie 전체 clear/bulkPut
+- Date-keyed “range onValue” re-download: [src/data/db/infra/syncEngine/listener.ts](src/data/db/infra/syncEngine/listener.ts)의 `attachRtdbOnValueKeyRange`는 범위가 좁아도 **변경 이벤트마다 범위 전체 스냅샷을 다운로드**
+- Write-triggered reads: [src/shared/services/sync/firebase/syncCore.ts](src/shared/services/sync/firebase/syncCore.ts)의 `syncToFirebase()`가 write 전에 `getRemoteOnce()`를 호출 (특히 dailyData처럼 큰 payload는 read 증폭)
+- Legacy listener risk: [src/shared/services/sync/firebaseService.ts](src/shared/services/sync/firebaseService.ts)의 `enableFirebaseSync()`가 `users/{userId}/dailyData` 루트 `onValue`를 붙임(현재 호출부는 없어 보이나, 재활성화 시 즉시 폭주)
 
 ## Scope / Constraints
 - In scope: renderer/client sync code (특히 [src/shared/services/sync/firebase/**](src/shared/services/sync/firebase/) 및 sync engine listener).
@@ -61,209 +74,127 @@ As a local-first 사용자(특히 ADHD 사용자), I want Firebase RTDB 다운�
 
 ---
 
-# Plan (10 steps)
 
-1) RTDB 사용 지점 확정(리스너/단발 get/set) 및 변경 범위 고정
-  - Files: [src/data/db/infra/syncEngine/listener.ts](src/data/db/infra/syncEngine/listener.ts), [src/shared/services/sync/firebaseService.ts](src/shared/services/sync/firebaseService.ts), [src/shared/services/sync/firebase/syncCore.ts](src/shared/services/sync/firebase/syncCore.ts)
-  - Acceptance criteria: “경로(path) × 이벤트(onValue/get/set) × attach 위치 × unsubscribe 경로”가 문서에 표로 정리되고, 최적화 대상 TOP 3 경로가 합의된다.
-  - Vitest: `npx vitest run tests/rtdb-listener-registry.test.ts`
+# Prioritized Task List (Aggressive, maximum impact)
 
-2) SyncEngine 초기화 흐름(언제/몇 번/어떤 조건으로) 명확화
-  - Files: [src/app/AppShell.tsx](src/app/AppShell.tsx), [src/data/db/infra/useAppInitialization.ts](src/data/db/infra/useAppInitialization.ts), [src/data/db/infra/syncEngine/index.ts](src/data/db/infra/syncEngine/index.ts)
-  - Acceptance criteria: init이 idempotent(중복 실행 시 안전)해야 하는 이유(멀티 윈도우/리로드)를 문서화하고, 실제 호출 경로(컴포넌트→훅→infra)를 명시한다.
-  - Vitest: `npx vitest run tests/smoke-sync-engine-basic.test.ts`
+## BW-01 — Eliminate startup double-download (remove bulk fetch or scope it)
+- Objective: 부팅 시 “대량 `get()` + 리스너 초기 스냅샷”으로 같은 데이터를 2번 다운로드하는 구조를 제거한다.
+- Files to modify:
+  - [src/data/db/infra/useAppInitialization.ts](src/data/db/infra/useAppInitialization.ts)
+  - [src/shared/services/sync/firebaseService.ts](src/shared/services/sync/firebaseService.ts) (초기 fetch의 역할 재정의)
+  - [src/data/db/infra/syncEngine/index.ts](src/data/db/infra/syncEngine/index.ts)
+- Acceptance criteria:
+  - cold start에서 `fetchDataFromFirebase()`가 “대형 컬렉션(dailyData/completedInbox/tokenUsage/globalInbox/templates/shopItems)”을 다운로드하지 않는다.
+  - RTDB 리스너 초기 수신과 bulk fetch가 같은 path를 중복으로 읽지 않는다(DEV 계측으로 확인).
+- Risk assessment:
+  - Medium: 초기 병합 로직이 바뀌며, “첫 설치 + 빈 로컬”에서 원격 데이터가 UI에 늦게 반영될 수 있음(로딩/동기화 상태 표시 필요).
+- Estimated bandwidth reduction:
+  - **10–30%** (재시작/다중 창 환경에서 특히 큼)
 
-3) (DEV-only) 다운로드 관측 지표를 추가해 “이벤트당 bytes/빈도”를 확인 가능하게 만들기
-  - Files: [src/shared/services/sync/firebase/firebaseDebug.ts](src/shared/services/sync/firebase/firebaseDebug.ts), [src/shared/services/sync/firebase/syncCore.ts](src/shared/services/sync/firebase/syncCore.ts)
-  - Acceptance criteria: DEV 모드에서 RTDB read/get/onValue 이벤트에 대해 (path, eventType, estimatedBytes)가 관측 가능하고 PROD 기본값에서는 오버헤드가 없거나 최소다.
-  - Vitest: `npx vitest run tests/sync-core.test.ts`
+## BW-02 — Switch date-keyed range listeners from `onValue` to delta events
+- Objective: `dailyData/completedInbox/tokenUsage`에서 “변경 1회 → 최근 N일 전체 스냅샷 재다운로드”를 즉시 차단한다.
+- Files to modify:
+  - [src/data/db/infra/syncEngine/listener.ts](src/data/db/infra/syncEngine/listener.ts)
+  - [src/shared/services/sync/firebase/rtdbListenerRegistry.ts](src/shared/services/sync/firebase/rtdbListenerRegistry.ts) (delta listener helper 추가/교체)
+  - [src/shared/constants/defaults.ts](src/shared/constants/defaults.ts) (윈도우 정책은 defaults 단일 출처 유지)
+- Acceptance criteria:
+  - date-keyed 컬렉션에서 단일 날짜 변경 시, 다운로드가 “그 날짜 노드” 수준으로만 발생한다(DEV 계측에서 확인).
+  - lookback window 유지 여부와 관계없이, 이벤트 당 다운로드 바이트가 범위 전체 크기에 비례하지 않는다.
+- Risk assessment:
+  - Low–Medium: listener 이벤트 형태 변경으로, applyRemoteUpdate 처리 순서/중복 이벤트 처리에 주의 필요.
+- Estimated bandwidth reduction:
+  - **40–70%** (현재 30일 범위 전체 재다운로드가 사실이라면 상단값에 근접)
 
-4) Startup 중복 다운로드 제거(초기 bulk get vs 초기 onValue snapshot 중복)
-  - Files: [src/data/db/infra/useAppInitialization.ts](src/data/db/infra/useAppInitialization.ts), [src/shared/services/sync/firebaseService.ts](src/shared/services/sync/firebaseService.ts)
-  - Acceptance criteria: 동일 경로에 대해 “부팅 직후 get + onValue 초기 스냅샷”이 중복 발생하지 않는 구조(또는 예외 경로가 명시된 구조)로 정리된다.
-  - Vitest: `npx vitest run tests/smoke-sync-engine-basic.test.ts`
+## BW-03 — Optional: per-date subscriptions (only subscribe to dates user views)
+- Objective: 실제로 사용자가 보는 날짜(오늘/선택한 날짜/근접 날짜)만 구독하여 “불필요한 watch 대상”을 제거한다.
+- Files to modify:
+  - [src/data/db/infra/syncEngine/listener.ts](src/data/db/infra/syncEngine/listener.ts) (구독 API 분리)
+  - [src/shared/hooks/useDailyData.ts](src/shared/hooks/useDailyData.ts) 또는 해당 훅의 실제 구현 파일(날짜 전환 시 구독 조정)
+  - [src/features/schedule/](src/features/schedule/) (날짜 탐색 UI가 있는 경우)
+- Acceptance criteria:
+  - 앱 시작 시 기본 구독은 “오늘(±1일 같은 작은 세트)”로 제한된다.
+  - 사용자가 날짜를 이동/조회할 때만 해당 date-key 리스너가 추가된다.
+- Risk assessment:
+  - Medium: 구독 생명주기/캐시/빠른 날짜 이동 시 레이스 컨디션 가능.
+- Estimated bandwidth reduction:
+  - **5–20%** (BW-02 이후 추가 최적화; 초기 구독 범위가 현재 큰 경우에만 의미 큼)
 
-5) 대형 date-keyed map 컬렉션의 “루트 onValue”를 범위 제한 구독으로 축소(Phase 1: listeners only)
-  - Files: [src/data/db/infra/syncEngine/listener.ts](src/data/db/infra/syncEngine/listener.ts)
-  - Acceptance criteria: `dailyData/completedInbox/tokenUsage` 중 1개 이상에서 “작은 변경 → subtree 전체 재다운로드”가 발생하지 않도록 구독 범위가 축소된다(정량은 DEV 계측으로 확인).
-  - Vitest: `npx vitest run tests/smoke-sync-engine-basic.test.ts`
+## BW-04 — Stop full-subtree downloads for templates/shopItems/globalInbox (immediate containment)
+- Objective: 현재 구조(단일 노드에 배열 저장)는 작은 변경에도 전체 배열을 재다운로드하게 만든다. “실시간 리스너 + 전체 clear/bulkPut”를 즉시 중단해 폭주를 멈춘다.
+- Files to modify:
+  - [src/data/db/infra/syncEngine/listener.ts](src/data/db/infra/syncEngine/listener.ts)
+  - [src/data/db/infra/syncEngine/index.ts](src/data/db/infra/syncEngine/index.ts) (업로드 정책과의 정합성)
+- Acceptance criteria:
+  - `templates/shopItems/globalInbox`는 기본적으로 RTDB 실시간 리스너가 활성화되지 않는다(또는 매우 명확한 가드/플래그로만 활성화).
+  - 동일 컬렉션에서 “원격 변경 1회 → 전체 배열 다운로드” 패턴이 사라진다.
+- Risk assessment:
+  - Medium–High(기능): 다른 디바이스의 변경이 즉시 반영되지 않을 수 있음. 단, Local-first 동작은 유지되어야 함.
+- Estimated bandwidth reduction:
+  - **10–40%** (사용 패턴/컬렉션 크기에 따라 편차 큼)
 
-6) 리스너 중복 attach 및 unsubscribe 정합성 강화(중복 리스너로 인한 다운로드 배수 차단)
-  - Files: [src/shared/services/sync/firebase/rtdbListenerRegistry.ts](src/shared/services/sync/firebase/rtdbListenerRegistry.ts), [src/data/db/infra/syncEngine/listener.ts](src/data/db/infra/syncEngine/listener.ts)
-  - Acceptance criteria: 동일 path/event 조합에 대해 subscribe가 1회만 일어나며, stop/cleanup 시 refCount/registry 상태가 0으로 복원된다.
-  - Vitest: `npx vitest run tests/rtdb-listener-registry.test.ts`
+## BW-05 — Long-term fix for array-like collections: migrate to per-item children + child listeners
+- Objective: `templates/shopItems/globalInbox`를 “배열 전체 sync”에서 “아이템 단위 delta sync”로 전환해, 변경량에 비례하는 다운로드로 만든다.
+- Files to modify:
+  - [src/shared/services/sync/firebase/strategies.ts](src/shared/services/sync/firebase/strategies.ts) (전략/경로 정책)
+  - [src/shared/services/sync/firebase/syncCore.ts](src/shared/services/sync/firebase/syncCore.ts) (부분 업데이트/멀티 경로 업데이트 지원 필요 시)
+  - [src/data/db/infra/syncEngine/index.ts](src/data/db/infra/syncEngine/index.ts) (Dexie hook → per-item remote writes로 전환)
+  - [src/data/db/infra/syncEngine/listener.ts](src/data/db/infra/syncEngine/listener.ts) (onChildAdded/Changed/Removed 기반)
+- Acceptance criteria:
+  - 아이템 1개 변경 시 RTDB 다운로드는 해당 아이템만 발생한다.
+  - 레거시 데이터 형식(전체 배열)과의 호환/마이그레이션 경로가 문서화되고, 롤백 가능한 단계로 나뉜다.
+- Risk assessment:
+  - High: 데이터 포맷 변경은 회귀/부분 업그레이드(서로 다른 버전 동시 사용) 리스크가 큼.
+- Estimated bandwidth reduction:
+  - **10–50%** (BW-04로 즉시 완화 후, 근본 해결로 안정화)
 
-7) 레거시(비-SyncEngine) 리스닝 경로가 SyncEngine과 중복되지 않도록 단일화/가드
-  - Files: [src/shared/services/sync/firebaseService.ts](src/shared/services/sync/firebaseService.ts), [src/shared/services/sync/syncEngine.ts](src/shared/services/sync/syncEngine.ts)
-  - Acceptance criteria: 코드베이스에서 SyncEngine과 별도로 루트 리스너가 붙는 흐름이 제거되거나(권장) “동시에 활성화되지 않는” 가드가 명확하다.
-  - Vitest: `npx vitest run tests/smoke-sync-engine-basic.test.ts`
+## BW-06 — Eliminate write-triggered reads safely (replace `getRemoteOnce` with listener-fed cache)
+- Objective: 모든 write 전에 발생하는 `getRemoteOnce()` 다운로드를 제거하되, 충돌 정책(LWW/merge) 안정성은 유지한다.
+- Files to modify:
+  - [src/shared/services/sync/firebase/syncCore.ts](src/shared/services/sync/firebase/syncCore.ts)
+  - [src/data/db/infra/syncEngine/index.ts](src/data/db/infra/syncEngine/index.ts) 및 [src/data/db/infra/syncEngine/listener.ts](src/data/db/infra/syncEngine/listener.ts) (원격 최신값 캐시 공급 지점)
+- Acceptance criteria:
+  - 일반 write 경로에서 네트워크 `get()` 호출이 발생하지 않는다(DEV 계측에서 확인).
+  - 충돌 가능 경로는 “리스너 캐시가 있을 때만 비교” 또는 “필요 시에만 제한적 네트워크 read”처럼 정책이 명확히 분리된다.
+- Risk assessment:
+  - Medium: 캐시 미스/초기 상태에서 충돌 판단이 흔들릴 수 있어, 정책 분리가 필수.
+- Estimated bandwidth reduction:
+  - **20–60%** (dailyData/빈번 write 경로가 크면 상단값)
 
-8) write-path의 불필요 read(get-before-set) 줄이기(경로별 정책 분리)
-  - Files: [src/shared/services/sync/firebase/syncCore.ts](src/shared/services/sync/firebase/syncCore.ts)
-  - Acceptance criteria: “blind write 가능한 작은 노드”는 pre-get 없이 쓰기를 허용하고, 충돌 가능 경로는 기존 정책을 유지(또는 최소 범위만 get)한다는 정책이 문서/코드에서 일관된다.
-  - Vitest: `npx vitest run tests/sync-core.test.ts`
+## BW-07 — Disable/remove legacy root listeners (`enableFirebaseSync`)
+- Objective: SyncEngine 외부에서 루트 `onValue` 리스너가 붙을 가능성을 원천 차단한다.
+- Files to modify:
+  - [src/shared/services/sync/firebaseService.ts](src/shared/services/sync/firebaseService.ts)
+- Acceptance criteria:
+  - `enableFirebaseSync`는 제거되거나, 명시적 디버그 플래그 없이는 실행되지 않는다.
+  - 코드베이스에 호출부가 없음을 확인하고(현재 검색상 없음), 문서로 남긴다.
+- Risk assessment:
+  - Low: 현재 사용 중인 코드 경로가 아니라면 영향 최소.
+- Estimated bandwidth reduction:
+  - **0–20%** (현재는 “보험” 성격이지만, 실수로 켜졌을 때 폭주를 막는 가치가 큼)
 
-9) repository 레벨의 직접 RTDB read/write 호출이 있다면(예: 게임 상태) sync layer와 충돌하지 않게 정렬
-  - Files: [src/data/repositories/gameState/dayOperations.ts](src/data/repositories/gameState/dayOperations.ts), [src/shared/services/sync/firebaseService.ts](src/shared/services/sync/firebaseService.ts)
-  - Acceptance criteria: repository의 RTDB read/write가 SyncEngine 리스너/업로드와 함께 “중복 다운로드/echo 증폭”을 만들지 않는다는 근거(가드, 문서, 또는 경로 분리)가 있다.
-  - Vitest: `npx vitest run tests/sync-engine-basic.test.ts`
-
-10) 릴리즈 버전/아티팩트 정합성(Target Release 확정 포함)
-  - Files: [package.json](package.json), [agent-output/planning/073-firebase-rtdb-download-reduction-plan-2026-01-07.md](agent-output/planning/073-firebase-rtdb-download-reduction-plan-2026-01-07.md)
-  - Acceptance criteria: Target Release(예: 1.0.183)가 확정되고, 릴리즈 PR/배치 정책에 맞게 버전 및 요약이 일관된다.
-  - Vitest: `npm test`
-
-# Ordered Task List (10–20)
-
-- RDB-01 — Discovery: 과다 다운로드 발생 지점/리스너 스코프를 “정확한 심볼/호출 그래프”로 확정
-  - Objective: root-level `onValue` / startup bulk reads / get-before-set 호출부를 실제 파일/함수 단위로 확정해 변경 범위를 고정한다.
-  - Files/Symbols (known from analysis):
-    - [src/data/db/infra/syncEngine/listener.ts](src/data/db/infra/syncEngine/listener.ts) (collection root listeners)
-    - [src/data/db/infra/useAppInitialization.ts](src/data/db/infra/useAppInitialization.ts)
-    - [src/shared/services/sync/firebaseService.ts](src/shared/services/sync/firebaseService.ts)
-    - [src/shared/services/sync/firebase/syncCore.ts](src/shared/services/sync/firebase/syncCore.ts)
-  - Search queries (fallback):
-    - `onValue(`, `onChildAdded(`, `onChildChanged(`, `off(`
-    - `fetchDataFromFirebase`, `startListening`, `enableFirebaseSync`
-    - `getRemoteOnce`, `syncToFirebase`, `ref(db,`, `query(`
-  - Acceptance criteria:
-    - 문서화된 “리스너 목록”(path, event type, query 범위, attach 위치, unsubscribe 경로)이 계획 문서에 추가된다.
-  - Test plan: `npx vitest run tests/rtdb-listener-registry.test.ts` (변경 전 현행 계약 파악용)
-
-- RDB-02 — DEV-only bandwidth instrumentation: 이벤트당 바이트/누적 바이트를 측정 가능하게 만들기
-  - Objective: 어떤 리스너가 다운로드를 지배하는지 수치로 보이게 해서 최적화의 효과를 검증한다(DEV 전용).
-  - Files/Symbols to touch (discover via search):
-    - Search: `rtdbMetrics`, `recordRtdbGet`, `recordRtdbSet`, `instrumentation`, `syncLogger`
-    - Likely areas: [src/shared/services/sync/firebase/](src/shared/services/sync/firebase/)
-  - Acceptance criteria:
-    - DEV 모드에서 각 RTDB 이벤트(`onValue`/`onChild*`/`get`)마다 (path, eventType, estimatedBytes, elapsedMs)이 로그/메트릭으로 남는다.
-    - PROD 빌드에서는 기본적으로 비활성(성능 영향 최소)이며, 플래그로만 활성화된다.
-  - Test plan: `npx vitest run tests/sync-core.test.ts` (계측 플래그 ON/OFF 분기 고정)
-
-- RDB-03 — Startup de-duplication: “bulk fetch + initial listener snapshot” 중복을 제거
-  - Objective: 앱 부팅 시 동일 데이터가 2번 다운로드되는 구조를 제거한다.
-  - Files/Symbols to touch:
-    - [src/data/db/infra/useAppInitialization.ts](src/data/db/infra/useAppInitialization.ts) (bootstrap order)
-    - [src/shared/services/sync/firebaseService.ts](src/shared/services/sync/firebaseService.ts) (`fetchDataFromFirebase` / legacy `enableFirebaseSync`)
-  - Implementation direction (non-prescriptive):
-    - 큰 컬렉션(dailyData/completedInbox/tokenUsage/globalInbox 등)은 “초기 로드의 단일 소스”를 정하고, 나머지는 그에 맞춰 get 또는 listener 중 하나를 제거/지연한다.
-  - Acceptance criteria:
-    - DEV 계측에서 cold start 시 동일 path에 대해 `get`과 `onValue` 초기 스냅샷이 중복 계상되지 않는다(또는 small nodes만 예외로 명시).
-  - Test plan: `npx vitest run tests/smoke-sync-engine-basic.test.ts`
-
-- RDB-04 — Replace root `onValue` for date-keyed maps with range-limited queries (phase 1: listeners only)
-  - Objective: `dailyData`, `completedInbox`, `tokenUsage`에서 “작은 변경 → 전체 map 재다운로드”를 없앤다.
-  - Files/Symbols to touch:
-    - [src/data/db/infra/syncEngine/listener.ts](src/data/db/infra/syncEngine/listener.ts)
-    - Search for date-range helpers: `parseDate`, `formatDate`, defaults in [src/shared/constants/defaults.ts](src/shared/constants/defaults.ts)
-  - Acceptance criteria:
-    - DEV 계측 기준: 해당 컬렉션에서 단일 날짜 변경 시 다운로드 바이트가 “전체 subtree 크기”가 아니라 “해당 날짜(또는 범위) 수준”으로 떨어진다.
-    - 기능 유지: 최근 범위(N days) 내의 변경은 실시간 반영된다.
-  - Test plan: `npx vitest run tests/smoke-sync-engine-basic.test.ts`
-
-- RDB-05 — Narrow query window policy: “최근 N일” 기준을 defaults에서 관리하고 UI/기능 회귀를 방지
-  - Objective: “얼마나 좁힐지”를 하드코딩하지 않고 defaults로 중앙 관리하며, 회귀 리스크를 낮춘다.
-  - Files/Symbols to touch:
-    - [src/shared/constants/defaults.ts](src/shared/constants/defaults.ts)
-    - Search: `DEFAULT_*DAYS`, `syncWindow`, `lookback`
-  - Acceptance criteria:
-    - N일 값이 defaults에서만 정의되고, listener query builder가 이를 참조한다.
-    - N일 범위 밖 데이터는 로컬(Dexie)에서 계속 접근 가능(기존 UX 유지)하며, 원격 실시간 동기화 범위 밖임을 문서화한다.
-  - Test plan: `npx vitest run tests/temp-schedule-date-utils.test.ts` (날짜 유틸 변경 시), `npm test`
-
-- RDB-06 — Add on-demand backfill for out-of-window dates (optional, guarded)
-  - Objective: 새 설치/로컬 데이터가 비어있는 경우에도 “전체 히스토리 부재”로 기능이 깨지지 않도록 안전한 보완 경로를 둔다.
-  - Files/Symbols to touch (discover):
-    - Search: `Dexie`, `repositories`, `dailyData repository`, `fetchDataFromFirebase` 사용부
-  - Acceptance criteria:
-    - 범위 밖 날짜가 필요하다고 판단되는 경우(로컬 미존재) 한 번의 “단발성 get”로 해당 날짜/배치만 가져오고, root listener를 확장하지 않는다.
-  - Test plan: `npx vitest run tests/db-access-boundary.test.ts`, `npx vitest run tests/smoke-sync-engine-basic.test.ts`
-
-- RDB-07 — Replace root listeners for non-date collections with delta-style listeners where feasible
-  - Objective: `templates`, `shopItems`, `globalInbox` 등에서 root `onValue` 대신 “child-level 이벤트(onChildAdded/onChildChanged)”로 변경 가능 여부를 평가/적용한다.
-  - Files/Symbols to touch:
-    - [src/data/db/infra/syncEngine/listener.ts](src/data/db/infra/syncEngine/listener.ts)
-    - Search: `globalInbox`, `templates`, `shopItems`, `onChildAdded`, `onChildChanged`
-  - Acceptance criteria:
-    - 작은 변경(템플릿 1개 수정 등) 시 다운로드가 subtree 전체가 아닌 단일 child 단위로 계측된다.
-    - 기능 회귀(정렬/삭제/전체 리프레시 필요) 시에는 명시적으로 예외 처리하고 근거를 남긴다.
-  - Test plan: `npx vitest run tests/smoke-sync-engine-basic.test.ts`, `npm test`
-
-- RDB-08 — Unsubscribe correctness: 리스너 중복 attach 방지 및 stop/cleanup 경로를 단일화
-  - Objective: 부팅/재로그인/재초기화 시 리스너가 중복으로 붙어 다운로드가 배가되는 상황을 차단한다.
-  - Files/Symbols to touch (discover):
-    - Search: `rtdbListenerRegistry`, `stopAll`, `unsubscribe`, `startListening(`, `stopListening(`
-    - Likely tests: [tests/rtdb-listener-registry.test.ts](tests/rtdb-listener-registry.test.ts)
-  - Acceptance criteria:
-    - 동일 path/event/query에 대해 startListening이 여러 번 호출되어도 실제 RTDB subscribe는 1회만 발생한다.
-    - cleanup 시 모든 리스너가 해제되고 registry/refCount가 0으로 돌아온다.
-  - Test plan: `npx vitest run tests/rtdb-listener-registry.test.ts`
-
-- RDB-09 — Eliminate legacy duplicate listener paths (guard/disable unused enableFirebaseSync)
-  - Objective: SyncEngine 외부에서 root listener를 추가로 붙일 수 있는 레거시 경로를 제거하거나, 최소한 “동시에 켜지지 않게” 방어한다.
-  - Files/Symbols to touch:
-    - [src/shared/services/sync/firebaseService.ts](src/shared/services/sync/firebaseService.ts) (`enableFirebaseSync`)
-    - Search: `enableFirebaseSync(` call sites
-  - Acceptance criteria:
-    - 코드베이스에서 `enableFirebaseSync`가 호출되지 않거나, 호출되더라도 SyncEngine 리스너와 중복되지 않는다는 보장이 있다(가드/단일화).
-  - Test plan: `npx vitest run tests/sync-core.test.ts` (간접 영향), `npm test`
-
-- RDB-10 — Write-path optimization: get-before-set 정책을 컬렉션/경로별로 분리해 불필요한 reads 제거
-  - Objective: 모든 write마다 remote get을 수행하는 정책을 완화해 읽기 증폭을 줄인다.
-  - Files/Symbols to touch:
-    - [src/shared/services/sync/firebase/syncCore.ts](src/shared/services/sync/firebase/syncCore.ts) (`syncToFirebase`, `getRemoteOnce`)
-    - Search: `getRemoteOnce(`, `TTL`, `single-flight`, `resolveConflict`
-  - Acceptance criteria:
-    - “안전하게 blind write 가능한” 경로(예: 단일 문서/작은 노드)는 remote get 없이 set/patch 된다.
-    - 충돌 위험 경로는 기존 conflictResolver 정책을 유지하거나, 필요한 최소 범위만 get 한다.
-    - DEV 계측에서 write 1회당 `get` 횟수가 감소한다.
-  - Test plan: `npx vitest run tests/sync-core.test.ts`, `npx vitest run tests/conflict-resolver.test.ts`
-
-- RDB-11 — Prevent echo-amplification: listener echo를 delta 처리/ignore 정책으로 흡수
-  - Objective: 로컬 write 직후 수신되는 동일 데이터 echo를 “전체 리프레시”로 처리하지 않게 한다.
-  - Files/Symbols to touch (discover):
-    - Search: `sameDevice`, `deviceId`, `lastWrite`, `ignoreEcho`, `originDeviceId`
-    - Likely: sync engine apply logic / firebase service facade
-  - Acceptance criteria:
-    - 동일 device의 write echo가 들어와도 Dexie에 “중복 대량 업데이트”가 발생하지 않는다.
-    - DEV 계측에서 write→echo로 인한 다운로드/처리 비용이 감소한다.
-  - Test plan: `npx vitest run tests/sync-core.test.ts`, `npx vitest run tests/sync-engine-basic.test.ts || tests/smoke-sync-engine-basic.test.ts` (존재 파일 기준)
-
-- RDB-12 — Guardrails for multi-window / re-init: 리스너 attach 조건을 명확히 하고 중복 초기화를 방지
-  - Objective: 여러 창/리로드/설정 변경으로 sync init이 반복될 때 중복 다운로드가 누적되지 않게 한다.
-  - Files/Symbols to touch:
-    - [src/data/db/infra/useAppInitialization.ts](src/data/db/infra/useAppInitialization.ts)
-    - Search: `initialize`, `startListening`, `firebaseConfig`, `useEffect` dependencies
-  - Acceptance criteria:
-    - init 경로가 idempotent(한 번만 실행되거나, 재실행 시 기존 리스너 정리 후 재구성)임이 보장된다.
-  - Test plan: `npx vitest run tests/smoke-sync-engine-basic.test.ts`, `npx vitest run tests/rtdb-listener-registry.test.ts`
-
-- RDB-13 — Documentation/Dev workflow: “어떻게 bandwidth를 확인하는지”를 개발자 문서로 남기기
-  - Objective: Implementer/리뷰어가 동일한 방식으로 개선 폭을 확인할 수 있게 한다.
-  - Files to touch:
-    - [README.md](README.md) 또는 [docs/analysis](docs/analysis)/ 관련 문서(프로젝트 관례에 맞춰 선택)
-  - Acceptance criteria:
-    - DEV에서 `npm run electron:dev` 실행 후 어떤 로그/플래그로 (path별 bytes, 누적 bytes)를 확인하는지 문서화된다.
-  - Test plan: `npm test`
-
-- RDB-14 — Version & Release Artifacts
-  - Objective: Target Release에 맞춰 버전/릴리즈 노트를 정리한다(배치 릴리즈 정책에 맞게).
-  - Files to touch:
-    - [package.json](package.json)
-    - (존재 시) CHANGELOG / release notes 문서
-  - Acceptance criteria:
-    - Target Release 버전이 확정되고(OPEN QUESTION 해소), 릴리즈 아티팩트가 일관되게 업데이트된다.
-  - Test plan: `npm test`, `npm run lint`
+## BW-08 — Add a bandwidth “circuit breaker” (guardrails)
+- Objective: 회귀/버그/비정상 상태에서 다운로드가 다시 폭주할 때 자동으로 리스너를 차단해 비용을 통제한다.
+- Files to modify:
+  - [src/shared/services/sync/firebase/rtdbMetrics.ts](src/shared/services/sync/firebase/rtdbMetrics.ts) (이미 존재)
+  - [src/data/db/infra/syncEngine/index.ts](src/data/db/infra/syncEngine/index.ts) (stopListening 트리거)
+  - [src/shared/constants/defaults.ts](src/shared/constants/defaults.ts) (임계값)
+- Acceptance criteria:
+  - 일정 기간(예: 5분) 다운로드가 임계값을 넘으면 자동으로 리스너가 중지되고, 사용자에게 “동기화 안전모드”가 표시된다.
+  - Local-first 동작은 유지되며, 사용자가 수동으로 재시도할 수 있다.
+- Risk assessment:
+  - Medium: 과도한 차단은 “원격 반영 지연”을 만들 수 있으므로 임계값/재시도 UX가 중요.
+- Estimated bandwidth reduction:
+  - **0–90%** (평상시엔 0에 가까우나, 회귀 시 비용 폭주를 강제로 컷)
 
 ---
 
-## Validation (High-level)
-- Primary: `npm test`
-- Focus runs:
-  - `npx vitest run tests/smoke-sync-engine-basic.test.ts`
-  - `npx vitest run tests/rtdb-listener-registry.test.ts`
-  - `npx vitest run tests/sync-core.test.ts`
-  - `npx vitest run tests/conflict-resolver.test.ts`
+## Testing Strategy (High-level)
+- Unit: syncCore/conflictResolver/listener registry 관련 기존 테스트를 활용해 회귀를 빠르게 탐지
+- Integration(smoke): SyncEngine 부팅/리스너 시작/중지 경로가 여전히 idempotent임을 확인
+- Manual validation: Firebase 콘솔(Usage) + DEV 계측 로그로 “경로별 bytes”가 목표 범위로 내려갔는지 확인
 
 ## Rollback Notes
 - 리스너 변경은 “컬렉션 단위”로 분리해 단계적으로 적용하고, 각 단계는 단독 revert 가능하도록 PR을 쪼갠다.
+
+## OPEN QUESTION (Unresolved)
+- Q1: 오빠, 이번 대역폭 핫픽스를 **1.0.183**으로 바로 묶을까요? 아니면 “기능 영향(특히 BW-04)”을 고려해 **1.0.183(Containment) + 1.0.184(Migration)**처럼 2단으로 갈까요?

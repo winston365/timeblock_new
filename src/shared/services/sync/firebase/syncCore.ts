@@ -22,6 +22,7 @@ import { addSyncLog } from '../syncLogger';
 import { addToRetryQueue } from './syncRetryQueue';
 import { sanitizeForFirebase } from '@/shared/utils/firebaseSanitizer';
 import { recordRtdbGet, recordRtdbSet, recordRtdbError, recordRtdbOnValue, isRtdbInstrumentationEnabled } from './rtdbMetrics';
+import { getObservedRemote, setObservedRemote } from './rtdbObservedCache';
 
 // ============================================================================
 // Types
@@ -61,50 +62,6 @@ export interface SyncStrategy<T> {
 // ============================================================================
 
 const lastSyncHash: Record<string, string> = {};
-
-// ============================================================================
-// Pre-get single-flight + short TTL cache (read amplification 완화)
-// ============================================================================
-
-type CachedRemote = { value: unknown; cachedAt: number };
-const remoteCache: Map<string, CachedRemote> = new Map();
-const inFlightGet: Map<string, Promise<unknown>> = new Map();
-
-function getRemoteCacheKey(path: string): string {
-  return path;
-}
-
-async function getRemoteOnce(dataRef: ReturnType<typeof ref>, path: string): Promise<unknown> {
-  const key = getRemoteCacheKey(path);
-  const cached = remoteCache.get(key);
-  const now = Date.now();
-
-  // 2초 TTL: 연속 훅(템플릿/인박스)에서 pre-get 폭주 완화
-  if (cached && now - cached.cachedAt < 2000) {
-    return cached.value;
-  }
-
-  const existing = inFlightGet.get(key);
-  if (existing) return existing;
-
-  const p = get(dataRef)
-    .then((snapshot) => snapshot.val())
-    .then((val) => {
-      remoteCache.set(key, { value: val, cachedAt: Date.now() });
-
-      // Instrument only on actual network reads (cache hits should not count as bandwidth).
-      if (isRtdbInstrumentationEnabled()) {
-        recordRtdbGet(path, val);
-      }
-      return val;
-    })
-    .finally(() => {
-      inFlightGet.delete(key);
-    });
-
-  inFlightGet.set(key, p);
-  return p;
-}
 
 // ============================================================================
 // Generic Sync Functions - R8: 중복 제거
@@ -161,9 +118,9 @@ export async function syncToFirebase<T>(
       return;
     }
 
-    // 기존 데이터 확인 (single-flight + TTL cache로 다운로드 증폭 완화)
-    const remoteRaw = await getRemoteOnce(dataRef, path);
-    const remoteData = remoteRaw as SyncData<T> | null;
+    // BW-06: pre-write network read를 하지 않는다.
+    // 충돌 해결은 리스너로 관측된(remote observed) 값만 사용한다.
+    const remoteData = (getObservedRemote<SyncData<T> | null>(path) ?? null) as SyncData<T> | null;
 
     const localSyncData: SyncData<T> = {
       data: sanitizedData,
@@ -257,6 +214,7 @@ export function listenToFirebase<T>(
 
     const unsubscribe = onValue(dataRef, snapshot => {
       const raw = snapshot.val() as unknown;
+      setObservedRemote(path, raw);
       if (isRtdbInstrumentationEnabled()) {
         recordRtdbOnValue(path, raw);
       }
@@ -312,6 +270,7 @@ export async function fetchFromFirebase<T>(
 
     const snapshot = await get(dataRef);
     const syncData = snapshot.val() as SyncData<T> | null;
+    setObservedRemote(path, syncData);
 
     if (isRtdbInstrumentationEnabled()) {
       recordRtdbGet(path, syncData);

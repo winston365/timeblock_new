@@ -11,6 +11,8 @@ const recordRtdbErrorSpy = vi.fn();
 const recordRtdbOnValueSpy = vi.fn();
 const isRtdbInstrumentationEnabledSpy = vi.fn(() => true);
 
+const getObservedRemoteSpy = vi.fn();
+
 vi.mock('firebase/database', () => ({
   ref: vi.fn((_db: unknown, path: string) => ({ path })),
   set: setSpy,
@@ -25,6 +27,12 @@ vi.mock('@/shared/services/sync/firebase/rtdbMetrics', () => ({
   recordRtdbError: recordRtdbErrorSpy,
   recordRtdbOnValue: recordRtdbOnValueSpy,
   isRtdbInstrumentationEnabled: isRtdbInstrumentationEnabledSpy,
+}));
+
+vi.mock('@/shared/services/sync/firebase/rtdbObservedCache', () => ({
+  getObservedRemote: getObservedRemoteSpy,
+  setObservedRemote: vi.fn(),
+  clearObservedRemoteCache: vi.fn(),
 }));
 
 const isFirebaseInitializedSpy = vi.fn();
@@ -77,6 +85,7 @@ describe('syncCore', () => {
     recordRtdbErrorSpy.mockClear();
     recordRtdbOnValueSpy.mockClear();
     isRtdbInstrumentationEnabledSpy.mockClear();
+    getObservedRemoteSpy.mockClear();
     // keep getFirebaseDatabaseSpy stable
   });
 
@@ -93,35 +102,34 @@ describe('syncCore', () => {
     expect(getSpy).not.toHaveBeenCalled();
   });
 
-  it('records RTDB get only for actual network reads (not cache hits)', async () => {
+  it('does not perform pre-write network reads (BW-06)', async () => {
     vi.resetModules();
 
     isFirebaseInitializedSpy.mockReturnValue(true);
     isRtdbInstrumentationEnabledSpy.mockReturnValue(true);
 
-    // Remote exists but older than local.
-    getSpy.mockResolvedValue({
-      val: () => ({ data: { a: 9 }, updatedAt: 1, deviceId: 'remoteDevice' }),
+    // Remote exists in listener-fed cache; syncToFirebase must still avoid get().
+    getObservedRemoteSpy.mockReturnValue({
+      data: { a: 9 },
+      updatedAt: 1,
+      deviceId: 'remoteDevice',
     });
     setSpy.mockResolvedValue(undefined);
 
     const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
 
-    // First call: should perform a network get.
     await syncToFirebase({ collection: 'c' }, { a: 1 }, 'k');
-    // Second call within TTL: should hit cache and not perform another get.
     await syncToFirebase({ collection: 'c' }, { a: 2 }, 'k');
 
-    expect(getSpy).toHaveBeenCalledTimes(1);
-    expect(recordRtdbGetSpy).toHaveBeenCalledTimes(1);
+    expect(getSpy).not.toHaveBeenCalled();
+    expect(recordRtdbGetSpy).not.toHaveBeenCalled();
   });
 
   it('syncToFirebase skips duplicate syncs by hash', async () => {
     vi.resetModules();
 
     isFirebaseInitializedSpy.mockReturnValue(true);
-
-    getSpy.mockResolvedValue({ val: () => null });
+    getObservedRemoteSpy.mockReturnValue(undefined);
 
     const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
 
@@ -137,8 +145,10 @@ describe('syncCore', () => {
     isFirebaseInitializedSpy.mockReturnValue(true);
 
     // Remote data exists, and resolver will choose remote by having newer updatedAt.
-    getSpy.mockResolvedValue({
-      val: () => ({ data: { a: 9 }, updatedAt: 999, deviceId: 'remoteDevice' }),
+    getObservedRemoteSpy.mockReturnValue({
+      data: { a: 9 },
+      updatedAt: 999,
+      deviceId: 'remoteDevice',
     });
 
     const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
@@ -154,7 +164,7 @@ describe('syncCore', () => {
 
     isFirebaseInitializedSpy.mockReturnValue(true);
 
-    getSpy.mockResolvedValue({ val: () => null });
+    getObservedRemoteSpy.mockReturnValue(undefined);
     setSpy.mockRejectedValueOnce(new Error('fail'));
 
     const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
@@ -253,7 +263,7 @@ describe('syncCore - Offline / Retry Queue / Drain Flow (Task 5.1)', () => {
     vi.resetModules();
 
     isFirebaseInitializedSpy.mockReturnValue(true);
-    getSpy.mockResolvedValue({ val: () => null });
+    getObservedRemoteSpy.mockReturnValue(undefined);
     
     // 첫 번째 호출은 실패 (네트워크 오류 시뮬레이션)
     setSpy.mockRejectedValueOnce(new Error('Network error - offline'));
@@ -279,7 +289,7 @@ describe('syncCore - Offline / Retry Queue / Drain Flow (Task 5.1)', () => {
     vi.resetModules();
 
     isFirebaseInitializedSpy.mockReturnValue(true);
-    getSpy.mockResolvedValue({ val: () => null });
+    getObservedRemoteSpy.mockReturnValue(undefined);
     
     // 모든 호출 실패
     setSpy.mockRejectedValue(new Error('Network error'));
@@ -314,7 +324,7 @@ describe('syncCore - Listener Deduplication & Hash Cache (Task 5.2)', () => {
     vi.resetModules();
 
     isFirebaseInitializedSpy.mockReturnValue(true);
-    getSpy.mockResolvedValue({ val: () => null });
+    getObservedRemoteSpy.mockReturnValue(undefined);
     setSpy.mockResolvedValue(undefined);
 
     const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
@@ -338,7 +348,7 @@ describe('syncCore - Listener Deduplication & Hash Cache (Task 5.2)', () => {
     vi.resetModules();
 
     isFirebaseInitializedSpy.mockReturnValue(true);
-    getSpy.mockResolvedValue({ val: () => null });
+    getObservedRemoteSpy.mockReturnValue(undefined);
     setSpy.mockResolvedValue(undefined);
 
     const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
@@ -418,102 +428,6 @@ describe('syncCore - Listener Deduplication & Hash Cache (Task 5.2)', () => {
 });
 
 // ============================================================================
-// T80-01: getRemoteOnce 단일 비행(single-flight) + 2초 TTL 캐시 검증
-// ============================================================================
-describe('syncCore - getRemoteOnce Single-Flight + TTL Cache (T80-01)', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    setSpy.mockClear();
-    getSpy.mockClear();
-    onValueSpy.mockClear();
-    offSpy.mockClear();
-    addSyncLogSpy.mockClear();
-    addToRetryQueueSpy.mockClear();
-    isFirebaseInitializedSpy.mockClear();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('getRemoteOnce returns cached value within 2s TTL without calling get() again', async () => {
-    vi.resetModules();
-
-    isFirebaseInitializedSpy.mockReturnValue(true);
-    getSpy.mockResolvedValue({ val: () => ({ data: { cached: true }, updatedAt: 100, deviceId: 'remote' }) });
-    setSpy.mockResolvedValue(undefined);
-
-    const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
-
-    // 첫 번째 호출: get() 발생
-    await syncToFirebase({ collection: 'ttl-test' }, { first: 1 }, 'k1');
-    expect(getSpy).toHaveBeenCalledTimes(1);
-
-    // 1초 후: 캐시 유효 (TTL 2초 이내)
-    await vi.advanceTimersByTimeAsync(1000);
-
-    // 같은 path로 다시 호출: 캐시 사용, get() 호출 없음
-    getSpy.mockClear();
-    await syncToFirebase({ collection: 'ttl-test' }, { second: 2 }, 'k1');
-    expect(getSpy).not.toHaveBeenCalled();
-  });
-
-  it('getRemoteOnce invalidates cache after 2s TTL expires', async () => {
-    vi.resetModules();
-
-    isFirebaseInitializedSpy.mockReturnValue(true);
-    getSpy.mockResolvedValue({ val: () => null });
-    setSpy.mockResolvedValue(undefined);
-
-    const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
-
-    // 첫 번째 호출
-    await syncToFirebase({ collection: 'ttl-expire' }, { a: 1 }, 'key1');
-    expect(getSpy).toHaveBeenCalledTimes(1);
-
-    // 2.1초 후: TTL 만료
-    await vi.advanceTimersByTimeAsync(2100);
-
-    // 다시 호출: 캐시 만료로 get() 재호출
-    getSpy.mockClear();
-    getSpy.mockResolvedValue({ val: () => null });
-    await syncToFirebase({ collection: 'ttl-expire' }, { a: 2 }, 'key1');
-    expect(getSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('single-flight: concurrent calls to same path share one get() call', async () => {
-    vi.resetModules();
-
-    isFirebaseInitializedSpy.mockReturnValue(true);
-
-    // get()이 약간 지연되도록 설정 (동시 호출 시뮬레이션)
-    let resolveGet: ((val: { val: () => unknown }) => void) | null = null;
-    getSpy.mockImplementation(() => new Promise((resolve) => {
-      resolveGet = resolve;
-    }));
-    setSpy.mockResolvedValue(undefined);
-
-    const { syncToFirebase } = await import('@/shared/services/sync/firebase/syncCore');
-
-    // 동시에 3개 호출 시작
-    const p1 = syncToFirebase({ collection: 'single-flight' }, { n: 1 }, 'sf-key');
-    const p2 = syncToFirebase({ collection: 'single-flight' }, { n: 2 }, 'sf-key');
-    const p3 = syncToFirebase({ collection: 'single-flight' }, { n: 3 }, 'sf-key');
-
-    // get()은 1번만 호출됨 (single-flight)
-    expect(getSpy).toHaveBeenCalledTimes(1);
-
-    // get() 완료
-    resolveGet!({ val: () => null });
-
-    await Promise.all([p1, p2, p3]);
-
-    // 여전히 1번만 호출됨
-    expect(getSpy).toHaveBeenCalledTimes(1);
-  });
-});
-
-// ============================================================================
 // T80-02: RTDB instrumentation 분기 검증
 // ============================================================================
 describe('syncCore - RTDB Instrumentation Branch (T80-02)', () => {
@@ -546,8 +460,8 @@ describe('syncCore - RTDB Instrumentation Branch (T80-02)', () => {
 
     await syncToFirebase({ collection: 'instr-test' }, { x: 1 }, 'k');
 
-    // instrumentation ON이므로 recordRtdbGet, recordRtdbSet 호출됨
-    expect(rtdbMetrics.recordRtdbGet).toHaveBeenCalled();
+    // BW-06: pre-write reads are removed, so syncToFirebase must not record gets.
+    expect(rtdbMetrics.recordRtdbGet).not.toHaveBeenCalled();
     expect(rtdbMetrics.recordRtdbSet).toHaveBeenCalled();
   });
 

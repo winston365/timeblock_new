@@ -5,7 +5,11 @@
  */
 
 import { db } from '../../dexieClient';
-import { attachRtdbOnValue, attachRtdbOnValueKeyRange } from '@/shared/services/sync/firebase/rtdbListenerRegistry';
+import {
+  attachRtdbOnValue,
+  attachRtdbOnChild,
+  attachRtdbOnChildKeyRange,
+} from '@/shared/services/sync/firebase/rtdbListenerRegistry';
 import { getLocalDate } from '@/shared/lib/utils';
 import { FIREBASE_SYNC_DEFAULTS } from '@/shared/constants/defaults';
 import type { DailyTokenUsage, Task } from '@/shared/types/domain';
@@ -22,6 +26,12 @@ const readDeviceId = (value: unknown): string | undefined => {
 const readData = (value: unknown): unknown => {
   if (!isRecord(value)) return undefined;
   return value.data;
+};
+
+const readId = (value: unknown): string | undefined => {
+  if (!isRecord(value)) return undefined;
+  const id = value.id;
+  return typeof id === 'string' ? id : undefined;
 };
 
 export interface StartListenersOptions {
@@ -41,15 +51,30 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
   cutoff.setDate(cutoff.getDate() - FIREBASE_SYNC_DEFAULTS.rtdbDateKeyedLookbackDays);
   const startAtDateKey = getLocalDate(cutoff);
 
+  // CompletedInbox는 date-keyed(날짜별 배열) 형태라, child 이벤트를 누적하여
+  // 전체 union view(db.completedInbox)로 재구성합니다.
+  const completedInboxByDate = new Map<string, Task[]>();
+
   // 1. DailyData Listener (date-keyed)
   const dailyPath = `users/${userId}/dailyData`;
   unsubscribes.push(
-    attachRtdbOnValueKeyRange(database as never, dailyPath, startAtDateKey, (snapshot) => {
-      const raw = snapshot.val() as unknown;
-      if (!isRecord(raw)) return;
+    attachRtdbOnChildKeyRange(
+      database as never,
+      dailyPath,
+      startAtDateKey,
+      (eventType, snapshot) => {
+        const date = snapshot.key;
+        if (typeof date !== 'string') return;
 
-      Object.entries(raw).forEach(([date, syncData]) => {
+        const syncData = snapshot.val() as unknown;
         if (readDeviceId(syncData) === deviceId) return;
+
+        if (eventType === 'child_removed') {
+          void applyRemoteUpdate(async () => {
+            await db.dailyData.delete(date);
+          }, `dailyData:${date}`);
+          return;
+        }
 
         const payload = readData(syncData);
         void applyRemoteUpdate(async () => {
@@ -59,8 +84,9 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
             await db.dailyData.delete(date);
           }
         }, `dailyData:${date}`);
-      });
-    }, { tag: 'SyncEngine.dailyData' })
+      },
+      { tag: 'SyncEngine.dailyData' }
+    )
   );
 
   // 2. GameState Listener
@@ -98,103 +124,176 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
   // 3. Templates Listener
   const templatesPath = `users/${userId}/templates`;
   unsubscribes.push(
-    attachRtdbOnValue(database as never, templatesPath, (snapshot) => {
-      const syncData = snapshot.val() as unknown;
-      if (readDeviceId(syncData) === deviceId) return;
+    attachRtdbOnChild(
+      database as never,
+      `${templatesPath}/data`,
+      (eventType, snapshot) => {
+        const payload = snapshot.val() as unknown;
+        const id = readId(payload);
+        if (!id) return;
 
-      const payload = readData(syncData);
-      if (!Array.isArray(payload)) return;
+        void applyRemoteUpdate(async () => {
+          if (eventType === 'child_removed') {
+            await db.templates.delete(id);
+            return;
+          }
 
-      void applyRemoteUpdate(async () => {
-        await db.templates.clear();
-        await db.templates.bulkPut(payload as never[]);
-      }, 'templates:all');
-    }, { tag: 'SyncEngine.templates' })
+          await db.templates.put(payload as never);
+        }, `templates:${id}`);
+      },
+      { tag: 'SyncEngine.templates' }
+    )
   );
 
   // 4. ShopItems Listener
   const shopItemsPath = `users/${userId}/shopItems`;
+  const handleShopItemEvent = (eventType: 'child_added' | 'child_changed' | 'child_removed', payload: unknown) => {
+    const id = readId(payload);
+    if (!id) return;
+
+    void applyRemoteUpdate(async () => {
+      if (eventType === 'child_removed') {
+        await db.shopItems.delete(id);
+        return;
+      }
+
+      await db.shopItems.put(payload as never);
+    }, `shopItems:${id}`);
+  };
+
+  // Support both legacy root shape and current "all" key shape.
   unsubscribes.push(
-    attachRtdbOnValue(database as never, shopItemsPath, (snapshot) => {
-      const syncData = snapshot.val() as unknown;
-      if (readDeviceId(syncData) === deviceId) return;
-
-      const payload = readData(syncData);
-      if (!Array.isArray(payload)) return;
-
-      void applyRemoteUpdate(async () => {
-        await db.shopItems.clear();
-        await db.shopItems.bulkPut(payload as never[]);
-      }, 'shopItems:all');
-    }, { tag: 'SyncEngine.shopItems' })
+    attachRtdbOnChild(
+      database as never,
+      `${shopItemsPath}/data`,
+      (eventType, snapshot) => {
+        handleShopItemEvent(eventType, snapshot.val() as unknown);
+      },
+      { tag: 'SyncEngine.shopItems' }
+    )
+  );
+  unsubscribes.push(
+    attachRtdbOnChild(
+      database as never,
+      `${shopItemsPath}/all/data`,
+      (eventType, snapshot) => {
+        handleShopItemEvent(eventType, snapshot.val() as unknown);
+      },
+      { tag: 'SyncEngine.shopItems' }
+    )
   );
 
   // 5. GlobalInbox Listener (support legacy shape)
   const globalInboxPath = `users/${userId}/globalInbox`;
+  const handleGlobalInboxEvent = (
+    eventType: 'child_added' | 'child_changed' | 'child_removed',
+    payload: unknown
+  ) => {
+    const id = readId(payload);
+    if (!id) return;
+
+    void applyRemoteUpdate(async () => {
+      if (eventType === 'child_removed') {
+        await db.globalInbox.delete(id);
+        return;
+      }
+
+      await db.globalInbox.put(payload as never);
+    }, `globalInbox:${id}`);
+  };
+
+  // Current shape: SyncData<Task[]> stored at users/{userId}/globalInbox
   unsubscribes.push(
-    attachRtdbOnValue(database as never, globalInboxPath, (snapshot) => {
-      const syncData = snapshot.val() as unknown;
-      if (!isRecord(syncData)) return;
+    attachRtdbOnChild(
+      database as never,
+      `${globalInboxPath}/data`,
+      (eventType, snapshot) => {
+        handleGlobalInboxEvent(eventType, snapshot.val() as unknown);
+      },
+      { tag: 'SyncEngine.globalInbox' }
+    )
+  );
 
-      const direct = readData(syncData);
-
-      const payload = Array.isArray(direct)
-        ? { data: direct, deviceId: readDeviceId(syncData) }
-        : isRecord(syncData.all)
-          ? { data: Array.isArray(readData(syncData.all)) ? (readData(syncData.all) as unknown[]) : null, deviceId: readDeviceId(syncData.all) }
-          : null;
-
-      if (!payload?.data || payload.deviceId === deviceId) return;
-
-      void applyRemoteUpdate(async () => {
-        await db.globalInbox.clear();
-        await db.globalInbox.bulkPut(payload.data as never[]);
-      }, 'globalInbox:all');
-    }, { tag: 'SyncEngine.globalInbox' })
+  // Legacy shape: SyncData<Task[]> stored at users/{userId}/globalInbox/all
+  unsubscribes.push(
+    attachRtdbOnChild(
+      database as never,
+      `${globalInboxPath}/all/data`,
+      (eventType, snapshot) => {
+        handleGlobalInboxEvent(eventType, snapshot.val() as unknown);
+      },
+      { tag: 'SyncEngine.globalInbox' }
+    )
   );
 
   // 5-1. CompletedInbox Listener (date-keyed)
   const completedInboxPath = `users/${userId}/completedInbox`;
   unsubscribes.push(
-    attachRtdbOnValueKeyRange(database as never, completedInboxPath, startAtDateKey, (snapshot) => {
-      const raw = snapshot.val() as unknown;
-      if (!isRecord(raw)) return;
+    attachRtdbOnChildKeyRange(
+      database as never,
+      completedInboxPath,
+      startAtDateKey,
+      (eventType, snapshot) => {
+        const date = snapshot.key;
+        if (typeof date !== 'string') return;
 
-      void applyRemoteUpdate(async () => {
-        const existing = await db.completedInbox.toArray();
-        const map = new Map<string, Task>((existing as Task[]).map((task) => [task.id, task]));
+        const syncData = snapshot.val() as unknown;
+        if (readDeviceId(syncData) === deviceId) return;
 
-        Object.values(raw).forEach((syncData) => {
-          if (readDeviceId(syncData) === deviceId) return;
+        if (eventType === 'child_removed') {
+          completedInboxByDate.delete(date);
+        } else {
           const payload = readData(syncData);
-          if (!Array.isArray(payload)) return;
-
-          (payload as Task[]).forEach((task) => {
-            map.set(task.id, task);
-          });
-        });
-
-        const mergedTasks = Array.from(map.values());
-        await db.completedInbox.clear();
-        if (mergedTasks.length > 0) {
-          await db.completedInbox.bulkPut(mergedTasks as never[]);
+          if (Array.isArray(payload)) {
+            completedInboxByDate.set(date, payload as Task[]);
+          } else if (payload === null) {
+            completedInboxByDate.delete(date);
+          } else {
+            return;
+          }
         }
-      }, 'completedInbox:all');
-    }, { tag: 'SyncEngine.completedInbox' })
+
+        void applyRemoteUpdate(async () => {
+          const map = new Map<string, Task>();
+          for (const tasks of completedInboxByDate.values()) {
+            for (const task of tasks) {
+              map.set(task.id, task);
+            }
+          }
+
+          const mergedTasks = Array.from(map.values());
+          await db.completedInbox.clear();
+          if (mergedTasks.length > 0) {
+            await db.completedInbox.bulkPut(mergedTasks as never[]);
+          }
+        }, 'completedInbox:all');
+      },
+      { tag: 'SyncEngine.completedInbox' }
+    )
   );
 
   // 6. TokenUsage Listener (date-keyed)
   const tokenUsagePath = `users/${userId}/tokenUsage`;
   unsubscribes.push(
-    attachRtdbOnValueKeyRange(database as never, tokenUsagePath, startAtDateKey, (snapshot) => {
-      const raw = snapshot.val() as unknown;
-      if (!isRecord(raw)) return;
+    attachRtdbOnChildKeyRange(
+      database as never,
+      tokenUsagePath,
+      startAtDateKey,
+      (eventType, snapshot) => {
+        const date = snapshot.key;
+        if (typeof date !== 'string') return;
 
-      Object.entries(raw).forEach(([date, syncData]) => {
+        const syncData = snapshot.val() as unknown;
         if (readDeviceId(syncData) === deviceId) return;
 
-        const payload = readData(syncData);
+        if (eventType === 'child_removed') {
+          void applyRemoteUpdate(async () => {
+            await db.dailyTokenUsage.delete(date);
+          }, `tokenUsage:${date}`);
+          return;
+        }
 
+        const payload = readData(syncData);
         void applyRemoteUpdate(async () => {
           if (isRecord(payload)) {
             const sanitized = sanitizeTokenUsage(payload as unknown as DailyTokenUsage);
@@ -203,8 +302,9 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
             await db.dailyTokenUsage.delete(date);
           }
         }, `tokenUsage:${date}`);
-      });
-    }, { tag: 'SyncEngine.tokenUsage' })
+      },
+      { tag: 'SyncEngine.tokenUsage' }
+    )
   );
 
   // 8. Settings Listener

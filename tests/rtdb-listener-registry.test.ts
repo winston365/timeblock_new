@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Database } from 'firebase/database';
 
 const onValueSpy = vi.fn();
+const onChildAddedSpy = vi.fn();
+const onChildChangedSpy = vi.fn();
+const onChildRemovedSpy = vi.fn();
 const refSpy = vi.fn();
 const querySpy = vi.fn();
 const orderByKeySpy = vi.fn();
@@ -10,6 +13,9 @@ const startAtSpy = vi.fn();
 vi.mock('firebase/database', () => ({
   ref: refSpy,
   onValue: onValueSpy,
+  onChildAdded: onChildAddedSpy,
+  onChildChanged: onChildChangedSpy,
+  onChildRemoved: onChildRemovedSpy,
   query: querySpy,
   orderByKey: orderByKeySpy,
   startAt: startAtSpy,
@@ -31,6 +37,9 @@ describe('rtdbListenerRegistry', () => {
   beforeEach(() => {
     vi.resetModules();
     onValueSpy.mockReset();
+    onChildAddedSpy.mockReset();
+    onChildChangedSpy.mockReset();
+    onChildRemovedSpy.mockReset();
     refSpy.mockReset();
     querySpy.mockReset();
     orderByKeySpy.mockReset();
@@ -77,6 +86,9 @@ describe('rtdbListenerRegistry - key-range query', () => {
   beforeEach(() => {
     vi.resetModules();
     onValueSpy.mockReset();
+    onChildAddedSpy.mockReset();
+    onChildChangedSpy.mockReset();
+    onChildRemovedSpy.mockReset();
     refSpy.mockReset();
     querySpy.mockReset();
     orderByKeySpy.mockReset();
@@ -156,6 +168,134 @@ describe('rtdbListenerRegistry - key-range query', () => {
 
     u1();
     u2();
+    expect(getActiveRtdbListenerCount()).toBe(0);
+  });
+});
+
+// ============================================================================
+// RTDB key-range child listeners (BW-02)
+// ============================================================================
+describe('rtdbListenerRegistry - key-range child listeners (BW-02)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    onValueSpy.mockReset();
+    onChildAddedSpy.mockReset();
+    onChildChangedSpy.mockReset();
+    onChildRemovedSpy.mockReset();
+    refSpy.mockReset();
+    querySpy.mockReset();
+    orderByKeySpy.mockReset();
+    startAtSpy.mockReset();
+  });
+
+  it('attaches (onChildAdded/onChildChanged/onChildRemoved) per (path,startAtKey) and refCounts consumers', async () => {
+    const unsubscribeAdded = vi.fn();
+    const unsubscribeChanged = vi.fn();
+    const unsubscribeRemoved = vi.fn();
+    onChildAddedSpy.mockReturnValue(unsubscribeAdded);
+    onChildChangedSpy.mockReturnValue(unsubscribeChanged);
+    onChildRemovedSpy.mockReturnValue(unsubscribeRemoved);
+
+    refSpy.mockImplementation((_db: unknown, path: string) => ({ path }));
+    orderByKeySpy.mockReturnValue({ kind: 'orderByKey' });
+    startAtSpy.mockImplementation((key: string) => ({ kind: 'startAt', key }));
+    querySpy.mockImplementation((refObj: unknown, ...constraints: unknown[]) => ({
+      kind: 'query',
+      refObj,
+      constraints,
+    }));
+
+    const { attachRtdbOnChildKeyRange, getActiveRtdbListenerCount } = await import(
+      '@/shared/services/sync/firebase/rtdbListenerRegistry'
+    );
+
+    const db = { kind: 'db' } as unknown as Database;
+    const path = 'users/user/dailyData';
+    const startAtKey = '2026-01-01';
+
+    const h1 = vi.fn();
+    const h2 = vi.fn();
+
+    const u1 = attachRtdbOnChildKeyRange(db, path, startAtKey, h1);
+    const u2 = attachRtdbOnChildKeyRange(db, path, startAtKey, h2);
+
+    // One underlying query, three underlying listeners.
+    expect(querySpy).toHaveBeenCalledTimes(1);
+    expect(onChildAddedSpy).toHaveBeenCalledTimes(1);
+    expect(onChildChangedSpy).toHaveBeenCalledTimes(1);
+    expect(onChildRemovedSpy).toHaveBeenCalledTimes(1);
+    expect(getActiveRtdbListenerCount()).toBe(1);
+
+    // detach first consumer: still attached
+    u1();
+    expect(unsubscribeAdded).not.toHaveBeenCalled();
+    expect(getActiveRtdbListenerCount()).toBe(1);
+
+    // detach last consumer: actual unsubscribe
+    u2();
+    expect(unsubscribeAdded).toHaveBeenCalledTimes(1);
+    expect(unsubscribeChanged).toHaveBeenCalledTimes(1);
+    expect(unsubscribeRemoved).toHaveBeenCalledTimes(1);
+    expect(getActiveRtdbListenerCount()).toBe(0);
+  });
+});
+
+// ============================================================================
+// RTDB non-range child listeners (BW-04)
+// ============================================================================
+describe('rtdbListenerRegistry - child listeners (no range) (BW-04)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    onValueSpy.mockReset();
+    onChildAddedSpy.mockReset();
+    onChildChangedSpy.mockReset();
+    onChildRemovedSpy.mockReset();
+    refSpy.mockReset();
+    querySpy.mockReset();
+    orderByKeySpy.mockReset();
+    startAtSpy.mockReset();
+  });
+
+  it('attaches (onChildAdded/onChildChanged/onChildRemoved) per path and refCounts consumers', async () => {
+    const unsubscribeAdded = vi.fn();
+    const unsubscribeChanged = vi.fn();
+    const unsubscribeRemoved = vi.fn();
+    onChildAddedSpy.mockReturnValue(unsubscribeAdded);
+    onChildChangedSpy.mockReturnValue(unsubscribeChanged);
+    onChildRemovedSpy.mockReturnValue(unsubscribeRemoved);
+
+    refSpy.mockImplementation((_db: unknown, path: string) => ({ path }));
+
+    const { attachRtdbOnChild, getActiveRtdbListenerCount } = await import(
+      '@/shared/services/sync/firebase/rtdbListenerRegistry'
+    );
+
+    const db = { kind: 'db' } as unknown as Database;
+    const path = 'users/user/templates/data';
+
+    const h1 = vi.fn();
+    const h2 = vi.fn();
+
+    const u1 = attachRtdbOnChild(db, path, h1);
+    const u2 = attachRtdbOnChild(db, path, h2);
+
+    // One underlying ref, three underlying listeners.
+    expect(refSpy).toHaveBeenCalledTimes(1);
+    expect(onChildAddedSpy).toHaveBeenCalledTimes(1);
+    expect(onChildChangedSpy).toHaveBeenCalledTimes(1);
+    expect(onChildRemovedSpy).toHaveBeenCalledTimes(1);
+    expect(getActiveRtdbListenerCount()).toBe(1);
+
+    // detach first consumer: still attached
+    u1();
+    expect(unsubscribeAdded).not.toHaveBeenCalled();
+    expect(getActiveRtdbListenerCount()).toBe(1);
+
+    // detach last consumer: actual unsubscribe
+    u2();
+    expect(unsubscribeAdded).toHaveBeenCalledTimes(1);
+    expect(unsubscribeChanged).toHaveBeenCalledTimes(1);
+    expect(unsubscribeRemoved).toHaveBeenCalledTimes(1);
     expect(getActiveRtdbListenerCount()).toBe(0);
   });
 });

@@ -28,9 +28,6 @@ export type { SyncData } from './firebase/conflictResolver';
 
 import type { DailyData, Task, Settings, DailyTokenUsage, GameState, ShopItem, WaifuState, Template } from '@/shared/types/domain';
 import { addSyncLog } from './syncLogger';
-import { getFirebaseDatabase } from './firebase/firebaseClient';
-import { ref, onValue } from 'firebase/database';
-import { getDeviceId } from './firebase/syncUtils';
 
 
 
@@ -179,44 +176,11 @@ export function enableFirebaseSync(
   onDailyDataUpdate: (date: string) => void,
   onGameStateUpdate: () => void
 ): () => void {
-  // DailyData 전체 컬렉션 리스닝
-  const db = getFirebaseDatabase();
-  const userId = 'user';
-  const deviceId = getDeviceId();
+  void onDailyDataUpdate;
+  void onGameStateUpdate;
 
-  const dailyDataRef = ref(db, `users/${userId}/dailyData`);
-  const gameStateRef = ref(db, `users/${userId}/gameState`);
-
-  const unsubscribeDaily = onValue(dailyDataRef, (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      Object.keys(data).forEach((date) => {
-        const syncData = data[date];
-        if (syncData && syncData?.deviceId !== deviceId) {
-          onDailyDataUpdate(date);
-        }
-      });
-    }
-  });
-
-  const unsubscribeGameState = onValue(gameStateRef, (snapshot) => {
-    const syncData = snapshot.val();
-    if (syncData && syncData?.deviceId !== deviceId) {
-      onGameStateUpdate();
-    }
-  });
-
-
-  return () => {
-    try {
-      unsubscribeDaily();
-    } catch (e) {
-      console.warn('[FirebaseService] Failed to unsubscribe dailyData:', e);
-    }
-    try {
-      unsubscribeGameState();
-    } catch (e) {
-      console.warn('[FirebaseService] Failed to unsubscribe gameState:', e);
-    }
-  };
+  const message =
+    '[FirebaseService] enableFirebaseSync is deprecated and disabled. Use SyncEngine.startListening() instead.';
+  console.warn(message);
+  throw new Error(message);
 }
