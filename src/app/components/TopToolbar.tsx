@@ -7,7 +7,7 @@
  * @dependencies 다수 스토어 및 서비스
  */
 
-import { useEffect, useRef, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pin, PinOff } from 'lucide-react';
 import { TIME_BLOCKS, type GameState } from '@/shared/types/domain';
 import { useWaifu } from '@/features/waifu/hooks/useWaifu';
@@ -19,22 +19,17 @@ import { useTaskBreakdownStore } from '@/features/tasks/stores/breakdownStore';
 import { useXPParticleStore } from '@/features/gamification/stores/xpParticleStore';
 import WeatherWidget from '@/features/weather/WeatherWidget';
 import { StatsModal } from '@/features/stats/StatsModal';
-import DailySummaryModal from '@/features/insight/DailySummaryModal';
-import { InboxModal } from '@/features/tasks/InboxModal';
-import { GoalsModal } from '@/features/goals/GoalsModal';
-import { useGoalsGlobalHotkey } from '@/features/goals/hooks/useGoalsHotkeys';
 import { useFocusModeStore } from '@/features/schedule/stores/focusModeStore';
 import { useScheduleViewStore } from '@/features/schedule/stores/scheduleViewStore';
 import BossAlbumModal from '@/features/battle/components/BossAlbumModal';
 import { useBattleStore } from '@/features/battle/stores/battleStore';
 import { TempScheduleModal } from '@/features/tempSchedule';
+import { useScheduleViewModeStore } from '@/shared/stores/useScheduleViewModeStore';
 
 /** TopToolbar 컴포넌트 Props */
 interface TopToolbarProps {
   /** 게임 상태 데이터 */
   gameState: GameState | null;
-  /** Gemini 채팅 모달 열기 콜백 */
-  onOpenGeminiChat?: () => void;
   /** 템플릿 모달 열기 콜백 */
   onOpenTemplates?: () => void;
   /** 설정 모달 열기 콜백 */
@@ -60,7 +55,6 @@ interface TopToolbarProps {
  */
 export default function TopToolbar({
   gameState,
-  onOpenGeminiChat,
   onOpenTemplates,
   onOpenSettings,
   timelineVisible,
@@ -71,25 +65,26 @@ export default function TopToolbar({
   onToggleAlwaysOnTop,
 }: TopToolbarProps) {
   const { waifuState, currentMood, currentAudio } = useWaifu();
-  const { show: showWaifu } = useWaifuCompanionStore();
-  const { isLoading: aiAnalyzing, cancelBreakdown } = useTaskBreakdownStore();
-  const { isFocusMode, toggleFocusMode } = useFocusModeStore();
-  const { showPastBlocks, toggleShowPastBlocks, openWarmupModal } = useScheduleViewStore();
-  const { dailyState } = useBattleStore();
+  const showWaifu = useWaifuCompanionStore((state) => state.show);
+  const aiAnalyzing = useTaskBreakdownStore((state) => state.isLoading);
+  const cancelBreakdown = useTaskBreakdownStore((state) => state.cancelBreakdown);
+  const isFocusMode = useFocusModeStore((state) => state.isFocusMode);
+  const toggleFocusMode = useFocusModeStore((state) => state.toggleFocusMode);
+  const showPastBlocks = useScheduleViewStore((state) => state.showPastBlocks);
+  const toggleShowPastBlocks = useScheduleViewStore((state) => state.toggleShowPastBlocks);
+  const openWarmupModal = useScheduleViewStore((state) => state.openWarmupModal);
+  const dailyState = useBattleStore((state) => state.dailyState);
+
+  // 스케줄 뷰 모드
+  const scheduleViewMode = useScheduleViewModeStore((state) => state.mode);
+  const setScheduleViewMode = useScheduleViewModeStore((state) => state.setMode);
 
   const [showStats, setShowStats] = useState(false);
-  const [showDailySummary, setShowDailySummary] = useState(false);
-  const [showInbox, setShowInbox] = useState(false);
-  const [showGoals, setShowGoals] = useState(false);
   const [showBossAlbum, setShowBossAlbum] = useState(false);
   const [showTempSchedule, setShowTempSchedule] = useState(false);
 
-  // Goals 글로벌 단축키 (Ctrl/Cmd+Shift+G로 열기/닫기)
-  useGoalsGlobalHotkey({
-    isOpen: showGoals,
-    onOpen: () => setShowGoals(true),
-    onClose: () => setShowGoals(false),
-  });
+  const xpValueRef = useRef<HTMLSpanElement>(null);
+  const getXpTargetElement = useCallback((): HTMLElement | null => xpValueRef.current, []);
 
   const toolbarHeightClass = 'h-10'; // CTA/우측 영역
   const leftHeightClass = 'h-8'; // 좌측 컴팩트 영역
@@ -190,19 +185,10 @@ export default function TopToolbar({
         <div className={`flex flex-1 shrink-0 items-center gap-[var(--spacing-md)] text-[12px] ${leftHeightClass}`}>
           <div className={statItemClass}>
             <span>⭐ 오늘 XP:</span>
-            <span
-              ref={(el) => {
-                if (el) {
-                  // Update target position only if it changes significantly to avoid loops
-                  // But for now, just setting it on mount/resize is enough.
-                  // We'll use a useEffect for cleaner logic.
-                }
-              }}
-              className={statValueClass}
-            >
+            <span ref={xpValueRef} className={statValueClass}>
               {gameState?.dailyXP ?? 0}
             </span>
-            <XPPositionRegistrar />
+            <XPPositionRegistrar getTargetElement={getXpTargetElement} />
           </div>
           <div className={statItemClass}>
             <span>⭐ 사용 가능:</span>
@@ -302,6 +288,7 @@ export default function TopToolbar({
               <span className="animate-spin text-sm">🧠</span>
               <span>AI 분석 중...</span>
               <button
+                type="button"
                 onClick={cancelBreakdown}
                 className="ml-1.5 rounded-lg bg-[var(--color-primary)]/20 px-1.5 py-0.5 text-[11px] hover:bg-[var(--color-primary)]/30 transition"
                 title="취소"
@@ -310,22 +297,56 @@ export default function TopToolbar({
               </button>
             </div>
           )}
+
+          {/* 스케줄 뷰 모드 전환 버튼 그룹 */}
+          <div className="flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-0.5">
+            <button
+              type="button"
+              onClick={() => setScheduleViewMode('timeblock')}
+              className={`flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                scheduleViewMode === 'timeblock'
+                  ? 'bg-[var(--color-primary)] text-white'
+                  : 'text-[var(--color-text-secondary)] hover:bg-white/5 hover:text-[var(--color-text)]'
+              }`}
+              title="타임블록 뷰 (시간 기반 스케줄)"
+            >
+              ⏰ 타임블록
+            </button>
+            <button
+              type="button"
+              onClick={() => setScheduleViewMode('goals')}
+              className={`flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                scheduleViewMode === 'goals'
+                  ? 'bg-[var(--color-primary)] text-white'
+                  : 'text-[var(--color-text-secondary)] hover:bg-white/5 hover:text-[var(--color-text)]'
+              }`}
+              title="목표 관리 뷰 (장기 목표)"
+            >
+              🎯 목표
+            </button>
+            <button
+              type="button"
+              onClick={() => setScheduleViewMode('inbox')}
+              className={`flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                scheduleViewMode === 'inbox'
+                  ? 'bg-[var(--color-primary)] text-white'
+                  : 'text-[var(--color-text-secondary)] hover:bg-white/5 hover:text-[var(--color-text)]'
+              }`}
+              title="인박스 뷰 (미배치 작업)"
+            >
+              📥 인박스
+            </button>
+          </div>
+
           {renderCTA('temp-schedule', '📅 스케줄', () => setShowTempSchedule(true))}
-          {renderCTA('goals', '🎯 목표', () => setShowGoals(true))}
-          {renderCTA('inbox', '📥 인박스', () => setShowInbox(true))}
           {renderCTA('boss-album', '🏆 보스', () => setShowBossAlbum(true), todayDefeatedCount > 0 ? `⚔️ ${todayDefeatedCount}` : undefined)}
           {renderCTA('stats', '📊 통계', () => setShowStats(true))}
-          {renderCTA('daily-summary', '📝 AI 요약', () => setShowDailySummary(true))}
           {!isNormalWaifu && renderCTA('waifu', '💬 와이푸', handleCallWaifu)}
           {renderCTA('templates', '📋 템플릿', onOpenTemplates)}
-          {renderCTA('chat', '✨ AI 채팅', onOpenGeminiChat)}
           {renderCTA('settings', '⚙️ 설정', onOpenSettings)}
         </div>
       </header>
       {showStats && <StatsModal open={showStats} onClose={() => setShowStats(false)} />}
-      {showDailySummary && <DailySummaryModal open={showDailySummary} onClose={() => setShowDailySummary(false)} />}
-      {showInbox && <InboxModal open={showInbox} onClose={() => setShowInbox(false)} />}
-      {showGoals && <GoalsModal open={showGoals} onClose={() => setShowGoals(false)} />}
       {showBossAlbum && <BossAlbumModal isOpen={showBossAlbum} onClose={() => setShowBossAlbum(false)} />}
       {showTempSchedule && <TempScheduleModal isOpen={showTempSchedule} onClose={() => setShowTempSchedule(false)} />}
     </>
@@ -334,25 +355,30 @@ export default function TopToolbar({
 
 /**
  * XP 파티클 애니메이션 타겟 위치 등록 헬퍼 컴포넌트
- * @returns 보이지 않는 위치 추적용 span 엘리먼트
+ * @param props - props
+ * @param props.getTargetElement - XP 값 엘리먼트 getter
+ * @returns DOM을 렌더링하지 않습니다.
  */
-function XPPositionRegistrar() {
-  const setTargetPosition = useXPParticleStore(state => state.setTargetPosition);
-  const ref = useRef<HTMLSpanElement>(null);
+function XPPositionRegistrar({
+  getTargetElement,
+}: {
+  getTargetElement: () => HTMLElement | null;
+}) {
+  const setTargetPosition = useXPParticleStore((state) => state.setTargetPosition);
 
   useEffect(() => {
     const updatePosition = () => {
-      if (ref.current) {
-        const rect = ref.current.getBoundingClientRect();
-        // Target center of the element
-        setTargetPosition(rect.left + rect.width / 2, rect.top + rect.height / 2);
-      }
+      const element = getTargetElement();
+      if (!element) return;
+
+      const rect = element.getBoundingClientRect();
+      setTargetPosition(rect.left + rect.width / 2, rect.top + rect.height / 2);
     };
 
     updatePosition();
     window.addEventListener('resize', updatePosition);
     return () => window.removeEventListener('resize', updatePosition);
-  }, [setTargetPosition]);
+  }, [getTargetElement, setTargetPosition]);
 
-  return <span ref={ref} className="absolute opacity-0 pointer-events-none" />;
+  return null;
 }

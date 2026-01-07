@@ -30,6 +30,11 @@ import { ragSyncHandler } from './ragSyncHandler';
 import { ragService } from '@/shared/services/rag/ragService';
 import { runStartupFirebaseInitialRead } from './startupFirebaseSync';
 
+type FirebaseConfigParam = Parameters<typeof initializeFirebase>[0];
+
+const initializeFirebaseFromUnknown = (firebaseConfig: unknown): boolean =>
+    initializeFirebase(firebaseConfig as FirebaseConfigParam);
+
 /**
  * 애플리케이션 초기화 훅
  *
@@ -80,7 +85,7 @@ export function useAppInitialization() {
                 if (settings.firebaseConfig) {
                     try {
                         const initialRead = await runStartupFirebaseInitialRead(settings.firebaseConfig, {
-                            initializeFirebase,
+                            initializeFirebase: initializeFirebaseFromUnknown,
                         });
 
                         // BW-01: bulk `get()`/download is skipped; listeners will populate local DB.

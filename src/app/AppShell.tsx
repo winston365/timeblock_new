@@ -34,16 +34,12 @@ import { useServicesInit } from './hooks/useServicesInit';
 import TopToolbar from './components/TopToolbar';
 import LeftSidebar from './components/LeftSidebar';
 import CenterContent from './components/CenterContent';
-import RightPanel from './components/RightPanel';
-// TimeBlockXPBar import 제거됨 (Phase 1 - 오늘 하루 전체 XP바(목표x6) 제거, 컴포넌트 파일은 유지)
-// DailyXPBar import 제거됨 (Phase 1 - UI에서 제거, 컴포넌트 파일은 유지)
 import { WaifuAside } from './components/WaifuAside';
 import { AppToaster } from './components/AppToaster';
 import { LoadingScreen } from './components/LoadingScreen';
 import { TimelineView } from '@/features/schedule/TimelineView';
 
 // Modal Components
-import GeminiFullscreenChat from '@/features/gemini/GeminiFullscreenChat';
 import BulkAddModal from '@/features/tasks/BulkAddModal';
 import SettingsModal from '@/features/settings/SettingsModal';
 import TemplatesModal from '@/features/template/TemplatesModal';
@@ -78,11 +74,9 @@ export default function AppShell() {
   // 패널 레이아웃 관리
   const {
     effectiveLeftCollapsed,
-    effectiveRightCollapsed,
     effectiveTimelineVisible,
     gridTemplateColumns,
     toggleLeftSidebar,
-    toggleRightPanels,
     toggleTimeline,
   } = usePanelLayout(isFocusMode);
 
@@ -142,15 +136,8 @@ export default function AppShell() {
     settings,
     onBulkAdd: modals.openBulkAdd,
     onToggleLeftPanel: toggleLeftSidebar,
-    onToggleRightPanel: toggleRightPanels,
     onToggleAlwaysOnTop: handleToggleAlwaysOnTop,
   });
-
-  // ============================================================================
-  // 탭 상태
-  // ============================================================================
-  // inventory 탭 제거됨 (Phase 2) - shop만 유지
-  const [rightPanelTab, setRightPanelTab] = useState<'shop'>('shop');
 
   // ============================================================================
   // 이벤트 핸들러
@@ -175,11 +162,6 @@ export default function AppShell() {
       toast.error('작업 추가에 실패했습니다.');
     }
   }, [updateQuestProgress]);
-
-  // 상점 구매 성공
-  const handleShopPurchaseSuccess = useCallback((_message: string, _waifuMessage?: string) => {
-    // TODO: 와이푸에게 메시지를 전달하는 로직 추가
-  }, []);
 
   // 대량 작업 추가
   const handleBulkAddTasks = useCallback(async (tasks: Task[]) => {
@@ -228,7 +210,6 @@ export default function AppShell() {
         <>
           <TopToolbar
             gameState={gameState}
-            onOpenGeminiChat={modals.openGeminiChat}
             onOpenTemplates={modals.openTemplates}
             onOpenSettings={modals.openSettings}
             timelineVisible={effectiveTimelineVisible}
@@ -255,12 +236,6 @@ export default function AppShell() {
         />
         {effectiveTimelineVisible ? <TimelineView /> : <div className="w-0 overflow-hidden" />}
         <CenterContent />
-        <RightPanel
-          activeTab={rightPanelTab}
-          onTabChange={setRightPanelTab}
-          onShopPurchaseSuccess={handleShopPurchaseSuccess}
-          collapsed={effectiveRightCollapsed}
-        />
       </main>
 
       {/* Waifu Panel */}
@@ -271,10 +246,6 @@ export default function AppShell() {
       />
 
       {/* Modals */}
-      <GeminiFullscreenChat
-        isOpen={modals.showGeminiChat}
-        onClose={modals.closeGeminiChat}
-      />
       <BulkAddModal
         isOpen={modals.showBulkAdd}
         onClose={modals.closeBulkAdd}

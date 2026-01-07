@@ -24,8 +24,6 @@ interface KeyboardShortcutsConfig {
   onBulkAdd: () => void;
   /** 좌측 패널 토글 콜백 */
   onToggleLeftPanel: () => void;
-  /** 우측 패널 토글 콜백 */
-  onToggleRightPanel: () => void;
   /** 창 최상위 토글 콜백 */
   onToggleAlwaysOnTop?: () => void;
 }
@@ -94,14 +92,12 @@ function isInputField(eventTarget: EventTarget | null): boolean {
  * @param {Settings | null} config.settings - 단축키 설정
  * @param {() => void} config.onBulkAdd - 대량 추가 모달 열기 콜백
  * @param {() => void} config.onToggleLeftPanel - 좌측 패널 토글 콜백
- * @param {() => void} config.onToggleRightPanel - 우측 패널 토글 콜백
  * @returns {void}
  */
 export function useKeyboardShortcuts({
   settings,
   onBulkAdd,
   onToggleLeftPanel,
-  onToggleRightPanel,
   onToggleAlwaysOnTop,
 }: KeyboardShortcutsConfig): void {
   const handleKeyDown = useCallback((keyboardEvent: KeyboardEvent) => {
@@ -124,14 +120,6 @@ export function useKeyboardShortcuts({
       return;
     }
 
-    // 우측 패널 토글 (기본: Ctrl+Shift+B)
-    const rightKey = settings?.rightPanelToggleKey || 'Ctrl+Shift+B';
-    if (matchesShortcut(keyboardEvent, rightKey)) {
-      keyboardEvent.preventDefault();
-      onToggleRightPanel();
-      return;
-    }
-
     // 창 최상위 토글 (기본: Ctrl+Shift+T)
     const alwaysOnTopKey = settings?.alwaysOnTopToggleKey || 'Ctrl+Shift+T';
     if (onToggleAlwaysOnTop && matchesShortcut(keyboardEvent, alwaysOnTopKey)) {
@@ -139,7 +127,7 @@ export function useKeyboardShortcuts({
       onToggleAlwaysOnTop();
       return;
     }
-  }, [settings, onBulkAdd, onToggleLeftPanel, onToggleRightPanel, onToggleAlwaysOnTop]);
+  }, [settings, onBulkAdd, onToggleLeftPanel, onToggleAlwaysOnTop]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);

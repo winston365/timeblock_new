@@ -16,8 +16,11 @@
  */
 
 import { Pin, PinOff } from 'lucide-react';
+import type { KeyboardEvent } from 'react';
 import type { ShortcutsTabProps, Settings } from './types';
 import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, infoBoxClass } from './styles';
+
+type ShortcutSettingKey = 'leftPanelToggleKey' | 'bulkAddModalKey' | 'alwaysOnTopToggleKey';
 
 /**
  * 앱 단축키를 설정하는 탭 컴포넌트
@@ -31,21 +34,32 @@ import { sectionClass, sectionDescriptionClass, formGroupClass, inputClass, info
  * @returns 단축키 입력 폼 UI
  */
 export function ShortcutsTab({ localSettings, setLocalSettings }: ShortcutsTabProps) {
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, settingKey: keyof Settings) => {
+    const updateLocalSettings = (updater: (settings: Settings) => Settings) => {
+        setLocalSettings((prev: Settings | null) => (prev ? updater(prev) : prev));
+    };
+
+    const updateShortcutSetting = (settingKey: ShortcutSettingKey, value: string) => {
+        updateLocalSettings((prev) => ({ ...prev, [settingKey]: value }));
+    };
+
+    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>, settingKey: ShortcutSettingKey) => {
         e.preventDefault();
+
         const keys: string[] = [];
         if (e.ctrlKey) keys.push('Ctrl');
         if (e.shiftKey) keys.push('Shift');
         if (e.altKey) keys.push('Alt');
+
         if (e.key !== 'Control' && e.key !== 'Shift' && e.key !== 'Alt') {
             // F1-F12 같은 특수 키는 그대로, 일반 키는 대문자로
-            const keyName = e.key.startsWith('F') && e.key.length <= 3 ? e.key : e.key.toUpperCase();
+            const isFunctionKey = e.key.startsWith('F') && e.key.length <= 3;
+            const keyName = isFunctionKey ? e.key : e.key.toUpperCase();
             keys.push(keyName);
         }
-        if (keys.length >= 1) {
-            const shortcut = keys.join('+');
-            setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, [settingKey]: shortcut }) : prev);
-        }
+
+        if (keys.length === 0) return;
+
+        updateShortcutSetting(settingKey, keys.join('+'));
     };
 
     return (
@@ -87,10 +101,10 @@ export function ShortcutsTab({ localSettings, setLocalSettings }: ShortcutsTabPr
                         role="switch"
                         aria-checked={localSettings?.isAlwaysOnTopEnabled ?? false}
                         onClick={() => {
-                            setLocalSettings((prev: Settings | null) => prev ? ({ 
-                                ...prev, 
-                                isAlwaysOnTopEnabled: !prev.isAlwaysOnTopEnabled 
-                            }) : prev);
+                            updateLocalSettings((prev) => ({
+                                ...prev,
+                                isAlwaysOnTopEnabled: !prev.isAlwaysOnTopEnabled,
+                            }));
                         }}
                         className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 ${
                             localSettings?.isAlwaysOnTopEnabled 
@@ -120,9 +134,7 @@ export function ShortcutsTab({ localSettings, setLocalSettings }: ShortcutsTabPr
                     className={inputClass}
                     placeholder="Ctrl+B (기본값)"
                     value={localSettings?.leftPanelToggleKey || ''}
-                    onChange={(e) =>
-                        setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, leftPanelToggleKey: e.target.value }) : prev)
-                    }
+                    onChange={(e) => updateShortcutSetting('leftPanelToggleKey', e.target.value)}
                     onKeyDown={(e) => handleKeyDown(e, 'leftPanelToggleKey')}
                 />
                 <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
@@ -130,25 +142,7 @@ export function ShortcutsTab({ localSettings, setLocalSettings }: ShortcutsTabPr
                 </small>
             </div>
 
-            <div className={formGroupClass}>
-                <label htmlFor="right-panel-key">
-                    🔶 우측 패널 토글
-                </label>
-                <input
-                    id="right-panel-key"
-                    type="text"
-                    className={inputClass}
-                    placeholder="Ctrl+Shift+B (기본값)"
-                    value={localSettings?.rightPanelToggleKey || ''}
-                    onChange={(e) =>
-                        setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, rightPanelToggleKey: e.target.value }) : prev)
-                    }
-                    onKeyDown={(e) => handleKeyDown(e, 'rightPanelToggleKey')}
-                />
-                <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                    우측 패널(인사이트, 퀘스트, 샵)을 열고 닫습니다.
-                </small>
-            </div>
+            {/* 우측 패널 토글 단축키 제거됨 (Phase 077 - 상점 사이드바 UI 접근 제거) */}
 
             <div className={formGroupClass}>
                 <label htmlFor="bulk-add-key">
@@ -160,9 +154,7 @@ export function ShortcutsTab({ localSettings, setLocalSettings }: ShortcutsTabPr
                     className={inputClass}
                     placeholder="F1 (기본값)"
                     value={localSettings?.bulkAddModalKey || ''}
-                    onChange={(e) =>
-                        setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, bulkAddModalKey: e.target.value }) : prev)
-                    }
+                    onChange={(e) => updateShortcutSetting('bulkAddModalKey', e.target.value)}
                     onKeyDown={(e) => handleKeyDown(e, 'bulkAddModalKey')}
                 />
                 <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
@@ -180,9 +172,7 @@ export function ShortcutsTab({ localSettings, setLocalSettings }: ShortcutsTabPr
                     className={inputClass}
                     placeholder="Ctrl+Shift+T (기본값)"
                     value={localSettings?.alwaysOnTopToggleKey || ''}
-                    onChange={(e) =>
-                        setLocalSettings((prev: Settings | null) => prev ? ({ ...prev, alwaysOnTopToggleKey: e.target.value }) : prev)
-                    }
+                    onChange={(e) => updateShortcutSetting('alwaysOnTopToggleKey', e.target.value)}
                     onKeyDown={(e) => handleKeyDown(e, 'alwaysOnTopToggleKey')}
                 />
                 <small className="text-[0.75rem] text-[var(--color-text-tertiary)]">
@@ -203,12 +193,6 @@ export function ShortcutsTab({ localSettings, setLocalSettings }: ShortcutsTabPr
                         <span className="text-[var(--color-text-secondary)]">좌측 패널 토글</span>
                         <kbd className="rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-2 py-1 font-mono text-[var(--color-text)]">
                             {localSettings?.leftPanelToggleKey || 'Ctrl+B'}
-                        </kbd>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                        <span className="text-[var(--color-text-secondary)]">우측 패널 토글</span>
-                        <kbd className="rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-2 py-1 font-mono text-[var(--color-text)]">
-                            {localSettings?.rightPanelToggleKey || 'Ctrl+Shift+B'}
                         </kbd>
                     </div>
                     <div className="flex justify-between items-center py-2">

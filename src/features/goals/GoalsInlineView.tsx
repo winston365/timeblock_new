@@ -1,0 +1,222 @@
+/**
+ * GoalsInlineView - 인라인 목표 뷰 (모달 아님)
+ *
+ * @file GoalsInlineView.tsx
+ * @role 중앙 영역에서 직접 표시되는 목표 관리 뷰
+ * @responsibilities
+ *   - WeeklyGoalPanel 렌더링 (모달 wrapper 없이)
+ *   - 모달과 동일한 기능 제공
+ * @dependencies
+ *   - WeeklyGoalPanel: 장기 목표 패널 UI
+ */
+
+import { useState, useCallback } from 'react';
+import WeeklyGoalPanel from './WeeklyGoalPanel';
+import WeeklyGoalModal from './WeeklyGoalModal';
+import WeeklyResetCard from './components/WeeklyResetCard';
+import GoalsFilterBar from './components/GoalsFilterBar';
+import { useGoalsHotkeys } from './hooks/useGoalsHotkeys';
+import { useGoalsSystemState } from './hooks/useGoalsSystemState';
+import { getWeekLabelKorean, getWeekDateRange } from './utils/weekUtils';
+import type { WeeklyGoal } from '@/shared/types/domain';
+
+interface SessionFocusState {
+  readonly enabled: boolean;
+  readonly message: string;
+}
+
+/**
+ * 인라인 목표 뷰 컴포넌트
+ * CenterContent에서 모드 전환 시 표시됩니다.
+ *
+ * @returns {JSX.Element} 목표 관리 UI
+ */
+export function GoalsInlineView() {
+  // Weekly Goal Modal State
+  const [isWeeklyGoalModalOpen, setIsWeeklyGoalModalOpen] = useState(false);
+  const [editingWeeklyGoal, setEditingWeeklyGoal] = useState<WeeklyGoal | undefined>(undefined);
+
+  // 세션 포커스 상태 (React state만, 저장 안 함)
+  const [sessionFocus, setSessionFocus] = useState<SessionFocusState>({
+    enabled: false,
+    message: '',
+  });
+
+  // 목표 ID 목록 (WeeklyGoalPanel에서 전달받음)
+  const [goalIds, setGoalIds] = useState<string[]>([]);
+  // 전체 목표 목록 (필터링 전)
+  const [allGoals, setAllGoals] = useState<WeeklyGoal[]>([]);
+
+  // Quick Log 열기 콜백 (카드에서 호출)
+  const [quickLogGoalId, setQuickLogGoalId] = useState<string | null>(null);
+
+  // 히스토리 모달 열기 콜백
+  const [historyGoalId, setHistoryGoalId] = useState<string | null>(null);
+
+  // Goals SystemState (필터, 모드 등)
+  const {
+    filterTodayOnly,
+    setFilterTodayOnly,
+    compactMode,
+    setCompactMode,
+  } = useGoalsSystemState();
+
+  // 주차 라벨 계산
+  const weekLabel = getWeekLabelKorean();
+  const weekDateRange = getWeekDateRange();
+
+  // Goals 키보드 단축키
+  const { focusedGoalId, setFocusedGoalId, showHints, toggleHints } = useGoalsHotkeys({
+    isOpen: !isWeeklyGoalModalOpen,
+    goalIds,
+    cardActions: {
+      onShowHistory: (goalId) => setHistoryGoalId(goalId),
+      onOpenQuickLog: (goalId) => setQuickLogGoalId(goalId),
+    },
+  });
+
+  const handleOpenWeeklyGoalModal = useCallback((goal?: WeeklyGoal) => {
+    setEditingWeeklyGoal(goal);
+    setIsWeeklyGoalModalOpen(true);
+  }, []);
+
+  const handleCloseWeeklyGoalModal = useCallback(() => {
+    setIsWeeklyGoalModalOpen(false);
+    setEditingWeeklyGoal(undefined);
+  }, []);
+
+  // 세션 포커스 토글
+  const handleToggleSessionFocus = useCallback(() => {
+    setSessionFocus((prev) => ({
+      ...prev,
+      enabled: !prev.enabled,
+      message: prev.enabled ? '' : prev.message,
+    }));
+  }, []);
+
+  // 세션 포커스 메시지 변경
+  const handleSessionFocusMessageChange = useCallback((message: string) => {
+    setSessionFocus((prev) => ({ ...prev, message }));
+  }, []);
+
+  return (
+    <>
+      <div className="flex h-full w-full flex-col overflow-hidden bg-[var(--color-bg-secondary)] text-[var(--color-text)]">
+        {/* Header */}
+        <header className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <div className="text-xs uppercase tracking-[0.12em] text-[var(--color-text-tertiary)]">Goals</div>
+              <span className="rounded-full bg-[var(--color-primary)]/20 px-2 py-0.5 text-[10px] font-medium text-[var(--color-primary)]">
+                {weekLabel}
+              </span>
+            </div>
+            <h2 className="text-xl font-bold">🎯 목표 관리</h2>
+            <p className="text-xs text-[var(--color-text-secondary)]">
+              {weekDateRange} • 장기 목표를 관리하세요.
+            </p>
+          </div>
+
+          {/* 세션 포커스 배너 */}
+          <div className="mx-4 flex-shrink-0">
+            {sessionFocus.enabled ? (
+              <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2">
+                <span className="text-amber-400 text-sm">🎯</span>
+                <input
+                  type="text"
+                  value={sessionFocus.message}
+                  onChange={(e) => handleSessionFocusMessageChange(e.target.value)}
+                  placeholder="이 세션의 포커스..."
+                  className="bg-transparent border-none outline-none text-sm text-amber-200 placeholder-amber-400/50 w-40"
+                  maxLength={50}
+                />
+                <button
+                  type="button"
+                  onClick={handleToggleSessionFocus}
+                  className="text-amber-400/60 hover:text-amber-300 text-xs"
+                  title="세션 포커스 해제"
+                >
+                  ✕
+                </button>
+                <span className="text-[10px] text-amber-400/40 ml-1" title="이 세션에서만 표시됩니다">
+                  세션 한정
+                </span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleToggleSessionFocus}
+                className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-xs text-white/60 hover:bg-white/10 hover:text-white transition"
+                title="세션 포커스 설정 (저장되지 않음)"
+              >
+                <span>🎯</span>
+                <span>세션 포커스</span>
+              </button>
+            )}
+          </div>
+
+          {/* 힌트 토글 버튼 */}
+          <button
+            type="button"
+            onClick={toggleHints}
+            className={`rounded-lg px-3 py-2 text-xs font-medium transition ${
+              showHints
+                ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+                : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+            }`}
+            title="키보드 단축키 힌트 (? 키)"
+          >
+            ⌨️ ?
+          </button>
+        </header>
+
+        {/* 키보드 단축키 힌트 */}
+        {showHints && (
+          <div className="flex items-center justify-center gap-4 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/50 px-4 py-2 text-[11px] text-[var(--color-text-secondary)]">
+            <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded text-[10px]">↑↓←→</kbd> 카드 이동</span>
+            <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded text-[10px]">Enter</kbd> 히스토리</span>
+            <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded text-[10px]">L</kbd> 빠른 기록</span>
+          </div>
+        )}
+
+        {/* 주간 리셋 안내 카드 */}
+        <WeeklyResetCard allGoals={allGoals} />
+
+        {/* 필터바 */}
+        <GoalsFilterBar
+          filterTodayOnly={filterTodayOnly}
+          onFilterChange={setFilterTodayOnly}
+          compactMode={compactMode}
+          onCompactModeChange={setCompactMode}
+          allGoals={allGoals}
+        />
+
+        {/* Content - 장기 목표 */}
+        <div className="flex-1 overflow-hidden p-4">
+          <WeeklyGoalPanel
+            onOpenModal={handleOpenWeeklyGoalModal}
+            focusedGoalId={focusedGoalId}
+            onFocusGoal={setFocusedGoalId}
+            onGoalIdsChange={setGoalIds}
+            onGoalsChange={setAllGoals}
+            quickLogGoalId={quickLogGoalId}
+            onQuickLogClose={() => setQuickLogGoalId(null)}
+            historyGoalId={historyGoalId}
+            onHistoryClose={() => setHistoryGoalId(null)}
+            filterTodayOnly={filterTodayOnly}
+            compactMode={compactMode}
+          />
+        </div>
+      </div>
+
+      {/* 장기 목표 추가/수정 모달 */}
+      <WeeklyGoalModal
+        isOpen={isWeeklyGoalModalOpen}
+        onClose={handleCloseWeeklyGoalModal}
+        goal={editingWeeklyGoal}
+      />
+    </>
+  );
+}
+
+export default GoalsInlineView;

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createRtdbBackfillManager } from '@/shared/services/sync/firebase/rtdbBackfill';
+import type { FetchFromFirebaseFn } from '@/shared/services/sync/firebase/rtdbBackfill';
 import type { SyncStrategy } from '@/shared/services/sync/firebase/syncCore';
 
 type TestData = Readonly<{ value: number }>;
@@ -12,10 +13,11 @@ const makeStrategy = (collection: string, userId = 'user1'): SyncStrategy<TestDa
 
 describe('rtdbBackfill', () => {
   it('dedupes concurrent backfills for the same key', async () => {
-    const fetchSpy = vi.fn(async () => ({ value: 123 } as const));
+    const fetchFromFirebase: FetchFromFirebaseFn = async <T>() => ({ value: 123 } as unknown as T);
+    const fetchSpy = vi.fn(fetchFromFirebase);
 
     const mgr = createRtdbBackfillManager({
-      fetchFromFirebase: fetchSpy,
+      fetchFromFirebase: fetchSpy as unknown as FetchFromFirebaseFn,
     });
 
     const strategy = makeStrategy('dailyData');
@@ -33,12 +35,12 @@ describe('rtdbBackfill', () => {
   });
 
   it('does not dedupe different keys', async () => {
-    const fetchSpy = vi.fn(async (_strategy: SyncStrategy<TestData>, key?: string) => ({
-      value: key === 'a' ? 1 : 2,
-    }));
+    const fetchFromFirebase: FetchFromFirebaseFn = async <T>(_strategy: SyncStrategy<T>, key?: string) =>
+      ({ value: key === 'a' ? 1 : 2 } as unknown as T);
+    const fetchSpy = vi.fn(fetchFromFirebase);
 
     const mgr = createRtdbBackfillManager({
-      fetchFromFirebase: fetchSpy,
+      fetchFromFirebase: fetchSpy as unknown as FetchFromFirebaseFn,
     });
 
     const strategy = makeStrategy('dailyData');
@@ -54,16 +56,18 @@ describe('rtdbBackfill', () => {
   });
 
   it('allows retry after a failure (inFlight cleared)', async () => {
-    const fetchSpy = vi
-      .fn<(
-        strategy: SyncStrategy<TestData>,
-        key?: string
-      ) => Promise<TestData | null>>()
-      .mockRejectedValueOnce(new Error('boom'))
-      .mockResolvedValueOnce({ value: 9 });
+    let callCount = 0;
+    const fetchFromFirebase: FetchFromFirebaseFn = async <T>() => {
+      callCount += 1;
+      if (callCount === 1) {
+        throw new Error('boom');
+      }
+      return { value: 9 } as unknown as T;
+    };
+    const fetchSpy = vi.fn(fetchFromFirebase);
 
     const mgr = createRtdbBackfillManager({
-      fetchFromFirebase: fetchSpy,
+      fetchFromFirebase: fetchSpy as unknown as FetchFromFirebaseFn,
     });
 
     const strategy = makeStrategy('dailyData');

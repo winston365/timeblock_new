@@ -16,8 +16,6 @@ import { useState, useCallback } from 'react';
  * 모달 표시 상태 인터페이스
  */
 interface ModalState {
-  /** Gemini 채팅 모달 표시 여부 */
-  showGeminiChat: boolean;
   /** 대량 추가 모달 표시 여부 */
   showBulkAdd: boolean;
   /** 설정 모달 표시 여부 */
@@ -30,10 +28,6 @@ interface ModalState {
  * 모달 제어 핸들러 인터페이스
  */
 interface ModalHandlers {
-  /** Gemini 채팅 모달 열기 */
-  openGeminiChat: () => void;
-  /** Gemini 채팅 모달 닫기 */
-  closeGeminiChat: () => void;
   /** 대량 추가 모달 열기 */
   openBulkAdd: () => void;
   /** 대량 추가 모달 닫기 */
@@ -59,14 +53,10 @@ type UseModalStateReturn = ModalState & ModalHandlers;
  * @returns {UseModalStateReturn} 모달 상태 및 제어 핸들러
  */
 export function useModalState(): UseModalStateReturn {
-  const [showGeminiChat, setShowGeminiChat] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
 
-  const openGeminiChat = useCallback(() => setShowGeminiChat(true), []);
-  const closeGeminiChat = useCallback(() => setShowGeminiChat(false), []);
-  
   const openBulkAdd = useCallback(() => setShowBulkAdd(true), []);
   const closeBulkAdd = useCallback(() => setShowBulkAdd(false), []);
   
@@ -77,12 +67,9 @@ export function useModalState(): UseModalStateReturn {
   const closeTemplates = useCallback(() => setShowTemplates(false), []);
 
   return {
-    showGeminiChat,
     showBulkAdd,
     showSettings,
     showTemplates,
-    openGeminiChat,
-    closeGeminiChat,
     openBulkAdd,
     closeBulkAdd,
     openSettings,
