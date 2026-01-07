@@ -1,7 +1,11 @@
 {
   "name": "timeblockplanner",
   "private": true,
+<<<<<<< HEAD
   "version": "1.0.182",
+=======
+  "version": "1.0.185",
+>>>>>>> a67b1deb15627c186fc54eaa6baeda0ece757dec
   "type": "module",
   "main": "dist-electron/main/index.cjs",
   "repository": {
