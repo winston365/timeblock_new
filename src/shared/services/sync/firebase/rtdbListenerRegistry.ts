@@ -34,6 +34,48 @@ type SnapshotHandler = (snapshot: DataSnapshot) => void;
 export type RtdbChildEventType = 'child_added' | 'child_changed' | 'child_removed';
 type ChildSnapshotHandler = (eventType: RtdbChildEventType, snapshot: DataSnapshot) => void;
 
+function attachChildListenerTrio(
+  queryRef: Parameters<typeof onChildAdded>[0],
+  onSnapshot: (eventType: RtdbChildEventType, snapshot: DataSnapshot) => void,
+  onError: (error: Error) => void
+): RtdbUnsubscribe {
+  const unsubscribeAdded = onChildAdded(
+    queryRef,
+    (snapshot) => onSnapshot('child_added', snapshot),
+    onError
+  );
+  const unsubscribeChanged = onChildChanged(
+    queryRef,
+    (snapshot) => onSnapshot('child_changed', snapshot),
+    onError
+  );
+  const unsubscribeRemoved = onChildRemoved(
+    queryRef,
+    (snapshot) => onSnapshot('child_removed', snapshot),
+    onError
+  );
+
+  return () => {
+    let firstError: unknown;
+
+    const safeUnsubscribe = (unsubscribe: () => void) => {
+      try {
+        unsubscribe();
+      } catch (error) {
+        firstError ??= error;
+      }
+    };
+
+    safeUnsubscribe(unsubscribeAdded);
+    safeUnsubscribe(unsubscribeChanged);
+    safeUnsubscribe(unsubscribeRemoved);
+
+    if (firstError) {
+      throw firstError;
+    }
+  };
+}
+
 type ListenerEntry = {
   path: string;
   refCount: number;
@@ -135,7 +177,7 @@ export function attachRtdbOnValue(
     },
     (error) => {
       recordRtdbError(path);
-      addSyncLog('firebase', 'error', 'RTDB listener error', { path, tag: opts?.tag }, error as Error);
+      addSyncLog('firebase', 'error', 'RTDB listener error', { path, tag: opts?.tag }, error);
     }
   );
 
@@ -236,21 +278,16 @@ export function attachRtdbOnChild(
     addSyncLog('firebase', 'error', 'RTDB listener error', { path: keyPath, tag: opts?.tag }, error);
   };
 
-  const unsubscribeAdded = onChildAdded(baseRef, (snapshot) => runConsumers('child_added', snapshot), onError);
-  const unsubscribeChanged = onChildChanged(baseRef, (snapshot) => runConsumers('child_changed', snapshot), onError);
-  const unsubscribeRemoved = onChildRemoved(baseRef, (snapshot) => runConsumers('child_removed', snapshot), onError);
-
-  const unsubscribe = () => {
-    unsubscribeAdded();
-    unsubscribeChanged();
-    unsubscribeRemoved();
-  };
-
-  entry.unsubscribe = unsubscribe;
+  entry.unsubscribe = attachChildListenerTrio(baseRef, runConsumers, onError);
 
   return () => detachRtdbOnChild(db, path, handler, opts);
 }
 
+/**
+ * @deprecated Use `attachRtdbOnChildKeyRange` instead for bandwidth efficiency.
+ * This function now uses child listeners internally but maintains backward compatibility.
+ * It still invokes `SnapshotHandler` with individual child snapshots (not full range).
+ */
 export function attachRtdbOnValueKeyRange(
   db: Database,
   path: string,
@@ -286,7 +323,7 @@ export function attachRtdbOnValueKeyRange(
 
   recordRtdbAttach(keyPath);
   if (isRtdbInstrumentationEnabled()) {
-    addSyncLog('firebase', 'info', 'RTDB listener attached', {
+    addSyncLog('firebase', 'info', 'RTDB listener attached (child-based)', {
       path: keyPath,
       tag: opts?.tag,
       activeListeners: listeners.size,
@@ -296,41 +333,44 @@ export function attachRtdbOnValueKeyRange(
   const baseRef = ref(db, path);
   const queryRef = buildQuery(baseRef, orderByKey(), startAt(startAtKeyValue));
 
-  const unsubscribe = onValue(
-    queryRef,
-    (snapshot) => {
-      try {
-        const value = snapshot.val();
-        const bytes = recordRtdbOnValue(keyPath, value);
+  // BW-FIX: Use child listeners instead of onValue to avoid re-downloading entire range.
+  // Each child event delivers only the changed date key, drastically reducing bandwidth.
+  const runConsumers = (snapshot: DataSnapshot) => {
+    try {
+      const value = snapshot.val();
+      const childPath = snapshot.key ? `${path}/${snapshot.key}` : path;
+      setObservedRemote(childPath, value);
+      const bytes = recordRtdbOnValue(keyPath, value);
 
-        if (isRtdbInstrumentationEnabled()) {
-          addSyncLog('firebase', 'info', 'RTDB onValue event', {
-            path: keyPath,
-            tag: opts?.tag,
-            bytesEstimated: bytes,
-            consumers: entry.consumers.size,
-          });
-        }
-
-        for (const consumer of Array.from(entry.consumers)) {
-          try {
-            consumer(snapshot);
-          } catch (consumerError) {
-            console.error('[RTDB Listener Registry] consumer error:', consumerError);
-          }
-        }
-      } catch (error) {
-        recordRtdbError(keyPath);
-        console.error('[RTDB Listener Registry] onValue handler error:', error);
+      if (isRtdbInstrumentationEnabled()) {
+        addSyncLog('firebase', 'info', 'RTDB child event (range)', {
+          path: keyPath,
+          childKey: snapshot.key,
+          tag: opts?.tag,
+          bytesEstimated: bytes,
+          consumers: entry.consumers.size,
+        });
       }
-    },
-    (error) => {
-      recordRtdbError(keyPath);
-      addSyncLog('firebase', 'error', 'RTDB listener error', { path: keyPath, tag: opts?.tag }, error as Error);
-    }
-  );
 
-  entry.unsubscribe = unsubscribe;
+      for (const consumer of Array.from(entry.consumers)) {
+        try {
+          consumer(snapshot);
+        } catch (consumerError) {
+          console.error('[RTDB Listener Registry] consumer error:', consumerError);
+        }
+      }
+    } catch (error) {
+      recordRtdbError(keyPath);
+      console.error('[RTDB Listener Registry] child handler error:', error);
+    }
+  };
+
+  const onError = (error: Error) => {
+    recordRtdbError(keyPath);
+    addSyncLog('firebase', 'error', 'RTDB listener error', { path: keyPath, tag: opts?.tag }, error);
+  };
+
+  entry.unsubscribe = attachChildListenerTrio(queryRef, (_eventType, snapshot) => runConsumers(snapshot), onError);
 
   return () => detachRtdbOnValueKeyRange(db, path, startAtKeyValue, handler, opts);
 }
@@ -415,17 +455,7 @@ export function attachRtdbOnChildKeyRange(
     addSyncLog('firebase', 'error', 'RTDB listener error', { path: keyPath, tag: opts?.tag }, error);
   };
 
-  const unsubscribeAdded = onChildAdded(queryRef, (snapshot) => runConsumers('child_added', snapshot), onError);
-  const unsubscribeChanged = onChildChanged(queryRef, (snapshot) => runConsumers('child_changed', snapshot), onError);
-  const unsubscribeRemoved = onChildRemoved(queryRef, (snapshot) => runConsumers('child_removed', snapshot), onError);
-
-  const unsubscribe = () => {
-    unsubscribeAdded();
-    unsubscribeChanged();
-    unsubscribeRemoved();
-  };
-
-  entry.unsubscribe = unsubscribe;
+  entry.unsubscribe = attachChildListenerTrio(queryRef, runConsumers, onError);
 
   return () => detachRtdbOnChildKeyRange(db, path, startAtKeyValue, handler, opts);
 }

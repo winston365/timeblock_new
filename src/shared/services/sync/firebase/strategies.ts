@@ -12,6 +12,7 @@
  */
 
 import type { SyncStrategy } from './syncCore';
+import type { ItemSyncStrategy } from './types';
 import { mergeGameState, mergeTaskArray } from './conflictResolver';
 import type {
   DailyData,
@@ -244,4 +245,41 @@ export const weeklyGoalStrategy: SyncStrategy<WeeklyGoal[]> = {
   collection: 'weeklyGoals',
   getSuccessMessage: (data) =>
     `WeeklyGoals synced (${data.length} goals, ${data.filter(g => g.currentProgress >= g.target).length} completed)`,
+};
+
+// ============================================================================
+// Item Sync Strategies (Phase B)
+// ============================================================================
+
+/**
+ * WeeklyGoal 개별 아이템 동기화 전략
+ * 목표 추가/수정/삭제 시 개별 아이템만 Firebase에 동기화합니다.
+ * @type {ItemSyncStrategy<WeeklyGoal>}
+ */
+export const weeklyGoalItemStrategy: ItemSyncStrategy<WeeklyGoal> = {
+  collection: 'weeklyGoals',
+  getItemId: (goal) => goal.id,
+  getBasePath: (uid) => `users/${uid}/weeklyGoals`,
+};
+
+/**
+ * GlobalInbox Task 개별 아이템 동기화 전략
+ * 인박스 작업 추가/수정/삭제 시 개별 아이템만 Firebase에 동기화합니다.
+ * @type {ItemSyncStrategy<Task>}
+ */
+export const globalInboxItemStrategy: ItemSyncStrategy<Task> = {
+  collection: 'globalInbox',
+  getItemId: (task) => task.id,
+  getBasePath: (uid) => `users/${uid}/globalInbox`,
+};
+
+/**
+ * Template 개별 아이템 동기화 전략
+ * 템플릿 추가/수정/삭제 시 개별 아이템만 Firebase에 동기화합니다.
+ * @type {ItemSyncStrategy<Template>}
+ */
+export const templateItemStrategy: ItemSyncStrategy<Template> = {
+  collection: 'templates',
+  getItemId: (template) => template.id,
+  getBasePath: (uid) => `users/${uid}/templates`,
 };

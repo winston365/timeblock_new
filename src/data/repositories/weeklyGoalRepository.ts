@@ -21,8 +21,11 @@ import type { WeeklyGoal, WeeklyGoalHistory } from '@/shared/types/domain';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { withFirebaseSync, withFirebaseFetch } from '@/shared/utils/firebaseGuard';
 import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
-import { weeklyGoalStrategy } from '@/shared/services/sync/firebase/strategies';
+import { syncItemToFirebase, deleteItemFromFirebase } from '@/shared/services/sync/firebase/itemSync';
+import { weeklyGoalStrategy, weeklyGoalItemStrategy } from '@/shared/services/sync/firebase/strategies';
+import { createDebouncedSync, DEFAULT_SYNC_DEBOUNCE_MS } from '@/shared/services/sync/debouncedSync';
 import { generateId } from '@/shared/lib/utils';
+import { getCurrentUserId } from '@/shared/utils/userIdProvider';
 
 // ============================================================================
 // 유틸리티 함수
@@ -227,10 +230,10 @@ export async function addWeeklyGoal(
     await db.weeklyGoals.put(newGoal);
     addSyncLog('dexie', 'save', `Added weekly goal: ${newGoal.title}`);
 
-    // Firebase 동기화
+    // Firebase Item Sync (개별 아이템 동기화)
     withFirebaseSync(async () => {
-      const allGoals = await db.weeklyGoals.toArray();
-      await syncToFirebase(weeklyGoalStrategy, allGoals);
+      const uid = getCurrentUserId();
+      await syncItemToFirebase(weeklyGoalItemStrategy, newGoal, uid);
     }, 'WeeklyGoal:add');
 
     return newGoal;
@@ -260,10 +263,10 @@ export async function updateWeeklyGoal(goalId: string, updates: Partial<WeeklyGo
     await db.weeklyGoals.put(updatedGoal);
     addSyncLog('dexie', 'save', `Updated weekly goal: ${goal.title}`);
 
-    // Firebase 동기화
+    // Firebase Item Sync (개별 아이템 동기화)
     withFirebaseSync(async () => {
-      const allGoals = await db.weeklyGoals.toArray();
-      await syncToFirebase(weeklyGoalStrategy, allGoals);
+      const uid = getCurrentUserId();
+      await syncItemToFirebase(weeklyGoalItemStrategy, updatedGoal, uid);
     }, 'WeeklyGoal:update');
 
     return updatedGoal;
@@ -281,10 +284,10 @@ export async function deleteWeeklyGoal(goalId: string): Promise<void> {
     await db.weeklyGoals.delete(goalId);
     addSyncLog('dexie', 'save', `Deleted weekly goal: ${goalId}`);
 
-    // Firebase 동기화
+    // Firebase Item Sync (개별 아이템 삭제)
     withFirebaseSync(async () => {
-      const allGoals = await db.weeklyGoals.toArray();
-      await syncToFirebase(weeklyGoalStrategy, allGoals);
+      const uid = getCurrentUserId();
+      await deleteItemFromFirebase(weeklyGoalItemStrategy, goalId, uid);
     }, 'WeeklyGoal:delete');
   } catch (error) {
     console.error('Failed to delete weekly goal:', error);
@@ -327,6 +330,10 @@ export async function setWeeklyGoalProgress(
 
 /**
  * 목표 순서 재정렬
+ *
+ * @description
+ * 목표들의 순서를 변경하고 Firebase에 동기화합니다.
+ * 빠른 드래그&드롭 시 debounce로 동기화 호출을 최적화합니다.
  */
 export async function reorderWeeklyGoals(goals: WeeklyGoal[]): Promise<void> {
   try {
@@ -339,11 +346,20 @@ export async function reorderWeeklyGoals(goals: WeeklyGoal[]): Promise<void> {
     await db.weeklyGoals.bulkPut(updatedGoals);
     addSyncLog('dexie', 'save', `Reordered ${updatedGoals.length} weekly goals`);
 
-    // Firebase 동기화
-    withFirebaseSync(
-      () => syncToFirebase(weeklyGoalStrategy, updatedGoals),
-      'WeeklyGoal:reorder'
+    // Debounced Firebase 동기화 (300ms)
+    const debouncedSync = createDebouncedSync(
+      'weeklyGoals:reorder',
+      async () => {
+        const currentGoals = await db.weeklyGoals.orderBy('order').toArray();
+        await syncToFirebase(weeklyGoalStrategy, currentGoals);
+      },
+      DEFAULT_SYNC_DEBOUNCE_MS
     );
+
+    withFirebaseSync(() => {
+      debouncedSync();
+      return Promise.resolve();
+    }, 'WeeklyGoal:reorder');
   } catch (error) {
     console.error('Failed to reorder weekly goals:', error);
     throw error;

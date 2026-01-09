@@ -81,6 +81,8 @@ describe('rtdbListenerRegistry', () => {
 
 // ============================================================================
 // RTDB key-range query support (TDD)
+// NOTE: attachRtdbOnValueKeyRange now uses child listeners internally for
+// bandwidth efficiency (BW-FIX). Tests updated accordingly.
 // ============================================================================
 describe('rtdbListenerRegistry - key-range query', () => {
   beforeEach(() => {
@@ -95,9 +97,13 @@ describe('rtdbListenerRegistry - key-range query', () => {
     startAtSpy.mockReset();
   });
 
-  it('deduplicates onValue per (path,startAtKey) and refCounts consumers', async () => {
-    const unsubscribeImpl = vi.fn();
-    onValueSpy.mockReturnValue(unsubscribeImpl);
+  it('deduplicates child listeners per (path,startAtKey) and refCounts consumers', async () => {
+    const unsubscribeAdded = vi.fn();
+    const unsubscribeChanged = vi.fn();
+    const unsubscribeRemoved = vi.fn();
+    onChildAddedSpy.mockReturnValue(unsubscribeAdded);
+    onChildChangedSpy.mockReturnValue(unsubscribeChanged);
+    onChildRemovedSpy.mockReturnValue(unsubscribeRemoved);
 
     refSpy.mockImplementation((_db: unknown, path: string) => ({ path }));
     orderByKeySpy.mockReturnValue({ kind: 'orderByKey' });
@@ -123,26 +129,32 @@ describe('rtdbListenerRegistry - key-range query', () => {
     const u2 = attachRtdbOnValueKeyRange(db, path, startAtKey, h2);
 
     expect(querySpy).toHaveBeenCalledTimes(1);
-    expect(onValueSpy).toHaveBeenCalledTimes(1);
+    // BW-FIX: Now uses child listeners instead of onValue
+    expect(onChildAddedSpy).toHaveBeenCalledTimes(1);
+    expect(onChildChangedSpy).toHaveBeenCalledTimes(1);
+    expect(onChildRemovedSpy).toHaveBeenCalledTimes(1);
     expect(getActiveRtdbListenerCount()).toBe(1);
 
     // detach first consumer: still attached
     u1();
-    expect(unsubscribeImpl).not.toHaveBeenCalled();
+    expect(unsubscribeAdded).not.toHaveBeenCalled();
     expect(getActiveRtdbListenerCount()).toBe(1);
 
-    // detach last consumer: actual unsubscribe
+    // detach last consumer: actual unsubscribe (all three child listeners)
     u2();
-    expect(unsubscribeImpl).toHaveBeenCalledTimes(1);
+    expect(unsubscribeAdded).toHaveBeenCalledTimes(1);
+    expect(unsubscribeChanged).toHaveBeenCalledTimes(1);
+    expect(unsubscribeRemoved).toHaveBeenCalledTimes(1);
     expect(getActiveRtdbListenerCount()).toBe(0);
   });
 
   it('treats different startAtKey as different listeners', async () => {
-    const unsubscribe1 = vi.fn();
-    const unsubscribe2 = vi.fn();
-    onValueSpy
-      .mockReturnValueOnce(unsubscribe1)
-      .mockReturnValueOnce(unsubscribe2);
+    const unsubscribeAdded = vi.fn();
+    const unsubscribeChanged = vi.fn();
+    const unsubscribeRemoved = vi.fn();
+    onChildAddedSpy.mockReturnValue(unsubscribeAdded);
+    onChildChangedSpy.mockReturnValue(unsubscribeChanged);
+    onChildRemovedSpy.mockReturnValue(unsubscribeRemoved);
 
     refSpy.mockImplementation((_db: unknown, path: string) => ({ path }));
     orderByKeySpy.mockReturnValue({ kind: 'orderByKey' });
@@ -163,7 +175,10 @@ describe('rtdbListenerRegistry - key-range query', () => {
     const u1 = attachRtdbOnValueKeyRange(db, path, '2026-01-01', vi.fn());
     const u2 = attachRtdbOnValueKeyRange(db, path, '2026-01-02', vi.fn());
 
-    expect(onValueSpy).toHaveBeenCalledTimes(2);
+    // BW-FIX: Now uses child listeners, each key gets 3 child listeners
+    expect(onChildAddedSpy).toHaveBeenCalledTimes(2);
+    expect(onChildChangedSpy).toHaveBeenCalledTimes(2);
+    expect(onChildRemovedSpy).toHaveBeenCalledTimes(2);
     expect(getActiveRtdbListenerCount()).toBe(2);
 
     u1();

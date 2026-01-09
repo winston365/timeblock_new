@@ -66,3 +66,6 @@ scripts/tmp_*.py
 # agent-output/
 
 /레퍼런스
+/.github
+/.github
+.github/instructions/personal.instructions.md

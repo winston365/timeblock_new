@@ -1,4 +1,4 @@
-﻿/**
+﻿﻿/**
  * Template Repository
  *
  * @role 작업 템플릿 데이터 관리 및 자동 생성 작업 처리
@@ -14,10 +14,12 @@ import { db } from '../db/dexieClient';
 import { RESISTANCE_MULTIPLIERS, type Template, type Task, type TimeBlockId, type Resistance, type RecurrenceType } from '@/shared/types/domain';
 import { getBlockById } from '@/shared/utils/timeBlockUtils';
 import { generateId, getLocalDate } from '@/shared/lib/utils';
-import { withFirebaseFetch } from '@/shared/utils/firebaseGuard';
+import { withFirebaseFetch, withFirebaseSync } from '@/shared/utils/firebaseGuard';
 import { fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
-import { templateStrategy } from '@/shared/services/sync/firebase/strategies';
+import { syncItemToFirebase, deleteItemFromFirebase } from '@/shared/services/sync/firebase/itemSync';
+import { templateStrategy, templateItemStrategy } from '@/shared/services/sync/firebase/strategies';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
+import { getCurrentUserId } from '@/shared/utils/userIdProvider';
 
 // ============================================================================
 // Template 정제 (Sanitization)
@@ -84,30 +86,29 @@ export async function loadTemplates(): Promise<Template[]> {
 }
 
 /**
- * ?쒗뵆由??앹꽦
+ * 템플릿 생성
  *
- * @param {string} name - ?쒗뵆由??대쫫
- * @param {string} text - ?묒뾽 ?댁슜
- * @param {string} memo - 硫붾え
- * @param {number} baseDuration - 湲곕낯 ?뚯슂 ?쒓컙 (遺?
- * @param {Resistance} resistance - ???룄 (low, medium, high)
- * @param {TimeBlockId} timeBlock - ??꾨툝濡?ID
- * @param {boolean} autoGenerate - ?먮룞 ?앹꽦 ?щ?
- * @param {string} preparation1 - 以鍮??ы빆 1
- * @param {string} preparation2 - 以鍮??ы빆 2
- * @param {string} preparation3 - 以鍮??ы빆 3
- * @param {RecurrenceType} recurrenceType - 諛섎났 二쇨린 ???
- * @param {number[]} weeklyDays - 留ㅼ＜ 諛섎났 ?붿씪 (0=?쇱슂?? ..., 6=?좎슂??
- * @param {number} intervalDays - N??二쇨린
- * @param {string} category - 移댄뀒怨좊━
- * @param {boolean} isFavorite - 利먭꺼李얘린 ?щ?
- * @param {string} imageUrl - ?대?吏 URL
- * @returns {Promise<Template>} ?앹꽦???쒗뵆由?
- * @throws {Error} IndexedDB ?먮뒗 localStorage ????ㅽ뙣 ??
+ * @param {string} name - 템플릿 이름
+ * @param {string} text - 작업 내용
+ * @param {string} memo - 메모
+ * @param {number} baseDuration - 기본 소요 시간 (분)
+ * @param {Resistance} resistance - 저항도 (low, medium, high)
+ * @param {TimeBlockId} timeBlock - 타임블록 ID
+ * @param {boolean} autoGenerate - 자동 생성 여부
+ * @param {string} preparation1 - 준비 사항 1
+ * @param {string} preparation2 - 준비 사항 2
+ * @param {string} preparation3 - 준비 사항 3
+ * @param {RecurrenceType} recurrenceType - 반복 주기 타입
+ * @param {number[]} weeklyDays - 매주 반복 요일 (0=일요일, ..., 6=토요일)
+ * @param {number} intervalDays - N일 주기
+ * @param {string} category - 카테고리
+ * @param {boolean} isFavorite - 즐겨찾기 여부
+ * @param {string} imageUrl - 이미지 URL
+ * @returns {Promise<Template>} 생성된 템플릿
+ * @throws {Error} IndexedDB 저장 실패 시
  * @sideEffects
- *   - IndexedDB???쒗뵆由????
- *   - localStorage??諛깆뾽
- *   - Firebase??鍮꾨룞湲??숆린??
+ *   - IndexedDB에 템플릿 저장
+ *   - Firebase에 비동기 동기화
  */
 export async function createTemplate(
   name: string,
@@ -157,7 +158,11 @@ export async function createTemplate(
       autoGenerate: template.autoGenerate
     });
 
-
+    // Firebase Item Sync (개별 아이템 동기화)
+    withFirebaseSync(async () => {
+      const uid = getCurrentUserId();
+      await syncItemToFirebase(templateItemStrategy, template, uid);
+    }, 'Template:create');
 
     return template;
   } catch (error) {
@@ -198,7 +203,11 @@ export async function updateTemplate(
       name: updatedTemplate.name
     });
 
-
+    // Firebase Item Sync (개별 아이템 동기화)
+    withFirebaseSync(async () => {
+      const uid = getCurrentUserId();
+      await syncItemToFirebase(templateItemStrategy, updatedTemplate, uid);
+    }, 'Template:update');
 
     return updatedTemplate;
   } catch (error) {
@@ -224,7 +233,11 @@ export async function deleteTemplate(id: string): Promise<void> {
 
     addSyncLog('dexie', 'save', 'Template deleted', { id });
 
-
+    // Firebase Item Sync (개별 아이템 삭제)
+    withFirebaseSync(async () => {
+      const uid = getCurrentUserId();
+      await deleteItemFromFirebase(templateItemStrategy, id, uid);
+    }, 'Template:delete');
 
   } catch (error) {
     console.error('Failed to delete template:', error);
@@ -282,7 +295,7 @@ export function createTaskFromTemplate(template: Template): Task {
     resistance: template.resistance,
     adjustedDuration,
     timeBlock: template.timeBlock,
-    hourSlot, // ??꾨툝濡앹쓽 泥?踰덉㎏ ?쒓컙?濡??ㅼ젙
+    hourSlot, // 타임블록의 첫 번째 시간으로 설정
     completed: false,
     actualDuration: 0,
     createdAt: now,
@@ -358,14 +371,14 @@ function shouldGenerateToday(template: Template, today: string): boolean {
 
   // 留ㅼ＜ ?뱀젙 ?붿씪
   if (recurrenceType === 'weekly' && weeklyDays && weeklyDays.length > 0) {
-    const dayOfWeek = new Date(today).getDay(); // 0=?쇱슂?? 1=?붿슂?? ...
+    const dayOfWeek = new Date(today).getDay(); // 0=일요일, 1=월요일, ...
     const shouldGenerate = weeklyDays.includes(dayOfWeek);
 
-    // ?대떦 ?붿씪?닿퀬 ?ㅻ뒛 ?꾩쭅 ?앹꽦?섏? ?딆븯?ㅻ㈃
+    // 해당 요일이고 오늘 아직 생성하지 않았다면
     return shouldGenerate && lastGeneratedDate !== today;
   }
 
-  // N??二쇨린
+  // N일 주기
   if (recurrenceType === 'interval' && intervalDays) {
     // 留덉?留??앹꽦 ?좎쭨媛 ?놁쑝硫??앹꽦
     if (!lastGeneratedDate) return true;
@@ -378,7 +391,7 @@ function shouldGenerateToday(template: Template, today: string): boolean {
     return daysDiff >= intervalDays;
   }
 
-  // recurrenceType??'none'?대㈃ ?앹꽦?섏? ?딆쓬
+  // recurrenceType이 'none'이면 생성하지 않음
   return false;
 }
 

@@ -23,6 +23,8 @@ import { initWaifuSubscriber } from './waifuSubscriber';
 import { initGameStateSubscriber } from './gameStateSubscriber';
 import { initGoogleSyncSubscriber } from './googleSyncSubscriber';
 import { initInboxSubscriber } from './inboxSubscriber';
+import { initBatchEventSubscriber } from './batchEventSubscriber';
+import { initEventBatchers } from '@/shared/services/eventBatch';
 
 export {
     initXpSubscriber,
@@ -30,6 +32,7 @@ export {
     initGameStateSubscriber,
     initGoogleSyncSubscriber,
     initInboxSubscriber,
+    initBatchEventSubscriber,
 };
 
 /**
@@ -46,4 +49,8 @@ export function initAllSubscribers(): void {
     initGameStateSubscriber();
     initGoogleSyncSubscriber();
     initInboxSubscriber();
+    initBatchEventSubscriber();
+
+    // Phase C: 이벤트 배치 처리 초기화
+    initEventBatchers();
 }

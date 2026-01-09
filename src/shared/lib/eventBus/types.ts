@@ -63,6 +63,26 @@ export interface TaskCompletedEvent {
     adjustedDuration: number;
 }
 
+/**
+ * 배치 Task 완료 이벤트 (Phase C)
+ * 여러 task 완료를 한 번에 처리하기 위한 이벤트
+ */
+export interface TaskCompletedBatchEvent {
+    /** 완료된 task 목록 */
+    completedTasks: Array<{
+        taskId: string;
+        xpEarned: number;
+        isPerfectBlock: boolean;
+        blockId?: string | null;
+        goalId?: string | null;
+        adjustedDuration: number;
+    }>;
+    /** 배치의 총 XP */
+    totalXpEarned: number;
+    /** 배치 처리 시각 */
+    batchTimestamp: number;
+}
+
 export interface TaskUncompletedEvent {
     taskId: string;
     xpDeducted: number;
@@ -173,6 +193,7 @@ export interface EventTypeMap {
     'task:updated': TaskUpdatedEvent;
     'task:deleted': TaskDeletedEvent;
     'task:completed': TaskCompletedEvent;
+    'task:completed:batch': TaskCompletedBatchEvent;
     'task:uncompleted': TaskUncompletedEvent;
 
     // Inbox events

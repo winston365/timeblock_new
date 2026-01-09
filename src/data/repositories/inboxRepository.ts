@@ -19,21 +19,14 @@ import type { Task } from '@/shared/types/domain';
 import { addSyncLog } from '@/shared/services/sync/syncLogger';
 import { isFirebaseInitialized } from '@/shared/services/sync/firebaseService';
 import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/firebase/syncCore';
-import { globalInboxStrategy, completedInboxStrategy } from '@/shared/services/sync/firebase/strategies';
+import { syncItemToFirebase, deleteItemFromFirebase } from '@/shared/services/sync/firebase/itemSync';
+import { globalInboxStrategy, completedInboxStrategy, globalInboxItemStrategy } from '@/shared/services/sync/firebase/strategies';
 import { withFirebaseSync } from '@/shared/utils/firebaseGuard';
+import { getCurrentUserId } from '@/shared/utils/userIdProvider';
 
 // ============================================================================
 // Firebase Sync Helper (DRY: 중복 코드 제거)
 // ============================================================================
-
-/**
- * 전역 인박스 전체를 Firebase에 동기화
- * @description 7개 함수에서 반복되던 패턴을 단일 함수로 추출
- */
-async function syncGlobalInboxToFirebase(): Promise<void> {
-  const allTasks = await db.globalInbox.toArray();
-  await syncToFirebase(globalInboxStrategy, allTasks);
-}
 
 /**
  * 전역 인박스와 완료 인박스를 모두 Firebase에 동기화
@@ -165,8 +158,11 @@ export async function addInboxTask(task: Task): Promise<void> {
 
     addSyncLog('dexie', 'save', `Added inbox task: ${task.text}`);
 
-    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
-    withFirebaseSync(syncGlobalInboxToFirebase, 'GlobalInbox:add');
+    // Firebase Item Sync (개별 아이템 동기화)
+    withFirebaseSync(async () => {
+      const uid = getCurrentUserId();
+      await syncItemToFirebase(globalInboxItemStrategy, task, uid);
+    }, 'GlobalInbox:add');
   } catch (error) {
     console.error('Failed to add inbox task:', error);
     throw error;
@@ -178,13 +174,13 @@ export async function addInboxTask(task: Task): Promise<void> {
  *
  * @param {string} taskId - 업데이트할 작업 ID
  * @param {Partial<Task>} updates - 업데이트할 필드
- * @returns {Promise<void>}
+ * @returns {Promise<Task>} 업데이트된 작업 객체
  * @throws {Error} 작업이 존재하지 않거나 저장 실패 시
  * @sideEffects
  *   - IndexedDB에서 작업 업데이트
  *   - Firebase에 동기화
  */
-export async function updateInboxTask(taskId: string, updates: Partial<Task>): Promise<void> {
+export async function updateInboxTask(taskId: string, updates: Partial<Task>): Promise<Task> {
   try {
     const task = await db.globalInbox.get(taskId);
 
@@ -200,8 +196,13 @@ export async function updateInboxTask(taskId: string, updates: Partial<Task>): P
 
     addSyncLog('dexie', 'save', `Updated inbox task: ${task.text}`);
 
-    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
-    withFirebaseSync(syncGlobalInboxToFirebase, 'GlobalInbox:update');
+    // Firebase Item Sync (개별 아이템 동기화)
+    withFirebaseSync(async () => {
+      const uid = getCurrentUserId();
+      await syncItemToFirebase(globalInboxItemStrategy, updatedTask, uid);
+    }, 'GlobalInbox:update');
+
+    return updatedTask;
   } catch (error) {
     console.error('Failed to update inbox task:', error);
     throw error;
@@ -224,8 +225,11 @@ export async function deleteInboxTask(taskId: string): Promise<void> {
 
     addSyncLog('dexie', 'save', `Deleted inbox task: ${taskId}`);
 
-    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
-    withFirebaseSync(syncGlobalInboxToFirebase, 'GlobalInbox:delete');
+    // Firebase Item Sync (개별 아이템 삭제)
+    withFirebaseSync(async () => {
+      const uid = getCurrentUserId();
+      await deleteItemFromFirebase(globalInboxItemStrategy, taskId, uid);
+    }, 'GlobalInbox:delete');
   } catch (error) {
     console.error('Failed to delete inbox task:', error);
     throw error;
@@ -318,8 +322,11 @@ export async function moveInboxTaskToBlock(taskId: string): Promise<Task | null>
 
     addSyncLog('dexie', 'save', `Moved inbox task to time block: ${task.text}`);
 
-    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
-    withFirebaseSync(syncGlobalInboxToFirebase, 'GlobalInbox:moveToBlock');
+    // Firebase Item Sync (개별 아이템 삭제)
+    withFirebaseSync(async () => {
+      const uid = getCurrentUserId();
+      await deleteItemFromFirebase(globalInboxItemStrategy, taskId, uid);
+    }, 'GlobalInbox:moveToBlock');
 
     return task;
   } catch (error) {
@@ -348,8 +355,11 @@ export async function moveTaskToInbox(task: Task): Promise<void> {
 
     addSyncLog('dexie', 'save', `Moved task to inbox: ${task.text}`);
 
-    // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
-    withFirebaseSync(syncGlobalInboxToFirebase, 'GlobalInbox:moveToInbox');
+    // Firebase Item Sync (개별 아이템 동기화)
+    withFirebaseSync(async () => {
+      const uid = getCurrentUserId();
+      await syncItemToFirebase(globalInboxItemStrategy, task, uid);
+    }, 'GlobalInbox:moveToInbox');
   } catch (error) {
     console.error('Failed to move task to inbox:', error);
     throw error;
