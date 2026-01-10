@@ -8,12 +8,13 @@
 
 import { Table } from 'dexie';
 import { syncToFirebase } from '@/shared/services/sync/firebase/syncCore';
+import { syncItemToFirebase, deleteItemFromFirebase } from '@/shared/services/sync/firebase/itemSync';
 import {
   dailyDataStrategy,
   gameStateStrategy,
-  templateStrategy,
-  shopItemsStrategy,
-  globalInboxStrategy,
+  templateItemStrategy,
+  shopItemsItemStrategy,
+  globalInboxItemStrategy,
   completedInboxStrategy,
   tokenUsageStrategy,
   settingsStrategy,
@@ -111,28 +112,34 @@ export class SyncEngine {
       }
     });
 
-    // 3. Templates (Collection sync) - debounce로 read/write 폭주 완화
-    this.registerHooks(db.templates, async () => {
-      this.debouncer.schedule('templates:all', 500, async () => {
-        const allTemplates = await db.templates.toArray();
-        await syncToFirebase(templateStrategy, allTemplates as any);
-      });
+    // 3. Templates (Item-level sync)
+    this.registerHooks(db.templates, async (primKey, obj, op) => {
+      const uid = 'user';
+      if (op === 'delete') {
+        await deleteItemFromFirebase(templateItemStrategy, primKey as string, uid);
+      } else {
+        await syncItemToFirebase(templateItemStrategy, obj, uid);
+      }
     });
 
-    // 4. ShopItems (Collection sync) - debounce
-    this.registerHooks(db.shopItems, async () => {
-      this.debouncer.schedule('shopItems:all', 500, async () => {
-        const allItems = await db.shopItems.toArray();
-        await syncToFirebase(shopItemsStrategy, allItems as any, 'all');
-      });
+    // 4. ShopItems (Item-level sync)
+    this.registerHooks(db.shopItems, async (primKey, obj, op) => {
+      const uid = 'user';
+      if (op === 'delete') {
+        await deleteItemFromFirebase(shopItemsItemStrategy, primKey as string, uid);
+      } else {
+        await syncItemToFirebase(shopItemsItemStrategy, obj, uid);
+      }
     });
 
-    // 5. GlobalInbox (Collection sync) - debounce
-    this.registerHooks(db.globalInbox, async () => {
-      this.debouncer.schedule('globalInbox:all', 500, async () => {
-        const allTasks = await db.globalInbox.toArray();
-        await syncToFirebase(globalInboxStrategy, allTasks as any);
-      });
+    // 5. GlobalInbox (Item-level sync)
+    this.registerHooks(db.globalInbox, async (primKey, obj, op) => {
+      const uid = 'user';
+      if (op === 'delete') {
+        await deleteItemFromFirebase(globalInboxItemStrategy, primKey as string, uid);
+      } else {
+        await syncItemToFirebase(globalInboxItemStrategy, obj, uid);
+      }
     });
 
     // 5-1. CompletedInbox (Collection sync, grouped by completed date) - debounce

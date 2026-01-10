@@ -283,3 +283,14 @@ export const templateItemStrategy: ItemSyncStrategy<Template> = {
   getItemId: (template) => template.id,
   getBasePath: (uid) => `users/${uid}/templates`,
 };
+
+/**
+ * ShopItem 개별 아이템 동기화 전략
+ * 상점 아이템 추가/수정/삭제 시 개별 아이템만 Firebase에 동기화합니다.
+ * @type {ItemSyncStrategy<ShopItem>}
+ */
+export const shopItemsItemStrategy: ItemSyncStrategy<ShopItem> = {
+  collection: 'shopItems',
+  getItemId: (item) => item.id,
+  getBasePath: (uid) => `users/${uid}/shopItems`,
+};

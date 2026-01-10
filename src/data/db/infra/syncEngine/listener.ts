@@ -128,8 +128,10 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
       database as never,
       `${templatesPath}/data`,
       (eventType, snapshot) => {
-        const payload = snapshot.val() as unknown;
-        const id = readId(payload);
+        const syncData = snapshot.val() as unknown;
+        // deviceId 기반 에코 방지
+        if (readDeviceId(syncData) === deviceId) return;
+        const id = readId(syncData);
         if (!id) return;
 
         void applyRemoteUpdate(async () => {
@@ -138,7 +140,7 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
             return;
           }
 
-          await db.templates.put(payload as never);
+          await db.templates.put(syncData as never);
         }, `templates:${id}`);
       },
       { tag: 'SyncEngine.templates' }
@@ -147,8 +149,13 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
 
   // 4. ShopItems Listener
   const shopItemsPath = `users/${userId}/shopItems`;
-  const handleShopItemEvent = (eventType: 'child_added' | 'child_changed' | 'child_removed', payload: unknown) => {
-    const id = readId(payload);
+  const handleShopItemEvent = (
+    eventType: 'child_added' | 'child_changed' | 'child_removed',
+    syncData: unknown
+  ) => {
+    // deviceId 기반 에코 방지
+    if (readDeviceId(syncData) === deviceId) return;
+    const id = readId(syncData);
     if (!id) return;
 
     void applyRemoteUpdate(async () => {
@@ -157,7 +164,7 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
         return;
       }
 
-      await db.shopItems.put(payload as never);
+      await db.shopItems.put(syncData as never);
     }, `shopItems:${id}`);
   };
 
@@ -187,9 +194,11 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
   const globalInboxPath = `users/${userId}/globalInbox`;
   const handleGlobalInboxEvent = (
     eventType: 'child_added' | 'child_changed' | 'child_removed',
-    payload: unknown
+    syncData: unknown
   ) => {
-    const id = readId(payload);
+    // deviceId 기반 에코 방지
+    if (readDeviceId(syncData) === deviceId) return;
+    const id = readId(syncData);
     if (!id) return;
 
     void applyRemoteUpdate(async () => {
@@ -198,7 +207,7 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
         return;
       }
 
-      await db.globalInbox.put(payload as never);
+      await db.globalInbox.put(syncData as never);
     }, `globalInbox:${id}`);
   };
 
