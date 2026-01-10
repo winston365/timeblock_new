@@ -90,8 +90,11 @@ export const FIREBASE_SYNC_DEFAULTS = {
   /**
    * RTDB date-keyed map(dailyData/completedInbox/tokenUsage) 리스너 구독 범위(최근 N일).
    * 오래된 데이터는 Dexie에 남아있으며, 실시간 동기화 범위만 제한합니다.
+   * 
+   * @note 30일 → 3일로 축소하여 리스너 재연결 시 다운로드량 대폭 감소.
+   * 3일 이전 데이터는 Dexie에서 로컬로 조회됨.
    */
-  rtdbDateKeyedLookbackDays: 30,
+  rtdbDateKeyedLookbackDays: 3,
 } as const;
 
 
