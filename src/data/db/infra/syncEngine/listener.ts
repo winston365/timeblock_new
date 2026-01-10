@@ -30,8 +30,16 @@ const readData = (value: unknown): unknown => {
 
 const readId = (value: unknown): string | undefined => {
   if (!isRecord(value)) return undefined;
+  // 최상위 id 먼저 확인
   const id = value.id;
-  return typeof id === 'string' ? id : undefined;
+  if (typeof id === 'string') return id;
+  // data.id도 확인 (itemSync 형식 지원)
+  const data = value.data;
+  if (isRecord(data)) {
+    const dataId = data.id;
+    if (typeof dataId === 'string') return dataId;
+  }
+  return undefined;
 };
 
 export interface StartListenersOptions {
@@ -139,8 +147,9 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
             await db.templates.delete(id);
             return;
           }
-
-          await db.templates.put(syncData as never);
+          // SyncData wrapper 언래핑 - itemSync 형식 지원
+          const unwrapped = readData(syncData) ?? syncData;
+          await db.templates.put(unwrapped as never);
         }, `templates:${id}`);
       },
       { tag: 'SyncEngine.templates' }
@@ -163,8 +172,9 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
         await db.shopItems.delete(id);
         return;
       }
-
-      await db.shopItems.put(syncData as never);
+      // SyncData wrapper 언래핑 - itemSync 형식 지원
+      const unwrapped = readData(syncData) ?? syncData;
+      await db.shopItems.put(unwrapped as never);
     }, `shopItems:${id}`);
   };
 
@@ -206,8 +216,9 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
         await db.globalInbox.delete(id);
         return;
       }
-
-      await db.globalInbox.put(syncData as never);
+      // SyncData wrapper 언래핑 - itemSync 형식 지원
+      const unwrapped = readData(syncData) ?? syncData;
+      await db.globalInbox.put(unwrapped as never);
     }, `globalInbox:${id}`);
   };
 

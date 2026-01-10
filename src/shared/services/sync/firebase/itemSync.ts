@@ -24,6 +24,7 @@ import { getFirebaseDatabase, isFirebaseInitialized } from './firebaseClient';
 import { sanitizeForFirebase } from '@/shared/utils/firebaseSanitizer';
 import { addSyncLog } from '../syncLogger';
 import { FEATURE_FLAGS } from '@/shared/constants/featureFlags';
+import { getDeviceId } from './syncUtils';
 
 // ============================================================================
 // Item Sync Functions
@@ -90,10 +91,12 @@ export async function syncItemToFirebase<T>(
     // Firebase sanitization
     const sanitizedData = sanitizeForFirebase(dataToSync);
 
-    // Firebase에 저장
+    // Firebase에 저장 (deviceId 포함하여 자기-에코 방지)
+    const deviceId = getDeviceId();
     await set(itemRef, {
       data: sanitizedData,
       updatedAt: Date.now(),
+      deviceId,
     });
 
     addSyncLog(
