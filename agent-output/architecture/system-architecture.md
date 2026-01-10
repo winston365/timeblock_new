@@ -1,6 +1,6 @@
 # System Architecture — TimeBlock Planner (Renderer 중심)
 
-> Last updated: 2026-01-03
+> Last updated: 2026-01-10
 
 ## Changelog
 | Date | Change | Rationale | Plan/Ref |
@@ -18,6 +18,7 @@
 | 2025-12-28 | Critic 우선순위 리스트 아키텍처 검토 및 Optimistic Update/Sync 테스트 기준 보강 | Optimistic Update를 local-first(Dexie write-through)로 정의하고, Sync 안정성 목표를 브랜치 커버리지→불변조건/시나리오로 보강 | 008-critic-priority-review-architecture-findings.md |
 | 2025-12-28 | Optimistic Update 구현 패턴(스토어 위임 + 롤백 + 테스트) 반영 | Inbox↔Block 이동/업데이트의 단일 경로와 롤백 안전성을 테스트로 고정하여 UX/무결성 동시 개선 | pr7-optimistic-update-implementation.md |
 | 2026-01-03 | 전체 아키텍처 진단 및 레이어별 리팩토링/PR 분류 업데이트 | 강점/리스크를 명확히 하고, UI-only 단계에서 가능한 경계 하드닝/테스트/UX 표준화와 나중(Sync/백엔드) 작업을 구분 | 059-overall-architecture-assessment-2026-01-03-architecture-findings.md |
+| 2026-01-10 | DI-1~3 데이터 최적화 타겟 아키텍처 설계 문서 추가 | Inbox/CompletedInbox의 중복 동기화 제거, CompletedInbox의 증분 적용/dirty-date 기반 sync를 “타겟 상태”로 정리 | 085-data-optimization-target-architecture-design.md |
 
 ## Purpose
 - Renderer(Electron + React) 중심의 시스템 경계/데이터 흐름/결정(ADR)을 기록하는 단일 출처.
@@ -217,7 +218,9 @@
 - **Optimistic Update 경계 드리프트 위험**: repository 직접 호출 또는 store 간 상태 불일치가 재발하기 쉬움 → usecase 단일 경로 강제 필요.
 - **Sync 안정성의 정의 부재**: 브랜치 커버리지에만 기대면 실패 모드/충돌 모드의 견고함을 과대평가할 수 있음 → 불변조건/시나리오 기반 계약 테스트 필요.
 - **AppShell 비대화 재발 가능성**: composition root에 신규 side-effect가 쌓이면 다시 God component가 될 수 있음 → hook/service로 캡슐화 규칙 필요.
+- **CompletedInbox 구조적 비효율**: RTDB는 date-keyed array, Dexie는 id-keyed union view라서 (1) 로컬 전체 스캔 sync, (2) remote 1건 변경에도 clear→bulkPut 같은 O(n) 패턴이 발생하기 쉬움 → 타겟 설계는 085 문서 참조.
 
 ## Recommendations
 - CI unblock(lint) 및 모달 UX 정책 준수를 최우선으로 유지한다.
 - 핵심 로직 변경(Optimistic Update) 전에 unified task/usecase 테스트와 Sync 실패 모드 테스트 안전망을 확보한다.
+- Inbox/CompletedInbox 최적화는 “단일 sync 트리거 + 증분 적용 + dirty-date sync”로 수렴한다(085 타겟 문서).

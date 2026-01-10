@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getLocalDate } from '@/shared/lib/utils';
 import { FIREBASE_SYNC_DEFAULTS } from '@/shared/constants/defaults';
+import { FEATURE_FLAGS } from '@/shared/constants/featureFlags';
 
 const attachRtdbOnValueSpy = vi.fn(() => vi.fn());
 const attachRtdbOnValueKeyRangeSpy = vi.fn(() => vi.fn());
@@ -77,7 +78,9 @@ describe('SyncEngine RTDB listeners - date-keyed range subscriptions', () => {
     expect(attachRtdbOnValueSpy).toHaveBeenCalledTimes(2);
 
     // array-like collections should use child listeners to avoid full re-download
-    expect(attachRtdbOnChildSpy).toHaveBeenCalledTimes(5);
+    // When LEGACY_RTDB_LISTENERS_DISABLED=true, legacy /all/data listeners are skipped (3 instead of 5)
+    const expectedChildListenerCount = FEATURE_FLAGS.LEGACY_RTDB_LISTENERS_DISABLED ? 3 : 5;
+    expect(attachRtdbOnChildSpy).toHaveBeenCalledTimes(expectedChildListenerCount);
     expect(attachRtdbOnChildSpy).toHaveBeenCalledWith(
       expect.anything(),
       'users/user/templates/data',
@@ -90,23 +93,29 @@ describe('SyncEngine RTDB listeners - date-keyed range subscriptions', () => {
       expect.any(Function),
       expect.objectContaining({ tag: 'SyncEngine.shopItems' })
     );
-    expect(attachRtdbOnChildSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      'users/user/shopItems/all/data',
-      expect.any(Function),
-      expect.objectContaining({ tag: 'SyncEngine.shopItems' })
-    );
+    // Legacy shopItems/all/data listener - only when flag is disabled
+    if (!FEATURE_FLAGS.LEGACY_RTDB_LISTENERS_DISABLED) {
+      expect(attachRtdbOnChildSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        'users/user/shopItems/all/data',
+        expect.any(Function),
+        expect.objectContaining({ tag: 'SyncEngine.shopItems' })
+      );
+    }
     expect(attachRtdbOnChildSpy).toHaveBeenCalledWith(
       expect.anything(),
       'users/user/globalInbox/data',
       expect.any(Function),
       expect.objectContaining({ tag: 'SyncEngine.globalInbox' })
     );
-    expect(attachRtdbOnChildSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      'users/user/globalInbox/all/data',
-      expect.any(Function),
-      expect.objectContaining({ tag: 'SyncEngine.globalInbox' })
-    );
+    // Legacy globalInbox/all/data listener - only when flag is disabled
+    if (!FEATURE_FLAGS.LEGACY_RTDB_LISTENERS_DISABLED) {
+      expect(attachRtdbOnChildSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        'users/user/globalInbox/all/data',
+        expect.any(Function),
+        expect.objectContaining({ tag: 'SyncEngine.globalInbox' })
+      );
+    }
   });
 });

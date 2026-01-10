@@ -12,6 +12,7 @@ import {
 } from '@/shared/services/sync/firebase/rtdbListenerRegistry';
 import { getLocalDate } from '@/shared/lib/utils';
 import { FIREBASE_SYNC_DEFAULTS } from '@/shared/constants/defaults';
+import { FEATURE_FLAGS } from '@/shared/constants/featureFlags';
 import type { DailyTokenUsage, Task } from '@/shared/types/domain';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -178,7 +179,7 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
     }, `shopItems:${id}`);
   };
 
-  // Support both legacy root shape and current "all" key shape.
+  // Current shape: /data (always enabled)
   unsubscribes.push(
     attachRtdbOnChild(
       database as never,
@@ -189,16 +190,20 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
       { tag: 'SyncEngine.shopItems' }
     )
   );
-  unsubscribes.push(
-    attachRtdbOnChild(
-      database as never,
-      `${shopItemsPath}/all/data`,
-      (eventType, snapshot) => {
-        handleShopItemEvent(eventType, snapshot.val() as unknown);
-      },
-      { tag: 'SyncEngine.shopItems' }
-    )
-  );
+
+  // Legacy shape: /all/data (conditionally disabled to prevent duplicate downloads)
+  if (!FEATURE_FLAGS.LEGACY_RTDB_LISTENERS_DISABLED) {
+    unsubscribes.push(
+      attachRtdbOnChild(
+        database as never,
+        `${shopItemsPath}/all/data`,
+        (eventType, snapshot) => {
+          handleShopItemEvent(eventType, snapshot.val() as unknown);
+        },
+        { tag: 'SyncEngine.shopItems.legacy' }
+      )
+    );
+  }
 
   // 5. GlobalInbox Listener (support legacy shape)
   const globalInboxPath = `users/${userId}/globalInbox`;
@@ -222,7 +227,7 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
     }, `globalInbox:${id}`);
   };
 
-  // Current shape: SyncData<Task[]> stored at users/{userId}/globalInbox
+  // Current shape: /data (always enabled)
   unsubscribes.push(
     attachRtdbOnChild(
       database as never,
@@ -234,17 +239,19 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
     )
   );
 
-  // Legacy shape: SyncData<Task[]> stored at users/{userId}/globalInbox/all
-  unsubscribes.push(
-    attachRtdbOnChild(
-      database as never,
-      `${globalInboxPath}/all/data`,
-      (eventType, snapshot) => {
-        handleGlobalInboxEvent(eventType, snapshot.val() as unknown);
-      },
-      { tag: 'SyncEngine.globalInbox' }
-    )
-  );
+  // Legacy shape: /all/data (conditionally disabled to prevent duplicate downloads)
+  if (!FEATURE_FLAGS.LEGACY_RTDB_LISTENERS_DISABLED) {
+    unsubscribes.push(
+      attachRtdbOnChild(
+        database as never,
+        `${globalInboxPath}/all/data`,
+        (eventType, snapshot) => {
+          handleGlobalInboxEvent(eventType, snapshot.val() as unknown);
+        },
+        { tag: 'SyncEngine.globalInbox.legacy' }
+      )
+    );
+  }
 
   // 5-1. CompletedInbox Listener (date-keyed)
   const completedInboxPath = `users/${userId}/completedInbox`;
@@ -282,9 +289,29 @@ export const startRtdbListeners = (options: StartListenersOptions): Array<() => 
           }
 
           const mergedTasks = Array.from(map.values());
-          await db.completedInbox.clear();
-          if (mergedTasks.length > 0) {
-            await db.completedInbox.bulkPut(mergedTasks as never[]);
+
+          if (FEATURE_FLAGS.COMPLETED_INBOX_INCREMENTAL_APPLY_ENABLED) {
+            // 증분 적용: 기존 task와 비교하여 변경된 것만 업데이트
+            const existingTasks = await db.completedInbox.toArray();
+            const existingIds = new Set(existingTasks.map((t) => t.id));
+            const newIds = new Set(mergedTasks.map((t) => t.id));
+
+            // 삭제할 ID: 기존에 있었으나 새 목록에 없는 것
+            const removedIds = [...existingIds].filter((id) => !newIds.has(id));
+
+            // 삭제 후 업데이트
+            if (removedIds.length > 0) {
+              await db.completedInbox.bulkDelete(removedIds);
+            }
+            if (mergedTasks.length > 0) {
+              await db.completedInbox.bulkPut(mergedTasks as never[]);
+            }
+          } else {
+            // 기존 방식: clear → bulkPut
+            await db.completedInbox.clear();
+            if (mergedTasks.length > 0) {
+              await db.completedInbox.bulkPut(mergedTasks as never[]);
+            }
           }
         }, 'completedInbox:all');
       },

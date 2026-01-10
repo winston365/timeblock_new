@@ -19,6 +19,7 @@ import {
   tokenUsageStrategy,
   settingsStrategy,
 } from '@/shared/services/sync/firebase/strategies';
+import { FEATURE_FLAGS } from '@/shared/constants/featureFlags';
 import { db } from '../../dexieClient';
 import { getFirebaseDatabase, isFirebaseInitialized } from '@/shared/services/sync/firebase/firebaseClient';
 import { acquireFirebaseSyncLeaderLock, type FirebaseSyncLeaderHandle } from '@/shared/services/sync/firebase/firebaseSyncLeaderLock';
@@ -143,15 +144,34 @@ export class SyncEngine {
     });
 
     // 5-1. CompletedInbox (Collection sync, grouped by completed date) - debounce
-    this.registerHooks(db.completedInbox, async () => {
-      this.debouncer.schedule('completedInbox:all', 750, async () => {
-        const completedTasks = await db.completedInbox.toArray();
-        const grouped = groupCompletedByDate(completedTasks as unknown as Task[]);
-        const syncPromises = Object.entries(grouped).map(([date, tasks]) =>
-          syncToFirebase(completedInboxStrategy, tasks as any, date)
-        );
-        await Promise.all(syncPromises);
-      });
+    // Dirty Date Tracking: 변경된 dateKey만 동기화
+    this.registerHooks(db.completedInbox, async (_primKey, obj, _op) => {
+      if (FEATURE_FLAGS.COMPLETED_INBOX_DIRTY_DATE_SYNC_ENABLED) {
+        // Dirty Date Tracking: task.completedAt 기반 dateKey별 개별 동기화
+        const task = obj as Task | undefined;
+        const dateKey = task?.completedAt?.slice(0, 10) ?? 'unknown';
+        const scheduleKey = `completedInbox:${dateKey}`;
+
+        this.debouncer.schedule(scheduleKey, 750, async () => {
+          // 해당 dateKey의 task만 조회
+          const allTasks = await db.completedInbox.toArray();
+          const tasksForDate = (allTasks as unknown as Task[]).filter(
+            (t) => (t.completedAt?.slice(0, 10) ?? 'unknown') === dateKey
+          );
+          // dateKey별 동기화 (빈 배열도 동기화하여 삭제 반영)
+          await syncToFirebase(completedInboxStrategy, tasksForDate as any, dateKey);
+        });
+      } else {
+        // 기존 방식: 전체 completedInbox 동기화
+        this.debouncer.schedule('completedInbox:all', 750, async () => {
+          const completedTasks = await db.completedInbox.toArray();
+          const grouped = groupCompletedByDate(completedTasks as unknown as Task[]);
+          const syncPromises = Object.entries(grouped).map(([date, tasks]) =>
+            syncToFirebase(completedInboxStrategy, tasks as any, date)
+          );
+          await Promise.all(syncPromises);
+        });
+      }
     });
 
     // 6. DailyTokenUsage (Key-based sync)

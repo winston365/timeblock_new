@@ -1,5 +1,5 @@
 %% System Architecture Diagram — TimeBlock Planner
-%% Updated: 2025-12-22
+%% Updated: 2026-01-10
 
 flowchart LR
   subgraph Renderer[Electron Renderer (React + TS)]
@@ -56,6 +56,14 @@ flowchart LR
     SyncCore[syncCore + strategies]
   end
 
+  subgraph SyncEngine[Sync Engine]
+    DexieHooks[Dexie Hooks]
+    Debouncer[Debouncer Scheduler]
+    OpQueue[OperationQueue + isSyncingFromRemote]
+    LeaderLock[FirebaseSyncLeaderLock]
+    RTDBListeners[RTDB listeners (leader-only)]
+  end
+
   AppShell --> ScheduleView
   AppShell --> TimelineView
   AppShell --> GoalsUI
@@ -91,6 +99,13 @@ flowchart LR
   SettingsStore --> Repo
   ScheduleView --> SyncCore --> Firebase
   SyncCore --> Repo
+
+  %% SyncEngine upload path
+  Dexie --> DexieHooks --> Debouncer --> SyncCore
+
+  %% SyncEngine download/apply path
+  LeaderLock --> RTDBListeners
+  Firebase --> RTDBListeners --> OpQueue --> Dexie
 
   Repo --> SyncCore
 

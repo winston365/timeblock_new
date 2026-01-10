@@ -77,6 +77,71 @@ export const FEATURE_FLAGS = {
    * - 프로덕션 모드로 동작
    */
   DEBUG_SYNC_ENABLED: false,
+
+  // ============================================================================
+  // Data Optimization Flags (Phase 1-3)
+  // ============================================================================
+
+  /**
+   * 레거시 RTDB 리스너 비활성화 여부
+   *
+   * true일 때:
+   * - shopItems/all/data, globalInbox/all/data 리스너 비활성화
+   * - 중복 구독 제거로 네트워크 트래픽 대폭 감소 (66배 → 1배)
+   * - 신규 데이터 형태(/data)만 사용
+   *
+   * false일 때:
+   * - 레거시 형태(/all/data) 리스너도 함께 구독
+   * - 구 버전 데이터 호환성 유지 (롤백용)
+   *
+   * @see Firebase RTDB 199MB 과다 다운로드 문제 해결
+   */
+  LEGACY_RTDB_LISTENERS_DISABLED: true,
+
+  /**
+   * 수동 인박스 동기화 비활성화 여부 (Phase 1: Quick Win)
+   *
+   * true일 때:
+   * - toggleInboxTaskCompletion에서 수동 syncBothInboxTablesToFirebase 호출 제거
+   * - SyncEngine hooks가 자동으로 동기화 처리
+   * - 이중 동기화 제거로 성능 향상
+   *
+   * false일 때:
+   * - 기존 수동 동기화 로직 유지 (롤백용)
+   *
+   * @see PR-1에서 활성화됨
+   */
+  MANUAL_INBOX_SYNC_DISABLED: true,
+
+  /**
+   * CompletedInbox 증분 적용 활성화 여부 (Phase 2: Incremental Sync)
+   *
+   * true일 때:
+   * - 리스너에서 dateKey 단위 diff 계산
+   * - 변경된 task만 bulkDelete/bulkPut
+   * - clear() 없이 증분 업데이트
+   *
+   * false일 때:
+   * - 기존 clear() → bulkPut() 방식 유지
+   *
+   * @see PR-2/3에서 활성화됨
+   */
+  COMPLETED_INBOX_INCREMENTAL_APPLY_ENABLED: true,
+
+  /**
+   * CompletedInbox Dirty Date 추적 동기화 활성화 여부 (Phase 3)
+   *
+   * true일 때:
+   * - task.completedAt 기반 dateKey 추출
+   * - dateKey별 개별 debounce 스케줄링
+   * - 해당 dateKey의 task만 조회/동기화
+   *
+   * false일 때:
+   * - 모든 completedInbox 전체 동기화
+   *
+   * @see PR-5에서 활성화됨
+   */
+  COMPLETED_INBOX_DIRTY_DATE_SYNC_ENABLED: false,
 } as const;
 
 // ============================================================================

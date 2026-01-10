@@ -23,6 +23,7 @@ import { syncItemToFirebase, deleteItemFromFirebase } from '@/shared/services/sy
 import { globalInboxStrategy, completedInboxStrategy, globalInboxItemStrategy } from '@/shared/services/sync/firebase/strategies';
 import { withFirebaseSync } from '@/shared/utils/firebaseGuard';
 import { getCurrentUserId } from '@/shared/utils/userIdProvider';
+import { FEATURE_FLAGS } from '@/shared/constants/featureFlags';
 
 // ============================================================================
 // Firebase Sync Helper (DRY: 중복 코드 제거)
@@ -287,8 +288,11 @@ export async function toggleInboxTaskCompletion(taskId: string): Promise<Task> {
       addSyncLog('dexie', 'save', `Moved task back to globalInbox: ${task.text}`);
     }
 
-    // 5. Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
-    withFirebaseSync(syncBothInboxTablesToFirebase, 'GlobalInbox:toggle');
+    // 5. Firebase 동기화 - SyncEngine hooks가 처리하므로 수동 동기화는 플래그로 제어
+    // MANUAL_INBOX_SYNC_DISABLED=true일 때 SyncEngine이 자동 처리, false면 기존 수동 동기화 유지
+    if (!FEATURE_FLAGS.MANUAL_INBOX_SYNC_DISABLED) {
+      withFirebaseSync(syncBothInboxTablesToFirebase, 'GlobalInbox:toggle');
+    }
 
     return task;
   } catch (error) {
