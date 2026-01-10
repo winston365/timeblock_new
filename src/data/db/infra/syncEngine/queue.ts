@@ -31,6 +31,7 @@ export const createSyncEngineOperationQueue = (options: CreateQueueOptions): Syn
   let operationQueue: Promise<void> = Promise.resolve();
   const pendingOperations = new Map<OperationKey, QueuedOperation>();
   const lastSyncTimestamps = new Map<OperationKey, number>();
+  const rapidSyncWarningGapMs = 50;
 
   const enqueue: SyncEngineOperationQueue['enqueue'] = async (callback, operationKey) => {
     const now = Date.now();
@@ -39,10 +40,13 @@ export const createSyncEngineOperationQueue = (options: CreateQueueOptions): Syn
       pendingOperations.set(operationKey, { callback, timestamp: now });
 
       const lastSync = lastSyncTimestamps.get(operationKey);
-      if (typeof lastSync === 'number' && now - lastSync < 100) {
-        console.warn(
-          `⚠️ SyncEngine: Rapid sync detected for ${operationKey} (${now - lastSync}ms gap). Possible concurrent update.`
-        );
+      if (lastSync !== undefined) {
+        const gapMs = now - lastSync;
+        if (gapMs < rapidSyncWarningGapMs) {
+          console.debug(
+            `🔄 SyncEngine: Rapid sync detected for ${operationKey} (${gapMs}ms gap). Possible concurrent update.`
+          );
+        }
       }
     }
 

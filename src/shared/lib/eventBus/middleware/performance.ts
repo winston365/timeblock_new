@@ -82,19 +82,15 @@ class PerformanceMonitor {
     }
 
     printReport(): void {
-        if (this.stats.size === 0) {
-            console.log('📊 [Performance] No events recorded yet.');
-            return;
-        }
+        if (this.stats.size === 0) return;
 
         console.group('📊 [Performance] Event Statistics');
 
-        // 평균 실행 시간으로 정렬
-        const sorted = Array.from(this.stats.entries()).sort(
+        const entriesByAvgDurationDesc = Array.from(this.stats.entries()).sort(
             (a, b) => b[1].avgDuration - a[1].avgDuration
         );
 
-        sorted.forEach(([event, stat]) => {
+        entriesByAvgDurationDesc.forEach(([event, stat]) => {
             const slowWarning = stat.slowCount > 0 ? ` ⚠️ ${stat.slowCount} slow` : '';
             console.log(
                 `  ${event}:`,
