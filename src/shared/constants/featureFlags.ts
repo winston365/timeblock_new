@@ -142,6 +142,22 @@ export const FEATURE_FLAGS = {
    * @see PR-5에서 활성화됨
    */
   COMPLETED_INBOX_DIRTY_DATE_SYNC_ENABLED: false,
+
+  /**
+   * 모든 RTDB 리스너 비활성화 여부
+   *
+   * true일 때:
+   * - Firebase RTDB 리스너가 등록되지 않음
+   * - 앱 → Firebase 업로드는 Dexie hooks로 계속 작동
+   * - 다른 기기에서 변경한 내용이 실시간으로 반영되지 않음 (앱 재시작 필요)
+   * - 네트워크 트래픽 대폭 감소 (250MB → ~0)
+   *
+   * false일 때:
+   * - 기존 실시간 동기화 동작 (리스너 활성화)
+   *
+   * @see Firebase RTDB 250MB 과다 다운로드 문제 해결
+   */
+  ALL_RTDB_LISTENERS_DISABLED: true,
 } as const;
 
 // ============================================================================

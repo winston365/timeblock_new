@@ -196,6 +196,12 @@ export class SyncEngine {
 
   /** Firebase 실시간 리스너를 시작합니다 (Remote -> Local). */
   public async startListening(): Promise<void> {
+    // ALL_RTDB_LISTENERS_DISABLED 플래그가 true면 리스너 등록하지 않음
+    if (FEATURE_FLAGS.ALL_RTDB_LISTENERS_DISABLED) {
+      addSyncLog('firebase', 'info', 'RTDB listeners disabled by feature flag');
+      return;
+    }
+
     if (this.isListening) return;
 
     if (!isFirebaseInitialized()) {

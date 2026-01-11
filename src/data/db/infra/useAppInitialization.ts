@@ -19,13 +19,14 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { initializeDatabase } from '../dexieClient';
+import { initializeDatabase, db } from '../dexieClient';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useDailyDataStore } from '@/shared/stores/dailyDataStore';
 import { useGameStateStore } from '@/shared/stores/gameStateStore';
 import { useToastStore } from '@/shared/stores/toastStore';
-import { initializeFirebase } from '@/shared/services/sync/firebaseService';
+import { initializeFirebase, fetchDataFromFirebase } from '@/shared/services/sync/firebaseService';
 import { syncEngine } from './syncEngine';
+import { FEATURE_FLAGS } from '@/shared/constants/featureFlags';
 import { ragSyncHandler } from './ragSyncHandler';
 import { ragService } from '@/shared/services/rag/ragService';
 import { runStartupFirebaseInitialRead } from './startupFirebaseSync';
@@ -90,15 +91,76 @@ export function useAppInitialization() {
 
                         // BW-01: bulk `get()`/download is skipped; listeners will populate local DB.
                         if (initialRead !== undefined) {
-                            await syncEngine.startListening();
+                            // ALL_RTDB_LISTENERS_DISABLED가 true면 리스너 대신 1회 초기 fetch 수행
+                            if (FEATURE_FLAGS.ALL_RTDB_LISTENERS_DISABLED) {
+                                try {
+                                    const firebaseData = await fetchDataFromFirebase();
+                                    
+                                    // Firebase 데이터를 Dexie에 저장 (syncEngine의 isSyncingFromRemote 플래그 사용)
+                                    await syncEngine.applyRemoteUpdate(async () => {
+                                        // DailyData
+                                        for (const [date, data] of Object.entries(firebaseData.dailyData)) {
+                                            await db.dailyData.put({ ...data, date } as never);
+                                        }
+                                        
+                                        // GameState
+                                        if (firebaseData.gameState) {
+                                            await db.gameState.put({ ...firebaseData.gameState, key: 'current' } as never);
+                                        }
+                                        
+                                        // GlobalInbox
+                                        if (firebaseData.globalInbox && firebaseData.globalInbox.length > 0) {
+                                            await db.globalInbox.bulkPut(firebaseData.globalInbox as never[]);
+                                        }
+                                        
+                                        // CompletedInbox
+                                        for (const tasks of Object.values(firebaseData.completedInbox ?? {})) {
+                                            if (tasks.length > 0) {
+                                                await db.completedInbox.bulkPut(tasks as never[]);
+                                            }
+                                        }
+                                        
+                                        // ShopItems
+                                        if (firebaseData.shopItems && firebaseData.shopItems.length > 0) {
+                                            await db.shopItems.bulkPut(firebaseData.shopItems as never[]);
+                                        }
+                                        
+                                        // Templates
+                                        if (firebaseData.templates && firebaseData.templates.length > 0) {
+                                            await db.templates.bulkPut(firebaseData.templates as never[]);
+                                        }
+                                        
+                                        // TokenUsage
+                                        for (const [date, usage] of Object.entries(firebaseData.tokenUsage)) {
+                                            await db.dailyTokenUsage.put({ ...usage, date } as never);
+                                        }
+                                        
+                                        // Settings (firebaseConfig는 로컬 유지)
+                                        if (firebaseData.settings) {
+                                            const currentSettings = await db.settings.get('current');
+                                            await db.settings.put({
+                                                ...firebaseData.settings,
+                                                key: 'current',
+                                                firebaseConfig: currentSettings?.firebaseConfig,
+                                            } as never);
+                                        }
+                                    }, 'startup:initialFetch');
+                                    
+                                    console.log('[App Init] Initial Firebase data fetched (listeners disabled)');
+                                } catch (fetchError) {
+                                    console.warn('[App Init] Initial Firebase fetch failed:', fetchError);
+                                }
+                            } else {
+                                await syncEngine.startListening();
 
-                            // 창 종료 시 리스너 정리(누수 방지)
-                            try {
-                                window?.addEventListener('beforeunload', () => {
-                                    syncEngine.stopListening();
-                                }, { once: true });
-                            } catch {
-                                // ignore
+                                // 창 종료 시 리스너 정리(누수 방지)
+                                try {
+                                    window?.addEventListener('beforeunload', () => {
+                                        syncEngine.stopListening();
+                                    }, { once: true });
+                                } catch {
+                                    // ignore
+                                }
                             }
                         }
                     } catch (firebaseError) {
