@@ -29,6 +29,53 @@ let isInitialized = false;
 // ============================================================================
 
 /**
+ * Firebase databaseURL이 유효한 형식인지 검증합니다.
+ * 
+ * @param url - 검증할 databaseURL
+ * @returns {boolean} URL이 유효한 Firebase RTDB URL인지 여부
+ */
+function isValidDatabaseURL(url: string | undefined): boolean {
+  if (!url || url.trim() === '') return false;
+  // Firebase RTDB URL 패턴: https://<project>.firebaseio.com 또는 지역별 URL
+  return /^https:\/\/[\w-]+\.firebaseio\.com\/?$/.test(url) ||
+         /^https:\/\/[\w-]+-default-rtdb\.[\w-]+\.firebasedatabase\.app\/?$/.test(url);
+}
+
+/**
+ * Firebase config의 필수 필드가 모두 존재하고 유효한지 검증합니다.
+ * 
+ * @param config - 검증할 Firebase 설정 객체
+ * @returns {{ valid: boolean; reason?: string }} 유효성 여부와 실패 사유
+ */
+function validateFirebaseConfig(config: Settings['firebaseConfig']): { valid: boolean; reason?: string } {
+  if (!config) {
+    return { valid: false, reason: 'Config is not provided' };
+  }
+  
+  // 필수 필드 검증 (빈 문자열 체크)
+  const requiredFields: (keyof NonNullable<typeof config>)[] = [
+    'apiKey', 'authDomain', 'databaseURL', 'projectId', 'appId'
+  ];
+  
+  for (const field of requiredFields) {
+    const value = config[field];
+    if (!value || (typeof value === 'string' && value.trim() === '')) {
+      return { valid: false, reason: `Required field '${field}' is empty` };
+    }
+  }
+  
+  // databaseURL 형식 검증
+  if (!isValidDatabaseURL(config.databaseURL)) {
+    return { 
+      valid: false, 
+      reason: `Invalid databaseURL format. Expected: https://<project>.firebaseio.com` 
+    };
+  }
+  
+  return { valid: true };
+}
+
+/**
  * Firebase 앱을 초기화합니다.
  * 기존 앱이 있으면 삭제 후 재초기화합니다.
  *
@@ -42,8 +89,10 @@ let isInitialized = false;
  *   - 콘솔에 초기화 성공/실패 로그 출력
  */
 export function initializeFirebase(config: Settings['firebaseConfig']): boolean {
-  if (!config) {
-    console.warn('[Firebase Client] Config is not provided');
+  // 설정 유효성 검증
+  const validation = validateFirebaseConfig(config);
+  if (!validation.valid) {
+    console.warn(`[Firebase Client] ${validation.reason}`);
     return false;
   }
 

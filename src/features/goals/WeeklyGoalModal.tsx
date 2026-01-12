@@ -34,12 +34,15 @@ const GOAL_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec
 
 const UNIT_PRESETS = ['개', '페이지', '분', '시간', '문제', '단어', '회', 'km', '세트', '챕터'];
 
+/** 요일 라벨 (월=0, 일=6) */
+const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
+
 /**
  * 장기목표 추가/수정 모달 컴포넌트
  */
 export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: WeeklyGoalModalProps) {
   const isEditMode = !!goal;
-  const { addGoal, updateGoal } = useWeeklyGoalStore();
+  const { addGoal, updateGoal, getActiveDays } = useWeeklyGoalStore();
 
   // T20: 모달 단계 상태
   const [step, setStep] = useState<ModalStep>('basic');
@@ -55,6 +58,11 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
   const [saving, setSaving] = useState(false);
   // 우선순위 상태
   const [priority, setPriority] = useState<number | ''>('');
+  // 쉬는 날 상태 (0=월, 1=화, ..., 6=일)
+  const [restDays, setRestDays] = useState<number[]>([]);
+
+  // 활성 일수 계산
+  const activeDays = getActiveDays(restDays);
 
   const handleEscapeClose = () => {
     if (saving) return;
@@ -78,6 +86,8 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
       setCustomTheme('');
       // 우선순위 로드
       setPriority(goal.priority ?? '');
+      // 쉬는 날 로드
+      setRestDays(goal.restDays ?? []);
     } else {
       setTitle('');
       setTarget(100);
@@ -87,6 +97,7 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
       setSelectedTheme(null);
       setCustomTheme('');
       setPriority(''); // 새 목표는 비워두면 자동 계산
+      setRestDays([]);
     }
     // T20: 모달 열릴 때 기본 단계로 리셋
     setStep('basic');
@@ -121,6 +132,7 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
         color: selectedColor,
         theme: finalTheme,
         priority: finalPriority,
+        restDays: restDays.length > 0 ? restDays : undefined,
       };
 
       if (isEditMode && goal) {
@@ -357,6 +369,57 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
                 />
               </div>
 
+              {/* 쉬는 날 설정 (ADHD 친화적 유연한 목표) */}
+              <div>
+                <label className={labelClass}>
+                  🛏️ 쉬는 날 <span className="font-normal text-[var(--color-text-tertiary)]">(선택)</span>
+                </label>
+                <p className="text-[10px] text-[var(--color-text-tertiary)] mb-2">
+                  쉬는 날은 목표 계산에서 제외돼요. ADHD 친화적인 유연한 목표 설정!
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {DAY_LABELS.map((label, index) => {
+                    const isSelected = restDays.includes(index);
+                    return (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setRestDays(restDays.filter(d => d !== index));
+                          } else {
+                            setRestDays([...restDays, index].sort((a, b) => a - b));
+                          }
+                        }}
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                          isSelected
+                            ? 'border-amber-500 bg-amber-500/20 text-amber-300'
+                            : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-amber-500/50'
+                        }`}
+                        aria-pressed={isSelected}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* 활성 일수 표시 */}
+                <div className="mt-2 flex items-center gap-2 text-xs">
+                  <span className="text-[var(--color-text-secondary)]">활성 일수:</span>
+                  <span className={`font-bold ${activeDays === 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                    {activeDays}일
+                  </span>
+                  {activeDays === 0 && (
+                    <span className="text-red-400 text-[10px]">(모든 날이 쉬는 날!)</span>
+                  )}
+                  {activeDays > 0 && activeDays < 7 && (
+                    <span className="text-[var(--color-text-tertiary)] text-[10px]">
+                      (일일 목표: {Math.ceil(target / activeDays)} {unit})
+                    </span>
+                  )}
+                </div>
+              </div>
+
               {/* T20: 기본 설정으로 돌아가기 버튼 */}
               <button
                 type="button"
@@ -379,6 +442,17 @@ export default function WeeklyGoalModal({ isOpen, onClose, goal, onSaved }: Week
                 테마: <strong className="text-[var(--color-primary)]">
                   {customTheme || GOAL_THEME_PRESETS.find(t => t.id === selectedTheme)?.label || selectedTheme}
                 </strong>
+              </p>
+            )}
+            {/* 쉬는 날 표시 */}
+            {restDays.length > 0 && (
+              <p className="mt-1">
+                🛏️ 쉬는 날: <strong className="text-amber-400">
+                  {restDays.map(d => DAY_LABELS[d]).join(', ')}
+                </strong>
+                <span className="text-[var(--color-text-tertiary)] ml-1">
+                  ({activeDays}일 활성)
+                </span>
               </p>
             )}
           </div>

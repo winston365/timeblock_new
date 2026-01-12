@@ -54,6 +54,8 @@ export interface WeeklyGoal {
   order: number;
   priority?: number;
   theme?: string;
+  /** 쉬는 날 (0=월, 1=화, ..., 6=일) - ADHD 친화적 유연한 목표 설정 */
+  restDays?: number[];
   weekStartDate: string;
   history: WeeklyGoalHistory[];
   createdAt: string;

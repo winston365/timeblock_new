@@ -24,6 +24,8 @@ import {
   getTodayTarget,
   getRemainingDays,
   getDailyTargetForToday,
+  isRestDay,
+  getActiveDays,
 } from '@/data/repositories/weeklyGoalRepository';
 import { withAsyncAction } from '@/shared/lib/storeUtils';
 
@@ -46,9 +48,11 @@ interface WeeklyGoalStore {
 
   // 유틸리티 (계산 함수)
   getDayOfWeekIndex: () => number;
-  getTodayTarget: (target: number) => number;
-  getRemainingDays: () => number;
-  getDailyTargetForToday: (target: number, currentProgress: number) => number;
+  getTodayTarget: (target: number, restDays?: number[]) => number;
+  getRemainingDays: (restDays?: number[]) => number;
+  getDailyTargetForToday: (target: number, currentProgress: number, restDays?: number[]) => number;
+  isRestDay: (dayIndex: number, restDays?: number[]) => boolean;
+  getActiveDays: (restDays?: number[]) => number;
 
   // 리프레시/리셋
   refresh: () => Promise<void>;
@@ -162,9 +166,11 @@ export const useWeeklyGoalStore = create<WeeklyGoalStore>((set, get) => ({
 
   // 유틸리티 함수 (스토어에서 편리하게 사용)
   getDayOfWeekIndex: () => getDayOfWeekIndex(),
-  getTodayTarget: (target: number) => getTodayTarget(target),
-  getRemainingDays: () => getRemainingDays(),
-  getDailyTargetForToday: (target: number, currentProgress: number) => getDailyTargetForToday(target, currentProgress),
+  getTodayTarget: (target: number, restDays?: number[]) => getTodayTarget(target, getDayOfWeekIndex(), restDays),
+  getRemainingDays: (restDays?: number[]) => getRemainingDays(getDayOfWeekIndex(), restDays),
+  getDailyTargetForToday: (target: number, currentProgress: number, restDays?: number[]) => getDailyTargetForToday(target, currentProgress, getDayOfWeekIndex(), restDays),
+  isRestDay: (dayIndex: number, restDays?: number[]) => isRestDay(dayIndex, restDays),
+  getActiveDays: (restDays?: number[]) => getActiveDays(restDays),
 
   refresh: async () => {
     await get().loadGoals();

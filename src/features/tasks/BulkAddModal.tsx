@@ -148,7 +148,7 @@ export default function BulkAddModal({ isOpen, onClose, onAddTasks }: BulkAddMod
         } else {
             setPreviewTasks([]);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     }, [input, defaultTimeBlock, defaultResistance, defaultDuration]);
 
 

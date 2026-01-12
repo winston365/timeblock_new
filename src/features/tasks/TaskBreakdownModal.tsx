@@ -205,7 +205,7 @@ export default function TaskBreakdownModal({
     } else {
       setPreviewTasks([]);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [input, defaultTimeBlock, defaultResistance, defaultDuration]);
 
   const toggleTaskCheck = (taskId: string) => {

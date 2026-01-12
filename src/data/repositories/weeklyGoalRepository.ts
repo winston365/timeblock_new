@@ -56,6 +56,71 @@ function normalizeDayIndex(dayIndex: number): number {
   return Math.min(6, Math.max(0, Math.floor(dayIndex)));
 }
 
+function getActiveDaysFromNormalizedRestDays(normalizedRestDays: number[]): number {
+  return 7 - normalizedRestDays.length;
+}
+
+function isRestDayFromNormalizedRestDays(normalizedDayIndex: number, normalizedRestDays: number[]): boolean {
+  return normalizedRestDays.includes(normalizedDayIndex);
+}
+
+function countActivePassedDays(normalizedDayIndex: number, normalizedRestDays: number[]): number {
+  let activePassedDays = 0;
+  for (let i = 0; i <= normalizedDayIndex; i++) {
+    if (!normalizedRestDays.includes(i)) {
+      activePassedDays++;
+    }
+  }
+  return activePassedDays;
+}
+
+function getRemainingDaysFromNormalizedRestDays(normalizedDayIndex: number, normalizedRestDays: number[]): number {
+  let remaining = 0;
+  for (let i = normalizedDayIndex; i < 7; i++) {
+    if (!normalizedRestDays.includes(i)) {
+      remaining++;
+    }
+  }
+  return remaining;
+}
+
+/**
+ * 쉬는 날 배열 정규화
+ * - 유효한 요일 인덱스(0-6)만 필터링
+ * - 중복 제거
+ * - 비숫자 값 제외
+ *
+ * @param restDays 쉬는 날 배열 (0=월, 1=화, ..., 6=일)
+ * @returns 정규화된 쉬는 날 배열
+ */
+export function normalizeRestDays(restDays?: number[]): number[] {
+  if (!restDays || !Array.isArray(restDays)) return [];
+  return [...new Set(restDays.filter(d => Number.isFinite(d) && d >= 0 && d <= 6))];
+}
+
+/**
+ * 활성 일수 계산 (7일 - 쉬는 날 수)
+ *
+ * @param restDays 쉬는 날 배열
+ * @returns 활성 일수 (0-7)
+ */
+export function getActiveDays(restDays?: number[]): number {
+  return getActiveDaysFromNormalizedRestDays(normalizeRestDays(restDays));
+}
+
+/**
+ * 해당 요일이 쉬는 날인지 확인
+ *
+ * @param dayIndex 요일 인덱스 (0=월, 1=화, ..., 6=일)
+ * @param restDays 쉬는 날 배열
+ * @returns 쉬는 날이면 true
+ */
+export function isRestDay(dayIndex: number, restDays?: number[]): boolean {
+  const normalizedDayIndex = normalizeDayIndex(dayIndex);
+  const normalizedRestDays = normalizeRestDays(restDays);
+  return isRestDayFromNormalizedRestDays(normalizedDayIndex, normalizedRestDays);
+}
+
 /**
  * 오늘이 주의 몇 번째 날인지 (월요일=0, 일요일=6)
  */
@@ -66,39 +131,81 @@ export function getDayOfWeekIndex(date: Date = new Date()): number {
 
 /**
  * 오늘까지 해야 하는 목표량 계산 (진행 일수 기준)
+ * - 쉬는 날을 고려하여 활성 일수 기준으로 계산
+ *
+ * @param target 주간 목표 총량
+ * @param dayIndex 현재 요일 인덱스 (0=월, 6=일)
+ * @param restDays 쉬는 날 배열 (optional)
+ * @returns 오늘까지 해야 하는 목표량
  */
-export function getTodayTarget(target: number, dayIndex: number = getDayOfWeekIndex()): number {
+export function getTodayTarget(target: number, dayIndex: number = getDayOfWeekIndex(), restDays?: number[]): number {
   if (target <= 0) return 0;
-  // dayIndex: 0=월요일, 1=화요일, ..., 6=일요일
-  // 예: 화요일(1)이면 2/7 만큼 해야함
+
+  const normalizedRestDays = normalizeRestDays(restDays);
+  const activeDays = getActiveDaysFromNormalizedRestDays(normalizedRestDays);
+
+  // 모든 날이 쉬는 날이면 100% 달성으로 처리
+  if (activeDays === 0) return target;
+
   const normalizedDayIndex = normalizeDayIndex(dayIndex);
-  const completedDays = normalizedDayIndex + 1;
-  return Math.ceil((target / 7) * completedDays);
+
+  // 오늘까지 지나간 활성 일수 계산
+  const activePassedDays = countActivePassedDays(normalizedDayIndex, normalizedRestDays);
+
+  return Math.ceil((target / activeDays) * activePassedDays);
 }
 
 /**
- * 남은 일수 계산 (오늘 포함)
+ * 남은 일수 계산 (오늘 포함, 쉬는 날 제외)
+ *
+ * @param dayIndex 현재 요일 인덱스 (0=월, 6=일)
+ * @param restDays 쉬는 날 배열 (optional)
+ * @returns 남은 활성 일수
  */
-export function getRemainingDays(dayIndex: number = getDayOfWeekIndex()): number {
+export function getRemainingDays(dayIndex: number = getDayOfWeekIndex(), restDays?: number[]): number {
   const normalizedDayIndex = normalizeDayIndex(dayIndex);
-  return 7 - normalizedDayIndex;
+  const normalizedRestDays = normalizeRestDays(restDays);
+  return getRemainingDaysFromNormalizedRestDays(normalizedDayIndex, normalizedRestDays);
 }
 
 /**
  * 오늘의 목표량 계산 (남은량 / 남은일수)
+ * - 쉬는 날을 고려하여 계산
+ * - 오늘이 쉬는 날이면 0 반환 (ADHD 친화: 쉬는 날은 압박 제거)
+ *
+ * @param target 주간 목표 총량
+ * @param currentProgress 현재 진행량
+ * @param dayIndex 현재 요일 인덱스 (0=월, 6=일)
+ * @param restDays 쉬는 날 배열 (optional)
+ * @returns 오늘 해야 할 목표량 (쉬는 날이면 0)
  */
-export function getDailyTargetForToday(target: number, currentProgress: number, dayIndex: number = getDayOfWeekIndex()): number {
+export function getDailyTargetForToday(target: number, currentProgress: number, dayIndex: number = getDayOfWeekIndex(), restDays?: number[]): number {
   if (target <= 0) return 0;
+
+  const normalizedDayIndex = normalizeDayIndex(dayIndex);
+  const normalizedRestDays = normalizeRestDays(restDays);
+
+  // 오늘이 쉬는 날이면 목표량 0 (ADHD 친화: 압박 제거)
+  if (isRestDayFromNormalizedRestDays(normalizedDayIndex, normalizedRestDays)) {
+    return 0;
+  }
+
+  // 모든 날이 쉬는 날이면 0 (이미 100% 달성)
+  const activeDays = getActiveDaysFromNormalizedRestDays(normalizedRestDays);
+  if (activeDays === 0) return 0;
+
   const remaining = Math.max(0, target - currentProgress);
   if (remaining === 0) return 0;
-  const normalizedDayIndex = normalizeDayIndex(dayIndex);
-  const remainingDays = getRemainingDays(normalizedDayIndex);
+
+  const remainingDays = getRemainingDaysFromNormalizedRestDays(normalizedDayIndex, normalizedRestDays);
   if (remainingDays <= 0) return remaining;
+
   return Math.ceil(remaining / remainingDays);
 }
 
 function normalizeWeeklyGoal(goal: WeeklyGoal, fallbackOrder: number, currentWeekStart: string): WeeklyGoal {
   const safeHistory = Array.isArray(goal.history) ? goal.history : [];
+  const normalizedRestDays = normalizeRestDays(goal.restDays);
 
   return {
     ...goal,
@@ -113,6 +220,7 @@ function normalizeWeeklyGoal(goal: WeeklyGoal, fallbackOrder: number, currentWee
     // priority가 없는 기존 데이터는 order 값을 fallback으로 사용
     priority: typeof goal.priority === 'number' && Number.isFinite(goal.priority) ? goal.priority : (goal.order ?? fallbackOrder),
     weekStartDate: typeof goal.weekStartDate === 'string' && goal.weekStartDate ? goal.weekStartDate : currentWeekStart,
+    restDays: normalizedRestDays.length > 0 ? normalizedRestDays : undefined,
     history: safeHistory,
   };
 }

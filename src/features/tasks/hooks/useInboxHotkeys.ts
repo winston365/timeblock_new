@@ -305,4 +305,4 @@ export const useInboxHotkeys = (
     focusedTaskId: triageFocusedTaskId,
     moveFocus,
   };
-};;
+};

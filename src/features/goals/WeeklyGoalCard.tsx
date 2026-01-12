@@ -74,6 +74,7 @@ export default function WeeklyGoalCard({
   const getTodayTarget = useWeeklyGoalStore((s) => s.getTodayTarget);
   const getRemainingDays = useWeeklyGoalStore((s) => s.getRemainingDays);
   const getDailyTargetForToday = useWeeklyGoalStore((s) => s.getDailyTargetForToday);
+  const isRestDay = useWeeklyGoalStore((s) => s.isRestDay);
   const addToast = useToastStore((s) => s.addToast);
 
   // T26/T27: 진행도 Guard 및 Undo 훅
@@ -126,9 +127,10 @@ export default function WeeklyGoalCard({
   }, []);
 
   const dayIndex = getDayOfWeekIndex();
-  const todayTarget = getTodayTarget(goal.target);
-  const remainingDays = getRemainingDays();
-  const dailyTargetForToday = getDailyTargetForToday(goal.target, goal.currentProgress);
+  const todayTarget = getTodayTarget(goal.target, goal.restDays);
+  const remainingDays = getRemainingDays(goal.restDays);
+  const dailyTargetForToday = getDailyTargetForToday(goal.target, goal.currentProgress, goal.restDays);
+  const isTodayRestDay = isRestDay(dayIndex, goal.restDays);
 
   // 만회 정보 계산 (심각도 레벨 포함)
   const catchUpInfo = useMemo(
@@ -378,8 +380,18 @@ export default function WeeklyGoalCard({
           </div>
         </div>
 
-        {/* 진행률 배지 (애니메이션 포함) + Quota 달성 배지 + Severity 배지 */}
+        {/* 진행률 배지 (애니메이션 포함) + 쉬는 날 배지 + Quota 달성 배지 + Severity 배지 */}
         <div className="flex items-center gap-1.5">
+          {/* 쉬는 날 배지 */}
+          {isTodayRestDay && (
+            <div
+              className={`rounded-full bg-amber-500/20 text-amber-300 font-medium ${compact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]'}`}
+              title="오늘은 쉬는 날이에요!"
+              aria-label="오늘은 쉬는 날"
+            >
+              🛏️ 쉬는 날
+            </div>
+          )}
           {/* Quota 달성 배지 */}
           {isQuotaAchieved && (
             <div
