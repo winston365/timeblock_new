@@ -52,6 +52,16 @@ export interface DailyBossProgress {
 }
 
 /**
+ * 작업 완료 시간 기반 데미지 규칙
+ * - 임계값 정책: 완료 시간이 minimumDuration 이상일 때 damage 적용
+ * - 여러 규칙 중 가장 큰 minimumDuration(<= 완료시간)의 damage를 사용
+ */
+export interface BattleTaskCompletionDamageRule {
+  minimumDuration: number;
+  damage: number;
+}
+
+/**
  * 오늘의 전투 상태 (매일 초기화, Dexie에 저장)
  */
 export interface DailyBattleState {
@@ -63,6 +73,7 @@ export interface DailyBattleState {
   defeatedBossIds: string[];
   completedMissionIds: string[];
   missionUsedAt: Record<string, string>;
+  processedTaskCompletionIds?: string[];
   overkillDamage?: number;
   sequentialPhase?: number;
 }
@@ -76,6 +87,7 @@ export interface BattleSettings {
   bossDefeatXP?: number;
   missions: BattleMission[];
   defaultMissionDamage: number;
+  taskCompletionDamageRules: BattleTaskCompletionDamageRule[];
   bossDifficultyXP: Record<BossDifficulty, number>;
   showBattleInSidebar: boolean;
   showBossImage: boolean;

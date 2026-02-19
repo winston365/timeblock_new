@@ -23,6 +23,7 @@ import {
 } from './styles';
 import { BossImagePreviewEditor } from './battle/BossImagePreviewEditor';
 import { BattleMissionsSection } from './battle/BattleMissionsSection';
+import { BattleTaskCompletionDamageSection } from './battle/BattleTaskCompletionDamageSection';
 
 type BattleStoreState = ReturnType<typeof useBattleStore.getState>;
 
@@ -281,6 +282,8 @@ export function BattleTab() {
         <BossImagePreviewEditor />
       </section>
 
+      <BattleTaskCompletionDamageSection />
+
       <BattleMissionsSection />
     </div>
   );
@@ -288,3 +291,4 @@ export function BattleTab() {
 
 export { BossImagePreviewEditor } from './battle/BossImagePreviewEditor';
 export { BattleMissionsSection } from './battle/BattleMissionsSection';
+export { BattleTaskCompletionDamageSection } from './battle/BattleTaskCompletionDamageSection';

@@ -113,6 +113,12 @@ const questBonus = completedQuests * 50;
 const totalDamage = todayDamage + perfectBlockBonus + questBonus;
 ```
 
+### Settings > Battle: 작업 완료 데미지 룰
+
+- Battle 탭에서 `작업 완료 시간(분) -> 데미지(HP)` 룰을 직접 설정할 수 있습니다.
+- 룰은 임계값(Threshold) 모델로 적용됩니다: `minimumDuration <= 완료 시간` 조건을 만족하는 룰 중 가장 큰 임계값의 데미지를 사용합니다.
+- 예시: `45분 -> 15 HP` 룰이 있을 때, 45분 완료 작업은 15 HP 데미지를 적용합니다.
+
 ### Boss Dex
 
 31종의 유니크 보스를 수집하세요:

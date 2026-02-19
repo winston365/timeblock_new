@@ -24,6 +24,7 @@ import {
 import type { Task } from '@/shared/types/domain';
 import {
   type GoogleCalendarEvent,
+  type GoogleCalendarListEntry,
   type GoogleCalendarSettings,
   type TaskCalendarMapping,
   GOOGLE_CALENDAR_API_BASE,
@@ -36,8 +37,12 @@ import {
 // ============================================================================
 
 const TOKEN_REFRESH_BUFFER = 5 * 60 * 1000; // 5분 전에 토큰 갱신
+const TOKEN_REFRESH_MIN_DELAY = 1000; // 1초 미만 간격 스케줄 방지
+const TOKEN_REFRESH_RETRY_DELAY = 60 * 1000; // 실패 시 1분 뒤 재시도
 
 let refreshInFlight: Promise<boolean> | null = null;
+let tokenRefreshSchedulerTimer: ReturnType<typeof setTimeout> | null = null;
+let tokenRefreshSchedulerStarted = false;
 
 // ============================================================================
 // Settings 관리
@@ -191,6 +196,95 @@ async function refreshAccessToken(): Promise<boolean> {
   return await refreshInFlight;
 }
 
+function clearTokenRefreshSchedulerTimer(): void {
+  if (tokenRefreshSchedulerTimer) {
+    clearTimeout(tokenRefreshSchedulerTimer);
+    tokenRefreshSchedulerTimer = null;
+  }
+}
+
+async function scheduleNextTokenRefresh(delayOverrideMs?: number): Promise<void> {
+  if (!tokenRefreshSchedulerStarted) {
+    return;
+  }
+
+  clearTokenRefreshSchedulerTimer();
+
+  const delayMs = delayOverrideMs;
+  if (typeof delayMs === 'number') {
+    tokenRefreshSchedulerTimer = setTimeout(() => {
+      void runProactiveTokenRefresh();
+    }, Math.max(TOKEN_REFRESH_MIN_DELAY, delayMs));
+    return;
+  }
+
+  const settings = await getGoogleCalendarSettings();
+  if (!settings?.enabled) {
+    return;
+  }
+
+  if (!settings.refreshToken) {
+    // refreshToken이 없으면 선제 갱신을 시도할 수 없다.
+    return;
+  }
+
+  if (!settings.tokenExpiresAt) {
+    // 만료 시각을 모르는 레거시 데이터는 401 retry 경로를 사용한다.
+    return;
+  }
+
+  const refreshAt = settings.tokenExpiresAt - TOKEN_REFRESH_BUFFER;
+  const calculatedDelay = Math.max(TOKEN_REFRESH_MIN_DELAY, refreshAt - Date.now());
+
+  tokenRefreshSchedulerTimer = setTimeout(() => {
+    void runProactiveTokenRefresh();
+  }, calculatedDelay);
+}
+
+async function runProactiveTokenRefresh(): Promise<void> {
+  if (!tokenRefreshSchedulerStarted) {
+    return;
+  }
+
+  const refreshed = await refreshAccessToken();
+  if (!tokenRefreshSchedulerStarted) {
+    return;
+  }
+
+  if (!refreshed) {
+    const settings = await getGoogleCalendarSettings();
+    if (!settings?.refreshToken) {
+      console.warn('[GoogleCalendar] Proactive refresh skipped: missing refresh token');
+      return;
+    }
+
+    await scheduleNextTokenRefresh(TOKEN_REFRESH_RETRY_DELAY);
+    return;
+  }
+
+  await scheduleNextTokenRefresh();
+}
+
+/**
+ * 토큰 선제 갱신 스케줄러 시작
+ */
+export async function startGoogleTokenRefreshScheduler(): Promise<void> {
+  if (tokenRefreshSchedulerStarted) {
+    return;
+  }
+
+  tokenRefreshSchedulerStarted = true;
+  await scheduleNextTokenRefresh();
+}
+
+/**
+ * 토큰 선제 갱신 스케줄러 중지
+ */
+export function stopGoogleTokenRefreshScheduler(): void {
+  tokenRefreshSchedulerStarted = false;
+  clearTokenRefreshSchedulerTimer();
+}
+
 // 외부 모듈(예: Google Tasks)에서 401 발생 시 재사용할 수 있도록 export
 export async function refreshGoogleAccessTokenForRetry(): Promise<boolean> {
   return refreshAccessToken();
@@ -316,6 +410,64 @@ async function callCalendarApi<T>(
   return response.json();
 }
 
+function getSelectedCalendarId(settings: GoogleCalendarSettings | null): string {
+  const configuredCalendarId = settings?.calendarId?.trim();
+  return configuredCalendarId && configuredCalendarId.length > 0 ? configuredCalendarId : 'primary';
+}
+
+function normalizeCalendarListEntry(item: unknown): GoogleCalendarListEntry | null {
+  if (!item || typeof item !== 'object') {
+    return null;
+  }
+
+  const candidate = item as {
+    id?: unknown;
+    summary?: unknown;
+    primary?: unknown;
+    accessRole?: unknown;
+  };
+
+  if (typeof candidate.id !== 'string' || candidate.id.trim().length === 0) {
+    return null;
+  }
+
+  const summary = typeof candidate.summary === 'string' && candidate.summary.trim().length > 0
+    ? candidate.summary
+    : candidate.id;
+
+  const normalized: GoogleCalendarListEntry = {
+    id: candidate.id,
+    summary,
+  };
+
+  if (typeof candidate.primary === 'boolean') {
+    normalized.primary = candidate.primary;
+  }
+
+  if (typeof candidate.accessRole === 'string' && candidate.accessRole.length > 0) {
+    normalized.accessRole = candidate.accessRole;
+  }
+
+  return normalized;
+}
+
+/**
+ * 현재 계정의 캘린더 목록을 조회합니다.
+ */
+export async function fetchGoogleCalendarList(): Promise<GoogleCalendarListEntry[]> {
+  const response = await callCalendarApi<{ items?: unknown }>(
+    '/users/me/calendarList'
+  );
+
+  if (!Array.isArray(response.items)) {
+    return [];
+  }
+
+  return response.items
+    .map((item) => normalizeCalendarListEntry(item))
+    .filter((item): item is GoogleCalendarListEntry => item !== null);
+}
+
 /**
  * Task를 Google Calendar 이벤트로 변환
  */
@@ -404,7 +556,7 @@ export async function createCalendarEventGeneric(
   mappingTable: CalendarMappingTable
 ): Promise<GoogleCalendarEvent> {
   const settings = await getGoogleCalendarSettings();
-  const calendarId = settings?.calendarId || 'primary';
+  const calendarId = getSelectedCalendarId(settings);
 
   const createdEvent = await callCalendarApi<GoogleCalendarEvent>(
     `/calendars/${encodeURIComponent(calendarId)}/events`,
@@ -440,7 +592,7 @@ export async function updateCalendarEventGeneric(
   }
 
   const settings = await getGoogleCalendarSettings();
-  const calendarId = settings?.calendarId || 'primary';
+  const calendarId = getSelectedCalendarId(settings);
 
   try {
     const updatedEvent = await callCalendarApi<GoogleCalendarEvent>(
@@ -478,7 +630,7 @@ export async function deleteCalendarEventGeneric(
   if (!mapping) return;
 
   const settings = await getGoogleCalendarSettings();
-  const calendarId = settings?.calendarId || 'primary';
+  const calendarId = getSelectedCalendarId(settings);
 
   try {
     await callCalendarApi(

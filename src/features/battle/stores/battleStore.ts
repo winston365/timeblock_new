@@ -44,6 +44,7 @@ import {
   normalizeDailyBattleState_core,
 } from '../utils/missionLogic';
 import { computeCompleteMissionResult_core, computeUpdatedSettings_core } from '../utils/rewardCalculations';
+import { resolveTaskCompletionDamage_core } from '../utils/taskCompletionDamage';
 
 interface BattleStoreError {
   code: string;
@@ -111,6 +112,7 @@ interface BattleStore {
 
   // 전투 액션
   startNewDay: () => Promise<void>;
+  applyTaskCompletionDamage: (params: { taskId: string; adjustedDuration: number }) => Promise<void>;
   completeMission: (missionId: string) => Promise<{ bossDefeated: boolean; xpEarned: number; damageDealt: number; overkillDamage: number }>;
   spawnBossByDifficulty: (difficulty: BossDifficulty) => Promise<boolean>;
   resetMissionsForNextBoss: () => void;
@@ -396,6 +398,143 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       );
       logBattleStoreError('startNewDay failed', formattedError);
       set({ error: formattedError });
+      throw formattedError;
+    }
+  },
+
+  applyTaskCompletionDamage: async ({ taskId, adjustedDuration }) => {
+    const { dailyState, settings } = get();
+
+    if (!dailyState) {
+      return;
+    }
+
+    const damageFromDuration = resolveTaskCompletionDamage_core(
+      adjustedDuration,
+      settings.taskCompletionDamageRules,
+    );
+
+    if (damageFromDuration <= 0) {
+      return;
+    }
+
+    const processedTaskCompletionIds = dailyState.processedTaskCompletionIds ?? [];
+    if (processedTaskCompletionIds.includes(taskId)) {
+      return;
+    }
+
+    const currentBoss = dailyState.bosses?.[dailyState.currentBossIndex];
+    if (!currentBoss || currentBoss.defeatedAt) {
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    const newHP = Math.max(0, currentBoss.currentHP - damageFromDuration);
+    const bossDefeated = newHP <= 0;
+    const overkillDamage = bossDefeated ? Math.max(0, damageFromDuration - currentBoss.currentHP) : 0;
+
+    const updatedBosses = [...(dailyState.bosses ?? [])];
+    updatedBosses[dailyState.currentBossIndex] = {
+      ...currentBoss,
+      currentHP: newHP,
+      ...(bossDefeated ? { defeatedAt: nowIso } : {}),
+    };
+
+    const defeatedBossIds = dailyState.defeatedBossIds ?? [];
+    let finalState: DailyBattleState = {
+      ...dailyState,
+      bosses: updatedBosses,
+      processedTaskCompletionIds: [...processedTaskCompletionIds, taskId],
+      ...(bossDefeated
+        ? {
+            totalDefeated: (dailyState.totalDefeated ?? 0) + 1,
+            defeatedBossIds: defeatedBossIds.includes(currentBoss.bossId)
+              ? defeatedBossIds
+              : [...defeatedBossIds, currentBoss.bossId],
+            overkillDamage: (dailyState.overkillDamage ?? 0) + overkillDamage,
+          }
+        : {}),
+    };
+
+    const chainDefeatedBossIds: string[] = [];
+
+    try {
+      if (bossDefeated) {
+        const currentPhase = finalState.sequentialPhase ?? 0;
+        let nextPhase = currentPhase + 1;
+        finalState = { ...finalState, sequentialPhase: nextPhase };
+
+        let nextDifficulty = getNextSequentialDifficulty(nextPhase);
+
+        while (nextDifficulty) {
+          const spawnResult = computeSpawnBossResult_core(finalState, nextDifficulty, settings);
+
+          if (!spawnResult.updatedState) {
+            break;
+          }
+
+          finalState = { ...spawnResult.updatedState, sequentialPhase: nextPhase };
+
+          const spawnedBoss = finalState.bosses?.[finalState.currentBossIndex];
+          const isInstantDefeat = spawnedBoss?.defeatedAt != null;
+
+          if (isInstantDefeat && spawnResult.spawnedBossId) {
+            chainDefeatedBossIds.push(spawnResult.spawnedBossId);
+
+            await addToDefeatedBossHistory(spawnResult.spawnedBossId);
+            const instantBoss = getBossById(spawnResult.spawnedBossId);
+            if (instantBoss) {
+              await updateTodayBattleStats(spawnResult.spawnedBossId, instantBoss.difficulty);
+            }
+
+            nextPhase += 1;
+            finalState = { ...finalState, sequentialPhase: nextPhase };
+            nextDifficulty = getNextSequentialDifficulty(nextPhase);
+          } else {
+            break;
+          }
+        }
+      }
+
+      await saveDailyBattleState(finalState);
+
+      let updatedHistory = get().defeatedBossHistory;
+      for (const bossId of chainDefeatedBossIds) {
+        if (!updatedHistory.includes(bossId)) {
+          updatedHistory = [...updatedHistory, bossId];
+        }
+      }
+
+      set({
+        dailyState: finalState,
+        defeatedBossHistory: updatedHistory,
+        ...(bossDefeated ? { lastOverkillDamage: overkillDamage } : {}),
+      });
+
+      if (bossDefeated) {
+        await addToDefeatedBossHistory(currentBoss.bossId);
+        const defeatedBoss = getBossById(currentBoss.bossId);
+        if (defeatedBoss) {
+          await updateTodayBattleStats(currentBoss.bossId, defeatedBoss.difficulty);
+        }
+
+        const currentHistory = get().defeatedBossHistory;
+        if (!currentHistory.includes(currentBoss.bossId)) {
+          set({ defeatedBossHistory: [...currentHistory, currentBoss.bossId] });
+        }
+
+        get().showBossDefeat(currentBoss.bossId);
+        const isSequentialComplete = isSequentialPhaseComplete(finalState.sequentialPhase);
+        set({ awaitingBossSelection: isSequentialComplete });
+      }
+    } catch (error) {
+      const formattedError = createBattleStoreError(
+        'BATTLE_TASK_DAMAGE_APPLY_ERROR',
+        'Failed to apply task completion damage',
+        { taskId, adjustedDuration, damageFromDuration },
+        error,
+      );
+      logBattleStoreError('applyTaskCompletionDamage failed', formattedError);
       throw formattedError;
     }
   },

@@ -24,6 +24,7 @@ import { initGameStateSubscriber } from './gameStateSubscriber';
 import { initGoogleSyncSubscriber } from './googleSyncSubscriber';
 import { initInboxSubscriber } from './inboxSubscriber';
 import { initBatchEventSubscriber } from './batchEventSubscriber';
+import { initBattleTaskCompletionSubscriber } from './battleTaskCompletionSubscriber';
 import { initEventBatchers } from '@/shared/services/eventBatch';
 
 export {
@@ -33,6 +34,7 @@ export {
     initGoogleSyncSubscriber,
     initInboxSubscriber,
     initBatchEventSubscriber,
+    initBattleTaskCompletionSubscriber,
 };
 
 /**
@@ -50,6 +52,7 @@ export function initAllSubscribers(): void {
     initGoogleSyncSubscriber();
     initInboxSubscriber();
     initBatchEventSubscriber();
+    initBattleTaskCompletionSubscriber();
 
     // Phase C: 이벤트 배치 처리 초기화
     initEventBatchers();

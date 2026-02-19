@@ -37,11 +37,17 @@ import { getInboxTaskById } from '@/data/repositories/inboxRepository';
 
 // 중복 동기화 방지용 Set
 const pendingSyncs = new Set<string>();
+let isGoogleSyncSubscriberInitialized = false;
 
 /**
  * Google Sync Subscriber 초기화
  */
 export function initGoogleSyncSubscriber(): void {
+  if (isGoogleSyncSubscriberInitialized) {
+    return;
+  }
+  isGoogleSyncSubscriberInitialized = true;
+
   // ==========================================================================
   // 1. Temp Schedule -> Google Calendar Events
   // ==========================================================================

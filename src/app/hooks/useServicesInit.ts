@@ -84,4 +84,26 @@ export function useServicesInit(dbInitialized: boolean): void {
       cleanup?.();
     };
   }, [dbInitialized, settings?.idleFocusModeEnabled, settings?.idleFocusModeMinutes]);
+
+  // Google Calendar 토큰 선제 갱신 스케줄러 초기화
+  useEffect(() => {
+    if (!dbInitialized) return;
+
+    let mounted = true;
+    let cleanup: (() => void) | undefined;
+
+    import('@/shared/services/calendar/googleCalendarService').then(({ startGoogleTokenRefreshScheduler, stopGoogleTokenRefreshScheduler }) => {
+      if (!mounted) return;
+
+      void startGoogleTokenRefreshScheduler();
+      cleanup = () => {
+        stopGoogleTokenRefreshScheduler();
+      };
+    });
+
+    return () => {
+      mounted = false;
+      cleanup?.();
+    };
+  }, [dbInitialized]);
 }

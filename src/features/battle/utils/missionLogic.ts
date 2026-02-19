@@ -62,6 +62,11 @@ export const normalizeDailyBattleState_core = (
     changed = true;
   }
 
+  const processedTaskCompletionIds = dailyState.processedTaskCompletionIds ?? [];
+  if (!dailyState.processedTaskCompletionIds) {
+    changed = true;
+  }
+
   const seenBossIds = new Set([...defeatedBossIds, ...bosses.map((b) => b.bossId)]);
 
   const existingRemaining = dailyState.remainingBosses;
@@ -104,6 +109,7 @@ export const normalizeDailyBattleState_core = (
       bosses,
       defeatedBossIds,
       completedMissionIds,
+      processedTaskCompletionIds,
       remainingBosses,
     },
     changed,
@@ -246,6 +252,7 @@ export const computeNewDailyState_core = (settings: BattleSettings, today: strin
     defeatedBossIds: [],
     completedMissionIds: [],
     missionUsedAt: {},
+    processedTaskCompletionIds: [],
     sequentialPhase: 0,
   };
 };

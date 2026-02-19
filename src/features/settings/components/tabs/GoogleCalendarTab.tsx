@@ -23,9 +23,13 @@ import {
     loginWithGoogle,
     disconnectGoogleCalendar,
     isTokenValid,
+    fetchGoogleCalendarList,
     saveGoogleCalendarSettings,
 } from '@/shared/services/calendar/googleCalendarService';
-import type { GoogleCalendarSettings } from '@/shared/services/calendar/googleCalendarTypes';
+import type {
+    GoogleCalendarListEntry,
+    GoogleCalendarSettings,
+} from '@/shared/services/calendar/googleCalendarTypes';
 import { toast } from 'react-hot-toast';
 
 /**
@@ -34,6 +38,11 @@ import { toast } from 'react-hot-toast';
  */
 export function GoogleCalendarTab() {
     const [settings, setSettings] = useState<GoogleCalendarSettings | null>(null);
+    const [calendarOptions, setCalendarOptions] = useState<GoogleCalendarListEntry[]>([]);
+    const [selectedCalendarId, setSelectedCalendarId] = useState('primary');
+    const [calendarOptionsLoading, setCalendarOptionsLoading] = useState(false);
+    const [calendarOptionsError, setCalendarOptionsError] = useState<string | null>(null);
+    const [savingCalendarId, setSavingCalendarId] = useState(false);
     const [clientId, setClientId] = useState('');
     const [clientSecret, setClientSecret] = useState('');
     const [loading, setLoading] = useState(true);
@@ -49,11 +58,73 @@ export function GoogleCalendarTab() {
         setIsElectron(!!window.electronAPI?.googleOAuthLogin);
     }, []);
 
+    const resolveSettingsCalendarId = (loaded: GoogleCalendarSettings | null): string => {
+        const configured = loaded?.calendarId?.trim();
+        return configured && configured.length > 0 ? configured : 'primary';
+    };
+
+    const resolveFallbackCalendarId = (entries: GoogleCalendarListEntry[]): string => {
+        const primaryEntry = entries.find((entry) => entry.primary);
+        if (primaryEntry) {
+            return primaryEntry.id;
+        }
+
+        if (entries.length > 0) {
+            return entries[0].id;
+        }
+
+        return 'primary';
+    };
+
+    const loadCalendarOptions = async (loaded: GoogleCalendarSettings | null): Promise<void> => {
+        const currentCalendarId = resolveSettingsCalendarId(loaded);
+        setSelectedCalendarId(currentCalendarId);
+
+        if (!loaded?.enabled || !loaded.accessToken) {
+            setCalendarOptions([]);
+            setCalendarOptionsError(null);
+            return;
+        }
+
+        try {
+            setCalendarOptionsLoading(true);
+            setCalendarOptionsError(null);
+
+            const entries = await fetchGoogleCalendarList();
+            setCalendarOptions(entries);
+
+            if (entries.length === 0) {
+                setSelectedCalendarId('primary');
+                return;
+            }
+
+            const hasConfiguredCalendar = entries.some((entry) => entry.id === currentCalendarId);
+            const nextCalendarId = hasConfiguredCalendar ? currentCalendarId : resolveFallbackCalendarId(entries);
+            setSelectedCalendarId(nextCalendarId);
+
+            if (loaded.calendarId !== nextCalendarId) {
+                await saveGoogleCalendarSettings({
+                    ...loaded,
+                    calendarId: nextCalendarId,
+                });
+                setSettings((prev) => prev ? { ...prev, calendarId: nextCalendarId } : prev);
+            }
+        } catch (error) {
+            console.error('[GoogleCalendarTab] Failed to load calendar list:', error);
+            setCalendarOptions([]);
+            setCalendarOptionsError('캘린더 목록을 불러오지 못했습니다. 기본 캘린더(primary)를 사용합니다.');
+            setSelectedCalendarId('primary');
+        } finally {
+            setCalendarOptionsLoading(false);
+        }
+    };
+
     const loadSettings = async () => {
         try {
             setLoading(true);
             const loaded = await getGoogleCalendarSettings();
             setSettings(loaded);
+            setSelectedCalendarId(resolveSettingsCalendarId(loaded));
             
             // 저장된 credentials 복원
             if (loaded?.clientId) setClientId(loaded.clientId);
@@ -62,6 +133,11 @@ export function GoogleCalendarTab() {
             if (loaded?.enabled) {
                 const valid = await isTokenValid();
                 setTokenValid(valid);
+                await loadCalendarOptions(loaded);
+            } else {
+                setTokenValid(false);
+                setCalendarOptions([]);
+                setCalendarOptionsError(null);
             }
         } catch (error) {
             console.error('[GoogleCalendarTab] Failed to load settings:', error);
@@ -135,6 +211,9 @@ export function GoogleCalendarTab() {
             await disconnectGoogleCalendar();
             setSettings(null);
             setTokenValid(false);
+            setCalendarOptions([]);
+            setCalendarOptionsError(null);
+            setSelectedCalendarId('primary');
             toast.success('Google Calendar 연동이 해제되었습니다.');
         } catch (error) {
             console.error('[GoogleCalendarTab] Disconnect failed:', error);
@@ -145,6 +224,35 @@ export function GoogleCalendarTab() {
     // 토큰 수동 갱신 (재로그인)
     const handleRefreshToken = async () => {
         await handleConnect();
+    };
+
+    const handleCalendarChange = async (calendarId: string): Promise<void> => {
+        if (!settings) {
+            setSelectedCalendarId(calendarId);
+            return;
+        }
+
+        const previousCalendarId = settings.calendarId || 'primary';
+        setSelectedCalendarId(calendarId);
+
+        try {
+            setSavingCalendarId(true);
+            await saveGoogleCalendarSettings({
+                ...settings,
+                calendarId,
+            });
+            setSettings({
+                ...settings,
+                calendarId,
+            });
+            toast.success('동기화 캘린더가 변경되었습니다.');
+        } catch (error) {
+            console.error('[GoogleCalendarTab] Failed to save selected calendar:', error);
+            setSelectedCalendarId(previousCalendarId);
+            toast.error('캘린더 설정 저장에 실패했습니다.');
+        } finally {
+            setSavingCalendarId(false);
+        }
     };
 
     if (loading) {
@@ -204,6 +312,43 @@ export function GoogleCalendarTab() {
                             마지막 동기화: {new Date(settings.lastSyncAt).toLocaleString('ko-KR')}
                         </p>
                     )}
+
+                    <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-3">
+                        <label htmlFor="google-calendar-select" className="mb-2 block text-xs font-semibold text-emerald-300">
+                            동기화할 Google Calendar
+                        </label>
+                        <select
+                            id="google-calendar-select"
+                            className={inputClass}
+                            value={selectedCalendarId}
+                            disabled={calendarOptionsLoading || savingCalendarId || connecting || calendarOptions.length === 0}
+                            onChange={(event) => {
+                                void handleCalendarChange(event.target.value);
+                            }}
+                        >
+                            {calendarOptions.length === 0 && (
+                                <option value="primary">Primary (기본)</option>
+                            )}
+                            {calendarOptions.map((calendar) => {
+                                const accessRoleText = calendar.accessRole ? ` (${calendar.accessRole})` : '';
+                                const primaryText = calendar.primary ? ' [Primary]' : '';
+                                return (
+                                    <option key={calendar.id} value={calendar.id}>
+                                        {calendar.summary}{primaryText}{accessRoleText}
+                                    </option>
+                                );
+                            })}
+                        </select>
+                        {calendarOptionsLoading && (
+                            <p className="mt-2 text-xs text-emerald-200/80">캘린더 목록을 불러오는 중...</p>
+                        )}
+                        {savingCalendarId && (
+                            <p className="mt-2 text-xs text-emerald-200/80">선택한 캘린더를 저장하는 중...</p>
+                        )}
+                        {calendarOptionsError && (
+                            <p className="mt-2 text-xs text-amber-300">{calendarOptionsError}</p>
+                        )}
+                    </div>
 
                     <div className="mt-4 flex gap-2">
                         {!tokenValid && (

@@ -15,6 +15,8 @@ import {
 import {
   getValidAccessToken,
   createCalendarEventGeneric,
+  startGoogleTokenRefreshScheduler,
+  stopGoogleTokenRefreshScheduler,
 } from '@/shared/services/calendar/googleCalendarService';
 import type { GoogleCalendarEvent } from '@/shared/services/calendar/googleCalendarTypes';
 import { deleteGoogleTask } from '@/shared/services/calendar/googleTasksService';
@@ -22,6 +24,30 @@ import { deleteGoogleTask } from '@/shared/services/calendar/googleTasksService'
 type ElectronAPI = {
   googleOAuthRefresh?: (...args: unknown[]) => unknown;
 };
+
+const realSetTimeout = globalThis.setTimeout;
+
+async function assertEventually(assertion: () => void, retries = 50): Promise<void> {
+  let lastError: unknown;
+
+  for (let i = 0; i < retries; i += 1) {
+    try {
+      assertion();
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise<void>((resolve) => {
+        realSetTimeout(() => resolve(), 10);
+      });
+    }
+  }
+
+  if (lastError instanceof Error) {
+    throw lastError;
+  }
+
+  throw new Error('assertEventually failed without an Error instance');
+}
 
 function setElectronApiRefresh(mockImpl: (...args: unknown[]) => unknown) {
   const globalWithWindow = globalThis as unknown as {
@@ -36,6 +62,8 @@ function setElectronApiRefresh(mockImpl: (...args: unknown[]) => unknown) {
 
 beforeEach(async () => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
+  stopGoogleTokenRefreshScheduler();
 
   // 각 테스트를 저장소 레벨에서 초기화 (Dexie 직접 접근 금지 규칙 준수)
   await deleteSystemState(SYSTEM_KEYS.GOOGLE_CALENDAR_SETTINGS);
@@ -44,6 +72,8 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  stopGoogleTokenRefreshScheduler();
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -255,5 +285,154 @@ describe('Google Calendar token refresh stability', () => {
     expect(tasksCallCount).toBe(2);
 
     await deleteTaskCalendarMapping('t1');
+  });
+
+  it('triggers proactive refresh within scheduler window before expiry', async () => {
+    const now = new Date('2026-02-19T00:00:00.000Z').getTime();
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(now);
+
+    await setSystemState(SYSTEM_KEYS.GOOGLE_CALENDAR_SETTINGS, {
+      enabled: true,
+      accessToken: 'old_access',
+      refreshToken: 'rt',
+      clientId: 'cid',
+      clientSecret: 'csec',
+      // 5분 버퍼 + 10초 뒤 만료 -> 시작 후 10초 시점에 선제 갱신
+      tokenExpiresAt: now + (5 * 60 * 1000) + 10_000,
+      calendarId: 'primary',
+    });
+
+    const refreshMock = vi.fn(async () => ({
+      success: true,
+      accessToken: 'new_access',
+      refreshToken: 'rt',
+      expiresIn: 3600,
+    }));
+    setElectronApiRefresh(refreshMock);
+
+    const scheduled: Array<{ callback: () => void; delay: number }> = [];
+    const originalSetTimeout = globalThis.setTimeout;
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((handler: TimerHandler, timeout?: number) => {
+      const delay = typeof timeout === 'number' ? timeout : 0;
+
+      if (typeof handler === 'function' && delay >= 1000) {
+        scheduled.push({ callback: handler as () => void, delay });
+        return (scheduled.length + 100) as unknown as ReturnType<typeof setTimeout>;
+      }
+
+      return originalSetTimeout(handler, timeout);
+    }) as typeof setTimeout);
+
+    await startGoogleTokenRefreshScheduler();
+
+    expect(scheduled[0]?.delay).toBe(10_000);
+    scheduled[0]?.callback();
+    await assertEventually(() => {
+      expect(refreshMock).toHaveBeenCalledTimes(1);
+    });
+
+    dateNowSpy.mockRestore();
+  });
+
+  it('does not create duplicate scheduler instances when started multiple times', async () => {
+    const now = new Date('2026-02-19T00:00:00.000Z').getTime();
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(now);
+
+    await setSystemState(SYSTEM_KEYS.GOOGLE_CALENDAR_SETTINGS, {
+      enabled: true,
+      accessToken: 'old_access',
+      refreshToken: 'rt',
+      clientId: 'cid',
+      clientSecret: 'csec',
+      tokenExpiresAt: now + (5 * 60 * 1000) + 10_000,
+      calendarId: 'primary',
+    });
+
+    const refreshMock = vi.fn(async () => ({
+      success: true,
+      accessToken: 'new_access',
+      refreshToken: 'rt',
+      expiresIn: 3600,
+    }));
+    setElectronApiRefresh(refreshMock);
+
+    const scheduled: Array<{ callback: () => void; delay: number }> = [];
+    const originalSetTimeout = globalThis.setTimeout;
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((handler: TimerHandler, timeout?: number) => {
+      const delay = typeof timeout === 'number' ? timeout : 0;
+
+      if (typeof handler === 'function' && delay >= 1000) {
+        scheduled.push({ callback: handler as () => void, delay });
+        return (scheduled.length + 200) as unknown as ReturnType<typeof setTimeout>;
+      }
+
+      return originalSetTimeout(handler, timeout);
+    }) as typeof setTimeout);
+
+    await startGoogleTokenRefreshScheduler();
+    await startGoogleTokenRefreshScheduler();
+
+    expect(scheduled.length).toBe(1);
+    scheduled[0]?.callback();
+    await assertEventually(() => {
+      expect(refreshMock).toHaveBeenCalledTimes(1);
+    });
+
+    dateNowSpy.mockRestore();
+  });
+
+  it('cleans up scheduler timer on stop and prevents refresh after cleanup', async () => {
+    const now = new Date('2026-02-19T00:00:00.000Z').getTime();
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(now);
+
+    await setSystemState(SYSTEM_KEYS.GOOGLE_CALENDAR_SETTINGS, {
+      enabled: true,
+      accessToken: 'old_access',
+      refreshToken: 'rt',
+      clientId: 'cid',
+      clientSecret: 'csec',
+      tokenExpiresAt: now + (5 * 60 * 1000) + 5_000,
+      calendarId: 'primary',
+    });
+
+    const refreshMock = vi.fn(async () => ({
+      success: true,
+      accessToken: 'new_access',
+      refreshToken: 'rt',
+      expiresIn: 3600,
+    }));
+    setElectronApiRefresh(refreshMock);
+
+    const scheduled: Array<{ callback: () => void; delay: number }> = [];
+    const originalSetTimeout = globalThis.setTimeout;
+    let timerSeed = 10;
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((handler: TimerHandler, timeout?: number) => {
+      const delay = typeof timeout === 'number' ? timeout : 0;
+
+      if (typeof handler === 'function' && delay >= 1000) {
+        scheduled.push({ callback: handler as () => void, delay });
+        timerSeed += 1;
+        return timerSeed as unknown as ReturnType<typeof setTimeout>;
+      }
+
+      return originalSetTimeout(handler, timeout);
+    }) as typeof setTimeout);
+
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout').mockImplementation(() => {
+      // no-op for timer lifecycle assertion
+    });
+
+    await startGoogleTokenRefreshScheduler();
+    stopGoogleTokenRefreshScheduler();
+
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+    scheduled[0]?.callback();
+    await new Promise<void>((resolve) => {
+      originalSetTimeout(() => resolve(), 0);
+    });
+
+    expect(refreshMock).toHaveBeenCalledTimes(0);
+
+    dateNowSpy.mockRestore();
   });
 });

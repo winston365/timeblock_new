@@ -59,6 +59,16 @@ export interface GoogleCalendarSettings {
 }
 
 /**
+ * Google Calendar 목록의 UI용 최소 필드
+ */
+export interface GoogleCalendarListEntry {
+  id: string;
+  summary: string;
+  primary?: boolean;
+  accessRole?: string;
+}
+
+/**
  * Task-Calendar 매핑 정보 (Dexie에 저장)
  */
 export interface TaskCalendarMapping {

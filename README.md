@@ -95,6 +95,8 @@ UI 컴포넌트는 절대 데이터베이스나 Firebase에 직접 접근하지 
 - **Tasks**: 앱 내 '주요 작업' ↔ Google Tasks 양방향 동기화
 - **Events**: 앱 내 '임시 스케줄' ↔ Google Calendar 이벤트 양방향 동기화
 - 별도의 매핑 테이블(`taskGoogleTaskMappings`, `tempScheduleCalendarMappings`)을 통해 ID 매칭 및 변경 사항 추적
+- **토큰 안정성**: 앱 실행 중 Google 토큰 선제 갱신 스케줄러가 만료 전에 자동 갱신을 시도
+- **캘린더 선택**: Settings > Google Calendar에서 동기화 대상 `calendarId`를 선택하며, 미설정/불일치 시 `primary`로 폴백
 
 ---
 

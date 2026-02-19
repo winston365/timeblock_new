@@ -1,3 +1,5 @@
+import type { BattleTaskCompletionDamageRule } from '@/shared/types/domain';
+
 /**
  * Battle System Constants
  *
@@ -38,6 +40,29 @@ export const MISSION_DAMAGE_MAX = 120;
 
 /** 미션 기본 데미지 (분) */
 export const MISSION_DAMAGE_DEFAULT = 15;
+
+/** 작업 완료 기반 데미지 최소값 (HP) */
+export const TASK_COMPLETION_DAMAGE_MIN = 1;
+
+/** 작업 완료 기반 데미지 최대값 (HP) */
+export const TASK_COMPLETION_DAMAGE_MAX = 500;
+
+/** 작업 완료 기반 최소 시간 최소값 (분) */
+export const TASK_COMPLETION_DURATION_MIN = 1;
+
+/** 작업 완료 기반 최소 시간 최대값 (분) */
+export const TASK_COMPLETION_DURATION_MAX = 1440;
+
+/**
+ * 작업 완료 시간 기반 기본 데미지 룰
+ * 정책: 가장 큰 임계값(minimumDuration <= adjustedDuration)의 데미지를 사용
+ */
+export const TASK_COMPLETION_DAMAGE_RULES_DEFAULT: BattleTaskCompletionDamageRule[] = [
+  { minimumDuration: 15, damage: 5 },
+  { minimumDuration: 30, damage: 10 },
+  { minimumDuration: 45, damage: 15 },
+  { minimumDuration: 60, damage: 20 },
+];
 
 /** 미션 시간대 최대 설정 개수 */
 export const MISSION_TIME_SLOTS_MAX = 3;

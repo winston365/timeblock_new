@@ -17,6 +17,8 @@ import { syncToFirebase, fetchFromFirebase } from '@/shared/services/sync/fireba
 import { battleMissionsStrategy, battleSettingsStrategy, bossImageSettingsStrategy } from '@/shared/services/sync/firebase/strategies';
 import { generateId, getLocalDate, shiftYmd } from '@/shared/lib/utils';
 import { withFirebaseSync } from '@/shared/utils/firebaseGuard';
+import { TASK_COMPLETION_DAMAGE_RULES_DEFAULT } from '@/features/battle/constants/battleConstants';
+import { sanitizeTaskCompletionDamageRules_core } from '@/features/battle/utils/taskCompletionDamage';
 
 // ============================================================================
 // Storage Keys
@@ -36,6 +38,7 @@ const BATTLE_STATS_KEY = 'battleStats'; // 날짜별 통계
 export const DEFAULT_BATTLE_SETTINGS: BattleSettings = {
   missions: [],
   defaultMissionDamage: 15,
+  taskCompletionDamageRules: [...TASK_COMPLETION_DAMAGE_RULES_DEFAULT],
 
   bossDifficultyXP: {
     easy: 20,
@@ -47,6 +50,24 @@ export const DEFAULT_BATTLE_SETTINGS: BattleSettings = {
   showBossImage: true,
   battleSoundEffects: true,
 };
+
+function normalizeBattleSettings(
+  raw: Partial<BattleSettings> | null | undefined,
+): BattleSettings {
+  const source = raw ?? {};
+
+  return {
+    ...DEFAULT_BATTLE_SETTINGS,
+    ...source,
+    bossDifficultyXP: {
+      ...DEFAULT_BATTLE_SETTINGS.bossDifficultyXP,
+      ...(source.bossDifficultyXP ?? {}),
+    },
+    taskCompletionDamageRules: source.taskCompletionDamageRules == null
+      ? [...DEFAULT_BATTLE_SETTINGS.taskCompletionDamageRules]
+      : sanitizeTaskCompletionDamageRules_core(source.taskCompletionDamageRules),
+  };
+}
 
 // ============================================================================
 // Battle Missions CRUD
@@ -196,16 +217,17 @@ export async function loadBattleSettings(): Promise<BattleSettings> {
     const stored = await db.systemState.get(SETTINGS_KEY);
     if (stored?.value) {
       addSyncLog('dexie', 'load', 'Loaded battle settings');
-      return { ...DEFAULT_BATTLE_SETTINGS, ...stored.value } as BattleSettings;
+      return normalizeBattleSettings(stored.value as Partial<BattleSettings>);
     }
 
     // 2. Firebase에서 조회 (초기 로드)
     if (isFirebaseInitialized()) {
       const remoteSettings = await fetchFromFirebase<BattleSettings>(battleSettingsStrategy);
       if (remoteSettings) {
-        await db.systemState.put({ key: SETTINGS_KEY, value: remoteSettings });
+        const normalizedRemoteSettings = normalizeBattleSettings(remoteSettings);
+        await db.systemState.put({ key: SETTINGS_KEY, value: normalizedRemoteSettings });
         addSyncLog('firebase', 'load', 'Restored battle settings from Firebase');
-        return { ...DEFAULT_BATTLE_SETTINGS, ...remoteSettings };
+        return normalizedRemoteSettings;
       }
     }
 
@@ -221,12 +243,13 @@ export async function loadBattleSettings(): Promise<BattleSettings> {
  */
 export async function saveBattleSettings(settings: BattleSettings): Promise<void> {
   try {
-    await db.systemState.put({ key: SETTINGS_KEY, value: settings });
+    const normalizedSettings = normalizeBattleSettings(settings);
+    await db.systemState.put({ key: SETTINGS_KEY, value: normalizedSettings });
     addSyncLog('dexie', 'save', 'Saved battle settings');
 
     // Firebase 동기화 (withFirebaseSync로 보일러플레이트 제거)
     withFirebaseSync(
-      () => syncToFirebase(battleSettingsStrategy, settings),
+      () => syncToFirebase(battleSettingsStrategy, normalizedSettings),
       'BattleSettings:save'
     );
   } catch (error) {

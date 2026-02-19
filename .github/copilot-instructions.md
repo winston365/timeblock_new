@@ -1,68 +1,41 @@
+# TimeBlock Planner Workspace Instructions
 
-# TimeBlock Planner - AI Copilot Instructions
+These instructions apply to all tasks in this workspace. Keep changes local-first, repository-driven, and safe for Electron.
 
-## 🗺️ High-Level Map
-- **Core Stack**: Electron (Main/Preload), React 19 (Views), TypeScript 5.8, Zustand (State), Dexie.js (IndexedDB).
-- **Architecture**: **Local-First** with **Repository Pattern**. Views interact with Stores → Stores call Repositories → Repositories manage Dexie (Local) & Firebase (Cloud Backup).
-- **Entry Points**: 
-  - UI: `src/main.tsx` → `src/app/AppShell.tsx` (Handles daily reset/init)
-  - Electron: `electron/main/index.ts`
-- **File Structure**:
-  - `src/features/**`: Domain-specific logic (UI, Hooks, Stores).
-  - `src/shared/**`: Shared infrastructure (EventBus, Services, Utils).
-  - `src/data/**`: DB Schema, Repositories, Migrations.
+## Build and Test
+- Install deps: `npm install`
+- Preferred dev loop: `npm run electron:dev`
+- Web-only dev: `npm run dev`
+- Required before handoff: `npm run lint` and `npm test`
+- If behavior could differ by runtime, also verify: `npm run preview` and `npm run electron:prod`
+- Packaging checks: `npm run dist` (or `npm run dist:win|dist:mac|dist:linux`)
 
-## 🧱 Critical Architectural Patterns
+## Architecture Boundaries
+- Renderer UI (`src/features/**`) uses stores, not DB/Firebase.
+- Stores (`src/shared/stores/**`) coordinate state and call repositories.
+- Repositories (`src/data/repositories/**`) are the only persistence boundary for Dexie/Firebase.
+- DB schema and migrations live in `src/data/db/dexieClient.ts`.
+- Firebase sync behavior is centralized in `src/shared/services/sync/firebase/**`.
+- Electron main/preload boundaries are strict: privileged APIs in `electron/main/index.ts`, bridge in `electron/preload/index.ts`.
 
-### 1. Data Persistence (3-Tier)
-**Strict Rule**: Never use `localStorage` (except for theme).
-1.  **IndexedDB (Dexie)**: Primary local storage. Schema v17 defined in `src/data/db/dexieClient.ts`.
-2.  **Firebase RTDB**: Async backup & sync. Controlled by `src/shared/services/sync/firebase/syncCore.ts`.
-3.  **InMemory**: Zustand stores for UI reactivity.
+## Non-Negotiable Conventions
+- Do not use `localStorage` except the `theme` key at startup.
+- Do not access `db.*` outside `src/data/repositories/**` and `src/data/db/**`.
+- Do not hardcode fallback defaults; use `src/shared/constants/defaults.ts`.
+- Use `@/` import alias for `src/`.
+- Event bus naming must follow `[Domain]:[Action]`.
+- Do not call Firebase directly from UI/stores; route through repositories/services.
 
-### 2. Event-Driven Logic
--   **EventBus**: Use `src/shared/lib/eventBus` for cross-component communication.
--   **Pattern**: Emit events from Stores/Services. Subscribe in `src/shared/subscribers/**`.
--   **Naming**: `[Domain]:[Action]` (e.g., `Task:Completed`, `Game:LevelUp`).
+## Pitfalls to Avoid
+- Subscription/sync feedback loops when mutating state inside listeners.
+- Schema drift when changing models without updating migration + repository + sync strategy.
+- Date/time regressions around KST day boundaries and daily reset logic.
+- Desktop-only regressions: verify Electron runtime for features touching IPC/OS behavior.
 
-### 3. Task Completion Pipeline (Handler Pattern)
-Task completion flow is a chain of command (`src/shared/services/gameplay/taskCompletion/handlers/`):
-1.  `GoalProgressHandler`: Update user goals.
-2.  `XPRewardHandler`: Calculate game XP.
-3.  `QuestProgressHandler`: Update daily quests.
-4.  `WaifuAffectionHandler`: Trigger AI companion reaction.
-5.  `BlockCompletionHandler`: Time-block logic.
-
-### 4. AI & RAG (Retrieval-Augmented Generation)
--   **Gemini Integration**: Logic in `src/features/gemini/` and `src/shared/services/ai/gemini/`.
--   **RAG System**: `src/shared/services/rag/`.
-    -   **Hybrid Search**: Combines **DirectQuery** (IndexedDB structured search) and **VectorStore** (Orama semantic search).
-    -   **Context**: Construct prompts using filtered history + current task state.
-
-## 🚧 Coding Standards & Conventions
-
--   **Data Access**: **ALWAYS** use Repositories (`src/data/repositories/**`). Never access `db` or `firebase` directly from UI components.
--   **Defaults**: **NEVER** hardcode values. Import from `src/shared/constants/defaults.ts`.
--   **Modals**: Use `useModalEscapeClose` hook. Backdrop click should NOT close modals.
--   **Imports**: Use `@/` alias for `src/`. Group imports: React -> 3rd Party -> Local.
--   **Safety**: Use Optional Chaining (`?.`) and Nullish Coalescing (`??`) extensively.
--   **Naming**:
-    -   Components: `PascalCase.tsx`
-    -   Hooks/Utils: `camelCase.ts`
-    -   Constants: `UPPER_SNAKE_CASE`
-
-## 🛠️ Developer Workflows
-
--   **Start Dev**: `npm run electron:dev` (Full App) or `npm run dev` (Web UI only).
--   **Run Tests**:
-    -   `npm test` (Run all Vitest tests).
-    -   `npm run test:coverage` (Check coverage).
-    -   **Note**: Use `fake-indexeddb` for DB testing.
--   **Build**: `npm run dist` (Produces platform-specific installer in `release/`).
--   **Lint**: `npm run lint` (ESLint).
-
-## ⚠️ Common Pitfalls (Watch Out!)
--   **Sync Loop**: Modifying data inside a subscription without a guard can cause infinite loops.
--   **Schema Drift**: detailed in `src/data/db/dexieClient.ts`. Always add migration when changing tables.
--   **Date Handling**: Use `src/shared/utils/dateUtils.ts`. Be careful with timezone offsets (KST focus).
--   **Waifu Assets**: Located in `public/assets/waifu`. References must exactly match filenames.
+## Key References
+- `README.md` for product and high-level architecture overview.
+- `CLAUDE.md` for deeper architecture and workflow guidance.
+- `.eslintrc.cjs` for enforced architectural boundaries.
+- `src/main.tsx` and `src/app/AppShell.tsx` for app bootstrap flow.
+- `src/data/repositories/baseRepository.ts` for persistence contract.
+- `src/shared/services/sync/firebase/syncCore.ts` for sync pipeline.

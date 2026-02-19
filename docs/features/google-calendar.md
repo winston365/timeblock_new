@@ -115,12 +115,21 @@ if (localModified > googleModified) {
 Settings에서 Google 연동을 활성화합니다:
 
 ```
-Settings → Integrations → Google Account
-  ├── Google Tasks 동기화: [ON/OFF]
-  ├── 작업 목록 선택: [My Tasks ▼]
-  ├── Google Calendar 동기화: [ON/OFF]
-  └── 캘린더 선택: [Primary ▼]
+Settings → Google Calendar 탭
+  ├── Google Calendar 연동: [연결/해제]
+  └── 동기화 캘린더 선택: [Primary 또는 계정 내 캘린더]
 ```
+
+### 캘린더 선택(`calendarId`) 동작
+
+- 이벤트 생성/수정/삭제 API는 설정된 `calendarId`를 사용합니다.
+- 저장된 `calendarId`가 비어 있거나 목록에 없으면 기본값 `primary`로 폴백합니다.
+- 캘린더 목록을 불러오지 못한 경우에도 `primary`를 사용해 동기화를 지속합니다.
+
+### 토큰 선제 갱신 스케줄러
+
+- 앱 초기화 이후 스케줄러가 시작되며, 토큰 만료 약 5분 전에 자동 갱신을 시도합니다.
+- 갱신 실패 시 재시도 간격을 두고 다시 시도하며, 요청 중 401이 발생하면 1회 재갱신 후 재시도합니다.
 
 ## OAuth 인증 흐름
 
@@ -133,7 +142,7 @@ Settings → Integrations → Google Account
 ```
 
 ::: warning 토큰 관리
-Access Token은 만료될 수 있습니다. Refresh Token을 사용하여 자동 갱신합니다.
+Access Token은 만료될 수 있으며, Refresh Token 기반 자동 갱신(선제 갱신 + 401 복구)을 사용합니다.
 :::
 
 ## 임시 스케줄 (Temp Schedule)

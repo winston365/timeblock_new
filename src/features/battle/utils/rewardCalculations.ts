@@ -1,4 +1,5 @@
 import type { BattleMission, BattleSettings, DailyBattleState } from '@/shared/types/domain';
+import { sanitizeTaskCompletionDamageRules_core } from './taskCompletionDamage';
 
 import { getBossXpByDifficulty } from './xp';
 import { isMissionAvailable } from './missionLogic';
@@ -8,7 +9,16 @@ export const computeUpdatedSettings_core = (settings: BattleSettings, updates: P
     ? { ...settings.bossDifficultyXP, ...updates.bossDifficultyXP }
     : settings.bossDifficultyXP;
 
-  return { ...settings, ...updates, bossDifficultyXP: mergedDifficultyXP };
+  const mergedTaskCompletionDamageRules = updates.taskCompletionDamageRules
+    ? sanitizeTaskCompletionDamageRules_core(updates.taskCompletionDamageRules)
+    : settings.taskCompletionDamageRules;
+
+  return {
+    ...settings,
+    ...updates,
+    bossDifficultyXP: mergedDifficultyXP,
+    taskCompletionDamageRules: mergedTaskCompletionDamageRules,
+  };
 };
 
 export const computeCompleteMissionResult_core = (
